@@ -9,6 +9,7 @@ Monorepo cho đồ án CNTT-KLCN198: website tìm kiếm sản phẩm thời tra
 | `fe/` | Website Next.js/TypeScript. Chỉ gọi Spring Boot, không sở hữu business logic. |
 | `be/` | Spring Boot modular monolith: identity, catalog, history, authorization và search orchestration. |
 | `ai/` | Python AI module: FastAPI adapter, core `ml/`, PyTorch/FAISS và processing worker. |
+| `contracts/` | OpenAPI contracts được sinh và kiểm tra giữa các module. |
 | `schemas/` | Schema dùng chung và contract nghiên cứu đã version hóa. |
 | `config/` | Taxonomy/config dùng chung ở cấp repository. |
 | `docs/` | Nguồn tài liệu phân tích, quyết định và traceability. |

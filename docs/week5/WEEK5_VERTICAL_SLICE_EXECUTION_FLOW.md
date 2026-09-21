@@ -40,6 +40,7 @@ Nhóm chuyển từ quy trình tuyến tính “hoàn tất mọi sơ đồ rồ
 
 ### Spring Boot -> AI module
 
+- Editable/generated contract: [internal-ai.openapi.json](../../contracts/internal-ai.openapi.json).
 - internal image-search request có trace ID, K và publication versions;
 - response có product ID/version, rank, score và model/index/catalog provenance;
 - AI module không sở hữu user, role hoặc catalog business tables;

@@ -32,6 +32,24 @@ Smoke test hoàn toàn offline:
 ./scripts/run_cpu_smoke.sh
 ```
 
+## Internal FastAPI adapter
+
+Spring Boot chỉ gọi interface nội bộ đã version hóa; adapter không trả title/category/image path và không sở hữu dữ liệu catalog nghiệp vụ.
+
+```bash
+cd ai
+export FASEARCH_INDEX_DIR="artifacts/indexes/week4-baseline-20260908-v1"
+export FASEARCH_CATALOG_SNAPSHOT_ID="catalog-20260908-pilot-v1"
+../.venv/bin/uvicorn fasearch_ai.main:app --host 127.0.0.1 --port 8001
+```
+
+OpenAPI contract được sinh deterministic từ adapter:
+
+```bash
+cd ai
+../.venv/bin/python scripts/export_internal_openapi.py
+```
+
 Mọi query/metric Week 4 đều là `pilot_only`, không phải final benchmark. Raw dataset, model weights, embeddings và index được Git-ignore; manifest hash có thể commit nằm ở `data/manifests/`.
 
 ## Nguyên tắc làm việc

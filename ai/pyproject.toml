@@ -13,7 +13,7 @@ dependencies = []
 fashion-search = "ml.retrieval.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["ml*"]
+include = ["fasearch_ai*", "ml*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

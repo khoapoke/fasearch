@@ -1,0 +1,345 @@
+{
+  "components": {
+    "schemas": {
+      "Body_search_image_internal_v1_search_image_post": {
+        "properties": {
+          "catalog_snapshot_id": {
+            "minLength": 1,
+            "title": "Catalog Snapshot Id",
+            "type": "string"
+          },
+          "image": {
+            "contentMediaType": "application/octet-stream",
+            "description": "JPEG, PNG or WebP query image",
+            "title": "Image",
+            "type": "string"
+          },
+          "index_version": {
+            "minLength": 1,
+            "title": "Index Version",
+            "type": "string"
+          },
+          "k": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "K",
+            "type": "integer"
+          },
+          "model_version": {
+            "minLength": 1,
+            "title": "Model Version",
+            "type": "string"
+          },
+          "trace_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image",
+          "trace_id",
+          "catalog_snapshot_id",
+          "model_version",
+          "index_version"
+        ],
+        "title": "Body_search_image_internal_v1_search_image_post",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_REQUEST",
+              "INVALID_IMAGE",
+              "IMAGE_TOO_LARGE",
+              "PUBLICATION_MISMATCH",
+              "MODEL_UNAVAILABLE",
+              "INDEX_UNAVAILABLE",
+              "INTERNAL_ERROR"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "module": {
+            "const": "fasearch-ai",
+            "default": "fasearch-ai",
+            "title": "Module",
+            "type": "string"
+          },
+          "status": {
+            "const": "UP",
+            "default": "UP",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "ImageSearchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ai_latency_ms": {
+            "minimum": 0.0,
+            "title": "Ai Latency Ms",
+            "type": "number"
+          },
+          "artifact_scope": {
+            "const": "PILOT_ONLY",
+            "default": "PILOT_ONLY",
+            "title": "Artifact Scope",
+            "type": "string"
+          },
+          "mode": {
+            "const": "IMAGE",
+            "default": "IMAGE",
+            "title": "Mode",
+            "type": "string"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/PublicationRef"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ImageSearchResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trace_id",
+          "publication",
+          "results",
+          "ai_latency_ms"
+        ],
+        "title": "ImageSearchResponse",
+        "type": "object"
+      },
+      "ImageSearchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "minLength": 1,
+            "title": "Product Id",
+            "type": "string"
+          },
+          "product_version_id": {
+            "minLength": 1,
+            "title": "Product Version Id",
+            "type": "string"
+          },
+          "rank": {
+            "minimum": 1.0,
+            "title": "Rank",
+            "type": "integer"
+          },
+          "similarity_score": {
+            "title": "Similarity Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "product_version_id",
+          "rank",
+          "similarity_score"
+        ],
+        "title": "ImageSearchResult",
+        "type": "object"
+      },
+      "PublicationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog_snapshot_id": {
+            "minLength": 1,
+            "title": "Catalog Snapshot Id",
+            "type": "string"
+          },
+          "index_version": {
+            "minLength": 1,
+            "title": "Index Version",
+            "type": "string"
+          },
+          "model_version": {
+            "minLength": 1,
+            "title": "Model Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog_snapshot_id",
+          "model_version",
+          "index_version"
+        ],
+        "title": "PublicationRef",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "FaSearch Internal AI",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/internal/v1/health": {
+      "get": {
+        "operationId": "health_internal_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
+    "/internal/v1/search/image": {
+      "post": {
+        "operationId": "search_image_internal_v1_search_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_search_image_internal_v1_search_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Search Image",
+        "tags": [
+          "search"
+        ]
+      }
+    }
+  }
+}
