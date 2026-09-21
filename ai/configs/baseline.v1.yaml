@@ -1,0 +1,46 @@
+schema_version: 1.0.0
+config_id: week4-baseline-v1
+seed: 42
+
+dataset:
+  source_id: paramaggarwal/fashion-product-images-small
+  source_url: https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small
+  raw_dir: data/raw/dataset_a
+  styles_file: styles.csv
+  image_globs: ["images/*.jpg", "fashion-dataset/images/*.jpg", "*.jpg"]
+  pilot_size: 600
+  allowed_master_categories: [Apparel]
+  target_categories: [TOP, BOTTOM, ONE_PIECE]
+  checksum_algorithm: sha256
+  phash_algorithm: phash64
+  raw_snapshot_policy: immutable
+
+model:
+  adapter: hf_clip
+  model_id: openai/clip-vit-base-patch32
+  revision: 092a3b7e31726acc3a0207eea00f6040ac8b03a7
+  embedding_dimension: 512
+  preprocessing: hf-auto-processor@revision; RGB; resize-shortest/crop-224; CLIP mean/std
+  normalization: l2
+  device: cpu
+  precision: float32
+  batch_size: 16
+  frozen: true
+
+index:
+  backend: faiss
+  factory: IndexFlatIP
+  metric: cosine_via_normalized_inner_product
+  version: faiss-flatip-week4-v1
+
+search:
+  top_k: 10
+  fusion:
+    image_weight: 0.5
+    text_weight: 0.5
+    normalization: l2_after_weighted_sum
+
+reproducibility:
+  norm_tolerance: 0.0001
+  repeat_atol: 0.00001
+  deterministic_algorithms: true

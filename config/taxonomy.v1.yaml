@@ -1,0 +1,210 @@
+taxonomy:
+  id: fashion-taxonomy-v1
+  version: 1.0.0
+  status: seed
+  scope:
+    active_categories: [TOP, BOTTOM, ONE_PIECE]
+    future_categories: [OUTERWEAR, FOOTWEAR, ACCESSORY]
+
+special_values:
+  unknown:
+    meaning: information is missing or confidence is below threshold
+  other:
+    meaning: observed value is outside current controlled vocabulary
+  not_applicable:
+    meaning: attribute does not apply to the product category
+
+global_attributes:
+  category:
+    type: single_label
+    hard_capable: true
+    values:
+      TOP:
+        subcategories: [t_shirt, shirt, blouse, polo, crop_top, tank_top, sweater]
+      BOTTOM:
+        subcategories: [jeans, trousers, shorts, skirt, leggings]
+      ONE_PIECE:
+        subcategories: [dress, jumpsuit, romper]
+
+  color:
+    type: multi_label
+    hard_capable: true
+    hierarchy:
+      neutral: [black, white, gray, brown, beige_cream]
+      warm: [red, orange, yellow, pink]
+      cool: [green, blue, purple]
+      special: [metallic, multicolor]
+    values:
+      [black, white, gray, red, orange, yellow, green, blue, purple, pink,
+       brown, beige_cream, metallic, multicolor, unknown]
+    aliases:
+      beige_cream: [be, kem, beige, cream, be_kem, "be-kem"]
+
+  material:
+    type: multi_label
+    hard_capable: true
+    values:
+      [cotton, linen, denim, wool, knit, polyester, silk_satin, leather,
+       faux_leather, chiffon, lace, velvet, blended, unknown]
+    aliases:
+      cotton: [cotton, vai_bong, "vải bông"]
+      linen: [linen, lanh, vai_lanh, "vải lanh"]
+      denim: [denim, jean, jeans]
+      silk_satin: [silk, satin, lua, "lụa"]
+      faux_leather: [da_gia, "da giả", pu_leather]
+
+  pattern:
+    type: multi_label
+    hard_capable: true
+    values:
+      [solid, stripe, check, floral, floral_small, polka_dot, graphic,
+       text_print, animal, geometric, abstract, textured, multicolor_mixed,
+       unknown]
+    aliases:
+      solid: [tron, "trơn", plain]
+      stripe: [ke_soc, "kẻ sọc", striped]
+      check: [ke_caro, caro, plaid]
+      floral: [hoa, floral]
+      floral_small: [hoa_nhi, "hoa nhí"]
+      polka_dot: [cham_bi, "chấm bi"]
+      graphic: [in_hinh, "in hình", graphic]
+      text_print: [in_chu, "in chữ", slogan]
+
+  audience:
+    type: single_label
+    hard_capable: false
+    values: [women, men, unisex, kids, unknown]
+    note: do not infer user gender from user images
+
+category_specific_attributes:
+  TOP:
+    subtype:
+      type: single_label
+      values: [t_shirt, shirt, blouse, polo, crop_top, tank_top, sweater, other]
+    neckline:
+      type: single_label
+      values: [crew, v_neck, square, scoop, halter, off_shoulder, strapless, other, unknown]
+    collar:
+      type: single_label
+      values: [none, shirt_collar, mandarin, peter_pan, polo, sailor, other, unknown]
+    sleeve:
+      type: single_label
+      ordinal: [sleeveless, short, elbow, three_quarter, long]
+      values: [sleeveless, short, elbow, three_quarter, long, puff, bell, other, unknown]
+      lexicalized_negation_aliases:
+        sleeveless: [khong_tay, "không tay"]
+    fit:
+      type: single_label
+      ordinal: [slim, regular, relaxed, oversized]
+      values: [slim, regular, relaxed, oversized, cropped, unknown]
+    length:
+      type: single_label
+      ordinal: [cropped, waist, hip, longline]
+      values: [cropped, waist, hip, longline, unknown]
+    closure:
+      type: multi_label
+      values: [pullover, button, zipper, tie, hook, none, other, unknown]
+
+  BOTTOM:
+    subtype:
+      type: single_label
+      values: [jeans, trousers, shorts, skirt, leggings, other]
+    rise:
+      type: single_label
+      ordinal: [low, mid, high]
+      values: [low, mid, high, unknown]
+    leg_shape:
+      type: single_label
+      values: [skinny, straight, tapered, wide, flare, bootcut, other, unknown]
+    fit:
+      type: single_label
+      ordinal: [slim, regular, relaxed, oversized]
+      values: [slim, regular, relaxed, oversized, unknown]
+    length:
+      type: single_label
+      ordinal: [mini, above_knee, knee, midi, ankle, full]
+      values: [mini, above_knee, knee, midi, ankle, full, unknown]
+    closure:
+      type: multi_label
+      values: [elastic, button, zipper, tie, hook, other, unknown]
+
+  ONE_PIECE:
+    subtype:
+      type: single_label
+      values: [dress, jumpsuit, romper, other]
+    neckline:
+      type: single_label
+      values: [crew, v_neck, square, scoop, halter, off_shoulder, strapless, other, unknown]
+    sleeve:
+      type: single_label
+      values: [sleeveless, short, elbow, three_quarter, long, puff, bell, other, unknown]
+    waistline:
+      type: single_label
+      values: [natural, high, low, drop, none, unknown]
+    silhouette:
+      type: single_label
+      values: [a_line, sheath, fit_and_flare, bodycon, shift, wrap, wide, other, unknown]
+    length:
+      type: single_label
+      ordinal: [mini, above_knee, knee, midi, ankle, maxi]
+      values: [mini, above_knee, knee, midi, ankle, maxi, unknown]
+
+semantic_attributes:
+  style_vibe:
+    type: multi_label_probabilistic
+    hard_capable: false
+    values:
+      [minimalist, streetwear, vintage, preppy, romantic, sporty,
+       elegant, casual, formal, bohemian, edgy, unknown]
+  occasion:
+    type: multi_label_probabilistic
+    hard_capable: conditional_when_explicit
+    values: [daily, work, school, date, party, wedding_guest, beach, travel, sport, unknown]
+  season:
+    type: multi_label_probabilistic
+    hard_capable: false
+    values: [warm, transitional, cool, all_season, unknown]
+  formality:
+    type: ordinal_probabilistic
+    hard_capable: conditional_when_explicit
+    ordinal: [very_casual, casual, smart_casual, semi_formal, formal]
+
+composed_edit_families:
+  version: 1.0.0-candidate
+  status: conditional_until_phase_0_review
+  families:
+    - color
+    - material
+    - pattern
+    - fit_silhouette
+    - length_coverage
+    - semantic_context
+  allocation:
+    controlled_total: 240
+    queries_per_family: 40
+    pooled_controlled_total: 60
+    pooled_queries_per_family: 10
+
+constraint_policy:
+  never_relax:
+    - category
+    - explicit_must_not
+  exact_requires:
+    hard_constraint_state: SATISFIED
+  unknown_is_not_satisfied: true
+  relaxation:
+    one_constraint_per_step: true
+    order:
+      - priority_tertiary
+      - priority_secondary
+      - priority_primary
+    tie_break:
+      - inferred_before_explicit
+      - stable_constraint_id
+  lanes: [EXACT, SUBSTITUTE, UNVERIFIED]
+
+confidence_policy:
+  rule: thresholds_are_per_attribute_and_class
+  below_threshold_state: UNKNOWN
+  default_threshold: null
+  note: thresholds are stored in a separate calibration artifact and frozen per tagger version

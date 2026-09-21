@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "week4-baseline-20260908-v1",
+  "status": "PILOT_ONLY",
+  "created_at": "2026-09-08T00:00:00+07:00",
+  "dataset": {
+    "source_slug": "paramaggarwal/fashion-product-images-small",
+    "source_snapshot_date": "2026-09-08",
+    "license_reported_by_kaggle": "MIT",
+    "raw_file_manifest_sha256": "20e5086c80516053409ea2e4c28c011578f16706e3212df742d9d7bd22970f37",
+    "raw_content_hash": "68915e8e0441577ce7a0d476312dce1dcce6d85b5597297c8d513efb60ff4252",
+    "cleaning_report_sha256": "1a62772f600cf52993006c552b697ffaa2441c14693aa6fe7bf049e5be2f6f9a",
+    "catalog_snapshot_id": "catalog-20260908-pilot-v1",
+    "catalog_sha256": "82b21a099c92dbf42eca43475e6cea5459da3c3ff27fc528589ad85517f9da44",
+    "catalog_rows": 600,
+    "category_counts": {"TOP": 200, "BOTTOM": 200, "ONE_PIECE": 200}
+  },
+  "model": {
+    "model_id": "openai/clip-vit-base-patch32",
+    "revision": "092a3b7e31726acc3a0207eea00f6040ac8b03a7",
+    "model_version": "openai/clip-vit-base-patch32@092a3b7e3172+a6a0317b924b",
+    "config_hash": "a6a0317b924b6bece0b9cc8887d0ee53c1bf4ac51c00797f7514dce3e0bfeac8",
+    "embedding_dimension": 512,
+    "embedding_sha256": "9aed8c74caa18d1e4f0b61d840195a503a6c6fc8d4b3141336b1de59ff74581e",
+    "stability_report_sha256": "203a2ee3d42042a5df65346cc2aac4b5cbc2db6adc480f12ca84c5238159ffcc",
+    "frozen": true,
+    "device": "cpu",
+    "precision": "float32"
+  },
+  "index": {
+    "index_version": "faiss-flatip-week4-v1",
+    "type": "IndexFlatIP",
+    "rows": 600,
+    "dimension": 512,
+    "index_sha256": "3de85fd6a4a8ce380726d3fef42c4592c8a0206101a2c3346e9157ebbe5c640b",
+    "mapping_sha256": "4ef3bb9ceb69955f02a1ca3347f000194e1d5fe027115e24ca38cb3f61decf6b"
+  },
+  "evaluation": {
+    "query_set": "evaluation/pilot_queries.dataset_a.v1.jsonl",
+    "query_set_sha256": "7680aad167570f57ffbde142bedb4d5e4243f128785158542e3007dbb1150c27",
+    "query_count": 24,
+    "qrels_kind": "weak_metadata_derived_pilot_labels",
+    "metrics_sha256": "3470059d9fc038e31ef5e15dbf5df66dda5b5a1eabee3759d7bf80b8a79d24e8",
+    "per_query_output_sha256": "c0ca652fb9e27614515e791d8a45f13fef180745f3f58247b9af79b7c7b807f8",
+    "k": [1, 5, 10],
+    "target_recall_at_10": 0.08333333333333333,
+    "precision_strict_at_10": 0.075,
+    "recall_strict_at_10": 0.0309476517608238,
+    "mrr_strict_at_10": 0.16509589947089948,
+    "latency_p50_ms": 145.74725000420585,
+    "latency_p95_ms": 562.4351535472662
+  },
+  "environment": {
+    "python": "3.12.14",
+    "torch": "2.4.1",
+    "transformers": "4.44.2",
+    "faiss_cpu": "1.8.0.post1",
+    "seed": 42,
+    "direct_dependency_lock_sha256": "ff4d7f992e5d623502cc6b83c06eff7d17ede669989b6c4b84300379934afd52",
+    "resolved_dependency_lock_sha256": "72e4398d1adc5a9af74b0d36dabac66276239445c9fc45dd0463ec1e67954921"
+  },
+  "claims": {
+    "pilot_only": true,
+    "final_benchmark": false,
+    "self_retrieval_used_for_quality_claim": false,
+    "title_copied_into_queries": false
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fashion-search.local/schemas/evidence.schema.json",
+  "title": "Search Result Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "query_id",
+    "product_version_id",
+    "rank",
+    "lane",
+    "mode",
+    "scores",
+    "constraints",
+    "versions",
+    "consistency"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "evidence_id": { "type": "string" },
+    "query_id": { "type": "string" },
+    "product_version_id": { "type": "string" },
+    "product_group_id": { "type": ["string", "null"] },
+    "rank": { "type": "integer", "minimum": 1 },
+    "lane": { "enum": ["EXACT", "SUBSTITUTE", "UNVERIFIED"] },
+    "mode": { "enum": ["DENSE", "TAXONOMY", "EXPLAINABLE", "HYBRID"] },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["final_score", "dense_similarity"],
+      "properties": {
+        "final_score": { "type": "number" },
+        "dense_similarity": { "type": "number" },
+        "taxonomy_score": { "type": ["number", "null"] },
+        "compatibility_score": { "type": ["number", "null"] },
+        "latent_component": { "type": ["number", "null"] },
+        "latent_weight": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["constraint_id", "attribute", "operator", "state", "hard"],
+        "properties": {
+          "constraint_id": { "type": "string" },
+          "attribute": { "type": "string" },
+          "operator": { "type": "string" },
+          "expected_value": {},
+          "observed_value": {},
+          "state": { "enum": ["SATISFIED", "VIOLATED", "UNKNOWN"] },
+          "hard": { "type": "boolean" },
+          "relaxed": { "type": "boolean" },
+          "unknown_source": {
+            "type": ["string", "null"],
+            "enum": ["parser_abstention", "product_facet_low_confidence", "missing_product_information", "multiple", null]
+          },
+          "contribution": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "named_factor_contributions": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "relaxation_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step", "constraint_id", "reason"],
+        "properties": {
+          "step": { "type": "integer", "minimum": 1 },
+          "constraint_id": { "type": "string" },
+          "reason": { "type": "string" },
+          "score_before": { "type": ["number", "null"] },
+          "score_after": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "counterfactual": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "replacement_product_version_id": { "type": "string" },
+        "changed_facet": { "type": "string" },
+        "score_delta": { "type": "number" },
+        "catalog_verified": { "type": "boolean", "const": true }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_snapshot_id",
+        "embedding_model_version",
+        "index_version",
+        "taxonomy_version",
+        "parser_version",
+        "tagger_version",
+        "reranker_version"
+      ],
+      "properties": {
+        "catalog_snapshot_id": { "type": "string" },
+        "embedding_model_version": { "type": "string" },
+        "index_version": { "type": "string" },
+        "taxonomy_version": { "type": "string" },
+        "parser_version": { "type": "string" },
+        "tagger_version": { "type": "string" },
+        "reranker_version": { "type": "string" },
+        "factor_version": { "type": ["string", "null"] },
+        "calibration_version": { "type": ["string", "null"] },
+        "verbalizer_version": { "type": ["string", "null"] }
+      }
+    },
+    "consistency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checked", "epsilon", "passed"],
+      "properties": {
+        "checked": { "type": "boolean" },
+        "epsilon": { "type": "number", "minimum": 0 },
+        "absolute_error": { "type": ["number", "null"], "minimum": 0 },
+        "passed": { "type": "boolean" }
+      }
+    },
+    "verbalization": { "type": ["string", "null"] }
+  }
+}

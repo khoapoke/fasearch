@@ -1,0 +1,40 @@
+digraph G {
+  graph [rankdir=TB, bgcolor="white", pad=0.25, nodesep=0.35, ranksep=0.55, fontname="Arial"];
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2F8", color="#4F6B81", fontname="Arial", fontsize=11, margin="0.13,0.08"];
+  edge [color="#607D8B", penwidth=1.2, arrowsize=0.7];
+
+  clients [label="Flutter Web  Android  iOS", fillcolor="#D6EAF8"];
+  api [label="FastAPI Gateway", fillcolor="#BFD7EA"];
+  search [label="Search Service"];
+  catalog [label="Catalog Service"];
+  review [label="Review Service"];
+  parser [label="Intent Parser"];
+  encoder [label="Query Encoder"];
+  faiss [label="FAISS Candidate Index"];
+  rerank [label="Taxonomy Filter and Reranker"];
+  evidence [label="Evidence Builder and Verbalizer"];
+  lanes [label="Exact  Substitute  Unverified", fillcolor="#D5F5E3"];
+  db [label="PostgreSQL Metadata"];
+  storage [label="Object Storage"];
+  worker [label="Tagger and Embedding Worker"];
+  queue [label="Async Job Queue"];
+
+  clients -> api;
+  api -> search;
+  api -> catalog;
+  api -> review;
+  search -> parser;
+  search -> encoder;
+  encoder -> faiss;
+  faiss -> rerank;
+  parser -> rerank;
+  rerank -> evidence;
+  evidence -> lanes;
+  catalog -> db;
+  catalog -> storage;
+  catalog -> queue;
+  queue -> worker;
+  worker -> db;
+  worker -> faiss [label="versioned publish", fontname="Arial", fontsize=9];
+  review -> db;
+}

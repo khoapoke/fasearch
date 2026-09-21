@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fashion-search.local/schemas/intent-card.schema.json",
+  "title": "Fashion Search Intent Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "query_id",
+    "raw_query",
+    "origin",
+    "generation_mode",
+    "must_change",
+    "must_preserve",
+    "must_not",
+    "soft_preference",
+    "dont_care",
+    "writing_style",
+    "freeze"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "query_id": { "type": "string", "minLength": 1 },
+    "raw_query": { "type": "string", "minLength": 1 },
+    "query_mode": {
+      "type": "string",
+      "enum": ["TEXT", "IMAGE", "COMPOSED"]
+    },
+    "anchor_product_group_id": { "type": ["string", "null"] },
+    "designated_target_product_group_id": { "type": ["string", "null"] },
+    "origin": { "type": "string", "const": "native_human" },
+    "generation_mode": {
+      "type": "string",
+      "enum": ["taxonomy_controlled", "freeform_natural"]
+    },
+    "primary_edit_attribute": { "type": ["string", "null"] },
+    "all_edit_attributes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "query_complexity": {
+      "type": "string",
+      "enum": ["simple", "single_attribute", "multi_attribute"]
+    },
+    "must_change": { "$ref": "#/$defs/constraints" },
+    "must_preserve": { "$ref": "#/$defs/constraints" },
+    "must_not": { "$ref": "#/$defs/constraints" },
+    "soft_preference": { "$ref": "#/$defs/constraints" },
+    "dont_care": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "intent_clarification": { "type": "string" },
+    "inventory_answerable": { "type": ["boolean", "null"] },
+    "writing_style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["register", "orthography", "language_mix", "negation_type"],
+      "properties": {
+        "register": {
+          "type": "array",
+          "items": { "enum": ["standard", "colloquial"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "orthography": {
+          "type": "array",
+          "items": { "enum": ["clean", "missing_diacritics", "abbreviation", "teencode", "typo"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "language_mix": {
+          "type": "array",
+          "items": { "enum": ["none", "lexicalized_fashion_loanword", "true_code_switch"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "negation_type": {
+          "type": "array",
+          "items": { "enum": ["none", "lexicalized_attribute", "compositional_negation"] },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "author_id": { "type": "string" },
+        "metadata_reviewer_id": { "type": ["string", "null"] }
+      }
+    },
+    "freeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frozen", "version", "content_hash"],
+      "properties": {
+        "frozen": { "type": "boolean" },
+        "version": { "type": "string" },
+        "frozen_at": { "type": ["string", "null"], "format": "date-time" },
+        "content_hash": { "type": "string", "minLength": 8 }
+      }
+    }
+  },
+  "$defs": {
+    "constraints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/constraint" }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attribute", "operator", "priority", "source"],
+      "properties": {
+        "constraint_id": { "type": "string" },
+        "attribute": { "type": "string", "minLength": 1 },
+        "operator": {
+          "type": "string",
+          "enum": [
+            "EQ",
+            "NEQ",
+            "IN",
+            "NOT_IN",
+            "SAME_AS",
+            "DIFFERENT_FROM",
+            "LONGER_THAN",
+            "SHORTER_THAN",
+            "DARKER_THAN",
+            "LIGHTER_THAN",
+            "MORE_THAN",
+            "LESS_THAN",
+            "CONTAINS",
+            "NOT_CONTAINS"
+          ]
+        },
+        "value": {},
+        "reference": {
+          "type": ["string", "null"],
+          "enum": ["anchor", "query", null]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["primary", "secondary", "tertiary"]
+        },
+        "source": {
+          "type": "string",
+          "enum": ["explicit", "inferred", "author_gold", "parser"]
+        },
+        "confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

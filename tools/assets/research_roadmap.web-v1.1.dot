@@ -1,0 +1,22 @@
+// Documentation roadmap v1.1, 2026-09-10, D054/D055; mobile does not gate delivery.
+digraph G {
+  graph [rankdir=LR, bgcolor="white", pad=0.25, nodesep=0.35, ranksep=0.45, fontname="Arial"];
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2F8", color="#4F6B81", fontname="Arial", fontsize=10, margin="0.12,0.10"];
+  edge [color="#607D8B", penwidth=1.2, arrowsize=0.7, fontname="Arial", fontsize=8];
+  p0 [label="Phase 0\nProtocol"];
+  p1 [label="Phase 1\nBaseline slice"];
+  p2 [label="Phase 2\nData foundation"];
+  rq1 [label="Phase 3\nRQ1 Vietnamese", fillcolor="#D6EAF8"];
+  rq2 [label="Phase 4\nRQ2 Composed", fillcolor="#D6EAF8"];
+  rq3 [label="Phase 5\nRQ3 Taxonomy", fillcolor="#D6EAF8"];
+  web [label="Phase 6\nNext.js + Spring Boot\nPython AI integration", fillcolor="#D5F5E3"];
+  bonus [label="Phase 7 optional\nOutfit / VTON / 3D", fillcolor="#FCF3CF"];
+  report [label="Phase 8\nReport / Defense", fillcolor="#E8DAEF"];
+  mobile [label="Optional mobile\nAfter Web + tests + deployment\nand report are ready", style="rounded,dashed,filled", fillcolor="#F4F6F7"];
+  p0 -> p1 -> p2 -> rq1 -> rq2 -> rq3 -> web;
+  p2 -> web [style=dashed, label="product work parallel"];
+  web -> report [label="core delivery"];
+  web -> bonus [style=dashed, label="time permits"];
+  bonus -> report [style=dashed, label="optional evidence"];
+  web -> mobile [style=dashed, label="time permits; never a core gate"];
+}

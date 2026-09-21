@@ -1,0 +1,73 @@
+schema_version: 1.0.0
+run_id: rq2-a4-seed42-20260905
+research_question: RQ2
+arm_id: A4
+status: PLANNED
+purpose: Evaluate adaptive scalar fusion with frozen Stage 2 encoders
+hypothesis_ids: [H2b]
+
+code:
+  repository: local-repository-url-or-name
+  commit: REPLACE_WITH_GIT_COMMIT
+  dirty: false
+  entrypoint: ml/retrieval/train_composed.py
+
+data:
+  catalog_snapshot_id: catalog-20260905-v1
+  train_manifest_hash: REPLACE_SHA256
+  validation_manifest_hash: REPLACE_SHA256
+  test_manifest_hash: null
+  split_manifest_hash: REPLACE_SHA256
+  query_set_version: queries-rq2-valid-v1
+  qrels_version: qrels-rq2-valid-v1
+  negative_list_version: null
+
+models:
+  - role: encoder
+    model_id: ret-stage2
+    checkpoint: artifacts/models/ret-stage2/best.pt
+    checkpoint_hash: REPLACE_SHA256
+    preprocessing_version: image-text-preprocess-v1
+    frozen: true
+  - role: combiner
+    model_id: cmp-adaptive-scalar-v1
+    checkpoint: artifacts/models/cmp-adaptive-scalar-v1/init.pt
+    checkpoint_hash: REPLACE_SHA256
+    preprocessing_version: composed-input-v1
+    frozen: false
+
+configuration:
+  config_path: configs/experiments/rq2-a4.yaml
+  config_hash: REPLACE_SHA256
+  seed: 42
+  primary_metric: TargetRecall@10
+  candidate_depth: 50
+
+environment:
+  python_version: REPLACE
+  framework_version: REPLACE
+  cuda_version: REPLACE
+  hardware: NVIDIA T4
+  precision: fp16
+  dependency_lock_hash: REPLACE_SHA256
+
+compute:
+  optimizer_steps: null
+  examples_seen: null
+  effective_batch_size: 128
+  gpu_hours: null
+  wall_clock_seconds: null
+  peak_memory_mb: null
+
+artifacts: []
+metrics: {}
+
+decision:
+  outcome: PENDING
+  reason: null
+  reviewer: null
+
+timestamps:
+  created_at: 2026-09-05T00:00:00+07:00
+  started_at: null
+  completed_at: null

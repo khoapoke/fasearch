@@ -1,0 +1,13 @@
+# Week 4 baseline lock v1.0.0 (Python 3.12, CPU local / CUDA Colab).
+faiss-cpu==1.8.0.post1
+huggingface-hub==0.24.7
+imagehash==4.3.1
+jsonschema==4.23.0
+kaggle==1.6.17
+numpy==1.26.4
+pandas==2.2.2
+pillow==10.4.0
+pytest==8.3.3
+pyyaml==6.0.2
+torch==2.4.1
+transformers==4.44.2

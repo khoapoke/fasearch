@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fashion-search.local/schemas/judgment.schema.json",
+  "title": "Raw Relevance Judgment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "judgment_id",
+    "query_id",
+    "product_version_id",
+    "product_group_id",
+    "assessor_id",
+    "status",
+    "reason_codes",
+    "constraint_assessments",
+    "guideline_version",
+    "intent_card_hash",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "judgment_id": { "type": "string" },
+    "query_id": { "type": "string" },
+    "product_version_id": { "type": "string" },
+    "product_group_id": { "type": "string" },
+    "assessor_id": { "type": "string" },
+    "status": { "enum": ["GRADED", "CANNOT_JUDGE"] },
+    "grade": { "type": ["integer", "null"], "minimum": 0, "maximum": 3 },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "WRONG_CATEGORY",
+          "NEGATION_VIOLATION",
+          "MAJOR_ATTRIBUTE_MISMATCH",
+          "MULTIPLE_MINOR_MISMATCHES",
+          "VIBE_ONLY_MATCH",
+          "OCCASION_MISMATCH",
+          "INSUFFICIENT_PRODUCT_INFORMATION"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "constraint_assessments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["constraint_id", "state"],
+        "properties": {
+          "constraint_id": { "type": "string" },
+          "state": { "enum": ["SATISFIED", "VIOLATED", "UNKNOWN"] },
+          "observed_value": {},
+          "facet_correction": {},
+          "note": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "note": { "type": ["string", "null"] },
+    "guideline_version": { "type": "string" },
+    "intent_card_hash": { "type": "string" },
+    "form_version": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "supersedes": { "type": ["string", "null"] },
+    "correction_reason": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "GRADED" } } },
+      "then": { "required": ["grade"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "CANNOT_JUDGE" } } },
+      "then": {
+        "properties": {
+          "grade": { "const": null },
+          "reason_codes": { "contains": { "const": "INSUFFICIENT_PRODUCT_INFORMATION" } }
+        }
+      }
+    }
+  ]
+}

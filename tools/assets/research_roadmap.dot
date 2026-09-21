@@ -1,0 +1,19 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="white", pad=0.25, nodesep=0.25, ranksep=0.4, fontname="Arial"];
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2F8", color="#4F6B81", fontname="Arial", fontsize=10, margin="0.12,0.08"];
+  edge [color="#607D8B", penwidth=1.2, arrowsize=0.7];
+
+  p0 [label="Phase 0\nProtocol"];
+  p1 [label="Phase 1\nBaseline slice"];
+  p2 [label="Phase 2\nData foundation"];
+  rq1 [label="Phase 3\nRQ1 Vietnamese", fillcolor="#D6EAF8"];
+  rq2 [label="Phase 4\nRQ2 Composed", fillcolor="#D6EAF8"];
+  rq3 [label="Phase 5\nRQ3 Taxonomy", fillcolor="#D6EAF8"];
+  app [label="Phase 6\nWeb and Mobile", fillcolor="#D5F5E3"];
+  bonus [label="Phase 7\nOutfit VTON 3D", fillcolor="#FCF3CF"];
+  report [label="Phase 8\nReport Defense", fillcolor="#E8DAEF"];
+
+  p0 -> p1 -> p2 -> rq1 -> rq2 -> rq3 -> app -> bonus -> report;
+  p2 -> app [style=dashed, label="product work parallel", fontname="Arial", fontsize=8];
+  app -> report [style=dashed, label="core first", fontname="Arial", fontsize=8];
+}

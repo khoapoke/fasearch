@@ -1,0 +1,62 @@
+schema_version: 1.0.0
+query_id: rq2-q0001
+raw_query: "Giống áo này nhưng đỏ đậm hơn và không có chữ"
+query_mode: COMPOSED
+anchor_product_group_id: pg-anchor-001
+designated_target_product_group_id: pg-target-001
+origin: native_human
+generation_mode: taxonomy_controlled
+primary_edit_attribute: color
+all_edit_attributes: [color, pattern]
+query_complexity: multi_attribute
+
+must_change:
+  - constraint_id: c1
+    attribute: color
+    operator: DARKER_THAN
+    value: red
+    reference: anchor
+    priority: primary
+    source: author_gold
+    confidence: 1.0
+
+must_preserve:
+  - constraint_id: c2
+    attribute: category
+    operator: SAME_AS
+    value: null
+    reference: anchor
+    priority: primary
+    source: author_gold
+    confidence: 1.0
+
+must_not:
+  - constraint_id: c3
+    attribute: pattern
+    operator: IN
+    value: [graphic, text_print]
+    reference: query
+    priority: primary
+    source: author_gold
+    confidence: 1.0
+
+soft_preference: []
+dont_care: [material, sleeve]
+intent_clarification: "Giữ loại áo; ưu tiên màu đỏ đậm hơn anchor; loại mọi hình hoặc chữ in."
+inventory_answerable: null
+
+writing_style:
+  register: [standard]
+  orthography: [clean]
+  language_mix: [none]
+  negation_type: [compositional_negation]
+
+author:
+  author_id: author-pseudonym-01
+  metadata_reviewer_id: reviewer-pseudonym-02
+
+freeze:
+  frozen: false
+  version: draft-v1
+  frozen_at: null
+  content_hash: REPLACE_AFTER_FREEZE

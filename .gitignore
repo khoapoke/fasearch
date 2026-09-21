@@ -1,4 +1,89 @@
-/vocvach
+# macOS and editor metadata
+.DS_Store
+.idea/
+.vscode/
+*.swp
 
-/docs
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.kaggle/
+.cache/
 
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+.npm/
+.pnpm-store/
+coverage/
+*.tsbuildinfo
+
+# Java / Spring Boot
+target/
+.gradle/
+*.class
+hs_err_pid*
+
+# Local runtime uploads and storage emulators
+uploads/
+storage/
+tmp/
+
+# Raw/derived datasets are immutable local artifacts, never Git inputs.
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+data/fixtures/generated/**
+ai/data/raw/**
+!ai/data/raw/.gitkeep
+ai/data/processed/**
+!ai/data/processed/.gitkeep
+ai/data/fixtures/generated/**
+
+# Generated model, embedding, index and evaluation artifacts.
+artifacts/models/**
+!artifacts/models/.gitkeep
+artifacts/embeddings/**
+!artifacts/embeddings/.gitkeep
+artifacts/indexes/**
+!artifacts/indexes/.gitkeep
+artifacts/reports/**
+!artifacts/reports/.gitkeep
+artifacts/smoke/**
+ai/artifacts/models/**
+!ai/artifacts/models/.gitkeep
+ai/artifacts/embeddings/**
+!ai/artifacts/embeddings/.gitkeep
+ai/artifacts/indexes/**
+!ai/artifacts/indexes/.gitkeep
+ai/artifacts/reports/**
+!ai/artifacts/reports/.gitkeep
+ai/artifacts/smoke/**
+
+# Model/provider binaries and local notebooks state
+*.safetensors
+*.pt
+*.pth
+*.bin
+.ipynb_checkpoints/
+
+# Teammate scratch area retained from the remote repository.
+/vocvach/

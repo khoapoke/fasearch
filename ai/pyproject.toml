@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools==75.1.0", "wheel==0.44.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fashion-multimodal-search"
+version = "0.1.0"
+description = "Reproducible Week 4 multimodal fashion retrieval baseline"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[project.scripts]
+fashion-search = "ml.retrieval.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ml*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

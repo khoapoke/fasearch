@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fashion-search.local/schemas/experiment-manifest.schema.json",
+  "title": "Research Experiment Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "research_question",
+    "status",
+    "code",
+    "data",
+    "models",
+    "configuration",
+    "environment",
+    "timestamps"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "research_question": { "enum": ["PILOT", "RQ1", "RQ2", "RQ3", "OUTFIT", "VTON"] },
+    "arm_id": { "type": ["string", "null"] },
+    "status": { "enum": ["PLANNED", "RUNNING", "SUCCEEDED", "FAILED", "INVALIDATED", "REJECTED", "PROMOTED"] },
+    "purpose": { "type": ["string", "null"] },
+    "hypothesis_ids": { "type": "array", "items": { "type": "string" } },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "dirty"],
+      "properties": {
+        "repository": { "type": ["string", "null"] },
+        "commit": { "type": "string" },
+        "dirty": { "type": "boolean" },
+        "entrypoint": { "type": ["string", "null"] }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_snapshot_id", "split_manifest_hash"],
+      "properties": {
+        "catalog_snapshot_id": { "type": "string" },
+        "train_manifest_hash": { "type": ["string", "null"] },
+        "validation_manifest_hash": { "type": ["string", "null"] },
+        "test_manifest_hash": { "type": ["string", "null"] },
+        "split_manifest_hash": { "type": "string" },
+        "query_set_version": { "type": ["string", "null"] },
+        "qrels_version": { "type": ["string", "null"] },
+        "negative_list_version": { "type": ["string", "null"] }
+      }
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "model_id", "checkpoint", "checkpoint_hash", "preprocessing_version"],
+        "properties": {
+          "role": { "enum": ["encoder", "combiner", "parser", "tagger", "reranker", "teacher", "verbalizer", "compatibility", "vton"] },
+          "model_id": { "type": "string" },
+          "checkpoint": { "type": "string" },
+          "checkpoint_hash": { "type": "string" },
+          "preprocessing_version": { "type": "string" },
+          "frozen": { "type": ["boolean", "null"] }
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["config_hash", "seed"],
+      "properties": {
+        "config_path": { "type": ["string", "null"] },
+        "config_hash": { "type": "string" },
+        "seed": { "type": "integer" },
+        "primary_metric": { "type": ["string", "null"] },
+        "candidate_depth": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python_version", "framework_version", "hardware"],
+      "properties": {
+        "python_version": { "type": "string" },
+        "framework_version": { "type": "string" },
+        "cuda_version": { "type": ["string", "null"] },
+        "hardware": { "type": "string" },
+        "precision": { "type": ["string", "null"] },
+        "dependency_lock_hash": { "type": ["string", "null"] }
+      }
+    },
+    "compute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "optimizer_steps": { "type": ["integer", "null"], "minimum": 0 },
+        "examples_seen": { "type": ["integer", "null"], "minimum": 0 },
+        "effective_batch_size": { "type": ["integer", "null"], "minimum": 1 },
+        "gpu_hours": { "type": ["number", "null"], "minimum": 0 },
+        "wall_clock_seconds": { "type": ["number", "null"], "minimum": 0 },
+        "peak_memory_mb": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "uri", "sha256"],
+        "properties": {
+          "type": { "type": "string" },
+          "uri": { "type": "string" },
+          "sha256": { "type": "string" }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": { "type": ["number", "string", "null"] }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "outcome": { "enum": ["PENDING", "PROMOTE", "REJECT", "INVALIDATE", "REPORT_ONLY"] },
+        "reason": { "type": ["string", "null"] },
+        "reviewer": { "type": ["string", "null"] }
+      }
+    },
+    "timestamps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_at"],
+      "properties": {
+        "created_at": { "type": "string", "format": "date-time" },
+        "started_at": { "type": ["string", "null"], "format": "date-time" },
+        "completed_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+// Documentation architecture v1.1, 2026-09-10, D054/D055. Planned product integration.
+digraph G {
+  graph [rankdir=TB, bgcolor="white", pad=0.3, nodesep=0.45, ranksep=0.65, fontname="Arial",
+         label="Web integration architecture v1.1 | D054 / D055 | 2026-09-10", labelloc=t, fontsize=16];
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2F8", color="#4F6B81", fontname="Arial", fontsize=12, margin="0.18,0.12"];
+  edge [color="#607D8B", penwidth=1.2, arrowsize=0.7, fontname="Arial", fontsize=10];
+
+  web [label="Next.js / TypeScript\nRequired website", fillcolor="#D6EAF8"];
+  mobile [label="Optional mobile later\nFramework undecided", style="rounded,dashed,filled", fillcolor="#F4F6F7"];
+  api [label="Spring Boot public API /v1\nIdentity | Catalog | Review | History\nSearch orchestration | Publication owner", fillcolor="#BFD7EA"];
+  ai [label="Internal Python AI service\nFastAPI adapter -> shared ml/ core\nPyTorch encode / fusion -> FAISS Top-K\nLater phases: parser / reranker / evidence", fillcolor="#D5F5E3"];
+  db [label="PostgreSQL\nBusiness metadata / jobs / publications"];
+  storage [label="Object storage\nImages / versioned model & index artifacts"];
+  worker [label="Python processing worker\nValidate / tag / embed / build candidate index"];
+  research [label="Research CLI + evaluation\nSame ml/ core | CPU / Colab T4\nSeparate from production server", fillcolor="#FCF3CF"];
+
+  web -> api [label="business API"];
+  mobile -> api [style=dashed, label="same public API"];
+  api -> ai [dir=both, label="internal HTTP\nrequest / Top-K + provenance"];
+  api -> db [dir=both, label="owns transactions"];
+  api -> storage [label="image management"];
+  api -> worker [dir=both, label="job / completion + provenance"];
+  worker -> storage [label="immutable candidate artifacts"];
+  ai -> storage [label="load approved publication"];
+  research -> storage [style=dashed, label="versioned research artifacts"];
+  {rank=same; web; mobile;}
+  {rank=same; db; ai; worker;}
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fashion-search.local/schemas/product.schema.json",
+  "title": "Fashion Catalog Product Version",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product_id",
+    "product_version_id",
+    "product_group_id",
+    "seller_id",
+    "status",
+    "title",
+    "category",
+    "images",
+    "facets",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "product_id": { "type": "string", "minLength": 1 },
+    "product_version_id": { "type": "string", "minLength": 1 },
+    "product_group_id": { "type": "string", "minLength": 1 },
+    "seller_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["DRAFT", "PROCESSING", "NEEDS_REVIEW", "INDEXED", "ACTIVE", "FAILED", "ARCHIVED"]
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": ["string", "null"] },
+    "category": {
+      "type": "string",
+      "enum": ["TOP", "BOTTOM", "ONE_PIECE"]
+    },
+    "subcategory": { "type": ["string", "null"] },
+    "audience": { "type": ["string", "null"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_type": { "enum": ["seller_upload", "public_dataset", "research_catalog"] },
+        "source_name": { "type": ["string", "null"] },
+        "source_reference": { "type": ["string", "null"] },
+        "collected_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "images": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["image_id", "uri", "sha256", "phash", "is_primary"],
+        "properties": {
+          "image_id": { "type": "string" },
+          "uri": { "type": "string" },
+          "sha256": { "type": "string" },
+          "phash": { "type": "string" },
+          "is_primary": { "type": "boolean" },
+          "width": { "type": ["integer", "null"], "minimum": 1 },
+          "height": { "type": ["integer", "null"], "minimum": 1 },
+          "quality_status": { "enum": ["PASS", "SOFT_WARNING", "HARD_FAIL", "UNKNOWN"] }
+        }
+      }
+    },
+    "facets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attribute", "value", "source", "taxonomy_version"],
+        "properties": {
+          "attribute": { "type": "string" },
+          "value": {},
+          "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "source": { "enum": ["seller", "tagger", "human_review", "dataset", "derived"] },
+          "model_version": { "type": ["string", "null"] },
+          "taxonomy_version": { "type": "string" },
+          "review_status": { "enum": ["AUTO_ACCEPTED", "REVIEW_REQUIRED", "HUMAN_APPROVED", "HUMAN_CORRECTED", "UNKNOWN"] }
+        }
+      }
+    },
+    "embedding_publications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["embedding_id", "model_version", "preprocessing_version", "index_version"],
+        "properties": {
+          "embedding_id": { "type": "string" },
+          "model_version": { "type": "string" },
+          "preprocessing_version": { "type": "string" },
+          "index_version": { "type": "string" },
+          "vector_checksum": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}
