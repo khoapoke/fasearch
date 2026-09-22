@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 840" role="img" aria-labelledby="title">
+  <title id="title">Áo đỏ fixture</title>
+  <rect width="720" height="840" fill="#e9edf5"/>
+  <path d="M228 168 312 122h96l84 46 112 105-82 96-57-55v357H255V314l-57 55-82-96 112-105Z" fill="#ba3348"/>
+  <path d="M312 122c7 44 89 44 96 0" fill="none" stroke="#7e2035" stroke-width="18"/>
+  <path d="M255 524h210" stroke="#d86373" stroke-width="8" opacity=".55"/>
+  <circle cx="360" cy="730" r="8" fill="#315bea"/>
+</svg>

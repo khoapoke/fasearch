@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 840" role="img" aria-labelledby="title">
+  <title id="title">Váy xanh fixture</title>
+  <rect width="720" height="840" fill="#eef0f6"/>
+  <path d="M291 132h138l41 118-62 113 126 342c-111 45-237 45-348 0l126-342-62-113 41-118Z" fill="#315bea"/>
+  <path d="M306 132c13 54 95 54 108 0" fill="none" stroke="#1e3eaa" stroke-width="18"/>
+  <path d="M254 565c71 28 141 28 212 0" fill="none" stroke="#7390f4" stroke-width="10" opacity=".72"/>
+  <circle cx="360" cy="754" r="8" fill="#6c315c"/>
+</svg>

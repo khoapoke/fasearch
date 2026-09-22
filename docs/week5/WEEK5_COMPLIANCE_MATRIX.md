@@ -133,7 +133,7 @@ Các ID dưới đây là seed để giữ traceability; chỉ trở thành bằ
 | 3 | Dataset và trường dữ liệu | Dataset A card/manifests | Có pilot evidence. |
 | 4 | Cài đặt/thực nghiệm mô hình | Week 4 baseline | 13/14 gate; independent rerun chưa ký. |
 | 5 | Requirements, business/system use case, analysis class, data model | Compliance + requirement spec là analysis baseline; UC/class/ERD hoàn thiện lặp lại theo `CP-20260921-IMPLEMENTATION-INFORMED-MODELING` | Chưa đóng Week 5 gate; không chặn Slice 1 khi interface tối thiểu đã khóa. |
-| 6 | Product management, user functions, image search | Vertical Slice 1 image-search read path, sau đó Slice 2 catalog-to-searchable | Đang chuẩn bị monorepo và interface; chưa có implementation evidence. |
+| 6 | Product management, user functions, image search | Vertical Slice 1 image-search read path, sau đó Slice 2 catalog-to-searchable | FastAPI internal adapter và Spring Boot public orchestration đã có test evidence; Next.js và cross-process E2E chưa hoàn tất. |
 | 7 | Text search, multimodal search, result integration | Implementation | Chưa bắt đầu trong website/API. |
 | 8 | Login/register | Implementation | Chưa bắt đầu. |
 | 9 | Authorization, admin/user functions | Implementation | Chưa bắt đầu. |

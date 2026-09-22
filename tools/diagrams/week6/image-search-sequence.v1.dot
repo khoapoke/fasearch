@@ -1,0 +1,51 @@
+digraph ImageSearchSequence {
+  graph [
+    rankdir=LR,
+    bgcolor="#f5f7fb",
+    pad="0.35",
+    nodesep="0.5",
+    ranksep="0.65",
+    fontname="Arial",
+    label="SUC-SEARCH-IMG-01 — verified fixture interaction flow",
+    labelloc="t",
+    fontsize="18"
+  ];
+  node [
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#ffffff",
+    color="#aeb9cc",
+    fontcolor="#172033",
+    fontname="Arial",
+    fontsize="11",
+    margin="0.16,0.12"
+  ];
+  edge [
+    color="#526078",
+    fontcolor="#526078",
+    fontname="Arial",
+    fontsize="9",
+    arrowsize="0.72"
+  ];
+
+  guest [label="Guest /\nRegistered User", fillcolor="#172033", fontcolor="#ffffff", color="#172033"];
+  web [label="Next.js\nWeb + proxy"];
+  api [label="Spring Boot\nSearch module", fillcolor="#edf2ff", color="#315bea"];
+  catalog [label="Active catalog\nmetadata"];
+  fastapi [label="FastAPI\ninternal adapter", fillcolor="#f6edf4", color="#6c315c"];
+  core [label="Python core\nimage encoder"];
+  faiss [label="FAISS\nversioned index", fillcolor="#ebf6f4", color="#147d73"];
+
+  guest -> web [label="1. image + K"];
+  web -> api [label="2. multipart + trace"];
+  api -> fastapi [label="3. bytes + exact publication"];
+  fastapi -> core [label="4. validated temp image"];
+  core -> faiss [label="5. normalized query vector"];
+  faiss -> core [label="6. ranked rows + scores", color="#147d73"];
+  core -> fastapi [label="7. product identities", color="#147d73"];
+  fastapi -> api [label="8. rank + provenance + AI latency", color="#6c315c"];
+  api -> catalog [label="9. lookup product ID/version"];
+  catalog -> api [label="10. active metadata", color="#147d73"];
+  api -> web [label="11. public response + total latency", color="#315bea"];
+  web -> guest [label="12. Top-K grid + trace", color="#315bea"];
+}

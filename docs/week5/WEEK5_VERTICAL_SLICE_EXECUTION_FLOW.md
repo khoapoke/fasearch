@@ -33,6 +33,7 @@ Nhóm chuyển từ quy trình tuyến tính “hoàn tất mọi sơ đồ rồ
 
 ### Website -> Spring Boot
 
+- Public contract: [public-api.openapi.json](../../contracts/public-api.openapi.json).
 - image upload request;
 - Top-K result response;
 - validation, timeout và unavailable errors;

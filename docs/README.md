@@ -68,6 +68,7 @@ Word và ZIP v1 là snapshot lịch sử chưa cập nhật stack mới và khô
 - [Compliance matrix](week5/WEEK5_COMPLIANCE_MATRIX.md)
 - [Requirements specification](week5/WEEK5_REQUIREMENTS_SPECIFICATION.md)
 - [Vertical-slice execution flow](week5/WEEK5_VERTICAL_SLICE_EXECUTION_FLOW.md)
+- [Week 6 vertical-slice status](week6/WEEK6_VERTICAL_SLICE_STATUS.md)
 
 ## Week 4 baseline artifacts
 

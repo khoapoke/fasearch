@@ -38,3 +38,13 @@ cd ai
 ```
 
 Raw dataset, model weights, embeddings, FAISS index, local uploads và secret không được commit. Xem [chỉ mục tài liệu](docs/README.md) và [luồng vertical slice](docs/week5/WEEK5_VERTICAL_SLICE_EXECUTION_FLOW.md) trước khi thay đổi interface liên module.
+
+## Backend
+
+```bash
+cd be
+./mvnw test
+./mvnw spring-boot:run
+```
+
+Public image-search contract nằm tại `contracts/public-api.openapi.json`; contract Spring Boot-AI nằm tại `contracts/internal-ai.openapi.json`.

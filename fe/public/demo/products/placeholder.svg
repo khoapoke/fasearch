@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 840" role="img" aria-labelledby="title">
+  <title id="title">Ảnh sản phẩm đang được cập nhật</title>
+  <rect width="720" height="840" fill="#e9edf5"/>
+  <path d="M224 180 310 130h100l86 50 104 96-78 92-60-52v352H258V316l-60 52-78-92 104-96Z" fill="#c6cfdf"/>
+  <path d="M310 130c9 48 91 48 100 0" fill="none" stroke="#a9b5c9" stroke-width="18"/>
+  <path d="M276 544h168" stroke="#315bea" stroke-width="9" opacity=".65"/>
+  <circle cx="360" cy="730" r="8" fill="#6c315c"/>
+</svg>

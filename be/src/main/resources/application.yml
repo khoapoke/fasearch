@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: fasearch-backend
+  profiles:
+    default: local
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+fasearch:
+  ai:
+    base-url: ${FASEARCH_AI_BASE_URL:http://127.0.0.1:8001}
+    connect-timeout: ${FASEARCH_AI_CONNECT_TIMEOUT:1s}
+    read-timeout: ${FASEARCH_AI_READ_TIMEOUT:8s}
+  publication:
+    catalog-snapshot-id: ${FASEARCH_CATALOG_SNAPSHOT_ID:catalog-fixture-v1}
+    model-version: ${FASEARCH_MODEL_VERSION:fixture-model-v1}
+    index-version: ${FASEARCH_INDEX_VERSION:fixture-index-v1}
+  catalog:
+    file: ${FASEARCH_CATALOG_FILE:}
+    products:
+      - product-id: p1
+        product-version-id: p1-v1
+        title: Áo đỏ fixture
+        category: TOP
+        image-url: /demo/products/p1.svg
+      - product-id: p2
+        product-version-id: p2-v1
+        title: Váy xanh fixture
+        category: ONE_PIECE
+        image-url: /demo/products/p2.svg

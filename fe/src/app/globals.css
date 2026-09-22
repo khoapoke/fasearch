@@ -1,0 +1,74 @@
+:root {
+  --porcelain: #f5f7fb;
+  --paper: #ffffff;
+  --ink: #172033;
+  --ink-soft: #526078;
+  --cobalt: #315bea;
+  --cobalt-deep: #2345bb;
+  --aubergine: #6c315c;
+  --thread: #d9dfeb;
+  --thread-dark: #aeb9cc;
+  --teal: #147d73;
+  --danger: #b33a44;
+  --font-sans: "Avenir Next", "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--porcelain);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  color: white;
+  background: var(--aubergine);
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--cobalt) 72%, white);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
