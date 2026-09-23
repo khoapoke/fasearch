@@ -5,7 +5,7 @@
 - Use case ID: `SUC-SEARCH-IMG-01`
 - Nguồn: `FR-SEARCH-IMG-001..003`, `FR-SEARCH-COMMON-001..003`, `NFR-INT-001`
 - Core/extension: `CORE`
-- Trạng thái: verified against the deterministic fixture vertical slice on 22/09/2026
+- Trạng thái: verified against deterministic fixture (22/09/2026) and frozen CLIP pilot 600-product flow (23/09/2026)
 - Diagram: [editable DOT](../../tools/diagrams/week6/image-search-sequence.v1.dot) và [rendered SVG](../../tools/diagrams/week6/image-search-sequence.v1.svg)
 
 ## Mục tiêu
@@ -43,6 +43,9 @@ User chọn hoặc thả một ảnh JPEG, PNG hoặc WebP rồi chọn “Tìm 
 10. Spring Boot giữ nguyên AI rank, bổ sung title/category/image URL và total backend latency.
 11. Next.js trả response cho Client Component.
 12. Website hiển thị result grid, rank, similarity, publication, latency và trace ID.
+13. Browser yêu cầu image URL của từng result qua same-origin Next.js route.
+14. Next.js proxy yêu cầu tới Spring Boot; backend chỉ đọc ảnh thuộc product ID/version active trong local catalog.
+15. Backend trả image bytes; Next.js giữ MIME và trả ảnh để website hiển thị.
 
 ## Alternate và failure flows
 
@@ -56,6 +59,7 @@ User chọn hoặc thả một ảnh JPEG, PNG hoặc WebP rồi chọn “Tìm 
 | `A6` | Publication request/response mismatch | Fail closed với `AI_PUBLICATION_MISMATCH`; không trả kết quả trộn version. |
 | `A7` | AI hit không tồn tại trong active catalog | Fail closed với `CATALOG_VERSION_MISMATCH`. |
 | `A8` | Top-K rỗng | Trả success với list rỗng; UI hướng dẫn dùng ảnh rõ hơn. |
+| `A9` | Image URL không thuộc product version active hoặc ảnh không đọc được | Trả 404; UI có fallback image. |
 
 ## Postconditions
 
@@ -67,10 +71,10 @@ User chọn hoặc thả một ảnh JPEG, PNG hoặc WebP rồi chọn “Tìm 
 
 ## Dữ liệu đọc/ghi
 
-- Đọc: uploaded image bytes, active publication config, FAISS index/mapping và active catalog metadata.
+- Đọc: uploaded image bytes, active publication config, FAISS index/mapping, active catalog metadata và ảnh của product version active.
 - Ghi tạm: query image trong temporary directory của AI process, được dọn sau request.
 - Không ghi: user history, saved product, training data hoặc business catalog tables.
 
 ## Evidence boundary
 
-Fixture E2E dùng 30 synthetic products, fixture encoder và FAISS IndexFlatIP. Nó chứng minh interface, error handling, version propagation và UI flow; không chứng minh CLIP/Vietnamese retrieval quality hoặc website latency cuối.
+Fixture E2E dùng 30 synthetic products, fixture encoder và FAISS IndexFlatIP. Real pilot E2E dùng frozen CLIP và 600 sản phẩm Dataset A, xác minh exact publication và ảnh kết quả bằng checksum. Hai luồng chứng minh interface, error handling, version propagation và UI flow; chúng không chứng minh chất lượng truy hồi tiếng Việt hoặc website latency cuối. Query pilot là ảnh lấy từ catalog để kiểm tra mapping kỹ thuật; không dùng self-retrieval này làm quality claim.

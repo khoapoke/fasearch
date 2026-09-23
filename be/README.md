@@ -20,6 +20,7 @@ Luồng:
 6. trả public response có trace ID, provenance và latency.
 
 Catalog adapter hiện dùng fixture ở profile `local`/`test`. PostgreSQL/Flyway và product write lifecycle thuộc Slice 2.
+Khi `FASEARCH_CATALOG_FILE` trỏ tới catalog JSONL đã version hóa, local adapter trả thêm ảnh của đúng product ID/version qua `GET /api/v1/catalog/images/{productId}/{productVersionId}`.
 
 ## Chạy test
 

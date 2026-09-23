@@ -5,6 +5,37 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/catalog/images/{productId}/{productVersionId}": {
+      "get": {
+        "operationId": "getActiveProductImage",
+        "summary": "Read the image of an active catalog product version",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "productVersionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image bytes for the active product version",
+            "content": {
+              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
+              "image/png": { "schema": { "type": "string", "format": "binary" } },
+              "image/webp": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "404": { "description": "Product version is not active or has no readable image" }
+        }
+      }
+    },
     "/api/v1/search/image": {
       "post": {
         "operationId": "searchByImage",

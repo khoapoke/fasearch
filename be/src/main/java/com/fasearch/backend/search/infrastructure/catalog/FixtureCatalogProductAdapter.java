@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -15,19 +16,22 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 import com.fasearch.backend.config.FaSearchProperties;
+import com.fasearch.backend.search.application.CatalogImageReader;
 import com.fasearch.backend.search.application.CatalogProductReader;
 
 @Component
 @Profile({ "local", "test" })
-public final class FixtureCatalogProductAdapter implements CatalogProductReader {
+public final class FixtureCatalogProductAdapter implements CatalogProductReader, CatalogImageReader {
 
 	private final Map<Key, Product> products;
+	private final Map<Key, Path> imagePaths;
 
 	public FixtureCatalogProductAdapter(FaSearchProperties properties, JsonMapper jsonMapper) {
 		Map<Key, Product> configured = new LinkedHashMap<>();
+		Map<Key, Path> configuredPaths = new LinkedHashMap<>();
 		String fixtureFile = properties.catalog().file();
 		if (fixtureFile != null && !fixtureFile.isBlank()) {
-			loadFile(Path.of(fixtureFile), jsonMapper, configured);
+			loadFile(Path.of(fixtureFile), jsonMapper, configured, configuredPaths);
 		}
 		for (FaSearchProperties.Product item : properties.catalog().products()) {
 			Product product = new Product(
@@ -39,12 +43,14 @@ public final class FixtureCatalogProductAdapter implements CatalogProductReader 
 			configured.put(product.key(), product);
 		}
 		this.products = Map.copyOf(configured);
+		this.imagePaths = Map.copyOf(configuredPaths);
 	}
 
 	private static void loadFile(
 			Path path,
 			JsonMapper jsonMapper,
-			Map<Key, Product> configured) {
+			Map<Key, Product> configured,
+			Map<Key, Path> imagePaths) {
 		try {
 			for (String line : Files.readAllLines(path)) {
 				if (line.isBlank()) {
@@ -56,8 +62,9 @@ public final class FixtureCatalogProductAdapter implements CatalogProductReader 
 						item.productVersionId(),
 						item.title(),
 						item.category(),
-						"/demo/products/placeholder.svg");
+						"/api/catalog/images/" + item.productId() + "/" + item.productVersionId());
 				configured.put(product.key(), product);
+				imagePaths.put(product.key(), Path.of(item.imagePath()));
 			}
 		}
 		catch (IOException exception) {
@@ -77,10 +84,39 @@ public final class FixtureCatalogProductAdapter implements CatalogProductReader 
 		return Map.copyOf(found);
 	}
 
+	@Override
+	public Optional<Image> findActiveImage(Key product) {
+		Path path = imagePaths.get(product);
+		if (path == null || !products.containsKey(product)) {
+			return Optional.empty();
+		}
+		String filename = path.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+		String contentType;
+		if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+			contentType = "image/jpeg";
+		}
+		else if (filename.endsWith(".png")) {
+			contentType = "image/png";
+		}
+		else if (filename.endsWith(".webp")) {
+			contentType = "image/webp";
+		}
+		else {
+			return Optional.empty();
+		}
+		try {
+			return Optional.of(new Image(Files.readAllBytes(path), contentType));
+		}
+		catch (IOException exception) {
+			return Optional.empty();
+		}
+	}
+
 	private record FixtureRecord(
 			@JsonProperty("product_id") String productId,
 			@JsonProperty("product_version_id") String productVersionId,
 			String title,
-			String category) {
+			String category,
+			@JsonProperty("image_path") String imagePath) {
 	}
 }

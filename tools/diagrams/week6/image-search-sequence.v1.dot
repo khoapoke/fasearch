@@ -6,7 +6,7 @@ digraph ImageSearchSequence {
     nodesep="0.5",
     ranksep="0.65",
     fontname="Arial",
-    label="SUC-SEARCH-IMG-01 — verified fixture interaction flow",
+    label="SUC-SEARCH-IMG-01 — verified image search pilot flow",
     labelloc="t",
     fontsize="18"
   ];
@@ -48,4 +48,10 @@ digraph ImageSearchSequence {
   catalog -> api [label="10. active metadata", color="#147d73"];
   api -> web [label="11. public response + total latency", color="#315bea"];
   web -> guest [label="12. Top-K grid + trace", color="#315bea"];
+  guest -> web [label="13. result image URL", color="#315bea"];
+  web -> api [label="14. image by product ID/version", color="#315bea"];
+  api -> catalog [label="15. read active image bytes", color="#147d73"];
+  catalog -> api [label="16. image/jpeg or 404", color="#147d73"];
+  api -> web [label="17. image bytes", color="#315bea"];
+  web -> guest [label="18. rendered product image", color="#315bea"];
 }
