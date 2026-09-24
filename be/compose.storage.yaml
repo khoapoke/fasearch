@@ -1,0 +1,14 @@
+services:
+  object-storage:
+    image: chrislusf/seaweedfs:4.47
+    environment:
+      AWS_ACCESS_KEY_ID: ${FASEARCH_OBJECT_ACCESS_KEY:?Set a local object-store access key}
+      AWS_SECRET_ACCESS_KEY: ${FASEARCH_OBJECT_SECRET_KEY:?Set a local object-store secret key}
+      S3_BUCKET: ${FASEARCH_OBJECT_BUCKET:-fasearch-product-images}
+    ports:
+      - "127.0.0.1:${FASEARCH_OBJECT_PORT:-8333}:8333"
+    volumes:
+      - fasearch_objects:/data
+
+volumes:
+  fasearch_objects:

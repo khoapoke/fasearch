@@ -9,15 +9,27 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.io.ByteArrayOutputStream;
+import java.awt.image.BufferedImage;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.DefaultApplicationArguments;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -25,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import com.fasearch.backend.catalog.CatalogObjectStore;
+import com.fasearch.backend.catalog.CatalogDraftException;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -57,6 +72,97 @@ class SessionSecurityIntegrationTests {
 
 	@Autowired
 	BootstrapAdministrator bootstrap;
+
+	@Autowired
+	TestObjectStore objects;
+
+	@Test
+	void draftImageUploadCreatesVersionAndKeepsImageOnTextRevision() throws Exception {
+		insertUser("image-staff", "OPERATIONS_STAFF");
+		insertUser("image-other", "OPERATIONS_STAFF");
+		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient browser = HttpClient.newBuilder().cookieHandler(cookies).build();
+		URI base = URI.create("http://127.0.0.1:" + port);
+		String csrf = json.readTree(send(browser, get(base, "/api/v1/auth/csrf")).body())
+				.get("token").asText();
+		assertThat(send(browser, postForm(base, "/api/v1/auth/login",
+				"username=image-staff&password=Test-only-User-Passphrase-123", csrf))
+				.statusCode()).isEqualTo(200);
+		String freshCsrf = json.readTree(send(browser, get(base, "/api/v1/auth/csrf")).body())
+				.get("token").asText();
+		HttpResponse<String> created = send(browser, postJson(base,
+				"/api/v1/catalog/admin/drafts",
+				"{\"title\":\"Áo xanh\",\"category\":\"TOP\"}", freshCsrf));
+		assertThat(created.statusCode()).isEqualTo(201);
+		String path = created.headers().firstValue("location").orElseThrow();
+		String imagePath = path + "/image";
+		assertThat(json.readTree(created.body()).get("has_primary_image").asBoolean()).isFalse();
+		assertThat(send(browser, get(base, imagePath)).statusCode()).isEqualTo(404);
+		assertThat(send(HttpClient.newHttpClient(), get(base, imagePath)).statusCode()).isEqualTo(401);
+
+		ByteArrayOutputStream encodedImage = new ByteArrayOutputStream();
+		ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB),
+				"png", encodedImage);
+		byte[] image = encodedImage.toByteArray();
+		assertThat(send(browser, postImage(base, imagePath, 1, image, null)).statusCode())
+				.isEqualTo(403);
+		assertThat(send(browser, postImage(base, imagePath, 1,
+				"<svg>not-an-image</svg>".getBytes(StandardCharsets.UTF_8), freshCsrf))
+				.statusCode()).isEqualTo(400);
+		HttpResponse<String> uploaded = send(browser, postImage(base, imagePath, 1,
+				image, freshCsrf));
+		assertThat(uploaded.statusCode()).isEqualTo(200);
+		JsonNode version2 = json.readTree(uploaded.body());
+		assertThat(version2.get("version_no").asInt()).isEqualTo(2);
+		assertThat(version2.get("has_primary_image").asBoolean()).isTrue();
+		assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_images WHERE product_version_id = ?",
+				Integer.class, UUID.fromString(version2.get("product_version_id").asText())))
+				.isEqualTo(1);
+		assertThat(jdbc.queryForObject("SELECT quality_state FROM product_images "
+				+ "WHERE product_version_id = ?", String.class,
+				UUID.fromString(version2.get("product_version_id").asText())))
+				.isEqualTo("PENDING");
+		HttpResponse<byte[]> imageResponse = browser.send(get(base, imagePath),
+				HttpResponse.BodyHandlers.ofByteArray());
+		assertThat(imageResponse.statusCode()).isEqualTo(200);
+		assertThat(imageResponse.headers().firstValue("content-type")).hasValue("image/png");
+		assertThat(imageResponse.headers().firstValue("x-content-type-options")).hasValue("nosniff");
+		assertThat(imageResponse.body()).isEqualTo(image);
+
+		HttpResponse<String> revised = send(browser, patchJson(base, path,
+				"{\"title\":\"Áo xanh mới\",\"category\":\"TOP\",\"expected_version_no\":2}",
+				freshCsrf));
+		assertThat(revised.statusCode()).isEqualTo(200);
+		JsonNode version3 = json.readTree(revised.body());
+		assertThat(version3.get("version_no").asInt()).isEqualTo(3);
+		assertThat(version3.get("has_primary_image").asBoolean()).isTrue();
+		assertThat(browser.send(get(base, imagePath), HttpResponse.BodyHandlers.ofByteArray())
+				.body()).isEqualTo(image);
+		assertThat(send(browser, postImage(base, imagePath, 1, image, freshCsrf)).statusCode())
+				.isEqualTo(409);
+		objects.failPut = true;
+		try {
+			assertThat(send(browser, postImage(base, imagePath, 3, image, freshCsrf)).statusCode())
+					.isEqualTo(503);
+		}
+		finally {
+			objects.failPut = false;
+		}
+		assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_versions WHERE product_id = ?",
+				Integer.class, UUID.fromString(version3.get("product_id").asText())))
+				.isEqualTo(3);
+		assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_events "
+				+ "WHERE action = 'CATALOG_PRIMARY_IMAGE_REPLACED'", Integer.class)).isEqualTo(1);
+
+		CookieManager otherCookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient other = HttpClient.newBuilder().cookieHandler(otherCookies).build();
+		String otherCsrf = json.readTree(send(other, get(base, "/api/v1/auth/csrf")).body())
+				.get("token").asText();
+		assertThat(send(other, postForm(base, "/api/v1/auth/login",
+				"username=image-other&password=Test-only-User-Passphrase-123", otherCsrf))
+				.statusCode()).isEqualTo(200);
+		assertThat(send(other, get(base, imagePath)).statusCode()).isEqualTo(403);
+	}
 
 	@Test
 	@Transactional
@@ -163,8 +269,9 @@ class SessionSecurityIntegrationTests {
 		assertThat(send(staffBrowser, get(base, created.headers().firstValue("location").orElseThrow()))
 				.statusCode()).isEqualTo(200);
 		assertThat(jdbc.queryForObject(
-				"SELECT COUNT(*) FROM audit_events WHERE action = 'CATALOG_DRAFT_CREATED'",
-				Integer.class)).isEqualTo(1);
+				"SELECT COUNT(*) FROM audit_events "
+						+ "WHERE action = 'CATALOG_DRAFT_CREATED' AND resource_id = ?",
+				Integer.class, UUID.fromString(draft.get("product_id").asText()))).isEqualTo(1);
 		String draftPath = created.headers().firstValue("location").orElseThrow();
 		HttpResponse<String> revised = send(staffBrowser, patchJson(base, draftPath,
 				"{\"title\":\"Áo xanh đậm\",\"description\":\"Cotton\",\"category\":\"TOP\",\"expected_version_no\":1}",
@@ -178,8 +285,9 @@ class SessionSecurityIntegrationTests {
 				"SELECT COUNT(*) FROM product_versions WHERE product_id = ?",
 				Integer.class, UUID.fromString(draft.get("product_id").asText()))).isEqualTo(2);
 		assertThat(jdbc.queryForObject(
-				"SELECT COUNT(*) FROM audit_events WHERE action = 'CATALOG_DRAFT_REVISED'",
-				Integer.class)).isEqualTo(1);
+				"SELECT COUNT(*) FROM audit_events "
+						+ "WHERE action = 'CATALOG_DRAFT_REVISED' AND resource_id = ?",
+				Integer.class, UUID.fromString(draft.get("product_id").asText()))).isEqualTo(1);
 		assertThat(send(staffBrowser, postJson(base, "/api/v1/catalog/admin/drafts",
 				"{\"title\":\"Sai danh mục\",\"category\":\"FOOTWEAR\"}", staffFreshCsrf)).statusCode())
 				.isEqualTo(400);
@@ -250,7 +358,60 @@ class SessionSecurityIntegrationTests {
 				.build();
 	}
 
+	private static HttpRequest postImage(URI base, String path, int expectedVersion,
+			byte[] image, String csrf) throws Exception {
+		String boundary = "fasearch-image-test";
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(("--" + boundary + "\r\n"
+				+ "Content-Disposition: form-data; name=\"expected_version_no\"\r\n\r\n"
+				+ expectedVersion + "\r\n--" + boundary + "\r\n"
+				+ "Content-Disposition: form-data; name=\"image\"; filename=\"test.png\"\r\n"
+				+ "Content-Type: image/png\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+		payload.write(image);
+		payload.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+		HttpRequest.Builder request = HttpRequest.newBuilder(base.resolve(path))
+				.header("Content-Type", "multipart/form-data; boundary=" + boundary)
+				.POST(HttpRequest.BodyPublishers.ofByteArray(payload.toByteArray()));
+		if (csrf != null) request.header("X-CSRF-TOKEN", csrf);
+		return request.build();
+	}
+
 	private static HttpResponse<String> send(HttpClient browser, HttpRequest request) throws Exception {
 		return browser.send(request, HttpResponse.BodyHandlers.ofString());
+	}
+
+	@TestConfiguration(proxyBeanMethods = false)
+	static class StorageTestConfiguration {
+		@Bean
+		@Primary
+		TestObjectStore testObjectStore() {
+			return new TestObjectStore();
+		}
+	}
+
+	static class TestObjectStore implements CatalogObjectStore {
+		final Map<String, byte[]> data = new ConcurrentHashMap<>();
+		volatile boolean failPut;
+
+		@Override
+		public String put(String key, byte[] bytes, String mediaType) {
+			if (failPut) {
+				throw new CatalogDraftException("OBJECT_STORAGE_UNAVAILABLE",
+						HttpStatus.SERVICE_UNAVAILABLE, "Product image storage is unavailable");
+			}
+			String uri = "s3://fasearch-product-images/" + key;
+			data.put(uri, Arrays.copyOf(bytes, bytes.length));
+			return uri;
+		}
+
+		@Override
+		public byte[] read(String storageUri) {
+			return data.get(storageUri);
+		}
+
+		@Override
+		public void delete(String storageUri) {
+			data.remove(storageUri);
+		}
 	}
 }

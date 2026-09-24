@@ -7,7 +7,7 @@ export async function forwardSessionRequest(
   request: NextRequest,
   path: string,
   method: "GET" | "POST" | "PATCH",
-  body?: string | URLSearchParams,
+  body?: BodyInit,
   contentType?: string,
 ): Promise<Response> {
   const headers = new Headers();
@@ -24,17 +24,19 @@ export async function forwardSessionRequest(
       body,
       cache: "no-store",
       redirect: "manual",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(30_000),
     });
     const responseHeaders = new Headers({ "cache-control": "no-store" });
     const responseType = upstream.headers.get("content-type");
     if (responseType) responseHeaders.set("content-type", responseType);
+    const nosniff = upstream.headers.get("x-content-type-options");
+    if (nosniff) responseHeaders.set("x-content-type-options", nosniff);
     const location = upstream.headers.get("location");
     if (location && upstream.status === 201) responseHeaders.set("location", location);
     for (const value of upstream.headers.getSetCookie()) {
       responseHeaders.append("set-cookie", value);
     }
-    return new Response(upstream.status === 204 ? null : await upstream.text(), {
+    return new Response(upstream.status === 204 ? null : upstream.body, {
       status: upstream.status,
       headers: responseHeaders,
     });

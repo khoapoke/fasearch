@@ -88,6 +88,21 @@ public class CatalogDraftModule {
 						+ "VALUES (?, ?, ?, 'DRAFT', ?, ?, ?, ?)",
 				newVersionId, productId, current.versionNo() + 1,
 				input.title().trim(), input.description(), input.category().name(), actorId);
+		List<ImageRef> images = jdbc.query(
+				"SELECT storage_uri, sha256, is_primary, media_type, byte_size, quality_state "
+						+ "FROM product_images WHERE product_version_id = ?",
+				(result, row) -> new ImageRef(
+						result.getString("storage_uri"), result.getString("sha256"),
+						result.getBoolean("is_primary"), result.getString("media_type"),
+						result.getObject("byte_size", Long.class), result.getString("quality_state")),
+				current.id());
+		for (ImageRef image : images) {
+			jdbc.update("INSERT INTO product_images "
+						+ "(id, product_version_id, storage_uri, sha256, is_primary, "
+						+ "media_type, byte_size, quality_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+					UUID.randomUUID(), newVersionId, image.storageUri(), image.sha256(),
+					image.primary(), image.mediaType(), image.byteSize(), image.qualityState());
+		}
 		jdbc.update(
 				"INSERT INTO audit_events "
 						+ "(id, actor_id, action, resource_type, resource_id, previous_version_id, new_version_id, trace_id) "
@@ -101,9 +116,11 @@ public class CatalogDraftModule {
 	public Draft get(UUID productId, Authentication actor) {
 		List<Draft> drafts = jdbc.query(
 				"SELECT p.id AS product_id, v.id AS version_id, v.version_no, v.status, "
-						+ "v.title, v.description, v.category, p.created_by, v.created_at "
+						+ "v.title, v.description, v.category, p.created_by, v.created_at, "
+						+ "EXISTS (SELECT 1 FROM product_images i WHERE i.product_version_id = v.id "
+						+ "AND i.is_primary) AS has_primary_image "
 						+ "FROM catalog_products p JOIN product_versions v ON v.product_id = p.id "
-						+ "WHERE p.id = ? AND v.version_no = "
+						+ "WHERE p.id = ? AND p.archived_at IS NULL AND v.version_no = "
 						+ "(SELECT MAX(v2.version_no) FROM product_versions v2 WHERE v2.product_id = p.id)",
 				(result, row) -> new Draft(
 						(UUID) result.getObject("product_id"),
@@ -114,7 +131,8 @@ public class CatalogDraftModule {
 						result.getString("description"),
 						Category.valueOf(result.getString("category")),
 						(UUID) result.getObject("created_by"),
-						result.getObject("created_at", OffsetDateTime.class)),
+						result.getObject("created_at", OffsetDateTime.class),
+						result.getBoolean("has_primary_image")),
 				productId);
 		if (drafts.isEmpty()) {
 			throw new CatalogDraftException("DRAFT_NOT_FOUND", HttpStatus.NOT_FOUND,
@@ -160,9 +178,14 @@ public class CatalogDraftModule {
 			String description,
 			Category category,
 			UUID createdBy,
-			OffsetDateTime createdAt) {
+			OffsetDateTime createdAt,
+			boolean hasPrimaryImage) {
 	}
 
 	private record VersionRef(UUID id, int versionNo) {
+	}
+
+	private record ImageRef(String storageUri, String sha256, boolean primary,
+			String mediaType, Long byteSize, String qualityState) {
 	}
 }

@@ -29,7 +29,7 @@ From the repository root, export a locally chosen `FASEARCH_DB_PASSWORD`, then s
 docker compose -f be/compose.yaml up -d
 ```
 
-On the first database startup, also set `FASEARCH_BOOTSTRAP_ADMIN_USERNAME`, `FASEARCH_BOOTSTRAP_ADMIN_EMAIL` and `FASEARCH_BOOTSTRAP_ADMIN_PASSWORD` (at least 12 characters) in the backend terminal. Do not put these credentials in Git. Later backend starts need only the database credentials while an active Super Administrator exists. The local database container uses port 5432 unless `FASEARCH_DB_PORT` is set; match `FASEARCH_DB_URL` to that port.
+On the first database startup, also set `FASEARCH_BOOTSTRAP_ADMIN_USERNAME`, `FASEARCH_BOOTSTRAP_ADMIN_EMAIL` and `FASEARCH_BOOTSTRAP_ADMIN_PASSWORD` (at least 12 characters) in the backend terminal. Do not put these credentials in Git. Later backend starts need only the database credentials once a Super Administrator role assignment exists. The local database container uses port 5432 unless `FASEARCH_DB_PORT` is set; match `FASEARCH_DB_URL` to that port. Draft image uploads additionally require S3-compatible storage; see the [Draft image checkpoint](WEEK6_IDENTITY_AND_DRAFT_STATUS.md).
 
 Terminal 1, AI:
 

@@ -38,6 +38,10 @@ _Avoid_: Stock Item, Order Item
 Ảnh chụp bất biến của nội dung sản phẩm tại một lần thay đổi có thể ảnh hưởng tới tìm kiếm hoặc publication.
 _Avoid_: Product Update
 
+**Product Image**:
+Ảnh thuộc một Product Version cụ thể; thay ảnh tạo Product Version mới, không thay âm thầm nội dung của version đã có.
+_Avoid_: Search Upload, ảnh tìm kiếm của người dùng
+
 **Catalog Publication**:
 Tập product versions đã được phê duyệt và công bố đồng bộ để hệ thống tìm kiếm sử dụng.
 _Avoid_: Product List, Inventory Snapshot

@@ -8,7 +8,11 @@ public class CatalogDraftException extends RuntimeException {
 	private final HttpStatus status;
 
 	public CatalogDraftException(String code, HttpStatus status, String message) {
-		super(message);
+		this(code, status, message, null);
+	}
+
+	public CatalogDraftException(String code, HttpStatus status, String message, Throwable cause) {
+		super(message, cause);
 		this.code = code;
 		this.status = status;
 	}

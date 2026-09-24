@@ -119,6 +119,52 @@
   opacity: 0.62;
 }
 
+.imageSection {
+  display: grid;
+  gap: 16px;
+  padding-top: 28px;
+  border-top: 1px solid var(--thread-dark);
+}
+
+.imageSection h2 {
+  font-size: 1.2rem;
+}
+
+.imageSection p,
+.imageSection small {
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+.imagePreview {
+  position: relative;
+  width: min(100%, 480px);
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--thread-dark);
+  background: #f4f4f1;
+}
+
+.imagePreview img {
+  object-fit: contain;
+}
+
+.upload {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--cobalt);
+  border-radius: 7px;
+  background: white;
+  color: var(--cobalt);
+  cursor: pointer;
+  font-weight: 720;
+}
+
+.upload:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .success,
 .error {
   padding: 13px 15px;

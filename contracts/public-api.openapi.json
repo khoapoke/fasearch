@@ -127,6 +127,63 @@
         }
       }
     },
+    "/api/v1/catalog/admin/drafts/{productId}/image": {
+      "parameters": [
+        { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      ],
+      "get": {
+        "operationId": "getDraftPrimaryImage",
+        "summary": "Read the latest product version's private primary image",
+        "responses": {
+          "200": {
+            "description": "Image bytes; private, no-store and nosniff",
+            "content": {
+              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
+              "image/png": { "schema": { "type": "string", "format": "binary" } },
+              "image/webp": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" },
+          "404": { "$ref": "#/components/responses/AuthError" }
+        }
+      },
+      "post": {
+        "operationId": "replaceDraftPrimaryImage",
+        "summary": "Store an image and create a new Draft Product Version",
+        "parameters": [
+          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "X-Trace-Id", "in": "header", "required": false, "schema": { "type": "string", "maxLength": 128 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["image", "expected_version_no"],
+                "properties": {
+                  "image": { "type": "string", "format": "binary", "description": "JPEG, PNG or WebP, maximum 10 MiB" },
+                  "expected_version_no": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New Draft Product Version with a primary image",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+          },
+          "400": { "$ref": "#/components/responses/AuthError" },
+          "401": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" },
+          "409": { "$ref": "#/components/responses/AuthError" },
+          "413": { "$ref": "#/components/responses/AuthError" },
+          "503": { "$ref": "#/components/responses/AuthError" }
+        }
+      }
+    },
     "/api/v1/catalog/images/{productId}/{productVersionId}": {
       "get": {
         "operationId": "getActiveProductImage",
@@ -297,7 +354,7 @@
       },
       "CatalogDraft": {
         "type": "object",
-        "required": ["product_id", "product_version_id", "version_no", "status", "title", "category", "created_by", "created_at"],
+        "required": ["product_id", "product_version_id", "version_no", "status", "title", "category", "created_by", "created_at", "has_primary_image"],
         "properties": {
           "product_id": { "type": "string", "format": "uuid" },
           "product_version_id": { "type": "string", "format": "uuid" },
@@ -307,7 +364,8 @@
           "description": { "type": ["string", "null"] },
           "category": { "type": "string", "enum": ["TOP", "BOTTOM", "ONE_PIECE"] },
           "created_by": { "type": "string", "format": "uuid" },
-          "created_at": { "type": "string", "format": "date-time" }
+          "created_at": { "type": "string", "format": "date-time" },
+          "has_primary_image": { "type": "boolean" }
         }
       },
       "Publication": {

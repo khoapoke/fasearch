@@ -1,0 +1,26 @@
+digraph CatalogImageFlow {
+  graph [rankdir=LR, bgcolor="#f5f7fb", pad="0.35", nodesep="0.55", ranksep="0.75",
+         fontname="Arial", fontsize="18", labelloc="t",
+         label="SUC-CAT-03 — verified primary-image replacement"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#aeb9cc",
+        fontcolor="#172033", fontname="Arial", fontsize="11", margin="0.18,0.13"];
+  edge [color="#526078", fontcolor="#526078", fontname="Arial", fontsize="9", arrowsize="0.7"];
+
+  staff [label="Operations Staff", fillcolor="#172033", fontcolor="#ffffff", color="#172033"];
+  web [label="Next.js\nDraft form + proxy"];
+  security [label="Spring Security\nsession + CSRF + permission", fillcolor="#eef2ff", color="#315bea"];
+  module [label="Catalog Image module\nowner/version and signature checks", fillcolor="#f5edf3", color="#6c315c"];
+  object [label="S3-compatible object storage\nimmutable image bytes", fillcolor="#eef2ff", color="#315bea"];
+  postgres [label="PostgreSQL\nVersion + Image + Audit", fillcolor="#e9f6f3", color="#147d73"];
+
+  staff -> web [label="1. choose JPEG / PNG / WebP"];
+  web -> security [label="2. multipart + session + CSRF"];
+  security -> module [label="3. authorized actor"];
+  module -> object [label="4. PUT unique object key"];
+  object -> module [label="5. storage URI"];
+  module -> postgres [label="6. lock product; INSERT vN+1, image, audit"];
+  postgres -> module [label="7. committed version", color="#147d73"];
+  module -> object [label="on DB failure: best-effort DELETE", style=dashed];
+  module -> web [label="8. new Draft version", color="#6c315c"];
+  web -> staff [label="9. private preview via authorized GET", color="#315bea"];
+}

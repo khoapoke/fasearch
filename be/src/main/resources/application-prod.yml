@@ -3,3 +3,7 @@ server:
     session:
       cookie:
         secure: true
+fasearch:
+  object:
+    endpoint: ${FASEARCH_OBJECT_ENDPOINT}
+    require-https: true
