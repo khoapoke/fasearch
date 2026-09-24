@@ -1,0 +1,34 @@
+digraph IdentityCatalogERD {
+  graph [rankdir=LR, bgcolor="#f5f7fb", pad="0.35", nodesep="0.55", ranksep="0.75",
+         fontname="Arial", fontsize="18", labelloc="t",
+         label="Implemented identity and Draft data model (Flyway V1/V2)"];
+  node [shape=record, style="filled", fillcolor="#ffffff", color="#aeb9cc",
+        fontcolor="#172033", fontname="Arial", fontsize="10", margin="0.16,0.12"];
+  edge [color="#526078", fontcolor="#526078", fontname="Arial", fontsize="9", arrowsize="0.7"];
+
+  accounts [label="{user_accounts|id PK\lusername UQ\lemail UQ\lpassword_hash\lstatus\l}", fillcolor="#eef2ff", color="#315bea"];
+  roles [label="{roles|id PK\lcode UQ\lprotected\l}"];
+  permissions [label="{permissions|code PK\l}"];
+  user_roles [label="{user_roles|user_id PK/FK\lrole_id PK/FK\l}"];
+  role_permissions [label="{role_permissions|role_id PK/FK\lpermission_code PK/FK\l}"];
+  sessions [label="{SPRING_SESSION|PRIMARY_ID PK\lSESSION_ID UQ\lEXPIRY_TIME\lPRINCIPAL_NAME\l}"];
+  session_attributes [label="{SPRING_SESSION_ATTRIBUTES|SESSION_PRIMARY_ID PK/FK\lATTRIBUTE_NAME PK\lATTRIBUTE_BYTES\l}"];
+  products [label="{catalog_products|id PK\lproduct_group_id\lcreated_by FK\lactive_version_id FK nullable\l}", fillcolor="#f5edf3", color="#6c315c"];
+  versions [label="{product_versions|id PK\lproduct_id FK\lversion_no UQ per product\lstatus\ltitle / description\lcategory\lchanged_by FK\l}", fillcolor="#f5edf3", color="#6c315c"];
+  images [label="{product_images|id PK\lproduct_version_id FK\lstorage_uri / sha256\lis_primary\l}"];
+  audit [label="{audit_events|id PK\lactor_id FK\lresource_id\lprevious_version_id\lnew_version_id\l}", fillcolor="#e9f6f3", color="#147d73"];
+
+  user_roles -> accounts [label="user_id"];
+  user_roles -> roles [label="role_id"];
+  role_permissions -> roles [label="role_id"];
+  role_permissions -> permissions [label="permission_code"];
+  sessions -> accounts [label="principal_name (logical)", style=dashed];
+  session_attributes -> sessions [label="SESSION_PRIMARY_ID"];
+  products -> accounts [label="created_by"];
+  versions -> products [label="product_id"];
+  versions -> accounts [label="changed_by"];
+  products -> versions [label="active version (nullable)", style=dashed];
+  images -> versions [label="product_version_id"];
+  audit -> accounts [label="actor_id"];
+  audit -> products [label="resource_id (logical)", style=dashed];
+}

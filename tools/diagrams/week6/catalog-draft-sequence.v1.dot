@@ -1,0 +1,23 @@
+digraph CatalogDraftFlow {
+  graph [rankdir=LR, bgcolor="#f5f7fb", pad="0.35", nodesep="0.55", ranksep="0.75",
+         fontname="Arial", fontsize="18", labelloc="t",
+         label="SUC-CAT-01/02 — verified Draft create and revision"];
+  node [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#aeb9cc",
+        fontcolor="#172033", fontname="Arial", fontsize="11", margin="0.18,0.13"];
+  edge [color="#526078", fontcolor="#526078", fontname="Arial", fontsize="9", arrowsize="0.7"];
+
+  staff [label="Operations Staff", fillcolor="#172033", fontcolor="#ffffff", color="#172033"];
+  web [label="Next.js\nDraft form + proxy"];
+  security [label="Spring Security\nsession + CSRF + permission", fillcolor="#eef2ff", color="#315bea"];
+  module [label="Catalog Draft module\ntransaction + owner/version checks", fillcolor="#f5edf3", color="#6c315c"];
+  postgres [label="PostgreSQL\nProduct / Version / Audit", fillcolor="#e9f6f3", color="#147d73"];
+
+  staff -> web [label="1. title / category / description"];
+  web -> security [label="2. session + CSRF + JSON"];
+  security -> module [label="3. authenticated authority"];
+  module -> postgres [label="4. INSERT Draft v1 + audit\nor lock product, INSERT v2 + audit"];
+  postgres -> module [label="5. committed IDs and version", color="#147d73"];
+  module -> security [label="6. Draft result", color="#6c315c"];
+  security -> web [label="7. 201 or 200; 403/409 on failure", color="#315bea"];
+  web -> staff [label="8. stable ID + latest version", color="#315bea"];
+}

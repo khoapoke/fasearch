@@ -81,10 +81,10 @@ Các ID dưới đây là seed để giữ traceability; chỉ trở thành bằ
 
 | ID | Nguồn | Yêu cầu chuẩn hóa | Mức | Requirement | Use case | Lớp/ERD | Status | Owner / tuần | Bằng chứng hiện tại |
 |---|---|---|---|---|---|---|---|---|---|
-| `PC-FN-01` | Mục 9.6, tr.3 | Đăng nhập, đăng xuất, đổi mật khẩu và phân quyền. | CORE | `FR-AUTH-002..004`, `FR-RBAC-001..004` | `BUC-04`, `SUC-AUTH-02..04`, `SUC-RBAC-01` | `UserAccount`, `Role`, `Permission`, join tables | COVERED-DRAFT; implementation PLANNED | Backend / W8-W9 | Actor-permission matrix và requirement spec. |
-| `PC-FN-02` | Mục 9.6, tr.3 | Thêm mới sản phẩm và thông tin liên quan. | CORE | `FR-CAT-MGMT-001` | `BUC-01`, `SUC-CAT-01` | `CatalogProduct`, `ProductVersion` | COVERED-DRAFT | Backend / W6 | Requirement spec; chưa code. |
-| `PC-FN-03` | Mục 9.6, tr.3 | Xem, xóa, cập nhật và quản lý danh mục sản phẩm. | CORE | `FR-CAT-MGMT-002..004` | `BUC-01`, `SUC-CAT-01`, `SUC-CAT-02` | Product/version/category entities | COVERED-DRAFT; delete semantics OPEN | Backend / W6 | `W5-O06` cần chốt archive hay hard delete. |
-| `PC-FN-04` | Mục 9.6, tr.3 | Quản lý hình ảnh và dữ liệu mô tả sản phẩm. | CORE | `FR-CAT-MGMT-005..006` | `BUC-01`, `SUC-CAT-02` | `ProductImage`, `ProductFacet`, `product_images`, `product_facets` | COVERED-DRAFT | Backend / W6 | Product schema hiện hành. |
+| `PC-FN-01` | Mục 9.6, tr.3 | Đăng nhập, đăng xuất, đổi mật khẩu và phân quyền. | CORE | `FR-AUTH-002..004`, `FR-RBAC-001..004` | `BUC-04`, `SUC-AUTH-02..04`, `SUC-RBAC-01` | `UserAccount`, `Role`, `Permission`, join tables | PARTIAL IMPLEMENTATION | Backend / W8-W9 | Session login/logout, CSRF và permission checks đã chạy PostgreSQL test; đổi mật khẩu và quản trị role chưa có. |
+| `PC-FN-02` | Mục 9.6, tr.3 | Thêm mới sản phẩm và thông tin liên quan. | CORE | `FR-CAT-MGMT-001` | `BUC-01`, `SUC-CAT-01` | `CatalogProduct`, `ProductVersion` | PARTIAL IMPLEMENTATION | Backend / W6 | Tạo Draft/Product Version 1 và audit đã chạy qua website/PostgreSQL; ảnh và processing còn thiếu. |
+| `PC-FN-03` | Mục 9.6, tr.3 | Xem, xóa, cập nhật và quản lý danh mục sản phẩm. | CORE | `FR-CAT-MGMT-002..004` | `BUC-01`, `SUC-CAT-01`, `SUC-CAT-02` | Product/version/category entities | PARTIAL IMPLEMENTATION; delete semantics OPEN | Backend / W6 | Xem/sửa Draft tạo Product Version mới, stale version nhận 409; archive/delete/category management chưa có. |
+| `PC-FN-04` | Mục 9.6, tr.3 | Quản lý hình ảnh và dữ liệu mô tả sản phẩm. | CORE | `FR-CAT-MGMT-005..006` | `BUC-01`, `SUC-CAT-02` | `ProductImage`, `ProductFacet`, `product_images`, `product_facets` | PARTIAL IMPLEMENTATION | Backend / W6 | Title/description/category đã ghi vào version; upload ảnh và facet review chưa có. |
 | `PC-FN-05` | Mục 9.6, tr.3 | Đăng ký tài khoản. | CORE | `FR-AUTH-001` | `BUC-04`, `SUC-AUTH-01` | `UserAccount`, `user_accounts` | COVERED-DRAFT | Backend + Frontend / W8 | Requirement spec. |
 | `PC-FN-06` | Mục 9.6, tr.3 | Cập nhật thông tin cá nhân. | CORE | `FR-PROFILE-001..002` | `SUC-USER-01` | `UserAccount`, profile fields | COVERED-DRAFT | Backend + Frontend / W9 | Requirement spec. |
 | `PC-FN-07` | Mục 9.6, tr.3 | Xem danh sách và chi tiết sản phẩm. | CORE | `FR-CAT-PUBLIC-001..002` | `BUC-02`, `SUC-CAT-PUBLIC-01..02` | `CatalogProduct`, `ProductVersion`, `ProductImage` | COVERED-DRAFT | Backend + Frontend / W6 | Requirement spec. |
@@ -106,8 +106,8 @@ Các ID dưới đây là seed để giữ traceability; chỉ trở thành bằ
 | `PC-RUB-05` | Mục 9.3, tr.2 | System use-case diagram và đặc tả. | CORE | `WEEK5_SYSTEM_USE_CASES.md`, `SUC-*` | PLANNED | PM/BA / W5 | Seed ID đã có; artifact chưa tạo. |
 | `PC-RUB-06` | Mục 9.3, tr.2 | Analysis class diagram. | CORE | `WEEK5_ANALYSIS_CLASS_MODEL.md` | PLANNED | PM/BA + Backend / W5 | Danh sách class seed đã có; diagram chưa tạo. |
 | `PC-RUB-07` | Mục 9.4, tr.2-3 | Design class diagram. | CORE, sau Week 5 | Design class artifact | PLANNED | Backend / sau analysis class | Không coi analysis class là design class. |
-| `PC-RUB-08` | Mục 9.4, tr.3 | Mô hình dữ liệu. | CORE | `WEEK5_DATA_MODEL.md`, ERD + dictionary | PLANNED | Backend / W5 | Entity seed/schema có; ERD chưa tạo. |
-| `PC-RUB-09` | Mục 9.4, tr.3 | UI người dùng và quản trị viên. | CORE | UI specification/mockup | PLANNED | Frontend / W5-W9 | Chưa có artifact Week 5 được review. |
+| `PC-RUB-08` | Mục 9.4, tr.3 | Mô hình dữ liệu. | CORE | `WEEK5_DATA_MODEL.md`, ERD + dictionary | PARTIAL | Backend / W5 | Flyway V1/V2 đã xác nhận identity/session/catalog draft schema trên PostgreSQL; ERD tổng thể và dictionary chưa hoàn tất. |
+| `PC-RUB-09` | Mục 9.4, tr.3 | UI người dùng và quản trị viên. | CORE | UI specification/mockup | PARTIAL | Frontend / W5-W9 | Website image search, login và Draft form đã chạy; UI cho các luồng còn lại chưa có. |
 | `PC-RUB-10` | Mục 9.5, tr.3 | Trình bày khái niệm, mô hình và kỹ thuật embedding ảnh/văn bản. | CORE | Literature/report Ch.2, research docs | PARTIAL | AI/Eval + Docs / W2-W12 | Research docs có nền; báo cáo cuối chưa hoàn thiện. |
 | `PC-RUB-11` | Mục 9.5, tr.3 | Thực nghiệm CLIP/BLIP hoặc tương đương và chọn độ đo/phương pháp đánh giá. | CORE | Week 4 baseline + RQ runs | EVIDENCED-PILOT; final PLANNED | AI/Eval / W4-W11 | Frozen CLIP/FAISS pilot đã chạy. |
 | `PC-RUB-12` | Mục 9.5, tr.3 | Phân tích và chọn mô hình phù hợp dựa trên kết quả. | CORE | Model selection decision | OPEN/PLANNED | AI/Eval + Nhóm / W11 | Không dùng Week 4 weak pilot để khóa model cuối. |
@@ -133,7 +133,7 @@ Các ID dưới đây là seed để giữ traceability; chỉ trở thành bằ
 | 3 | Dataset và trường dữ liệu | Dataset A card/manifests | Có pilot evidence. |
 | 4 | Cài đặt/thực nghiệm mô hình | Week 4 baseline | 13/14 gate; independent rerun chưa ký. |
 | 5 | Requirements, business/system use case, analysis class, data model | Compliance + requirement spec là analysis baseline; UC/class/ERD hoàn thiện lặp lại theo `CP-20260921-IMPLEMENTATION-INFORMED-MODELING` | Chưa đóng Week 5 gate; không chặn Slice 1 khi interface tối thiểu đã khóa. |
-| 6 | Product management, user functions, image search | Vertical Slice 1 image-search read path, sau đó Slice 2 catalog-to-searchable | FastAPI internal adapter và Spring Boot public orchestration đã có test evidence; Next.js và cross-process E2E chưa hoàn tất. |
+| 6 | Product management, user functions, image search | Image search E2E, session auth tối thiểu và Catalog Draft v1→v2 đã chạy | Chưa đủ Week 6: upload ảnh sản phẩm, processing, publication và mô hình phân tích còn thiếu. |
 | 7 | Text search, multimodal search, result integration | Implementation | Chưa bắt đầu trong website/API. |
 | 8 | Login/register | Implementation | Chưa bắt đầu. |
 | 9 | Authorization, admin/user functions | Implementation | Chưa bắt đầu. |

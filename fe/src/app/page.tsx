@@ -1,4 +1,5 @@
 import { ImageSearchWorkbench } from "@/components/image-search-workbench";
+import { AuthPanel } from "@/components/auth-panel";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -11,9 +12,12 @@ export default function Home() {
           </span>
           <span>FaSearch</span>
         </a>
-        <div className={styles.status}>
-          <span className={styles.statusDot} aria-hidden="true" />
-          Image search slice
+        <div className={styles.headerActions}>
+          <div className={styles.status}>
+            <span className={styles.statusDot} aria-hidden="true" />
+            Image search slice
+          </div>
+          <AuthPanel />
         </div>
       </header>
 

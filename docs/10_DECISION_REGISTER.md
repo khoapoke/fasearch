@@ -76,6 +76,7 @@ Không sửa hoặc ghi đè artifact cũ. Tạo version mới và giữ provena
 | D053 | Week 4 vertical slice dùng 600 sản phẩm cân bằng và bắt buộc chạy text, image, composed; challenger thứ hai chỉ mở sau khi baseline/gate xanh | Locked | Thay scope Phase 1 cũ 100-200 và image/composed optional cho đợt Week 4; mọi output vẫn pilot-only |
 | D054 | Website dùng Next.js/TypeScript; backend nghiệp vụ và API công khai dùng Java Spring Boot; Python/PyTorch/FAISS phục vụ AI qua FastAPI nội bộ | Locked 10/09/2026 | Spring Boot quản lý auth, catalog, history, quyền và orchestration; AI service tái sử dụng core Python Week 4, không viết lại encoder/index bằng Java |
 | D055 | Website là deliverable bắt buộc; mobile là mở rộng tùy thời gian sau website/search core, kiểm thử, triển khai và báo cáo | Locked 10/09/2026 | Không yêu cầu Android/iOS để đạt Gate 6; framework mobile chưa chọn và client tương lai dùng cùng API Spring Boot |
+| D056 | Website dùng session cookie server-side do Spring Boot sở hữu, lưu phiên bằng Spring Session JDBC trong PostgreSQL | Locked 24/09/2026 | Browser chỉ giữ session ID `HttpOnly`; không phát Access/Refresh Token; CSRF bảo vệ thao tác ghi, phiên được đổi ID khi login và hủy khi logout. Xem [ADR 0001](adr/0001-server-session-for-website.md). |
 
 ## Change record CP-20260910-STACK
 

@@ -41,7 +41,10 @@ Raw dataset, model weights, embeddings, FAISS index, local uploads và secret kh
 
 ## Backend
 
+Backend hiện yêu cầu PostgreSQL local cho identity/session và Catalog Draft. Cấu hình credential qua environment; xem [checkpoint identity và Draft](docs/week6/WEEK6_IDENTITY_AND_DRAFT_STATUS.md).
+
 ```bash
+docker compose -f be/compose.yaml up -d
 cd be
 ./mvnw test
 ./mvnw spring-boot:run

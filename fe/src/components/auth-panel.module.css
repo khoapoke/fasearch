@@ -1,0 +1,106 @@
+.auth {
+  position: relative;
+  margin-left: 16px;
+}
+
+.openButton,
+.signedIn button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--thread-dark);
+  border-radius: 7px;
+  color: var(--ink);
+  background: white;
+  cursor: pointer;
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.signedIn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.signedIn a {
+  color: var(--cobalt);
+  font-size: 0.79rem;
+  font-weight: 730;
+}
+
+.form {
+  position: absolute;
+  z-index: 5;
+  top: 47px;
+  right: 0;
+  width: min(320px, calc(100vw - 40px));
+  display: grid;
+  gap: 15px;
+  padding: 23px;
+  border: 1px solid var(--thread-dark);
+  background: var(--paper);
+  box-shadow: 0 14px 38px rgb(23 32 51 / 13%);
+}
+
+.form label {
+  display: grid;
+  gap: 7px;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.form input {
+  width: 100%;
+  min-height: 39px;
+  padding: 8px 10px;
+  border: 1px solid var(--thread-dark);
+  border-radius: 6px;
+  color: var(--ink);
+  background: white;
+}
+
+.submit {
+  min-height: 42px;
+  border: 0;
+  border-radius: 7px;
+  color: white;
+  background: var(--cobalt);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.error {
+  padding: 12px;
+  color: var(--danger);
+  background: #fff3f3;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.signedIn + .error {
+  position: absolute;
+  z-index: 6;
+  top: 47px;
+  right: 0;
+  width: min(320px, calc(100vw - 40px));
+}
+
+@media (max-width: 620px) {
+  .auth {
+    margin-left: 0;
+  }
+
+  .signedIn {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}

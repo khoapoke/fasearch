@@ -5,6 +5,128 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/auth/csrf": {
+      "get": {
+        "operationId": "getCsrfToken",
+        "summary": "Create or read the current session CSRF token",
+        "responses": {
+          "200": {
+            "description": "CSRF header name and token",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CsrfResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "parameters": [
+          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Session authenticated; Set-Cookie rotates the opaque session ID" },
+          "401": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "parameters": [
+          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Current session invalidated" },
+          "401": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "getCurrentUser",
+        "responses": {
+          "200": {
+            "description": "Current account and effective authorities",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CurrentUser" } } }
+          },
+          "401": { "$ref": "#/components/responses/AuthError" }
+        }
+      }
+    },
+    "/api/v1/catalog/admin/drafts": {
+      "post": {
+        "operationId": "createCatalogDraft",
+        "parameters": [
+          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "X-Trace-Id", "in": "header", "required": false, "schema": { "type": "string", "maxLength": 128 } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DraftInput" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Draft Product Version 1 created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+          },
+          "400": { "$ref": "#/components/responses/AuthError" },
+          "401": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" }
+        }
+      }
+    },
+    "/api/v1/catalog/admin/drafts/{productId}": {
+      "parameters": [
+        { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      ],
+      "get": {
+        "operationId": "getCatalogDraft",
+        "responses": {
+          "200": {
+            "description": "Latest Product Version",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+          },
+          "403": { "$ref": "#/components/responses/AuthError" },
+          "404": { "$ref": "#/components/responses/AuthError" }
+        }
+      },
+      "patch": {
+        "operationId": "reviseCatalogDraft",
+        "parameters": [
+          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DraftRevision" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "A new immutable Draft Product Version",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+          },
+          "400": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" },
+          "409": { "$ref": "#/components/responses/AuthError" }
+        }
+      }
+    },
     "/api/v1/catalog/images/{productId}/{productVersionId}": {
       "get": {
         "operationId": "getActiveProductImage",
@@ -110,6 +232,14 @@
   },
   "components": {
     "responses": {
+      "AuthError": {
+        "description": "Authentication, authorization or catalog validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthError" }
+          }
+        }
+      },
       "SearchError": {
         "description": "Stable public search error",
         "content": {
@@ -122,6 +252,64 @@
       }
     },
     "schemas": {
+      "AuthError": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "CsrfResponse": {
+        "type": "object",
+        "required": ["header_name", "token"],
+        "properties": {
+          "header_name": { "type": "string" },
+          "token": { "type": "string" }
+        }
+      },
+      "CurrentUser": {
+        "type": "object",
+        "required": ["username", "authorities"],
+        "properties": {
+          "username": { "type": "string" },
+          "authorities": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "DraftInput": {
+        "type": "object",
+        "required": ["title", "category"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 250 },
+          "description": { "type": ["string", "null"], "maxLength": 4000 },
+          "category": { "type": "string", "enum": ["TOP", "BOTTOM", "ONE_PIECE"] }
+        }
+      },
+      "DraftRevision": {
+        "allOf": [
+          { "$ref": "#/components/schemas/DraftInput" },
+          {
+            "type": "object",
+            "required": ["expected_version_no"],
+            "properties": { "expected_version_no": { "type": "integer", "minimum": 1 } }
+          }
+        ]
+      },
+      "CatalogDraft": {
+        "type": "object",
+        "required": ["product_id", "product_version_id", "version_no", "status", "title", "category", "created_by", "created_at"],
+        "properties": {
+          "product_id": { "type": "string", "format": "uuid" },
+          "product_version_id": { "type": "string", "format": "uuid" },
+          "version_no": { "type": "integer", "minimum": 1 },
+          "status": { "type": "string", "enum": ["DRAFT", "PROCESSING", "NEEDS_REVIEW", "INDEXED", "ACTIVE", "FAILED", "ARCHIVED"] },
+          "title": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "category": { "type": "string", "enum": ["TOP", "BOTTOM", "ONE_PIECE"] },
+          "created_by": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
       "Publication": {
         "type": "object",
         "additionalProperties": false,

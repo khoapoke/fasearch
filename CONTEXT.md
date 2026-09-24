@@ -24,6 +24,10 @@ _Avoid_: Manager, System Owner
 Quản trị viên cấp cao quản lý Administrator, định nghĩa role và permission, cùng các cấu hình bảo mật được bảo vệ.
 _Avoid_: God, Root User
 
+**Authenticated Session**:
+Một lần xác thực còn hiệu lực của User Account; có thể hết hạn hoặc bị hủy độc lập với sự tồn tại của account.
+_Avoid_: Access Token, Refresh Token khi đang nói về phiên đăng nhập của website
+
 ## Catalog
 
 **Catalog Product**:

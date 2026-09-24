@@ -17,6 +17,8 @@ class PublicApiContractTests {
 
 		assertThat(contract)
 				.contains("\"/api/v1/search/image\"")
+				.contains("\"/api/v1/auth/csrf\"")
+				.contains("\"/api/v1/catalog/admin/drafts\"")
 				.contains("\"/api/v1/catalog/images/{productId}/{productVersionId}\"")
 				.contains("\"multipart/form-data\"")
 				.contains("\"maximum\": 100")

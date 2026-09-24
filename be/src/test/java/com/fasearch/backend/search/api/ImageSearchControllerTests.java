@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.fasearch.backend.search.application.ImageSearchUseCase;
 import com.fasearch.backend.search.application.SearchException;
 
-@WebMvcTest(ImageSearchController.class)
+@WebMvcTest(value = ImageSearchController.class,
+		properties = "spring.security.user.password=unused-test-password")
+@AutoConfigureMockMvc(addFilters = false)
 @Import({ SearchApiExceptionHandler.class, ImageSearchControllerTests.TestConfig.class })
 class ImageSearchControllerTests {
 

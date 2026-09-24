@@ -69,6 +69,8 @@ Word và ZIP v1 là snapshot lịch sử chưa cập nhật stack mới và khô
 - [Requirements specification](week5/WEEK5_REQUIREMENTS_SPECIFICATION.md)
 - [Vertical-slice execution flow](week5/WEEK5_VERTICAL_SLICE_EXECUTION_FLOW.md)
 - [Week 6 vertical-slice status](week6/WEEK6_VERTICAL_SLICE_STATUS.md)
+- [Identity and Catalog Draft checkpoint](week6/WEEK6_IDENTITY_AND_DRAFT_STATUS.md)
+- [Catalog Draft use case and ERD seed](week6/WEEK6_CATALOG_DRAFT_USE_CASE_AND_DATA.md)
 - [Real CLIP pilot runbook](week6/WEEK6_REAL_PILOT_RUNBOOK.md)
 
 ## Week 4 baseline artifacts

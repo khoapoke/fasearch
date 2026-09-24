@@ -42,6 +42,12 @@
   font-weight: 650;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .statusDot {
   width: 9px;
   height: 9px;
@@ -90,6 +96,14 @@
 
   .header {
     min-height: 72px;
+  }
+
+  .headerActions {
+    gap: 10px;
+  }
+
+  .status {
+    display: none;
   }
 
   .intro {
