@@ -24,6 +24,8 @@ Nhóm áp dụng implementation-informed modeling:
 4. hoàn thiện use case, sequence, class model và ERD từ hành vi đã kiểm chứng;
 5. lặp lại cho vertical slice tiếp theo.
 
+Codex và Pi dùng chung [quy tắc agent](AGENTS.md) và các task packet đã version hóa trong `.agent/tasks/`. Packet ghi tiến độ/review theo ticket, không thay thế Decision Register, requirements hay schema.
+
 Vertical slice đầu tiên là image search trên frozen catalog. Không mở mobile, commerce, VTON/3D hoặc fine-tuning trong mốc này.
 
 ## AI baseline
