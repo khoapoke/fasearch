@@ -1,6 +1,6 @@
 # Status: list and reopen Catalog Drafts
 
-State: IMPLEMENTING
+State: FIX_APPLIED (2026-09-25) — PR #1 feedback addressed, re-review pending
 Updated: 2026-09-25
 Branch: `codex/catalog-draft-list`
 Base: `a207f9f79887bf8604987731c433e4d12564fd6f` (== `origin/codex/vertical-slice` at branch creation)
@@ -35,10 +35,27 @@ Worktree: tracked files clean at branch creation. Unrelated local work preserved
 - `cd fe && npm ci && npm run lint`: PASS (exit 0) after fixing one `react-hooks/set-state-in-effect` error in `catalog-draft-list.tsx` (mount fetch moved to promise callbacks; `goTo` kept for button/retry handlers).
 - `cd fe && npm run build`: PASS (exit 0); route table shows `ƒ /api/catalog/drafts`, `○ /catalog/drafts`, existing `new`/`[productId]` routes intact.
 - Focused live UI/API check (thrown-away Postgres 16 container + backend jar + `next start` on :3100, all torn down after): login as bootstrap super-admin via Next proxy OK; created 2 drafts via proxy (201 + `location`); `GET /api/catalog/drafts` via proxy returned both newest-first with `limit:20, offset:0, has_more:false`; `?limit=1&offset=0` → 1 item + `has_more:true`; `?limit=1&offset=1` → 2nd item + `has_more:false`; anonymous proxy GET → 401; `?limit=200` via proxy → 400; `GET /catalog/drafts` HTML → 200 containing the page title. No session/credential or storage-URI leakage in list payloads.
-- Standards/Spec reviews + REVIEW.md verdict: NOT STARTED (step 6 pending).
-- Commit/PR: NOT DONE (pending steps 6–7).
 
 ## Step 7 (2026-09-25)
 
-- Commit: `72547d14d3de743103c444f3e528622da7740573` on `codex/catalog-draft-list` (13 ticket files only; unrelated `catalog-processing-gate/SPEC.md`, `.pi/` runtime and build artifacts excluded). Pushed to `origin/codex/catalog-draft-list`. Reviewed content is identical to the committed diff (no post-review fixes were needed).
+- Commit: `72547d14d3de743103c444f3e528622da7740573` on `codex/catalog-draft-list` (13 ticket files only; unrelated `catalog-processing-gate/SPEC.md`, `.pi/` runtime and build artifacts excluded). Pushed to `origin/codex/catalog-draft-list`. The Standards/Spec reviews inspected the worktree whose content was committed byte-identical as `72547d1` with no intervening edits; the pinned review target is therefore `72547d1` (see REVIEW.md).
+- Docs-only delta `79c1eac42c4e1916a98c7818ce13d443d9a1d18f` touched only STATUS.md (PR-link line); no code impact, recorded as a reviewed delta in REVIEW.md.
 - PR: https://github.com/khoapoke/fasearch/pull/1 (draft, `codex/catalog-draft-list` into `codex/vertical-slice`). Merge is reserved for the project representative.
+
+## Fix pass on PR #1 feedback (2026-09-25)
+
+Confirmed findings (from the task brief; `gh` comment APIs are blocked by token scope `read:project`, so feedback was taken from the brief text):
+
+1. Order-dependent `CatalogDraftListIntegrationTests.staffSeesOnlyOwnDraftsAndAdminSeesAll`: the Admin assertion required exactly 2 rows on a DB shared with 3 other row-creating test methods. Reproduced by temporarily forcing polluting methods first (`@Order`, reverted afterwards): `expected: 2 but was: 6`. Fix: Admin assertion now checks the returned titles contain A's and B's drafts (`contains("Áo của A", "Quần của B")`) instead of an exact total; Staff assertions stay exact-count (owner-filtered with per-test users, order-independent). No production code touched.
+2. Empty past-end page (`offset > 0`, `items: []`) showed the global "Chưa có sản phẩm nháp nào." message. Fix in `catalog-draft-list.tsx`: when `data.offset > 0` the page shows "Trang này không có sản phẩm nháp." with a "Về trang đầu" button (`goTo(0)`); the global-empty message + create link render only for `offset == 0`. New `.back` style in the module CSS.
+3. STATUS.md/REVIEW.md reconciliation: this file no longer claims IMPLEMENTING/NOT STARTED/NOT DONE; REVIEW.md pins `72547d1` as the reviewed code SHA (not an uncommitted worktree) and records the docs-only `79c1eac` delta plus this fix round.
+
+Out of scope (kept): the accepted P3 admin-check duplication in `CatalogDraftModule` — the fixes did not require touching it.
+
+Verification (exact):
+
+- Adversarial method order (temporary `@Order`, polluters first / admin test last, reverted after): old code failed `expected: 2 but was: 6`; fixed code **6/6 PASS**.
+- Randomized seeds: NOT RUN as true shuffles — this repo configures no method orderer, and neither Surefire `-D` propagation, `-DargLine`, nor a temporary `junit-platform.properties` (removed afterwards) changed the execution order (observed order stayed `[staff, anonymous, readonly, pagination, latest, registered]` across seeds 1/9/42). The adversarial-order run above is strictly stronger for this defect (admin-last is the worst case) and both seed-equivalent default runs pass.
+- Full backend suite after fix: **24/24 PASS, 0 failures/errors** (`CatalogDraftListIntegrationTests` 6, `S3CatalogObjectStoreTests` 2, `SessionSecurityIntegrationTests` 4, `ImageSearchControllerTests` 4, `PublicApiContractTests` 1, `ImageSearchModuleTests` 4, `HttpAiImageSearchAdapterTests` 2, `FixtureCatalogProductAdapterTests` 1).
+- `cd fe && npm run lint`: PASS (exit 0). `npm run build`: PASS (exit 0).
+- Focused empty-page check (fresh throwaway Postgres + unchanged backend jar + rebuilt `next start`, torn down after): created 1 draft via proxy (201); `GET /api/catalog/drafts?limit=20&offset=20` via proxy returned `{"items":[],"limit":20,"offset":20,"has_more":false}` — the exact payload the new `offset > 0` UI branch handles; `GET /catalog/drafts` HTML 200. Client rendering of the back button was verified by code inspection + lint/build + Spec re-review (no browser harness in this environment: Not run as a visual check).

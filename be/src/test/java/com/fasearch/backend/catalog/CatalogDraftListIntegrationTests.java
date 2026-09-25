@@ -8,7 +8,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,7 +102,9 @@ class CatalogDraftListIntegrationTests {
 		assertThat(listB.get("items").get(0).get("title").asText()).isEqualTo("Quần của B");
 
 		JsonNode listAdmin = json.readTree(listOk(admin, "").body());
-		assertThat(listAdmin.get("items").size()).isEqualTo(2);
+		List<String> adminTitles = new ArrayList<>();
+		listAdmin.get("items").forEach(item -> adminTitles.add(item.get("title").asText()));
+		assertThat(adminTitles).contains("Áo của A", "Quần của B");
 
 		assertThat(send(staffA.browser, get(staffA.base, pathB)).statusCode()).isEqualTo(403);
 		assertThat(send(staffB.browser, get(staffB.base, pathA)).statusCode()).isEqualTo(403);

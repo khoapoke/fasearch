@@ -104,13 +104,31 @@ export function CatalogDraftList() {
   }
 
   if (!data || data.items.length === 0) {
+    const pastFirstPage = (data?.offset ?? 0) > 0;
     return (
       <main className={styles.wrap}>
         <h1 className={styles.title}>Sản phẩm nháp</h1>
-        <p className={styles.empty}>Chưa có sản phẩm nháp nào.</p>
-        <p>
-          <Link href="/catalog/drafts/new">Tạo sản phẩm đầu tiên</Link>
-        </p>
+        {pastFirstPage ? (
+          <>
+            <p className={styles.empty}>Trang này không có sản phẩm nháp.</p>
+            <p>
+              <button
+                className={styles.back}
+                type="button"
+                onClick={() => goTo(0)}
+              >
+                Về trang đầu
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={styles.empty}>Chưa có sản phẩm nháp nào.</p>
+            <p>
+              <Link href="/catalog/drafts/new">Tạo sản phẩm đầu tiên</Link>
+            </p>
+          </>
+        )}
       </main>
     );
   }

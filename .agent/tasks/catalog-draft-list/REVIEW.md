@@ -4,8 +4,9 @@ Verdict: PASS_WITH_NOTES (Standards) / PASS (Spec) — no unresolved P0–P2 fin
 
 ## Pinned SHAs
 
-- Base: `a207f9f79887bf8604987731c433e4d12564fd6f` (`codex/vertical-slice` at branch creation; `HEAD` at review time, all ticket changes uncommitted worktree edits on top).
-- Review target: uncommitted worktree on `codex/catalog-draft-list` reviewed 2026-09-25 (base `a207f9f7` + the 13 ticket files listed in STATUS.md). Commit SHA recorded in STATUS.md after step 7; reviewed content is identical unless a fix commit is noted there.
+- Base: `a207f9f79887bf8604987731c433e4d12564fd6f` (`codex/vertical-slice` at branch creation).
+- Reviewed code SHA (round 1): `72547d14d3de743103c444f3e528622da7740573`. The reviewers inspected the worktree whose content was committed byte-identical as `72547d1` with no intervening edits, so the pinned review target is the commit, not the worktree.
+- Docs-only delta `79c1eac42c4e1916a98c7818ce13d443d9a1d18f` (STATUS.md PR-link lines only, verified via `git show`): no production/test/UI/contract impact; reviewed as a delta by the implementation agent, no findings.
 - Method: two parallel read-only subagents via the `code-review` skill (Standards + Spec axes, same fixed point), plus the implementation agent as runtime/regression owner. Reviewers were instructed to ignore unrelated paths (`.agent/tasks/catalog-processing-gate/SPEC.md`, `.pi/`); those paths are excluded from the commit.
 
 ## Standards findings (reviewer f5301163, verbatim in essence)
