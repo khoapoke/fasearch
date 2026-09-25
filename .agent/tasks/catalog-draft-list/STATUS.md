@@ -38,4 +38,7 @@ Worktree: tracked files clean at branch creation. Unrelated local work preserved
 - Standards/Spec reviews + REVIEW.md verdict: NOT STARTED (step 6 pending).
 - Commit/PR: NOT DONE (pending steps 6–7).
 
-Next action: run full backend suite + frontend lint/build + focused UI/API check, then pin SHAs, run two-axis review, fix P0–P2, commit/push and open draft PR into `codex/vertical-slice`.
+## Step 7 (2026-09-25)
+
+- Commit: `72547d14d3de743103c444f3e528622da7740573` on `codex/catalog-draft-list` (13 ticket files only; unrelated `catalog-processing-gate/SPEC.md`, `.pi/` runtime and build artifacts excluded). Pushed to `origin/codex/catalog-draft-list`. Reviewed content is identical to the committed diff (no post-review fixes were needed).
+- PR: https://github.com/khoapoke/fasearch/pull/1 (draft, `codex/catalog-draft-list` into `codex/vertical-slice`). Merge is reserved for the project representative.
