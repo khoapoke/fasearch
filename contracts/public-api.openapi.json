@@ -71,6 +71,22 @@
       }
     },
     "/api/v1/catalog/admin/drafts": {
+      "get": {
+        "operationId": "listCatalogDrafts",
+        "parameters": [
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0, "default": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Non-archived products whose latest Product Version is DRAFT; Staff sees own, CATALOG_PUBLISH sees all",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DraftList" } } }
+          },
+          "400": { "$ref": "#/components/responses/AuthError" },
+          "401": { "$ref": "#/components/responses/AuthError" },
+          "403": { "$ref": "#/components/responses/AuthError" }
+        }
+      },
       "post": {
         "operationId": "createCatalogDraft",
         "parameters": [
@@ -366,6 +382,30 @@
           "created_by": { "type": "string", "format": "uuid" },
           "created_at": { "type": "string", "format": "date-time" },
           "has_primary_image": { "type": "boolean" }
+        }
+      },
+      "DraftSummary": {
+        "type": "object",
+        "required": ["product_id", "product_version_id", "version_no", "status", "title", "category", "created_at", "has_primary_image"],
+        "properties": {
+          "product_id": { "type": "string", "format": "uuid" },
+          "product_version_id": { "type": "string", "format": "uuid" },
+          "version_no": { "type": "integer", "minimum": 1 },
+          "status": { "type": "string", "enum": ["DRAFT"] },
+          "title": { "type": "string" },
+          "category": { "type": "string", "enum": ["TOP", "BOTTOM", "ONE_PIECE"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "has_primary_image": { "type": "boolean" }
+        }
+      },
+      "DraftList": {
+        "type": "object",
+        "required": ["items", "limit", "offset", "has_more"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/DraftSummary" } },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "offset": { "type": "integer", "minimum": 0 },
+          "has_more": { "type": "boolean" }
         }
       },
       "Publication": {
