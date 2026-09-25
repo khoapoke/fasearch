@@ -41,6 +41,13 @@ Verdict: PASS. No missing items, no scope creep, nothing implemented-but-wrong.
 - Spec re-review (943b5e24): **PASS**, no findings. Admin-titles assertion still proves "Administrator sees both"; Staff exact-1 assertions order-independent (distinct per-test users); past-end branch is keyboard-accessible with a way back and no global false claim; Scope 5 states intact; STATUS/REVIEW SHAs and claims verified against git state (tracked tree clean apart from excluded untracked paths). Limitation noted: reviewer had no shell, verified via read/grep + watchdog_diff.
 - No P0–P2 findings in either round; no fix/retest cycle required beyond the reviewed delta itself.
 
+## Round 3 — past-end failure state (2026-09-25)
+
+- Fixed code SHA: `2d8fd71f086e5c173e788f0af846563664d76230` (delta `c6056c223..2d8fd71f0`: empty-branch error alert with retry-current/back-to-first, `.errorActions` style, STATUS round-3 notes).
+- Standards review (d103f67e): **PASS** — worst P4 (redundant `currentPage > 0` guard; `p`-as-button-wrapper). No standard violation.
+- Spec review (3bc82bf9): **PASS** — worst none (P4 note: two "Về trang đầu" buttons visible in the failure state — redundant but harmless and keyboard-accessible). Acceptance intact, no scope creep, STATUS claims verified against code.
+- No P0–P2 findings; P4 notes accepted without another cycle (cosmetic, zero behavioral gain).
+
 ## Disposition
 
 - No P0–P2 findings exist, so no fix/retest cycle was required (step 6 threshold: fix confirmed in-scope P0–P2 only).

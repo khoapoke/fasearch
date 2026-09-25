@@ -1,6 +1,6 @@
 # Status: list and reopen Catalog Drafts
 
-State: FIX_APPLIED_ROUND3 (2026-09-25) — past-end failure-state fix applied, re-review pending; merge reserved for the project representative
+State: READY_FOR_MERGE_DECISION (2026-09-25) — round-3 fix applied, Standards PASS / Spec PASS with no P0–P2; PR #1 open; merge reserved for the project representative
 Updated: 2026-09-25
 Branch: `codex/catalog-draft-list`
 Base: `a207f9f79887bf8604987731c433e4d12564fd6f` (== `origin/codex/vertical-slice` at branch creation)
