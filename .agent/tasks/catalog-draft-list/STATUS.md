@@ -1,6 +1,6 @@
 # Status: list and reopen Catalog Drafts
 
-State: FIX_APPLIED (2026-09-25) — PR #1 feedback addressed, re-review pending
+State: READY_FOR_MERGE_DECISION (2026-09-25) — fixes applied, re-reviews PASS, PR #1 open; merge reserved for the project representative
 Updated: 2026-09-25
 Branch: `codex/catalog-draft-list`
 Base: `a207f9f79887bf8604987731c433e4d12564fd6f` (== `origin/codex/vertical-slice` at branch creation)
@@ -59,3 +59,4 @@ Verification (exact):
 - Full backend suite after fix: **24/24 PASS, 0 failures/errors** (`CatalogDraftListIntegrationTests` 6, `S3CatalogObjectStoreTests` 2, `SessionSecurityIntegrationTests` 4, `ImageSearchControllerTests` 4, `PublicApiContractTests` 1, `ImageSearchModuleTests` 4, `HttpAiImageSearchAdapterTests` 2, `FixtureCatalogProductAdapterTests` 1).
 - `cd fe && npm run lint`: PASS (exit 0). `npm run build`: PASS (exit 0).
 - Focused empty-page check (fresh throwaway Postgres + unchanged backend jar + rebuilt `next start`, torn down after): created 1 draft via proxy (201); `GET /api/catalog/drafts?limit=20&offset=20` via proxy returned `{"items":[],"limit":20,"offset":20,"has_more":false}` — the exact payload the new `offset > 0` UI branch handles; `GET /catalog/drafts` HTML 200. Client rendering of the back button was verified by code inspection + lint/build + Spec re-review (no browser harness in this environment: Not run as a visual check).
+- Re-reviews on fixed commit `d8155d3`: Standards **PASS**, Spec **PASS**, no P0–P2 (recorded in REVIEW.md round 2).

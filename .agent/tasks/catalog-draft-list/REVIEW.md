@@ -34,6 +34,13 @@ Verdict: PASS. No missing items, no scope creep, nothing implemented-but-wrong.
 - Focused live check (throwaway Postgres + backend jar + `next start`, torn down): proxy login → 2× create (201) → default list (newest-first, `has_more:false`) → `limit=1` pages (`has_more:true/false`) → anon 401 → `limit=200` 400 → list page HTML 200. Payloads carried no storage URI/session/credential data.
 - Not run: full browser matrix and responsive/accessibility sweep beyond keyboard-accessible links/buttons and live-region/error roles (out of ticket scope; recorded as Not run, not as pass).
 
+## Round 2 — fix verification (2026-09-25)
+
+- Fixed code SHA: `d8155d39e2ced50e366b15538e40d9d924647e5a` (delta `79c1eac42..d8155d39e`: test containment assertion, past-end empty page + `.back` style, STATUS/REVIEW reconciliation).
+- Standards re-review (b9555718): **PASS**, no P0–P4 findings. Correct flake fix, conventions preserved, `.back` mirrors existing button styles, docs light-touch. Non-blocking note: containment permits extra rows without `size>=2` — not worth a cycle. Prior P3 duplication untouched, not worsened.
+- Spec re-review (943b5e24): **PASS**, no findings. Admin-titles assertion still proves "Administrator sees both"; Staff exact-1 assertions order-independent (distinct per-test users); past-end branch is keyboard-accessible with a way back and no global false claim; Scope 5 states intact; STATUS/REVIEW SHAs and claims verified against git state (tracked tree clean apart from excluded untracked paths). Limitation noted: reviewer had no shell, verified via read/grep + watchdog_diff.
+- No P0–P2 findings in either round; no fix/retest cycle required beyond the reviewed delta itself.
+
 ## Disposition
 
 - No P0–P2 findings exist, so no fix/retest cycle was required (step 6 threshold: fix confirmed in-scope P0–P2 only).
