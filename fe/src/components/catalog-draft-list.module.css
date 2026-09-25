@@ -76,6 +76,12 @@
   cursor: pointer;
 }
 
+.errorActions {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+}
+
 .empty {
   border: 1px dashed var(--thread);
   background: white;

@@ -105,9 +105,25 @@ export function CatalogDraftList() {
 
   if (!data || data.items.length === 0) {
     const pastFirstPage = (data?.offset ?? 0) > 0;
+    const currentPage = data ? Math.max(0, Math.floor(data.offset / PAGE_SIZE)) : 0;
     return (
       <main className={styles.wrap}>
         <h1 className={styles.title}>Sản phẩm nháp</h1>
+        {error && (
+          <div className={styles.error} role="alert">
+            <p>{error}</p>
+            <p className={styles.errorActions}>
+              <button type="button" onClick={() => goTo(currentPage)}>
+                Thử lại
+              </button>
+              {pastFirstPage && currentPage > 0 && (
+                <button type="button" onClick={() => goTo(0)}>
+                  Về trang đầu
+                </button>
+              )}
+            </p>
+          </div>
+        )}
         {pastFirstPage ? (
           <>
             <p className={styles.empty}>Trang này không có sản phẩm nháp.</p>

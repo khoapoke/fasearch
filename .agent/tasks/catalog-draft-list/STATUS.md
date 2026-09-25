@@ -1,6 +1,6 @@
 # Status: list and reopen Catalog Drafts
 
-State: READY_FOR_MERGE_DECISION (2026-09-25) — fixes applied, re-reviews PASS, PR #1 open; merge reserved for the project representative
+State: FIX_APPLIED_ROUND3 (2026-09-25) — past-end failure-state fix applied, re-review pending; merge reserved for the project representative
 Updated: 2026-09-25
 Branch: `codex/catalog-draft-list`
 Base: `a207f9f79887bf8604987731c433e4d12564fd6f` (== `origin/codex/vertical-slice` at branch creation)
@@ -41,6 +41,24 @@ Worktree: tracked files clean at branch creation. Unrelated local work preserved
 - Commit: `72547d14d3de743103c444f3e528622da7740573` on `codex/catalog-draft-list` (13 ticket files only; unrelated `catalog-processing-gate/SPEC.md`, `.pi/` runtime and build artifacts excluded). Pushed to `origin/codex/catalog-draft-list`. The Standards/Spec reviews inspected the worktree whose content was committed byte-identical as `72547d1` with no intervening edits; the pinned review target is therefore `72547d1` (see REVIEW.md).
 - Docs-only delta `79c1eac42c4e1916a98c7818ce13d443d9a1d18f` touched only STATUS.md (PR-link line); no code impact, recorded as a reviewed delta in REVIEW.md.
 - PR: https://github.com/khoapoke/fasearch/pull/1 (draft, `codex/catalog-draft-list` into `codex/vertical-slice`). Merge is reserved for the project representative.
+
+## Docs-only deltas (verified via `git show --stat`)
+
+- `d8155d39e` (fix commit) → `d413adca7`: REVIEW.md + STATUS.md only (round-2 review notes). No code impact.
+- `d413adca7` → `c6056c223`: STATUS.md only (post-commit test/lint/build + browser visual-check notes). No code impact.
+- Round-2 reviews inspected the fix diff `79c1eac42..d8155d39e`; the two later docs-only deltas were reviewed as deltas by the implementation agent. Review checkpoint: code `d8155d3`, docs `c6056c2`.
+
+## Fix round 3 — past-end failure state (2026-09-25)
+
+Finding: on an empty past-end page, if "Về trang đầu" failed, the request error was swallowed (the empty branch never rendered `error`).
+
+Fix (`catalog-draft-list.tsx`, `catalog-draft-list.module.css` only; no backend change): the empty branch now renders the error alert with the request message plus "Thử lại" (retries the current offset page) and, when past the first page, "Về trang đầu" (`goTo(0)`), in a new `.errorActions` flex row reusing the existing error-button style.
+
+Checks (exact):
+
+- `cd fe && npm run lint`: PASS (exit 0). `npm run build`: PASS (exit 0, `Compiled successfully`).
+- Backend tests: **Not rerun in this fix** (backend code unchanged). Prior dated evidence retained: full suite **24/24 PASS** on 2026-09-25 (`CatalogDraftListIntegrationTests` 6/6 incl. adversarial-order run).
+- Focused browser check (Playwright, throwaway Postgres + unchanged backend jar + rebuilt `next start`, torn down after; past-end and 500 responses via in-memory route stubs, no database writes): 21 drafts → page 1 "Hiển thị 1–20" → stubbed empty `offset=20` → past-end message → stubbed 500 on `offset=0` → clicking "Về trang đầu" rendered the alert "Không thể tải danh sách nháp. Hãy thử lại." with **both "Thử lại" and "Về trang đầu" buttons** (screenshot inspected: red-border alert, side-by-side buttons, past-end message below; screenshot deleted from repo). Unstubbed → clicking "Về trang đầu" recovered to "Hiển thị 1–20".
 
 ## Fix pass on PR #1 feedback (2026-09-25)
 
