@@ -1,19 +1,24 @@
 .auth {
   position: relative;
-  margin-left: 16px;
 }
 
 .openButton,
 .signedIn button {
-  min-height: 36px;
-  padding: 0 13px;
-  border: 1px solid var(--thread-dark);
-  border-radius: 7px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 9999px;
   color: var(--ink);
-  background: white;
+  background: var(--surface);
   cursor: pointer;
-  font-size: 0.79rem;
+  font-size: 0.82rem;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.openButton:hover,
+.signedIn button:hover {
+  border-color: var(--ink);
 }
 
 .signedIn {
@@ -25,28 +30,30 @@
 }
 
 .signedIn a {
-  color: var(--cobalt);
-  font-size: 0.79rem;
-  font-weight: 730;
+  color: var(--brand);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .form {
   position: absolute;
-  z-index: 5;
-  top: 47px;
+  z-index: 50;
+  top: 50px;
   right: 0;
-  width: min(320px, calc(100vw - 40px));
+  width: min(320px, calc(100vw - 32px));
   display: grid;
-  gap: 15px;
-  padding: 23px;
-  border: 1px solid var(--thread-dark);
-  background: var(--paper);
-  box-shadow: 0 14px 38px rgb(23 32 51 / 13%);
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .form label {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   color: var(--ink-soft);
   font-size: 0.76rem;
   font-weight: 700;
@@ -54,22 +61,32 @@
 
 .form input {
   width: 100%;
-  min-height: 39px;
-  padding: 8px 10px;
-  border: 1px solid var(--thread-dark);
-  border-radius: 6px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius);
   color: var(--ink);
   background: white;
 }
 
+.form input:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
 .submit {
-  min-height: 42px;
+  min-height: 44px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius);
   color: white;
-  background: var(--cobalt);
+  background: var(--accent);
   cursor: pointer;
   font-weight: 700;
+}
+
+.submit:hover:not(:disabled) {
+  background: var(--accent-deep);
 }
 
 .submit:disabled {
@@ -79,6 +96,7 @@
 
 .error {
   padding: 12px;
+  border-radius: var(--radius);
   color: var(--danger);
   background: #fff3f3;
   font-size: 0.78rem;
@@ -87,20 +105,15 @@
 
 .signedIn + .error {
   position: absolute;
-  z-index: 6;
-  top: 47px;
+  z-index: 50;
+  top: 50px;
   right: 0;
-  width: min(320px, calc(100vw - 40px));
+  width: min(320px, calc(100vw - 32px));
 }
 
-@media (max-width: 620px) {
-  .auth {
-    margin-left: 0;
-  }
-
+@media (max-width: 520px) {
   .signedIn {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+    gap: 8px;
+    font-size: 0.78rem;
   }
 }

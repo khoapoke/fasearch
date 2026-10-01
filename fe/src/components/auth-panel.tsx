@@ -96,6 +96,7 @@ export function AuthPanel() {
         <button
           className={styles.openButton}
           type="button"
+          aria-expanded={open}
           onClick={() => {
             setOpen(!open);
             setError("");

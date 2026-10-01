@@ -2,7 +2,6 @@
 
 import {
   ChangeEvent,
-  CSSProperties,
   DragEvent,
   FormEvent,
   useEffect,
@@ -10,26 +9,26 @@ import {
   useState,
 } from "react";
 import type {
-  FashionCategory,
   ImageSearchResponse,
   SearchError,
 } from "@/lib/search-contract";
+import { ResultCard } from "./stitch-search/result-card";
+import { createRequestGuard } from "./stitch-search/request-guard";
 import styles from "./image-search-workbench.module.css";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-const categoryNames: Record<FashionCategory, string> = {
-  TOP: "Áo",
-  BOTTOM: "Quần / váy rời",
-  ONE_PIECE: "Trang phục liền",
-};
 
 type SearchState =
   | { status: "idle" }
   | { status: "searching" }
   | { status: "success"; data: ImageSearchResponse }
   | { status: "error"; message: string; traceId?: string };
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
+}
 
 function validateFile(file: File): string | null {
   if (!ALLOWED_TYPES.has(file.type)) {
@@ -47,6 +46,9 @@ function validateFile(file: File): string | null {
 export function ImageSearchWorkbench() {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const guardRef = useRef<ReturnType<typeof createRequestGuard> | null>(null);
+  if (guardRef.current === null) guardRef.current = createRequestGuard();
+  const abortRef = useRef<AbortController | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [state, setState] = useState<SearchState>({ status: "idle" });
@@ -55,6 +57,7 @@ export function ImageSearchWorkbench() {
   useEffect(() => {
     return () => {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      abortRef.current?.abort();
     };
   }, []);
 
@@ -65,8 +68,12 @@ export function ImageSearchWorkbench() {
     setPreviewUrl(nextUrl);
   }
 
+  // A new selection supersedes any pending request: invalidate its ticket and
+  // cancel its fetch so a slow earlier response cannot replace this state.
   function selectFile(nextFile: File | undefined) {
     if (!nextFile) return;
+    guardRef.current?.invalidate();
+    abortRef.current?.abort();
     const validationError = validateFile(nextFile);
     if (validationError) {
       setFile(null);
@@ -91,8 +98,13 @@ export function ImageSearchWorkbench() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file || state.status === "searching") return;
+    const guard = guardRef.current;
+    if (!file || !guard || state.status === "searching") return;
 
+    const ticket = guard.begin();
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setState({ status: "searching" });
     const formData = new FormData();
     formData.set("image", file);
@@ -102,8 +114,11 @@ export function ImageSearchWorkbench() {
       const response = await fetch("/api/search/image", {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
+      if (!guard.isCurrent(ticket)) return;
       const payload = (await response.json()) as ImageSearchResponse | SearchError;
+      if (!guard.isCurrent(ticket)) return;
       if (!response.ok) {
         const error = payload as SearchError;
         setState({
@@ -114,7 +129,9 @@ export function ImageSearchWorkbench() {
         return;
       }
       setState({ status: "success", data: payload as ImageSearchResponse });
-    } catch {
+    } catch (failure) {
+      if (!guard.isCurrent(ticket)) return;
+      if (failure instanceof DOMException && failure.name === "AbortError") return;
       setState({
         status: "error",
         message: "Kết nối bị gián đoạn. Kiểm tra lại và thử một lần nữa.",
@@ -123,6 +140,8 @@ export function ImageSearchWorkbench() {
   }
 
   function reset() {
+    guardRef.current?.invalidate();
+    abortRef.current?.abort();
     setFile(null);
     replacePreview(null);
     setState({ status: "idle" });
@@ -130,196 +149,227 @@ export function ImageSearchWorkbench() {
   }
 
   const results = state.status === "success" ? state.data.results : [];
+  const statusText =
+    state.status === "searching"
+      ? "Đang đối chiếu catalog…"
+      : state.status === "success"
+        ? `Tìm thấy ${results.length} sản phẩm gần nhất, giữ nguyên thứ tự xếp hạng của API.`
+        : file
+          ? `Đã chọn ảnh ${file.name}. Nhấn “Tìm sản phẩm tương đồng” để bắt đầu.`
+          : "Chưa chọn ảnh.";
 
   return (
-    <section className={styles.workbench} aria-label="Tìm kiếm bằng hình ảnh">
-      <form className={styles.queryPanel} onSubmit={handleSubmit}>
-        <div className={styles.panelHeading}>
-          <div>
-            <p className={styles.kicker}>Ảnh truy vấn</p>
-            <h2>Đặt sản phẩm vào khung</h2>
-          </div>
-          <span>JPEG · PNG · WebP</span>
+    <section
+      id="tim-bang-anh"
+      className={styles.section}
+      aria-label="Tìm kiếm bằng hình ảnh"
+    >
+      <div className={styles.card}>
+        <div className={styles.heading}>
+          <p className={styles.eyebrow}>Tìm bằng ảnh</p>
+          <h2>Bắt gặp outfit đẹp? Thả ảnh vào đây để tìm đồ tương tự.</h2>
+          <p className={styles.lede}>
+            Không cần biết tên sản phẩm hay thuật ngữ thời trang. Ảnh truy vấn
+            chỉ phục vụ lần tìm kiếm này.
+          </p>
         </div>
 
-        <label
-          className={`${styles.dropzone} ${isDragging ? styles.dragging : ""} ${previewUrl ? styles.hasPreview : ""}`}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            className={styles.fileInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleInput}
-          />
-          {previewUrl ? (
-            <>
-              <span
-                className={styles.preview}
-                style={{ backgroundImage: `url(${previewUrl})` }}
-                role="img"
-                aria-label={`Ảnh xem trước: ${file?.name ?? "ảnh truy vấn"}`}
+        <div className={styles.columns}>
+          <div className={styles.info}>
+            <ul className={styles.facts}>
+              <li>JPEG, PNG hoặc WebP — tối đa 10 MiB mỗi ảnh</li>
+              <li>Kéo thả hoặc nhấn để chọn, xem trước rồi mới tìm</li>
+              <li>Kết quả giữ nguyên thứ tự xếp hạng của API</li>
+            </ul>
+            <dl className={styles.stats}>
+              <div>
+                <dt>Kết quả mỗi lần tìm</dt>
+                <dd>08</dd>
+              </div>
+              <div>
+                <dt>Giới hạn ảnh</dt>
+                <dd>10 MiB</dd>
+              </div>
+              <div>
+                <dt>Danh mục catalog</dt>
+                <dd>03</dd>
+              </div>
+            </dl>
+          </div>
+
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <label
+              className={`${styles.dropzone} ${isDragging ? styles.dragging : ""} ${previewUrl ? styles.hasPreview : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              <input
+                ref={inputRef}
+                className={styles.fileInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleInput}
+                aria-label="Chọn ảnh truy vấn JPEG, PNG hoặc WebP, tối đa 10 MiB"
               />
-              <span className={styles.replaceHint}>Chọn ảnh khác</span>
-            </>
-          ) : (
-            <span className={styles.dropCopy}>
-              <span className={styles.uploadGlyph} aria-hidden="true">
-                +
-              </span>
-              <strong>Thả ảnh vào đây</strong>
-              <span>hoặc nhấn để chọn từ máy</span>
-            </span>
-          )}
-        </label>
+              {previewUrl ? (
+                <>
+                  <span
+                    className={styles.preview}
+                    style={{ backgroundImage: `url(${previewUrl})` }}
+                    role="img"
+                    aria-label={`Ảnh xem trước: ${file?.name ?? "ảnh truy vấn"}`}
+                  />
+                  <span className={styles.replaceHint}>Chọn ảnh khác</span>
+                </>
+              ) : (
+                <span className={styles.dropCopy}>
+                  <span className={styles.uploadGlyph} aria-hidden="true">
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </span>
+                  <strong>Kéo thả ảnh vào đây</strong>
+                  <span>hoặc nhấn để chọn từ máy</span>
+                </span>
+              )}
+            </label>
 
-        <div className={styles.fileRow}>
-          <div>
-            <span className={styles.fileName}>{file?.name ?? "Chưa chọn ảnh"}</span>
-            <span className={styles.fileMeta}>
-              {file ? `${(file.size / 1024 / 1024).toFixed(2)} MiB` : "Tối đa 10 MiB"}
-            </span>
-          </div>
-          {file && (
-            <button className={styles.clearButton} type="button" onClick={reset}>
-              Bỏ ảnh
+            <div className={styles.fileRow}>
+              <div>
+                <span className={styles.fileName}>{file?.name ?? "Chưa chọn ảnh"}</span>
+                <span className={styles.fileMeta}>
+                  {file ? formatBytes(file.size) : "Tối đa 10 MiB"}
+                </span>
+              </div>
+              {file && (
+                <button className={styles.clearButton} type="button" onClick={reset}>
+                  Bỏ ảnh
+                </button>
+              )}
+            </div>
+
+            <button
+              className={styles.searchButton}
+              type="submit"
+              disabled={!file || state.status === "searching"}
+            >
+              {state.status === "searching" ? (
+                <>
+                  <span className={styles.spinner} aria-hidden="true" />
+                  Đang đối chiếu catalog
+                </>
+              ) : (
+                "Tìm sản phẩm tương đồng"
+              )}
             </button>
-          )}
+
+            <div className={styles.liveRegion} aria-live="polite">
+              <p>{statusText}</p>
+              {state.status === "error" && (
+                <div className={styles.errorBox} role="alert">
+                  <strong>Không thể tìm kiếm</strong>
+                  <span>{state.message}</span>
+                  {state.traceId && <small>Mã tra cứu: {state.traceId}</small>}
+                </div>
+              )}
+            </div>
+          </form>
         </div>
 
-        <button
-          className={styles.searchButton}
-          type="submit"
-          disabled={!file || state.status === "searching"}
-        >
-          {state.status === "searching" ? (
+        <div id="ket-qua" className={styles.results}>
+          <div className={styles.resultsHeading}>
+            <div>
+              <p className={styles.eyebrow}>Kết quả</p>
+              <h2>
+                {state.status === "success"
+                  ? `${results.length} sản phẩm gần nhất`
+                  : "Kết quả sẽ xuất hiện tại đây"}
+              </h2>
+            </div>
+            {state.status === "success" && (
+              <p className={styles.latency}>
+                <span>{state.data.latency.total_latency_ms.toFixed(0)} ms</span>
+                toàn tuyến backend
+              </p>
+            )}
+          </div>
+
+          {state.status === "success" && results.length === 0 ? (
+            <div className={styles.emptyState}>
+              <strong>Catalog chưa có sản phẩm phù hợp.</strong>
+              <span>Thử một ảnh rõ toàn bộ trang phục và ít vật thể nền hơn.</span>
+            </div>
+          ) : results.length > 0 ? (
             <>
-              <span className={styles.spinner} aria-hidden="true" />
-              Đang đối chiếu catalog
+              <div className={styles.resultGrid}>
+                {results.map((product) => (
+                  <ResultCard
+                    key={`${product.product_id}:${product.product_version_id}`}
+                    product={product}
+                  />
+                ))}
+              </div>
+              <p className={styles.similarityNote}>
+                “Mức tương đồng” là độ tương đồng thô từ mô hình, không phải
+                xác suất hay độ chính xác.
+              </p>
             </>
           ) : (
-            "Tìm sản phẩm tương đồng"
-          )}
-        </button>
-
-        <div className={styles.liveRegion} aria-live="polite">
-          {state.status === "error" && (
-            <div className={styles.errorBox} role="alert">
-              <strong>Không thể tìm kiếm</strong>
-              <span>{state.message}</span>
-              {state.traceId && <small>Mã tra cứu: {state.traceId}</small>}
+            <div className={styles.resultPlaceholder} aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
             </div>
           )}
-        </div>
-      </form>
 
-      <aside className={styles.processRail} aria-label="Quy trình tìm kiếm">
-        <div>
-          <p className={styles.railTitle}>Luồng đang chạy</p>
-          <ol>
-            <li>
-              <span>01</span>
-              <div>
-                <strong>Đọc ảnh</strong>
-                <p>Kiểm tra định dạng và tạo vector truy vấn.</p>
-              </div>
-            </li>
-            <li>
-              <span>02</span>
-              <div>
-                <strong>Xếp hạng</strong>
-                <p>Đối chiếu trên cùng model, index và catalog version.</p>
-              </div>
-            </li>
-            <li>
-              <span>03</span>
-              <div>
-                <strong>Ghép thông tin</strong>
-                <p>Backend bổ sung thông tin sản phẩm đang hoạt động.</p>
-              </div>
-            </li>
-          </ol>
-        </div>
-        <p className={styles.privacyNote}>
-          Ảnh truy vấn chỉ phục vụ lần tìm kiếm này trong slice hiện tại.
-        </p>
-      </aside>
-
-      <div className={styles.results}>
-        <div className={styles.resultsHeading}>
-          <div>
-            <p className={styles.kicker}>Kết quả</p>
-            <h2>
-              {state.status === "success"
-                ? `${results.length} sản phẩm gần nhất`
-                : "Kết quả sẽ xuất hiện tại đây"}
-            </h2>
-          </div>
           {state.status === "success" && (
-            <div className={styles.latency}>
-              <span>{state.data.latency.total_latency_ms.toFixed(0)} ms</span>
-              toàn tuyến backend
-            </div>
+            <details className={styles.diagnostics}>
+              <summary>Chi tiết chẩn đoán &amp; truy vết</summary>
+              <dl>
+                <div>
+                  <dt>Catalog snapshot</dt>
+                  <dd>{state.data.publication.catalog_snapshot_id}</dd>
+                </div>
+                <div>
+                  <dt>Model</dt>
+                  <dd>{state.data.publication.model_version}</dd>
+                </div>
+                <div>
+                  <dt>Index</dt>
+                  <dd>{state.data.publication.index_version}</dd>
+                </div>
+                <div>
+                  <dt>Trace</dt>
+                  <dd>{state.data.trace_id}</dd>
+                </div>
+                <div>
+                  <dt>Độ trễ AI / toàn tuyến</dt>
+                  <dd>
+                    {state.data.latency.ai_latency_ms.toFixed(0)} ms /{" "}
+                    {state.data.latency.total_latency_ms.toFixed(0)} ms
+                  </dd>
+                </div>
+              </dl>
+            </details>
           )}
         </div>
-
-        {state.status === "success" && results.length === 0 ? (
-          <div className={styles.emptyState}>
-            <strong>Catalog chưa có sản phẩm phù hợp.</strong>
-            <span>Thử một ảnh rõ toàn bộ trang phục và ít vật thể nền hơn.</span>
-          </div>
-        ) : results.length > 0 ? (
-          <div className={styles.resultGrid}>
-            {results.map((product) => (
-              <article
-                className={styles.productCard}
-                key={`${product.product_id}:${product.product_version_id}`}
-              >
-                <div
-                  className={styles.productImage}
-                  style={
-                    {
-                      "--product-image": `url(${product.image_url})`,
-                    } as CSSProperties
-                  }
-                  role="img"
-                  aria-label={product.title}
-                >
-                  <span className={styles.rank}>{product.rank}</span>
-                </div>
-                <div className={styles.productInfo}>
-                  <span>{categoryNames[product.category]}</span>
-                  <h3>{product.title}</h3>
-                  <div className={styles.scoreRow}>
-                    <span>Mức tương đồng</span>
-                    <strong>{(product.similarity_score * 100).toFixed(1)}%</strong>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.resultPlaceholder} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-        )}
-
-        {state.status === "success" && (
-          <div className={styles.provenance}>
-            <span>Catalog: {state.data.publication.catalog_snapshot_id}</span>
-            <span>Index: {state.data.publication.index_version}</span>
-            <span>Trace: {state.data.trace_id}</span>
-          </div>
-        )}
       </div>
     </section>
   );
