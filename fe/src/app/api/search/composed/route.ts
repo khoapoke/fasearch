@@ -6,6 +6,12 @@ export const dynamic = "force-dynamic";
 const backendUrl =
   process.env.FASEARCH_BACKEND_URL ?? "http://127.0.0.1:8080";
 
+// Spring `max-request-size: 11MB` envelope plus the 10 MiB image cap. The
+// declared-length pre-check rejects non-chunked over-envelope bodies before
+// parsing; chunked bodies without a length fall through to the Boot envelope
+// guard, whose 413 is propagated below with the same safe shape.
+const MAX_ENVELOPE_BYTES = 11 * 1024 * 1024;
+
 // Thin same-origin proxy for live composed search. Unlike the public
 // stateless image exception, this route keeps the ADR 0001 session contract:
 // it forwards the HttpOnly session cookie and the page-memory CSRF token,
@@ -13,6 +19,20 @@ const backendUrl =
 // the multipart body.
 export async function POST(request: NextRequest) {
   const traceId = request.headers.get("x-trace-id") ?? crypto.randomUUID();
+  const noStoreHeaders = { "X-Trace-Id": traceId, "Cache-Control": "no-store" };
+
+  const contentLength = request.headers.get("content-length");
+  if (contentLength !== null && Number(contentLength) > MAX_ENVELOPE_BYTES) {
+    return Response.json(
+      {
+        schema_version: "1.0.0",
+        trace_id: traceId,
+        code: "IMAGE_TOO_LARGE",
+        message: "Yêu cầu vượt quá giới hạn 11 MiB.",
+      },
+      { status: 413, headers: noStoreHeaders },
+    );
+  }
 
   let formData: FormData;
   try {
@@ -25,7 +45,7 @@ export async function POST(request: NextRequest) {
         code: "INVALID_REQUEST",
         message: "Yêu cầu multipart không hợp lệ.",
       },
-      { status: 400, headers: { "X-Trace-Id": traceId } },
+      { status: 400, headers: noStoreHeaders },
     );
   }
 
@@ -49,6 +69,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "content-type": response.headers.get("content-type") ?? "application/json",
         "X-Trace-Id": response.headers.get("x-trace-id") ?? traceId,
+        "Cache-Control": "no-store",
       },
     });
   } catch {
@@ -59,7 +80,7 @@ export async function POST(request: NextRequest) {
         code: "BACKEND_UNAVAILABLE",
         message: "Không thể kết nối hệ thống tìm kiếm. Hãy thử lại sau.",
       },
-      { status: 502, headers: { "X-Trace-Id": traceId } },
+      { status: 502, headers: noStoreHeaders },
     );
   }
 }

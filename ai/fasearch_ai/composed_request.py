@@ -24,6 +24,13 @@ ALLOWED_IMAGE_TYPES = {
     "image/png": ".png",
     "image/webp": ".webp",
 }
+# Pillow ``Image.format`` values expected for each declared MIME type.
+# The composed adapter rejects a mismatch instead of trusting the label.
+DECODED_IMAGE_FORMATS = {
+    "image/jpeg": "JPEG",
+    "image/png": "PNG",
+    "image/webp": "WEBP",
+}
 MAX_RAW_CODE_POINTS = 1024
 MAX_ID_CODE_POINTS = 128
 

@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from fasearch_ai.main import app
+from fasearch_ai.composed_request import MAX_IMAGE_BYTES
 from fasearch_ai.module import (
     EFFECTIVE_FUSION_VERSION,
     ComposedSearchModule,
@@ -85,6 +86,23 @@ def _png_bytes(size: int = 12) -> bytes:
     output = BytesIO()
     Image.new("RGB", (size, size), color=(20, 60, 200)).save(output, format="PNG")
     return output.getvalue()
+
+
+def _jpeg_bytes(size: int = 12) -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (size, size), color=(200, 40, 40)).save(output, format="JPEG")
+    return output.getvalue()
+
+
+def _media_for(path: Path) -> tuple[str, bytes, str]:
+    """Truthful multipart tuple for a fixture image: filename/bytes/MIME."""
+    with Image.open(path) as decoded:
+        decoded_format = decoded.format
+    if decoded_format == "JPEG":
+        return (f"{path.stem}.jpg", path.read_bytes(), "image/jpeg")
+    if decoded_format == "WEBP":
+        return (f"{path.stem}.webp", path.read_bytes(), "image/webp")
+    return (f"{path.stem}.png", path.read_bytes(), "image/png")
 
 
 def _form(**overrides: str) -> dict[str, str]:
@@ -199,6 +217,36 @@ def test_composed_rejects_image_problems_with_typed_codes() -> None:
         response = _post(
             client, _form(), image=_png_bytes() + b"\x00" * (10 * 1024 * 1024 + 1)
         )
+    assert response.status_code == 413
+    assert response.json()["code"] == "IMAGE_TOO_LARGE"
+
+
+def test_composed_rejects_declared_mime_format_mismatch() -> None:
+    png = _png_bytes()
+    jpeg = _jpeg_bytes()
+    with _client() as client:
+        response = _post(client, _form(), image=png, ctype="image/jpeg")
+    assert response.status_code == 415
+    assert response.json()["code"] == "INVALID_IMAGE"
+
+    with _client() as client:
+        response = _post(client, _form(), image=jpeg, ctype="image/png")
+    assert response.status_code == 415
+    assert response.json()["code"] == "INVALID_IMAGE"
+
+    with _client() as client:
+        response = _post(client, _form(), image=jpeg, ctype="image/jpeg")
+    assert response.status_code == 200
+
+
+def test_composed_image_size_gate_boundary() -> None:
+    with _client() as client:
+        response = _post(client, _form(), image=b"\x00" * MAX_IMAGE_BYTES)
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_IMAGE"
+
+    with _client() as client:
+        response = _post(client, _form(), image=b"\x00" * (MAX_IMAGE_BYTES + 1))
     assert response.status_code == 413
     assert response.json()["code"] == "IMAGE_TOO_LARGE"
 
@@ -328,7 +376,7 @@ def test_http_adapter_matches_direct_core_on_frozen_fixture(fixture_bundle) -> N
                 "fusion_version": EFFECTIVE_FUSION_VERSION,
                 "k": "5",
             },
-            files={"image": ("query.png", query_path.read_bytes(), "image/png")},
+            files={"image": _media_for(query_path)},
             headers={"x-trace-id": "trace-parity"},
         )
 
@@ -371,7 +419,7 @@ def test_http_exclusion_removes_anchor_and_keeps_ranks(fixture_bundle) -> None:
                 "k": "4",
                 "exclude_product_id": anchor_product,
             },
-            files={"image": ("query.png", query_path.read_bytes(), "image/png")},
+            files={"image": _media_for(query_path)},
             headers={"x-trace-id": "trace-exclude"},
         )
 

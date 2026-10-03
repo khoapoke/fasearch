@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from . import __version__
 from .composed_request import (
     ALLOWED_IMAGE_TYPES,
+    DECODED_IMAGE_FORMATS,
     MAX_IMAGE_BYTES,
     ComposedHttpError,
     parse_composed_form,
@@ -142,6 +143,13 @@ def create_app() -> FastAPI:
             )
         try:
             with Image.open(BytesIO(contents)) as decoded:
+                if decoded.format != DECODED_IMAGE_FORMATS[parsed.image_file.content_type]:
+                    return _error(
+                        415,
+                        "INVALID_IMAGE",
+                        "Image content does not match the declared content type",
+                        parsed.trace_id,
+                    )
                 decoded.verify()
         except (UnidentifiedImageError, OSError):
             return _error(

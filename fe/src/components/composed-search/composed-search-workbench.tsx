@@ -321,6 +321,17 @@ export function ComposedSearchWorkbench() {
                 </dd>
               </div>
               <div>
+                <dt>Phạm vi artifact</dt>
+                <dd>{data.provenance.artifact_scope}</dd>
+              </div>
+              <div>
+                <dt>Model config / chuẩn hoá chữ</dt>
+                <dd>
+                  {data.provenance.model_config_hash} ·{" "}
+                  {data.provenance.text_normalization_version}
+                </dd>
+              </div>
+              <div>
                 <dt>Trace</dt>
                 <dd>{data.trace_id}</dd>
               </div>
