@@ -5,7 +5,6 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -78,20 +77,6 @@ public final class HttpAiImageSearchAdapter implements AiImageSearchPort {
 		}
 	}
 
-	private static final class NamedByteArrayResource extends ByteArrayResource {
-
-		private final String filename;
-
-		private NamedByteArrayResource(byte[] bytes, String filename) {
-			super(bytes);
-			this.filename = filename == null || filename.isBlank() ? "query-image" : filename;
-		}
-
-		@Override
-		public String getFilename() {
-			return filename;
-		}
-	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	private record AiResponse(

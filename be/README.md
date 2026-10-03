@@ -8,6 +8,7 @@ Public interface:
 
 ```text
 POST /api/v1/search/image
+POST /api/v1/search/composed
 ```
 
 Luồng:
@@ -18,6 +19,12 @@ Luồng:
 4. kiểm publication trong response;
 5. join active catalog metadata mà không đổi AI rank;
 6. trả public response có trace ID, provenance và latency.
+
+Slice composed (upload + exact product anchor) chạy cùng máy: resolve ảnh
+anchor thuộc đúng publication đang pin, loại anchor product khỏi kết quả
+PRODUCT theo Q2, kiểm token budget của model đang load trước encode theo
+Q3 (fixture báo RAW_CAP_ONLY). CSRF giữ nguyên cho route mới; text HTTP
+và product-anchor picker là ticket sau.
 
 Catalog read adapter hiện dùng fixture ở profile `local`/`test`. PostgreSQL/Flyway quản lý tài khoản, phiên, Product Version, metadata ảnh và audit của Draft. Bytes ảnh Draft nằm ở S3-compatible object storage; processing và publication là checkpoint tiếp theo.
 Khi `FASEARCH_CATALOG_FILE` trỏ tới catalog JSONL đã version hóa, local adapter trả thêm ảnh của đúng product ID/version qua `GET /api/v1/catalog/images/{productId}/{productVersionId}`.

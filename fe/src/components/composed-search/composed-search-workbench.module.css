@@ -1,0 +1,276 @@
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.form {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--thread-dark);
+  background: var(--paper);
+}
+
+.dropzone {
+  position: relative;
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--ink-soft);
+  background: var(--porcelain);
+  border: 1px dashed var(--thread-dark);
+}
+
+.dropzone:hover,
+.dragging {
+  border-color: var(--cobalt);
+}
+
+.dropzone:focus-within {
+  border-color: var(--cobalt);
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dropCopy {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+}
+
+.dropCopy strong {
+  color: var(--ink);
+}
+
+.preview {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fileName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.clearButton {
+  flex: none;
+  border: 0;
+  color: var(--aubergine);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.textLabel,
+.kLabel {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.textInput {
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--thread-dark);
+  border-radius: 6px;
+  color: var(--ink);
+  background: white;
+  font: inherit;
+  resize: vertical;
+}
+
+.kInput {
+  max-width: 140px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--thread-dark);
+  border-radius: 6px;
+  color: var(--ink);
+  background: white;
+}
+
+.counter {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.searchButton {
+  min-height: 50px;
+  border: 1px solid var(--cobalt);
+  border-radius: 9px;
+  color: white;
+  background: var(--cobalt);
+  cursor: pointer;
+  font-weight: 720;
+}
+
+.searchButton:disabled {
+  border-color: var(--thread);
+  color: #8894a8;
+  background: #edf0f6;
+  cursor: not-allowed;
+}
+
+.liveRegion {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.errorBox {
+  margin-top: 10px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 6%, white);
+  border-left: 4px solid var(--danger);
+  font-size: 0.85rem;
+}
+
+.errorBox strong {
+  color: var(--ink);
+}
+
+.results {
+  min-width: 0;
+}
+
+.results h2 {
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.emptyState {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px dashed var(--thread-dark);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.resultList {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--thread);
+  background: white;
+}
+
+.card img {
+  width: 96px;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+  background: #eef1f7;
+}
+
+.cardCategory {
+  color: var(--aubergine);
+  font-size: 0.72rem;
+  font-weight: 720;
+}
+
+.card h3 {
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+
+.card p {
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.diagnostics {
+  margin-top: 16px;
+  border: 1px solid var(--thread);
+  background: white;
+  font-size: 0.8rem;
+}
+
+.diagnostics summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.diagnostics dl {
+  padding: 0 16px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.diagnostics dl div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.diagnostics dt {
+  min-width: 170px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.diagnostics dd {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 860px) {
+  .workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropzone,
+  .searchButton {
+    transition: none;
+  }
+}

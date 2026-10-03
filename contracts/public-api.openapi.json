@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "FaSearch Public API",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/v1/auth/csrf": {
@@ -12,7 +12,13 @@
         "responses": {
           "200": {
             "description": "CSRF header name and token",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CsrfResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsrfResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -21,7 +27,14 @@
       "post": {
         "operationId": "login",
         "parameters": [
-          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -29,19 +42,33 @@
             "application/x-www-form-urlencoded": {
               "schema": {
                 "type": "object",
-                "required": ["username", "password"],
+                "required": [
+                  "username",
+                  "password"
+                ],
                 "properties": {
-                  "username": { "type": "string" },
-                  "password": { "type": "string", "format": "password" }
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Session authenticated; Set-Cookie rotates the opaque session ID" },
-          "401": { "$ref": "#/components/responses/AuthError" },
-          "403": { "$ref": "#/components/responses/AuthError" }
+          "200": {
+            "description": "Session authenticated; Set-Cookie rotates the opaque session ID"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       }
     },
@@ -49,12 +76,25 @@
       "post": {
         "operationId": "logout",
         "parameters": [
-          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "204": { "description": "Current session invalidated" },
-          "401": { "$ref": "#/components/responses/AuthError" },
-          "403": { "$ref": "#/components/responses/AuthError" }
+          "204": {
+            "description": "Current session invalidated"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       }
     },
@@ -64,9 +104,17 @@
         "responses": {
           "200": {
             "description": "Current account and effective authorities",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CurrentUser" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUser"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/AuthError" }
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       }
     },
@@ -74,62 +122,146 @@
       "post": {
         "operationId": "createCatalogDraft",
         "parameters": [
-          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } },
-          { "name": "X-Trace-Id", "in": "header", "required": false, "schema": { "type": "string", "maxLength": 128 } }
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DraftInput" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftInput"
+              }
+            }
+          }
         },
         "responses": {
           "201": {
             "description": "Draft Product Version 1 created",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDraft"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/AuthError" },
-          "401": { "$ref": "#/components/responses/AuthError" },
-          "403": { "$ref": "#/components/responses/AuthError" }
+          "400": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       }
     },
     "/api/v1/catalog/admin/drafts/{productId}": {
       "parameters": [
-        { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        {
+          "name": "productId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       ],
       "get": {
         "operationId": "getCatalogDraft",
         "responses": {
           "200": {
             "description": "Latest Product Version",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDraft"
+                }
+              }
+            }
           },
-          "403": { "$ref": "#/components/responses/AuthError" },
-          "404": { "$ref": "#/components/responses/AuthError" }
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       },
       "patch": {
         "operationId": "reviseCatalogDraft",
         "parameters": [
-          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DraftRevision" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftRevision"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "A new immutable Draft Product Version",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDraft"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/AuthError" },
-          "403": { "$ref": "#/components/responses/AuthError" },
-          "409": { "$ref": "#/components/responses/AuthError" }
+          "400": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "409": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       }
     },
     "/api/v1/catalog/admin/drafts/{productId}/image": {
       "parameters": [
-        { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        {
+          "name": "productId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       ],
       "get": {
         "operationId": "getDraftPrimaryImage",
@@ -138,22 +270,58 @@
           "200": {
             "description": "Image bytes; private, no-store and nosniff",
             "content": {
-              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
-              "image/png": { "schema": { "type": "string", "format": "binary" } },
-              "image/webp": { "schema": { "type": "string", "format": "binary" } }
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthError" },
-          "403": { "$ref": "#/components/responses/AuthError" },
-          "404": { "$ref": "#/components/responses/AuthError" }
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       },
       "post": {
         "operationId": "replaceDraftPrimaryImage",
         "summary": "Store an image and create a new Draft Product Version",
         "parameters": [
-          { "name": "X-CSRF-TOKEN", "in": "header", "required": true, "schema": { "type": "string" } },
-          { "name": "X-Trace-Id", "in": "header", "required": false, "schema": { "type": "string", "maxLength": 128 } }
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -161,10 +329,20 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["image", "expected_version_no"],
+                "required": [
+                  "image",
+                  "expected_version_no"
+                ],
                 "properties": {
-                  "image": { "type": "string", "format": "binary", "description": "JPEG, PNG or WebP, maximum 10 MiB" },
-                  "expected_version_no": { "type": "integer", "minimum": 1 }
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG, PNG or WebP, maximum 10 MiB"
+                  },
+                  "expected_version_no": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
                 }
               }
             }
@@ -173,14 +351,32 @@
         "responses": {
           "200": {
             "description": "New Draft Product Version with a primary image",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CatalogDraft" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDraft"
+                }
+              }
+            }
           },
-          "400": { "$ref": "#/components/responses/AuthError" },
-          "401": { "$ref": "#/components/responses/AuthError" },
-          "403": { "$ref": "#/components/responses/AuthError" },
-          "409": { "$ref": "#/components/responses/AuthError" },
-          "413": { "$ref": "#/components/responses/AuthError" },
-          "503": { "$ref": "#/components/responses/AuthError" }
+          "400": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "409": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "413": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "503": {
+            "$ref": "#/components/responses/AuthError"
+          }
         }
       }
     },
@@ -193,25 +389,46 @@
             "name": "productId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "productVersionId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Image bytes for the active product version",
             "content": {
-              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
-              "image/png": { "schema": { "type": "string", "format": "binary" } },
-              "image/webp": { "schema": { "type": "string", "format": "binary" } }
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "404": { "description": "Product version is not active or has no readable image" }
+          "404": {
+            "description": "Product version is not active or has no readable image"
+          }
         }
       }
     },
@@ -236,7 +453,9 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["image"],
+                "required": [
+                  "image"
+                ],
                 "properties": {
                   "image": {
                     "type": "string",
@@ -285,6 +504,121 @@
           }
         }
       }
+    },
+    "/api/v1/search/composed": {
+      "post": {
+        "operationId": "searchByComposed",
+        "summary": "Search the active fashion catalog by image plus modification text",
+        "description": "Exactly one reference branch per request. UPLOAD: image part, no anchor parts. PRODUCT: anchor_product_id, anchor_product_version_id and anchor_catalog_snapshot_id, no image part. Field names are provisional until the composed contract stabilizes.",
+        "parameters": [
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "schema_version",
+                  "modification_text"
+                ],
+                "properties": {
+                  "schema_version": {
+                    "type": "string",
+                    "const": "1.0.0"
+                  },
+                  "modification_text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024,
+                    "description": "Raw UTF-8 modification text, 1..1024 Unicode code points"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "UPLOAD branch only: JPEG, PNG or WebP, maximum 10 MiB"
+                  },
+                  "anchor_product_id": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "anchor_product_version_id": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "anchor_catalog_snapshot_id": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ranked products from one consistent publication",
+            "headers": {
+              "X-Trace-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComposedSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ComposedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ComposedError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ComposedError"
+          },
+          "413": {
+            "$ref": "#/components/responses/ComposedError"
+          },
+          "415": {
+            "$ref": "#/components/responses/ComposedError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ComposedError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -293,7 +627,9 @@
         "description": "Authentication, authorization or catalog validation error",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/AuthError" }
+            "schema": {
+              "$ref": "#/components/schemas/AuthError"
+            }
           }
         }
       },
@@ -306,72 +642,191 @@
             }
           }
         }
+      },
+      "ComposedError": {
+        "description": "Stable public composed-search error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ComposedErrorResponse"
+            }
+          }
+        }
       }
     },
     "schemas": {
       "AuthError": {
         "type": "object",
-        "required": ["code", "message"],
+        "required": [
+          "code",
+          "message"
+        ],
         "properties": {
-          "code": { "type": "string" },
-          "message": { "type": "string" }
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
         }
       },
       "CsrfResponse": {
         "type": "object",
-        "required": ["header_name", "token"],
+        "required": [
+          "header_name",
+          "token"
+        ],
         "properties": {
-          "header_name": { "type": "string" },
-          "token": { "type": "string" }
+          "header_name": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
         }
       },
       "CurrentUser": {
         "type": "object",
-        "required": ["username", "authorities"],
+        "required": [
+          "username",
+          "authorities"
+        ],
         "properties": {
-          "username": { "type": "string" },
-          "authorities": { "type": "array", "items": { "type": "string" } }
+          "username": {
+            "type": "string"
+          },
+          "authorities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "DraftInput": {
         "type": "object",
-        "required": ["title", "category"],
+        "required": [
+          "title",
+          "category"
+        ],
         "properties": {
-          "title": { "type": "string", "minLength": 1, "maxLength": 250 },
-          "description": { "type": ["string", "null"], "maxLength": 4000 },
-          "category": { "type": "string", "enum": ["TOP", "BOTTOM", "ONE_PIECE"] }
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 250
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
+          }
         }
       },
       "DraftRevision": {
         "allOf": [
-          { "$ref": "#/components/schemas/DraftInput" },
+          {
+            "$ref": "#/components/schemas/DraftInput"
+          },
           {
             "type": "object",
-            "required": ["expected_version_no"],
-            "properties": { "expected_version_no": { "type": "integer", "minimum": 1 } }
+            "required": [
+              "expected_version_no"
+            ],
+            "properties": {
+              "expected_version_no": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
           }
         ]
       },
       "CatalogDraft": {
         "type": "object",
-        "required": ["product_id", "product_version_id", "version_no", "status", "title", "category", "created_by", "created_at", "has_primary_image"],
+        "required": [
+          "product_id",
+          "product_version_id",
+          "version_no",
+          "status",
+          "title",
+          "category",
+          "created_by",
+          "created_at",
+          "has_primary_image"
+        ],
         "properties": {
-          "product_id": { "type": "string", "format": "uuid" },
-          "product_version_id": { "type": "string", "format": "uuid" },
-          "version_no": { "type": "integer", "minimum": 1 },
-          "status": { "type": "string", "enum": ["DRAFT", "PROCESSING", "NEEDS_REVIEW", "INDEXED", "ACTIVE", "FAILED", "ARCHIVED"] },
-          "title": { "type": "string" },
-          "description": { "type": ["string", "null"] },
-          "category": { "type": "string", "enum": ["TOP", "BOTTOM", "ONE_PIECE"] },
-          "created_by": { "type": "string", "format": "uuid" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "has_primary_image": { "type": "boolean" }
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROCESSING",
+              "NEEDS_REVIEW",
+              "INDEXED",
+              "ACTIVE",
+              "FAILED",
+              "ARCHIVED"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "has_primary_image": {
+            "type": "boolean"
+          }
         }
       },
       "Publication": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["catalog_snapshot_id", "model_version", "index_version"],
+        "required": [
+          "catalog_snapshot_id",
+          "model_version",
+          "index_version"
+        ],
         "properties": {
           "catalog_snapshot_id": {
             "type": "string"
@@ -415,7 +870,11 @@
           },
           "category": {
             "type": "string",
-            "enum": ["TOP", "BOTTOM", "ONE_PIECE"]
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
           },
           "image_url": {
             "type": "string"
@@ -425,7 +884,10 @@
       "Latency": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["ai_latency_ms", "total_latency_ms"],
+        "required": [
+          "ai_latency_ms",
+          "total_latency_ms"
+        ],
         "properties": {
           "ai_latency_ms": {
             "type": "number",
@@ -477,14 +939,21 @@
       "ErrorResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema_version", "code", "message"],
+        "required": [
+          "schema_version",
+          "code",
+          "message"
+        ],
         "properties": {
           "schema_version": {
             "type": "string",
             "const": "1.0.0"
           },
           "trace_id": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "code": {
             "type": "string",
@@ -494,6 +963,230 @@
               "IMAGE_TOO_LARGE",
               "AI_UNAVAILABLE",
               "AI_PUBLICATION_MISMATCH",
+              "CATALOG_VERSION_MISMATCH"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ComposedUploadReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "UPLOAD"
+          }
+        }
+      },
+      "ComposedProductReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "product_id",
+          "product_version_id",
+          "catalog_snapshot_id"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "PRODUCT"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "product_version_id": {
+            "type": "string"
+          },
+          "catalog_snapshot_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ComposedReference": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ComposedUploadReference"
+          },
+          {
+            "$ref": "#/components/schemas/ComposedProductReference"
+          }
+        ]
+      },
+      "ComposedFusion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fusion_version",
+          "strategy",
+          "image_weight",
+          "text_weight",
+          "component_normalization",
+          "output_normalization",
+          "similarity_metric"
+        ],
+        "properties": {
+          "fusion_version": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string",
+            "const": "WEIGHTED_SUM"
+          },
+          "image_weight": {
+            "type": "number"
+          },
+          "text_weight": {
+            "type": "number"
+          },
+          "component_normalization": {
+            "type": "string"
+          },
+          "output_normalization": {
+            "type": "string"
+          },
+          "similarity_metric": {
+            "type": "string"
+          }
+        }
+      },
+      "ComposedProvenance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_scope",
+          "model_config_hash",
+          "text_normalization_version",
+          "text_overflow_policy",
+          "self_match_policy",
+          "fusion"
+        ],
+        "properties": {
+          "artifact_scope": {
+            "type": "string",
+            "const": "PILOT_ONLY"
+          },
+          "model_config_hash": {
+            "type": "string"
+          },
+          "text_normalization_version": {
+            "type": "string"
+          },
+          "text_overflow_policy": {
+            "type": "string",
+            "enum": [
+              "REJECT_MODEL_LIMIT",
+              "RAW_CAP_ONLY"
+            ]
+          },
+          "self_match_policy": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "EXCLUDE_ANCHOR_PRODUCT"
+            ]
+          },
+          "fusion": {
+            "$ref": "#/components/schemas/ComposedFusion"
+          }
+        }
+      },
+      "ComposedSearchResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "trace_id",
+          "mode",
+          "publication",
+          "requested_k",
+          "returned_k",
+          "reference",
+          "provenance",
+          "results",
+          "latency"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "const": "COMPOSED"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/Publication"
+          },
+          "requested_k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "returned_k": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reference": {
+            "$ref": "#/components/schemas/ComposedReference"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/ComposedProvenance"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchProduct"
+            }
+          },
+          "latency": {
+            "$ref": "#/components/schemas/Latency"
+          }
+        }
+      },
+      "ComposedErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "trace_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_REQUEST",
+              "INVALID_IMAGE",
+              "IMAGE_TOO_LARGE",
+              "TEXT_TOO_LONG",
+              "ANCHOR_PUBLICATION_MISMATCH",
+              "ANCHOR_NOT_AVAILABLE",
+              "CATALOG_UNAVAILABLE",
+              "AI_UNAVAILABLE",
+              "AI_TIMEOUT",
+              "AI_PUBLICATION_MISMATCH",
+              "AI_FUSION_MISMATCH",
+              "AI_CONTRACT_MISMATCH",
               "CATALOG_VERSION_MISMATCH"
             ]
           },
