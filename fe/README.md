@@ -20,6 +20,15 @@ Trang Draft có thể thêm/thay ảnh chính sau khi tạo sản phẩm; upload
 ```bash
 npm run lint
 npm run build
+node --test tests/composed-workbench.test.mjs
 ```
+
+Trang `/search/composed` là workbench live upload+modification: proxy
+`POST /api/search/composed` giữ nguyên session cookie/CSRF (route này
+không thuộc diện CSRF exception như image) và chuyển tiếp multipart tới
+`POST /api/v1/search/composed`. Validation client trong
+`src/components/composed-search/validation.ts`; server kiểm tra lại toàn
+bộ. Product-anchor picker/detail là ticket sau.
+
 
 Public contract: `../contracts/public-api.openapi.json`.

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
-from ml.retrieval.search import SearchEngine
+from ml.retrieval.search import SearchEngine, normalized_model_view
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,10 @@ class PublicationMismatchError(ValueError):
         self.actual = actual
 
 
+class TokenBudgetExceededError(ValueError):
+    """Raw-valid text that overflows the loaded model token budget (Q3)."""
+
+
 class ModuleUnavailableError(RuntimeError):
     code = "INTERNAL_ERROR"
 
@@ -62,6 +67,44 @@ class ImageSearchModule(Protocol):
         k: int,
         expected_publication: PublicationIdentity,
     ) -> ImageSearchOutcome: ...
+
+
+@dataclass(frozen=True)
+class ComposedSearchOutcome:
+    publication: PublicationIdentity
+    results: tuple[RankedProduct, ...]
+    ai_latency_ms: float
+    fusion_version: str
+    model_config_hash: str
+    text_overflow_policy: str
+    self_match_policy: str
+
+
+EFFECTIVE_FUSION_VERSION = "equal-weight-l2-v1"
+EXPECTED_CORE_FUSION = {"image_weight": 0.5, "text_weight": 0.5, "normalization": "L2"}
+
+
+class ComposedSearchModule(Protocol):
+    @property
+    def publication(self) -> PublicationIdentity: ...
+
+    @property
+    def fusion_version(self) -> str: ...
+
+    def token_budget(self) -> int | None:
+        """Actual loaded-model token budget, or None when the encoder
+        exposes no tokenizer (fixture reports RAW_CAP_ONLY)."""
+        ...
+
+    def search_composed(
+        self,
+        image_path: Path,
+        raw_text: str,
+        k: int,
+        expected_publication: PublicationIdentity,
+        expected_fusion_version: str,
+        exclude_product_id: str | None = None,
+    ) -> ComposedSearchOutcome: ...
 
 
 class RetrievalImageSearchModule:
@@ -102,4 +145,120 @@ class RetrievalImageSearchModule:
             publication=self.publication,
             results=results,
             ai_latency_ms=float(response["latency_ms"]),
+        )
+
+
+class FusionVersionMismatchError(ValueError):
+    def __init__(self, expected: str, actual: str) -> None:
+        super().__init__(
+            "Requested fusion version does not match the loaded AI fusion version"
+        )
+        self.expected = expected
+        self.actual = actual
+
+
+class RetrievalComposedSearchModule:
+    """Thin composed adapter over the frozen retrieval core.
+
+    Reuses the cached SearchEngine and the core equal-weight fusion; guards
+    the loaded-model token budget (Q3) before encoding and reports the
+    effective provenance instead of trusting caller claims.
+    """
+
+    def __init__(self, engine: SearchEngine, catalog_snapshot_id: str) -> None:
+        self._engine = engine
+        self._publication = PublicationIdentity(
+            catalog_snapshot_id=catalog_snapshot_id,
+            model_version=str(engine.encoder.manifest["model_version"]),
+            index_version=str(engine.index_manifest["index_version"]),
+        )
+
+    @property
+    def publication(self) -> PublicationIdentity:
+        return self._publication
+
+    @property
+    def fusion_version(self) -> str:
+        return EFFECTIVE_FUSION_VERSION
+
+    def token_budget(self) -> int | None:
+        tokenizer = getattr(
+            getattr(self._engine.encoder, "processor", None), "tokenizer", None
+        )
+        budget = getattr(tokenizer, "model_max_length", None)
+        if isinstance(budget, int) and budget > 0:
+            return budget
+        return None
+
+    def count_model_tokens(self, model_view: str) -> int | None:
+        tokenizer = getattr(
+            getattr(self._engine.encoder, "processor", None), "tokenizer", None
+        )
+        if tokenizer is None:
+            return None
+        return len(tokenizer(model_view, truncation=False)["input_ids"])
+
+    def search_composed(
+        self,
+        image_path: Path,
+        raw_text: str,
+        k: int,
+        expected_publication: PublicationIdentity,
+        expected_fusion_version: str,
+        exclude_product_id: str | None = None,
+    ) -> ComposedSearchOutcome:
+        if expected_publication != self.publication:
+            raise PublicationMismatchError(expected_publication, self.publication)
+        if expected_fusion_version != EFFECTIVE_FUSION_VERSION:
+            raise FusionVersionMismatchError(
+                expected_fusion_version, EFFECTIVE_FUSION_VERSION
+            )
+        model_view = normalized_model_view(raw_text)
+        if not model_view:
+            raise ValueError("Modification text is empty after normalization")
+        overflow_policy = "RAW_CAP_ONLY"
+        budget = self.token_budget()
+        if budget is not None:
+            overflow_policy = "REJECT_MODEL_LIMIT"
+            used = self.count_model_tokens(model_view)
+            if used is not None and used > budget:
+                raise TokenBudgetExceededError(
+                    f"Modification text uses {used} model tokens, budget is {budget}"
+                )
+        response = self._engine.search_composed(
+            image_path=image_path,
+            raw_text=raw_text,
+            k=k,
+            exclude_product_id=exclude_product_id,
+        )
+        fusion = response.get("query", {}).get("fusion", {})
+        if not all(
+            fusion.get(key) == value for key, value in EXPECTED_CORE_FUSION.items()
+        ):
+            raise ModuleUnavailableError(
+                "Loaded core fusion does not match the advertised equal-weight fusion"
+            )
+        results = tuple(
+            RankedProduct(
+                product_id=str(item["product_id"]),
+                product_version_id=str(item["product_version_id"]),
+                rank=int(item["rank"]),
+                similarity_score=float(item["similarity_score"]),
+            )
+            for item in response["results"]
+        )
+        if [item.rank for item in results] != list(range(1, len(results) + 1)):
+            raise ModuleUnavailableError("Core returned non-sequential ranks")
+        if any(not math.isfinite(item.similarity_score) for item in results):
+            raise ModuleUnavailableError("Core returned a non-finite similarity score")
+        return ComposedSearchOutcome(
+            publication=self.publication,
+            results=results,
+            ai_latency_ms=float(response["latency_ms"]),
+            fusion_version=EFFECTIVE_FUSION_VERSION,
+            model_config_hash=str(self._engine.encoder.manifest["config_hash"]),
+            text_overflow_policy=overflow_policy,
+            self_match_policy="EXCLUDE_ANCHOR_PRODUCT"
+            if exclude_product_id
+            else "NONE",
         )

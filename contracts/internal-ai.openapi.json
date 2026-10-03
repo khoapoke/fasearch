@@ -48,6 +48,198 @@
         "title": "Body_search_image_internal_v1_search_image_post",
         "type": "object"
       },
+      "ComposedFusionProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "component_normalization": {
+            "const": "L2",
+            "default": "L2",
+            "title": "Component Normalization",
+            "type": "string"
+          },
+          "fusion_version": {
+            "minLength": 1,
+            "title": "Fusion Version",
+            "type": "string"
+          },
+          "image_weight": {
+            "default": 0.5,
+            "title": "Image Weight",
+            "type": "number"
+          },
+          "output_normalization": {
+            "const": "L2",
+            "default": "L2",
+            "title": "Output Normalization",
+            "type": "string"
+          },
+          "similarity_metric": {
+            "const": "NORMALIZED_INNER_PRODUCT",
+            "default": "NORMALIZED_INNER_PRODUCT",
+            "title": "Similarity Metric",
+            "type": "string"
+          },
+          "strategy": {
+            "const": "WEIGHTED_SUM",
+            "default": "WEIGHTED_SUM",
+            "title": "Strategy",
+            "type": "string"
+          },
+          "text_weight": {
+            "default": 0.5,
+            "title": "Text Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "fusion_version"
+        ],
+        "title": "ComposedFusionProvenance",
+        "type": "object"
+      },
+      "ComposedProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_scope": {
+            "const": "PILOT_ONLY",
+            "default": "PILOT_ONLY",
+            "title": "Artifact Scope",
+            "type": "string"
+          },
+          "fusion": {
+            "$ref": "#/components/schemas/ComposedFusionProvenance"
+          },
+          "model_config_hash": {
+            "minLength": 1,
+            "title": "Model Config Hash",
+            "type": "string"
+          },
+          "self_match_policy": {
+            "enum": [
+              "NONE",
+              "EXCLUDE_ANCHOR_PRODUCT"
+            ],
+            "title": "Self Match Policy",
+            "type": "string"
+          },
+          "text_normalization_version": {
+            "const": "nfc-whitespace-v1",
+            "default": "nfc-whitespace-v1",
+            "title": "Text Normalization Version",
+            "type": "string"
+          },
+          "text_overflow_policy": {
+            "enum": [
+              "REJECT_MODEL_LIMIT",
+              "RAW_CAP_ONLY"
+            ],
+            "title": "Text Overflow Policy",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_config_hash",
+          "text_overflow_policy",
+          "self_match_policy",
+          "fusion"
+        ],
+        "title": "ComposedProvenance",
+        "type": "object"
+      },
+      "ComposedSearchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ai_latency_ms": {
+            "minimum": 0.0,
+            "title": "Ai Latency Ms",
+            "type": "number"
+          },
+          "mode": {
+            "const": "COMPOSED",
+            "default": "COMPOSED",
+            "title": "Mode",
+            "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/ComposedProvenance"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/PublicationRef"
+          },
+          "requested_k": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Requested K",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ComposedSearchResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "returned_k": {
+            "minimum": 0.0,
+            "title": "Returned K",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trace_id",
+          "publication",
+          "requested_k",
+          "returned_k",
+          "provenance",
+          "results",
+          "ai_latency_ms"
+        ],
+        "title": "ComposedSearchResponse",
+        "type": "object"
+      },
+      "ComposedSearchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "minLength": 1,
+            "title": "Product Id",
+            "type": "string"
+          },
+          "product_version_id": {
+            "minLength": 1,
+            "title": "Product Version Id",
+            "type": "string"
+          },
+          "rank": {
+            "minimum": 1.0,
+            "title": "Rank",
+            "type": "integer"
+          },
+          "similarity_score": {
+            "title": "Similarity Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "product_id",
+          "product_version_id",
+          "rank",
+          "similarity_score"
+        ],
+        "title": "ComposedSearchResult",
+        "type": "object"
+      },
       "ErrorResponse": {
         "additionalProperties": false,
         "properties": {
@@ -56,7 +248,9 @@
               "INVALID_REQUEST",
               "INVALID_IMAGE",
               "IMAGE_TOO_LARGE",
+              "TEXT_TOO_LONG",
               "PUBLICATION_MISMATCH",
+              "FUSION_VERSION_MISMATCH",
               "MODEL_UNAVAILABLE",
               "INDEX_UNAVAILABLE",
               "INTERNAL_ERROR"
@@ -257,6 +451,87 @@
         "summary": "Health",
         "tags": [
           "operations"
+        ]
+      }
+    },
+    "/internal/v1/search/composed": {
+      "post": {
+        "operationId": "search_composed_internal_v1_search_composed_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComposedSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Search Composed",
+        "tags": [
+          "search"
         ]
       }
     },
