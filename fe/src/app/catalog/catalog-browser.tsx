@@ -12,7 +12,6 @@ import { detailHref, parseCatalogView } from "@/lib/catalog-contract";
 import type { FashionCategory } from "@/lib/search-contract";
 import styles from "./catalog-browser.module.css";
 
-const PAGE_SIZE = 24;
 const CATEGORIES: Array<{ value: FashionCategory | null; label: string }> = [
   { value: null, label: "Tất cả" },
   { value: "TOP", label: "Áo" },
@@ -60,14 +59,14 @@ function BrowserInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { category, page } = parseCatalogView(searchParams);
+  const { category, page, size } = parseCatalogView(searchParams);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Last settled response, keyed by the view that requested it. The visible
   // state is derived: anything not matching the current key is still loading.
   // This keeps setState inside async callbacks only (no set-state-in-effect).
-  const viewKey = `${category ?? "ALL"}:p${page}:r${retryNonce}`;
+  const viewKey = `${category ?? "ALL"}:p${page}:s${size}:r${retryNonce}`;
   const [settled, setSettled] = useState<{ key: string; state: BrowseState } | null>(null);
 
   const navigate = useCallback(
@@ -75,10 +74,11 @@ function BrowserInner() {
       const params = new URLSearchParams();
       if (nextCategory) params.set("category", nextCategory);
       if (nextPage > 1) params.set("page", String(nextPage));
+      if (size !== 24) params.set("size", String(size));
       const query = params.toString();
       router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
-    [pathname, router],
+    [pathname, router, size],
   );
 
   useEffect(() => {
@@ -91,7 +91,7 @@ function BrowserInner() {
 
     const params = new URLSearchParams();
     params.set("page", String(page));
-    params.set("size", String(PAGE_SIZE));
+    params.set("size", String(size));
     if (category) params.set("category", category);
 
     fetch(`/api/catalog/products?${params.toString()}`, {
@@ -133,7 +133,7 @@ function BrowserInner() {
       // newer request or unmount, never the current one mid-flight.
       if (requestIdRef.current === requestId) controller.abort();
     };
-  }, [category, page, retryNonce, viewKey]);
+  }, [category, page, size, retryNonce, viewKey]);
 
   useEffect(() => {
     return () => {

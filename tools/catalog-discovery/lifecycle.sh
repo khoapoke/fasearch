@@ -24,21 +24,84 @@ expect_free() {
   fi
 }
 
-guard_pid() {
-  local pidfile=$1 pattern=$2 pid
-  [[ -f $pidfile ]] || { echo "REFUSE: missing pid file $pidfile" >&2; return 1; }
+NODE_EXE=$("$VENV312" -c 'import os,shutil; print(os.path.realpath(shutil.which("node")))')
+JAVA_EXE="$(/usr/libexec/java_home -v 17)/bin/java"
+PY_EXE=$("$VENV312" -c 'import os,sys; print(os.path.realpath(sys.executable))')
+
+owns_process() { # PID, argv pattern, exact cwd, executable
+  local pid=$1 pattern=$2 cwd=$3 exe=$4 args observed
+  [[ $pid =~ ^[0-9]+$ ]] || { echo "REFUSE: invalid PID" >&2; return 1; }
+  args=$(ps -p "$pid" -o args= 2>/dev/null) || return 1
+  printf '%s' "$args" | grep -qE "$pattern" || { echo "REFUSE: command mismatch $pid" >&2; return 1; }
+  observed=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null) || return 1
+  printf '%s\n' "$observed" | grep -Fxq "n$cwd" || { echo "REFUSE: cwd mismatch $pid" >&2; return 1; }
+  observed=$(lsof -a -p "$pid" -d txt -Fn 2>/dev/null) || return 1
+  printf '%s\n' "$observed" | grep -Fxq "n$exe" || { echo "REFUSE: executable mismatch $pid" >&2; return 1; }
+}
+
+guard_pid() { # PID file, argv pattern, cwd, executable
+  local pidfile=$1 pattern=$2 cwd=$3 exe=$4 pid recorded current
+  [[ -f $pidfile ]] || { echo "REFUSE: missing PID record" >&2; return 1; }
   pid=$(tr -d '[:space:]' < "$pidfile")
-  [[ $pid =~ ^[0-9]+$ ]] || { echo "REFUSE: bad pid in $pidfile" >&2; return 1; }
-  local args; args=$(ps -p "$pid" -o args= 2>/dev/null) || { echo "REFUSE: pid $pid not running" >&2; return 1; }
-  if ! printf '%s' "$args" | grep -qE "$pattern"; then
-    echo "REFUSE: pid $pid is not this task's process: $args" >&2; return 1
-  fi
+  owns_process "$pid" "$pattern" "$cwd" "$exe" || return 1
+  [[ -f $pidfile.identity ]] || { echo "REFUSE: missing start identity; adopt first" >&2; return 1; }
+  recorded=$(cat "$pidfile.identity")
+  current=$(ps -p "$pid" -o lstart=)
+  [[ $recorded == "$current" ]] || { echo "REFUSE: PID reused $pid" >&2; return 1; }
   printf '%s' "$pid"
 }
 
 guard_listener() {
-  local pid=$1 port=$2
-  lsof -a -p "$pid" -iTCP:$port -sTCP:LISTEN 2>/dev/null | grep -q LISTEN || { echo "REFUSE: pid $pid has no listener on $port" >&2; return 1; }
+  local pid=$1 port=$2 listeners
+  listeners=$(lsof -tiTCP:$port -sTCP:LISTEN 2>/dev/null) || return 1
+  [[ $listeners == "$pid" ]] || { echo "REFUSE: listener mismatch on $port" >&2; return 1; }
+}
+
+is_descendant() {
+  local child=$1 ancestor=$2 parent count=0
+  while [[ $child =~ ^[0-9]+$ && $child -gt 1 && $count -lt 64 ]]; do
+    [[ $child == "$ancestor" ]] && return 0
+    parent=$(ps -p "$child" -o ppid= 2>/dev/null | tr -d '[:space:]') || return 1
+    [[ $parent != "$child" ]] || return 1
+    child=$parent; count=$((count+1))
+  done
+  return 1
+}
+
+record_pid() {
+  printf '%s\n' "$2" > "$1"
+  ps -p "$2" -o lstart= > "$1.identity"
+}
+
+adopt_stack() {
+  local ai boot wrapper listener
+  ai=$(cat "$AI_PID_FILE"); boot=$(cat "$BOOT_PID_FILE"); wrapper=$(cat "$FE_PID_FILE")
+  owns_process "$ai" "uvicorn fasearch_ai.main:app.*--port $AI_PORT" "$ROOT/ai" "$PY_EXE"
+  guard_listener "$ai" "$AI_PORT"
+  owns_process "$boot" "java -jar target/backend-0.0.1-SNAPSHOT.jar" "$ROOT/be" "$JAVA_EXE"
+  guard_listener "$boot" "$BOOT_PORT"
+  listener=$(lsof -tiTCP:$FE_PORT -sTCP:LISTEN)
+  owns_process "$listener" "next-server" "$ROOT/fe" "$NODE_EXE"
+  if [[ $wrapper != "$listener" ]]; then
+    # One-time adoption of the verified historical AND-list shell or npm wrapper.
+    if ! owns_process "$wrapper" "npm run start" "$ROOT/fe" "$NODE_EXE"; then
+      owns_process "$wrapper" "bash $ROOT/tools/catalog-discovery/lifecycle.sh start" "$ROOT/fe" "/bin/bash"
+    fi
+    is_descendant "$listener" "$wrapper" || { echo "REFUSE: FE listener not descendant" >&2; return 1; }
+  fi
+  record_pid "$AI_PID_FILE" "$ai"; record_pid "$BOOT_PID_FILE" "$boot"; record_pid "$FE_PID_FILE" "$listener"
+  "$VENV312" "$ROOT/tools/catalog-discovery/container_guard.py" adopt
+  echo "ADOPT PASS: exact cwd/executable/listener/starttime; FE descendant verified"
+}
+
+check_stack() {
+  local ai boot fe
+  ai=$(guard_pid "$AI_PID_FILE" "uvicorn fasearch_ai.main:app.*--port $AI_PORT" "$ROOT/ai" "$PY_EXE")
+  boot=$(guard_pid "$BOOT_PID_FILE" "java -jar target/backend-0.0.1-SNAPSHOT.jar" "$ROOT/be" "$JAVA_EXE")
+  fe=$(guard_pid "$FE_PID_FILE" "next-server" "$ROOT/fe" "$NODE_EXE")
+  guard_listener "$ai" "$AI_PORT"; guard_listener "$boot" "$BOOT_PORT"; guard_listener "$fe" "$FE_PORT"
+  "$VENV312" "$ROOT/tools/catalog-discovery/container_guard.py" check
+  echo "GUARD PASS: AI=$ai Boot=$boot FE=$fe"
 }
 
 do_health() {
@@ -62,6 +125,7 @@ do_warm() {
 
 do_start() {
   expect_free $AI_PORT; expect_free $BOOT_PORT; expect_free $FE_PORT
+  "$VENV312" "$ROOT/tools/catalog-discovery/container_guard.py" check
   docker start fasearch-$TASK-pg fasearch-$TASK-s3 >/dev/null
   for i in $(seq 1 30); do
     docker exec fasearch-$TASK-pg pg_isready -U fasearch >/dev/null 2>&1 && break; sleep 1
@@ -93,48 +157,45 @@ do_start() {
     > /private/tmp/fasearch-catalog-discovery-boot.log 2>&1 &
   echo $! > $BOOT_PID_FILE
 
-  ( cd "$ROOT/fe" && \
-    FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
-    nohup npm run start -- --port $FE_PORT > /private/tmp/fasearch-catalog-discovery-fe.log 2>&1 & \
-    echo $! > $FE_PID_FILE )
+  cd "$ROOT/fe" || return 1
+  FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
+    nohup npm run start -- --port $FE_PORT > /private/tmp/fasearch-catalog-discovery-fe.log 2>&1 &
+  local wrapper=$!
 
   for i in $(seq 1 40); do do_health >/dev/null 2>&1 && break; sleep 3; done
   do_health
+  local listener; listener=$(lsof -tiTCP:$FE_PORT -sTCP:LISTEN)
+  owns_process "$listener" "next-server" "$ROOT/fe" "$NODE_EXE"
+  is_descendant "$listener" "$wrapper" || { echo "REFUSE: FE listener not descendant" >&2; return 1; }
+  record_pid "$AI_PID_FILE" "$(cat "$AI_PID_FILE")"
+  record_pid "$BOOT_PID_FILE" "$(cat "$BOOT_PID_FILE")"
+  record_pid "$FE_PID_FILE" "$listener"
+  check_stack
 }
 
 do_stop() {
-  local pid child
-  if [[ -f $FE_PID_FILE ]]; then
-    pid=$(guard_pid "$FE_PID_FILE" "npm run start|next-server") \
-      || return 1
-    child=""
-    for candidate in $(pgrep -g "$(ps -o pgid= -p "$pid" | tr -d ' ')" 2>/dev/null); do
-      if lsof -a -p "$candidate" -iTCP:$FE_PORT -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
-        child=$candidate
-        break
-      fi
+  # Validate the whole stack before the first signal. No process-group scan/kill.
+  check_stack
+  local pid
+  for record in "$FE_PID_FILE" "$BOOT_PID_FILE" "$AI_PID_FILE"; do
+    pid=$(cat "$record")
+    kill "$pid"
+    for i in $(seq 1 60); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep .5
     done
-    if [[ -z $child ]]; then echo "REFUSE: no task listener on $FE_PORT" >&2; return 1; fi
-    kill "$child" 2>/dev/null || true
-    echo "stopped FE server $child (wrapper $pid)"
-    sleep 2
-    kill -0 "$pid" 2>/dev/null && kill "$pid" 2>/dev/null || true
-  fi
-  if [[ -f $BOOT_PID_FILE ]]; then
-    pid=$(guard_pid "$BOOT_PID_FILE" "backend-0.0.1-SNAPSHOT.jar") \
-    && guard_listener "$pid" "$BOOT_PORT" && kill "$pid" \
-    && echo "stopped Boot $pid" || return 1
-  fi
-  if [[ -f $AI_PID_FILE ]]; then
-    pid=$(guard_pid "$AI_PID_FILE" "uvicorn fasearch_ai.main:app.*--port $AI_PORT") \
-    && guard_listener "$pid" "$AI_PORT" && kill "$pid" \
-    && echo "stopped AI $pid" || return 1
-  fi
+    kill -0 "$pid" 2>/dev/null && { echo "REFUSE: process still draining $pid" >&2; return 1; }
+    rm "$record" "$record.identity"
+    echo "STOPPED exact task PID $pid"
+  done
   docker stop fasearch-$TASK-pg fasearch-$TASK-s3 >/dev/null
   echo "task containers stopped"
 }
 
+[[ ${FASEARCH_LIFECYCLE_LIB_ONLY:-0} == 1 ]] && return 0
+
 case "${1:-}" in
+  adopt) adopt_stack;; check) check_stack;;
   start) do_start;; stop) do_stop;; health) do_health;; warm) do_warm;;
   restart) do_stop; sleep 2; do_start;;
   *) echo "usage: lifecycle.sh {start|stop|health|warm|restart}" >&2; exit 2;;

@@ -14,7 +14,7 @@ import type {
   CatalogDetailResponse,
   CatalogError,
 } from "@/lib/catalog-contract";
-import { detailHref } from "@/lib/catalog-contract";
+import { detailHref, parseCatalogAnchor } from "@/lib/catalog-contract";
 import type {
   ComposedSearchError,
   ComposedSearchResponse,
@@ -45,11 +45,6 @@ type AnchorState =
   | { status: "ready"; data: CatalogDetailResponse }
   | { status: "error"; message: string };
 
-interface AnchorRef {
-  productId: string;
-  productVersionId: string;
-  snapshotId: string;
-}
 
 async function csrfToken(): Promise<{ header: string; token: string }> {
   const response = await fetch("/api/auth/csrf", { cache: "no-store" });
@@ -60,28 +55,26 @@ async function csrfToken(): Promise<{ header: string; token: string }> {
 
 export function ComposedSearchWorkbench() {
   const searchParams = useSearchParams();
-  const anchorParam: AnchorRef | null = (() => {
-    const productId = searchParams.get("anchor_product_id");
-    const productVersionId = searchParams.get("anchor_product_version_id");
-    const snapshotId = searchParams.get("anchor_catalog_snapshot_id");
-    if (!productId || !productVersionId || !snapshotId) return null;
-    return { productId, productVersionId, snapshotId };
-  })();
-  const anchorKey = anchorParam
-    ? `${anchorParam.productId}:${anchorParam.productVersionId}:${anchorParam.snapshotId}`
-    : "";
+  const parsedAnchor = parseCatalogAnchor(searchParams);
+  const anchorParam = parsedAnchor.status === "valid" ? parsedAnchor.reference : null;
+  const hasAnchor = parsedAnchor.status !== "absent";
+  const anchorKey = JSON.stringify(["anchor_product_id", "anchor_product_version_id", "anchor_catalog_snapshot_id"]
+    .map((name) => searchParams.getAll(name)));
 
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const anchorRequestIdRef = useRef(0);
+  const anchorAbortRef = useRef<AbortController | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [k, setK] = useState(10);
-  const [mode, setMode] = useState<"UPLOAD" | "PRODUCT">(
-    anchorParam ? "PRODUCT" : "UPLOAD",
-  );
+  const [modeChoice, setModeChoice] = useState<{ key: string; mode: "UPLOAD" | "PRODUCT" } | null>(null);
+  const mode = modeChoice?.key === anchorKey ? modeChoice.mode : hasAnchor ? "PRODUCT" : "UPLOAD";
+  const [anchorValidationNonce, setAnchorValidationNonce] = useState(0);
+  const anchorValidationKey = `${anchorKey}:r${anchorValidationNonce}`;
   const [settledAnchor, setSettledAnchor] = useState<{ key: string; state: AnchorState } | null>(null);
   const [state, setState] = useState<SearchState>({ status: "idle" });
   const [isDragging, setIsDragging] = useState(false);
@@ -90,6 +83,7 @@ export function ComposedSearchWorkbench() {
     return () => {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
       abortRef.current?.abort();
+      anchorAbortRef.current?.abort();
     };
   }, []);
 
@@ -97,13 +91,13 @@ export function ComposedSearchWorkbench() {
   // submit. A stale, private or missing anchor fails visibly — never falls
   // back to another version or to an upload.
   useEffect(() => {
-    if (!anchorParam) return;
-    const key = anchorKey;
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    abortRef.current?.abort();
+    if (!anchorParam || mode !== "PRODUCT") return;
+    const key = anchorValidationKey;
+    const requestId = anchorRequestIdRef.current + 1;
+    anchorRequestIdRef.current = requestId;
+    anchorAbortRef.current?.abort();
     const controller = new AbortController();
-    abortRef.current = controller;
+    anchorAbortRef.current = controller;
 
     const params = new URLSearchParams({
       product_version_id: anchorParam.productVersionId,
@@ -114,11 +108,11 @@ export function ComposedSearchWorkbench() {
       { cache: "no-store", signal: controller.signal },
     )
       .then(async (response) => {
-        if (requestIdRef.current !== requestId) return;
+        if (anchorRequestIdRef.current !== requestId) return;
         const payload = (await response.json()) as
           | CatalogDetailResponse
           | CatalogError;
-        if (requestIdRef.current !== requestId) return;
+        if (anchorRequestIdRef.current !== requestId) return;
         if (!response.ok) {
           setSettledAnchor({
             key,
@@ -140,7 +134,7 @@ export function ComposedSearchWorkbench() {
         });
       })
       .catch((failure: unknown) => {
-        if (requestIdRef.current !== requestId) return;
+        if (anchorRequestIdRef.current !== requestId) return;
         if (failure instanceof DOMException && failure.name === "AbortError") return;
         setSettledAnchor({
           key,
@@ -152,14 +146,16 @@ export function ComposedSearchWorkbench() {
       });
 
     return () => {
-      if (requestIdRef.current === requestId) controller.abort();
+      controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anchorKey]);
+  }, [anchorKey, anchorValidationKey, mode]);
 
-  const anchor: AnchorState = !anchorParam
+  const anchor: AnchorState = parsedAnchor.status === "invalid"
+    ? { status: "error", message: "Tham chiếu sản phẩm không đầy đủ hoặc không hợp lệ. Hãy mở lại từ catalog." }
+    : !anchorParam
     ? { status: "none" }
-    : settledAnchor && settledAnchor.key === anchorKey
+    : settledAnchor && settledAnchor.key === anchorValidationKey
       ? settledAnchor.state
       : { status: "loading" };
 
@@ -193,7 +189,8 @@ export function ComposedSearchWorkbench() {
     if (next === mode) return;
     requestIdRef.current += 1;
     abortRef.current?.abort();
-    setMode(next);
+    setModeChoice({ key: anchorKey, mode: next });
+    if (next === "PRODUCT") setAnchorValidationNonce((value) => value + 1);
     setState({ status: "idle" });
     if (next === "UPLOAD") {
       setFile(null);
@@ -208,6 +205,7 @@ export function ComposedSearchWorkbench() {
     setFile(null);
     replacePreview(null);
     setState({ status: "idle" });
+    if (mode === "PRODUCT") setAnchorValidationNonce((value) => value + 1);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -316,7 +314,7 @@ export function ComposedSearchWorkbench() {
 
   return (
     <section className={styles.workbench} aria-label="Tìm kiếm composed trực tiếp">
-      {anchorParam && (
+      {hasAnchor && (
         <div className={styles.modeSwitch} role="group" aria-label="Chế độ tham chiếu">
           <button
             type="button"
@@ -337,7 +335,7 @@ export function ComposedSearchWorkbench() {
         </div>
       )}
 
-      {mode === "PRODUCT" && anchorParam && (
+      {mode === "PRODUCT" && hasAnchor && (
         <div className={styles.anchorBox} aria-live="polite">
           {anchor.status === "loading" && <p>Đang xác thực sản phẩm đã chọn…</p>}
           {anchor.status === "error" && (

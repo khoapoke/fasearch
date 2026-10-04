@@ -55,7 +55,15 @@ export function safeReturnHref(raw: string | null): string {
   ) {
     return path;
   }
-  if (/^\/catalog\/[^/]+$/.test(path)) return path;
+  const match = /^\/catalog\/([^/]+)$/.exec(path);
+  if (match) {
+    try {
+      const productId = decodeURIComponent(match[1]);
+      if (/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(productId) && productId !== "drafts") {
+        return `/catalog/${encodeURIComponent(productId)}`;
+      }
+    } catch { /* malformed percent encoding is not a return target */ }
+  }
   return "/catalog";
 }
 
@@ -63,6 +71,7 @@ export function safeReturnHref(raw: string | null): string {
 export function parseCatalogView(params: URLSearchParams): {
   category: FashionCategory | null;
   page: number;
+  size: number;
 } {
   const rawCategory = params.get("category");
   const category =
@@ -71,9 +80,34 @@ export function parseCatalogView(params: URLSearchParams): {
     rawCategory === "ONE_PIECE"
       ? rawCategory
       : null;
-  const rawPage = Number(params.get("page"));
-  const page = Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
-  return { category, page };
+  const boundedInt = (name: string, fallback: number, max: number) => {
+    const values = params.getAll(name);
+    if (values.length !== 1 || !/^[0-9]+$/.test(values[0])) return fallback;
+    const value = Number(values[0]);
+    return Number.isSafeInteger(value) && value >= 1 && value <= max ? value : fallback;
+  };
+  return { category, page: boundedInt("page", 1, 2147483647), size: boundedInt("size", 24, 60) };
+}
+
+/** Preserve partial/blank/duplicate expected context so Boot can reject it. */
+export function detailContextQuery(params: Pick<URLSearchParams, "getAll">): string {
+  const query = new URLSearchParams();
+  for (const [source, target] of [["v", "product_version_id"], ["s", "catalog_snapshot_id"]]) {
+    for (const value of params.getAll(source)) query.append(target, value);
+  }
+  return query.toString();
+}
+
+export type CatalogAnchor = { productId: string; productVersionId: string; snapshotId: string };
+export type ParsedAnchor = { status: "absent" } | { status: "invalid" } | { status: "valid"; reference: CatalogAnchor };
+
+/** A malformed PRODUCT URL never becomes an UPLOAD request by default. */
+export function parseCatalogAnchor(params: Pick<URLSearchParams, "getAll">): ParsedAnchor {
+  const values = ["anchor_product_id", "anchor_product_version_id", "anchor_catalog_snapshot_id"]
+    .map((name) => params.getAll(name));
+  if (values.every((value) => value.length === 0)) return { status: "absent" };
+  if (values.some((value) => value.length !== 1 || !value[0].trim())) return { status: "invalid" };
+  return { status: "valid", reference: { productId: values[0][0], productVersionId: values[1][0], snapshotId: values[2][0] } };
 }
 
 /** Exact detail URL carrying version + snapshot from an actual API response. */

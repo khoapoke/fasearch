@@ -8,7 +8,7 @@ import type {
   CatalogError,
   CatalogPageResponse,
 } from "@/lib/catalog-contract";
-import { composedAnchorHref, detailHref, safeReturnHref } from "@/lib/catalog-contract";
+import { composedAnchorHref, detailHref, detailContextQuery, safeReturnHref } from "@/lib/catalog-contract";
 import styles from "./catalog-detail.module.css";
 
 type DetailState =
@@ -30,11 +30,11 @@ const categoryNames = {
 
 function DetailInner({ productId }: { productId: string }) {
   const searchParams = useSearchParams();
-  const expectedVersion = searchParams.get("v");
-  const expectedSnapshot = searchParams.get("s");
-  const returnTo = safeReturnHref(searchParams.get("return_to"));  const requestIdRef = useRef(0);
+  const contextQuery = detailContextQuery(searchParams);
+  const returnTo = safeReturnHref(searchParams.get("return_to"));
+  const requestIdRef = useRef(0);
   const [retryNonce, setRetryNonce] = useState(0);
-  const viewKey = `${productId}:v${expectedVersion ?? ""}:s${expectedSnapshot ?? ""}:r${retryNonce}`;
+  const viewKey = `${productId}:${contextQuery}:r${retryNonce}`;
   const [settled, setSettled] = useState<{ key: string; state: DetailState } | null>(null);
   const [related, setRelated] = useState<{ key: string; data: CatalogPageResponse } | null>(null);
 
@@ -44,12 +44,7 @@ function DetailInner({ productId }: { productId: string }) {
     requestIdRef.current = requestId;
     const controller = new AbortController();
 
-    const params = new URLSearchParams();
-    if (expectedVersion && expectedSnapshot) {
-      params.set("product_version_id", expectedVersion);
-      params.set("catalog_snapshot_id", expectedSnapshot);
-    }
-    const query = params.toString();
+    const query = contextQuery;
 
     fetch(
       `/api/catalog/products/${encodeURIComponent(productId)}${query ? `?${query}` : ""}`,
@@ -116,7 +111,7 @@ function DetailInner({ productId }: { productId: string }) {
     return () => {
       if (requestIdRef.current === requestId) controller.abort();
     };
-  }, [productId, expectedVersion, expectedSnapshot, retryNonce, viewKey]);
+  }, [productId, contextQuery, retryNonce, viewKey]);
 
   const state: DetailState =
     settled && settled.key === viewKey ? settled.state : { status: "loading" };
