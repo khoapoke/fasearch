@@ -11,6 +11,14 @@ import org.junit.jupiter.api.Test;
 class PublicApiContractTests {
 
 	@Test
+	void catalogImageUnavailableIsDeclaredAsAnApiError() throws IOException {
+		var contract = new tools.jackson.databind.json.JsonMapper().readTree(
+				Files.readString(Path.of("..", "contracts", "public-api.openapi.json")));
+		assertThat(contract.at("/paths/~1api~1v1~1catalog~1images~1{productId}~1{productVersionId}/get/responses/503/$ref")
+				.asText()).isEqualTo("#/components/responses/SearchError");
+	}
+
+	@Test
 	void checkedInContractContainsTheImplementedImageSearchSurface() throws IOException {
 		Path contractPath = Path.of("..", "contracts", "public-api.openapi.json");
 		String contract = Files.readString(contractPath);
