@@ -11,10 +11,14 @@ import yaml
 from ml.retrieval.pipeline import load_engine
 
 from .module import (
+    ComposedSearchModule,
     ImageSearchModule,
+    TextSearchModule,
     IndexUnavailableError,
     ModelUnavailableError,
+    RetrievalComposedSearchModule,
     RetrievalImageSearchModule,
+    RetrievalTextSearchModule,
 )
 
 
@@ -34,14 +38,29 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return payload
 
 
-@lru_cache(maxsize=1)
-def get_image_search_module() -> ImageSearchModule:
+def _engine_settings() -> tuple[Path, Path, str, str | None]:
     config_path = _resolve_path("FASEARCH_CONFIG_PATH", AI_ROOT / "configs/baseline.v1.yaml")
     index_dir = _resolve_path(
         "FASEARCH_INDEX_DIR",
         AI_ROOT / "artifacts/indexes/week4-baseline-20260908-v1",
     )
     encoder_kind = os.environ.get("FASEARCH_ENCODER", "hf_clip")
+    snapshot_override = os.environ.get("FASEARCH_CATALOG_SNAPSHOT_ID")
+    return config_path, index_dir, encoder_kind, snapshot_override
+
+
+@lru_cache(maxsize=8)
+def _cached_engine_bundle(
+    config_path: Path,
+    index_dir: Path,
+    encoder_kind: str,
+    snapshot_override: str | None,
+) -> tuple[Any, str]:
+    """Load the retrieval engine once per resolved settings key.
+
+    Both search modules share one engine; the key includes every environment
+    input so overrides (used by tests) never read a stale bundle.
+    """
     if not config_path.is_file():
         raise ModelUnavailableError("Configured model settings are unavailable")
     if not (index_dir / "index-manifest.v1.json").is_file():
@@ -62,12 +81,34 @@ def get_image_search_module() -> ImageSearchModule:
         raise IndexUnavailableError("Configured index publication is incomplete or incompatible") from exc
     except RuntimeError as exc:
         raise ModelUnavailableError("Configured model cannot be loaded") from exc
-    catalog_snapshot_id = os.environ.get(
-        "FASEARCH_CATALOG_SNAPSHOT_ID",
-        f"sha256:{manifest['catalog_snapshot_sha256']}",
-    )
+    catalog_snapshot_id = snapshot_override or f"sha256:{manifest['catalog_snapshot_sha256']}"
+    return engine, catalog_snapshot_id
+
+
+@lru_cache(maxsize=1)
+def get_image_search_module() -> ImageSearchModule:
+    engine, catalog_snapshot_id = _cached_engine_bundle(*_engine_settings())
     return RetrievalImageSearchModule(engine, catalog_snapshot_id)
+
+
+@lru_cache(maxsize=1)
+def get_composed_search_module() -> ComposedSearchModule:
+    engine, catalog_snapshot_id = _cached_engine_bundle(*_engine_settings())
+    return RetrievalComposedSearchModule(engine, catalog_snapshot_id)
 
 
 def provide_image_search_module() -> ImageSearchModule:
     return get_image_search_module()
+
+
+def provide_composed_search_module() -> ComposedSearchModule:
+    return get_composed_search_module()
+
+@lru_cache(maxsize=1)
+def get_text_search_module() -> TextSearchModule:
+    engine, catalog_snapshot_id = _cached_engine_bundle(*_engine_settings())
+    return RetrievalTextSearchModule(engine, catalog_snapshot_id)
+
+
+def provide_text_search_module() -> TextSearchModule:
+    return get_text_search_module()

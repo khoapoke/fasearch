@@ -20,6 +20,32 @@ Trang Draft có thể thêm/thay ảnh chính sau khi tạo sản phẩm; upload
 ```bash
 npm run lint
 npm run build
+node --test tests/stale-guard.test.mjs
+node --test tests/composed-demo.test.mjs
+node --test tests/composed-workbench.test.mjs
 ```
+
+Trang chủ slice `stitch-search-ui`: header/hero/dropzone/kết quả theo Stitch
+“FashionSearch AI Storefront” (Be Vietnam Pro, accent #FF4D00, brand
+#aa3000), gọi đúng `POST /api/search/image` multipart `image + k=8`, giữ
+thứ tự API, validation JPEG/PNG/WebP tối đa 10 MiB, guard chống stale
+response (`src/components/stitch-search/request-guard.ts`, test trong
+`tests/`). Không Tailwind CDN, không ảnh/font remote ngoài self-hosted
+Be Vietnam Pro của `next/font`.
+
+Hero phải (`src/components/stitch-search/composed-demo/`): minh họa
+composed có nhãn — anchor + staged edit + scan + 3 cards theo anatomy
+ResultCard, fixtures cục bộ trong `composed-scenes.ts` (test trong
+`tests/composed-demo.test.mjs`). Zero request backend; tên field/score
+minh họa là provisional, không phải wire contract hay relevance claim.
+Tìm kiếm composed thật là ticket backend riêng.
+
+Trang `/search/composed` là workbench live upload+modification: proxy
+`POST /api/search/composed` giữ nguyên session cookie/CSRF (route này
+không thuộc diện CSRF exception như image) và chuyển tiếp multipart tới
+`POST /api/v1/search/composed`. Validation client trong
+`src/components/composed-search/validation.ts`; server kiểm tra lại toàn
+bộ. Product-anchor picker/detail là ticket sau.
+
 
 Public contract: `../contracts/public-api.openapi.json`.

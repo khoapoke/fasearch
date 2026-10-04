@@ -40,8 +40,11 @@ public class SecurityConfiguration {
 						.ignoringRequestMatchers("/api/v1/search/image"))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/actuator/health", "/api/v1/search/image",
+								"/api/v1/search/composed",
+								"/api/v1/search/text",
 								"/api/v1/catalog/images/**", "/api/v1/auth/csrf",
 								"/api/v1/auth/login").permitAll()
+						.requestMatchers("/docs/**", "/webjars/**").permitAll()
 						.requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout").authenticated()
 						.requestMatchers("/api/v1/catalog/admin/drafts", "/api/v1/catalog/admin/drafts/**")
 								.hasAuthority("CATALOG_DRAFT_WRITE")

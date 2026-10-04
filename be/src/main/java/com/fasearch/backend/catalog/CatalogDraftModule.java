@@ -148,6 +148,78 @@ public class CatalogDraftModule {
 		return draft;
 	}
 
+	@PreAuthorize("hasAuthority('CATALOG_DRAFT_WRITE')")
+	@Transactional(readOnly = true)
+	public DraftList list(String limitParam, String offsetParam, Authentication actor) {
+		int limit = parseLimit(limitParam);
+		int offset = parseOffset(offsetParam);
+		UUID actorId = accountId(actor);
+		boolean isAdministrator = actor.getAuthorities().stream()
+				.anyMatch(authority -> authority.getAuthority().equals("CATALOG_PUBLISH"));
+		String ownerFilter = isAdministrator ? "" : "AND p.created_by = ? ";
+		Object[] args = isAdministrator
+				? new Object[] { limit + 1, offset }
+				: new Object[] { actorId, limit + 1, offset };
+		List<DraftSummary> rows = jdbc.query(
+				"SELECT p.id AS product_id, v.id AS version_id, v.version_no, v.status, "
+						+ "v.title, v.category, v.created_at, "
+						+ "EXISTS (SELECT 1 FROM product_images i WHERE i.product_version_id = v.id "
+						+ "AND i.is_primary) AS has_primary_image "
+						+ "FROM catalog_products p JOIN product_versions v ON v.product_id = p.id "
+						+ "WHERE p.archived_at IS NULL AND v.status = 'DRAFT' AND v.version_no = "
+						+ "(SELECT MAX(v2.version_no) FROM product_versions v2 WHERE v2.product_id = p.id) "
+						+ ownerFilter
+						+ "ORDER BY v.created_at DESC, p.id DESC LIMIT ? OFFSET ?",
+				(result, row) -> new DraftSummary(
+						(UUID) result.getObject("product_id"),
+						(UUID) result.getObject("version_id"),
+						result.getInt("version_no"),
+						result.getString("status"),
+						result.getString("title"),
+						Category.valueOf(result.getString("category")),
+						result.getObject("created_at", OffsetDateTime.class),
+						result.getBoolean("has_primary_image")),
+				args);
+		boolean hasMore = rows.size() > limit;
+		return new DraftList(hasMore ? rows.subList(0, limit) : rows, limit, offset, hasMore);
+	}
+
+	private static int parseLimit(String limitParam) {
+		if (limitParam == null) {
+			return 20;
+		}
+		try {
+			int limit = Integer.parseInt(limitParam.trim());
+			if (limit < 1 || limit > 100) {
+				throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+						"Limit must be between 1 and 100");
+			}
+			return limit;
+		}
+		catch (NumberFormatException invalid) {
+			throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+					"Limit must be an integer between 1 and 100");
+		}
+	}
+
+	private static int parseOffset(String offsetParam) {
+		if (offsetParam == null) {
+			return 0;
+		}
+		try {
+			int offset = Integer.parseInt(offsetParam.trim());
+			if (offset < 0) {
+				throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+						"Offset must be a non-negative integer");
+			}
+			return offset;
+		}
+		catch (NumberFormatException invalid) {
+			throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+					"Offset must be a non-negative integer");
+		}
+	}
+
 	private UUID accountId(Authentication actor) {
 		return jdbc.queryForObject(
 				"SELECT id FROM user_accounts WHERE LOWER(username) = ?",
@@ -180,6 +252,24 @@ public class CatalogDraftModule {
 			UUID createdBy,
 			OffsetDateTime createdAt,
 			boolean hasPrimaryImage) {
+	}
+
+	public record DraftSummary(
+			UUID productId,
+			UUID productVersionId,
+			int versionNo,
+			String status,
+			String title,
+			Category category,
+			OffsetDateTime createdAt,
+			boolean hasPrimaryImage) {
+	}
+
+	public record DraftList(
+			List<DraftSummary> items,
+			int limit,
+			int offset,
+			boolean hasMore) {
 	}
 
 	private record VersionRef(UUID id, int versionNo) {

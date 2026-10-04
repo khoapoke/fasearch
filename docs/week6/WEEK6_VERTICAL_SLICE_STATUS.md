@@ -31,6 +31,7 @@
 - Fixture catalog adapter chỉ dùng cho profile `local`/`test`.
 - Local catalog image endpoint đọc ảnh của đúng product ID/version có trong active catalog; URL khác trả 404.
 - Draft image endpoint tạo Product Version mới và ghi ảnh vào S3-compatible storage; PostgreSQL chỉ giữ URI/checksum/metadata.
+- Draft list endpoint `GET /api/v1/catalog/admin/drafts` (25/09/2026): phân trang `limit`/`offset`, Staff chỉ thấy nháp của mình, `CATALOG_PUBLISH` thấy tất cả; chỉ đọc, không ghi version/audit/object-store.
 
 ### Next.js website
 
@@ -41,6 +42,7 @@
 - Result grid hiển thị rank, metadata, similarity, publication, latency và trace ID.
 - Same-origin image route đọc bytes từ backend; ảnh thật của pilot catalog được hiển thị mà không lộ absolute filesystem path.
 - Draft form có luồng thêm/thay ảnh chính và preview riêng có kiểm tra session.
+- Trang `/catalog/drafts` (25/09/2026): same-origin GET proxy, các trạng thái loading/empty/error/phân trang, mỗi dòng liên kết tới trang sửa; liên kết danh sách chỉ hiện với `CATALOG_DRAFT_WRITE`.
 
 ## Bằng chứng đã chạy
 

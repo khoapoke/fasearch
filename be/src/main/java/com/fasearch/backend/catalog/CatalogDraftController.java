@@ -17,11 +17,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasearch.backend.catalog.CatalogDraftModule.Category;
 import com.fasearch.backend.catalog.CatalogDraftModule.CreateDraft;
 import com.fasearch.backend.catalog.CatalogDraftModule.Draft;
+import com.fasearch.backend.catalog.CatalogDraftModule.DraftList;
 
 @RestController
 @RequestMapping("/api/v1/catalog/admin/drafts")
@@ -44,6 +46,14 @@ public class CatalogDraftController {
 				traceId);
 		return ResponseEntity.created(URI.create(
 				"/api/v1/catalog/admin/drafts/" + draft.productId())).body(draft);
+	}
+
+	@GetMapping
+	public DraftList list(
+			@RequestParam(name = "limit", required = false) String limit,
+			@RequestParam(name = "offset", required = false) String offset,
+			Authentication actor) {
+		return module.list(limit, offset, actor);
 	}
 
 	@GetMapping("/{productId}")

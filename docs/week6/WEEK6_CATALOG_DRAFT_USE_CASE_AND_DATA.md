@@ -7,6 +7,7 @@ This describes the implemented Draft and primary-image checkpoints. It feeds the
 - `SUC-CAT-01`: Create a Catalog Product Draft.
 - `SUC-CAT-02`: Revise a Draft by creating a new Product Version.
 - `SUC-CAT-03`: Add or replace a primary Product Image on a Draft.
+- `SUC-CAT-04`: List Drafts whose latest Product Version is `DRAFT` and reopen one for editing.
 - Requirements: `FR-CAT-MGMT-001..002/005`, `FR-RBAC-001/004`, `FR-AUDIT-001`, `BR-CAT-001/005`.
 - Diagrams: [Draft flow](../../tools/diagrams/week6/catalog-draft-sequence.v1.svg), [image flow](../../tools/diagrams/week6/catalog-image-sequence.v1.svg) and [implemented ERD seed](../../tools/diagrams/week6/identity-catalog-erd.v1.svg), each with an editable `.dot` source beside it.
 
@@ -38,6 +39,14 @@ Operations Staff initiates the use case. Administrator and Super Administrator i
 4. In one PostgreSQL transaction, the module locks the Catalog Product, rechecks the version, inserts a new Product Version (`DRAFT`) with the same text metadata, adds its primary Product Image and records an Audit Event. An object already uploaded is deleted on a failed DB transaction on a best-effort basis.
 5. The website receives the new version and reads its image through a session-protected, no-store, `nosniff` endpoint. A later text revision copies the image reference into another Product Version without rewriting the object bytes.
 
+## `SUC-CAT-04` — List Drafts and reopen one for editing
+
+1. An authenticated account with `CATALOG_DRAFT_WRITE` opens `/catalog/drafts` from the signed-in header.
+2. The website calls its same-origin `GET /api/catalog/drafts` proxy, which forwards session, `limit` (default 20, range 1–100) and `offset` (default 0, non-negative) to Spring Boot `GET /api/v1/catalog/admin/drafts`.
+3. Spring Security checks session and `CATALOG_DRAFT_WRITE`; the module lists only non-archived Catalog Products whose latest Product Version has status `DRAFT`, ordered by latest version `created_at DESC`, then product ID DESC. Operations Staff sees only products it created; accounts with `CATALOG_PUBLISH` see all Drafts.
+4. The backend returns `{items, limit, offset, has_more}` without an unbounded count; each item carries product/version IDs, version number, title, category, status, `created_at` and `has_primary_image` — no storage URI, session or credential data.
+5. The website renders loading, empty, error and paginated states; each row links to the existing edit page at `/catalog/drafts/{productId}`. Listing creates no Product Version, Audit Event or object-store write.
+
 ## Exceptions and postconditions
 
 | Condition | Result |
@@ -50,6 +59,10 @@ Operations Staff initiates the use case. Administrator and Super Administrator i
 | Image header invalid or too large | HTTP 400 `INVALID_IMAGE` or HTTP 413 `IMAGE_TOO_LARGE`; no version or object-store write. |
 | Object storage unavailable | HTTP 503; no database version is committed. |
 | Successful create/revision | Product Version remains `DRAFT`; it is not in the active search publication. |
+| Anonymous Draft list request | HTTP 401; no Draft data leaks. |
+| Registered User without Draft permission lists Drafts | HTTP 403; no Draft data leaks. |
+| Staff lists Drafts | Only own non-archived Drafts whose latest version is `DRAFT`; another Staff's Draft stays forbidden on direct GET. |
+| Invalid `limit`/`offset` | HTTP 400 `INVALID_REQUEST`; no write. |
 
 ## Implemented data dictionary seed
 

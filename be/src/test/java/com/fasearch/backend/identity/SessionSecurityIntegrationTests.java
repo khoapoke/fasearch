@@ -197,6 +197,25 @@ class SessionSecurityIntegrationTests {
 	}
 
 	@Test
+	void composedSearchRequiresCsrfThroughRealFilters() throws Exception {
+		URI base = URI.create("http://127.0.0.1:" + port);
+		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient browser = HttpClient.newBuilder().cookieHandler(cookies).build();
+		String csrf = json.readTree(send(browser, get(base, "/api/v1/auth/csrf")).body())
+				.get("token").asText();
+
+		HttpResponse<String> denied = send(browser,
+				postComposed(base, "csrf-test", null, null));
+		assertThat(denied.statusCode()).isEqualTo(403);
+		assertThat(json.readTree(denied.body()).get("code").asText()).isEqualTo("FORBIDDEN");
+
+		HttpResponse<String> validated = send(browser,
+				postComposed(base, "csrf-test", csrf, null));
+		assertThat(validated.statusCode()).isEqualTo(400);
+		assertThat(json.readTree(validated.body()).get("code").asText()).isEqualTo("INVALID_REQUEST");
+	}
+
+	@Test
 	void csrfSessionLoginPermissionsAndLogoutWorkAcrossRealHttpRequests() throws Exception {
 		insertUser("registered-test", "REGISTERED_USER");
 		insertUser("staff-test", "OPERATIONS_STAFF");
@@ -373,6 +392,34 @@ class SessionSecurityIntegrationTests {
 				.header("Content-Type", "multipart/form-data; boundary=" + boundary)
 				.POST(HttpRequest.BodyPublishers.ofByteArray(payload.toByteArray()));
 		if (csrf != null) request.header("X-CSRF-TOKEN", csrf);
+		return request.build();
+	}
+
+	private static HttpRequest postComposed(
+			URI base, String modificationText, String csrf, byte[] image) throws Exception {
+		String boundary = "fasearch-composed-test";
+		ByteArrayOutputStream payload = new ByteArrayOutputStream();
+		payload.write(("--" + boundary + "\r\n"
+				+ "Content-Disposition: form-data; name=\"schema_version\"\r\n\r\n"
+				+ "1.0.0\r\n--" + boundary + "\r\n"
+				+ "Content-Disposition: form-data; name=\"modification_text\"\r\n\r\n"
+				+ modificationText + "\r\n--" + boundary + "\r\n"
+				+ "Content-Disposition: form-data; name=\"k\"\r\n\r\n"
+				+ "3\r\n").getBytes(StandardCharsets.UTF_8));
+		if (image != null) {
+			payload.write(("--" + boundary + "\r\n"
+					+ "Content-Disposition: form-data; name=\"image\"; filename=\"query.png\"\r\n"
+					+ "Content-Type: image/png\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+			payload.write(image);
+			payload.write("\r\n".getBytes(StandardCharsets.UTF_8));
+		}
+		payload.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+		HttpRequest.Builder request = HttpRequest.newBuilder(base.resolve("/api/v1/search/composed"))
+				.header("Content-Type", "multipart/form-data; boundary=" + boundary)
+				.POST(HttpRequest.BodyPublishers.ofByteArray(payload.toByteArray()));
+		if (csrf != null) {
+			request.header("X-CSRF-TOKEN", csrf);
+		}
 		return request.build();
 	}
 

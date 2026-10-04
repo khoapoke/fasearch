@@ -85,6 +85,9 @@ export function AuthPanel() {
       {user ? (
         <div className={styles.signedIn}>
           {user.authorities.includes("CATALOG_DRAFT_WRITE") && (
+            <Link href="/catalog/drafts">Danh sách nháp</Link>
+          )}
+          {user.authorities.includes("CATALOG_DRAFT_WRITE") && (
             <Link href="/catalog/drafts/new">Tạo sản phẩm</Link>
           )}
           <span title={user.authorities.join(", ")}>{user.username}</span>
@@ -96,6 +99,7 @@ export function AuthPanel() {
         <button
           className={styles.openButton}
           type="button"
+          aria-expanded={open}
           onClick={() => {
             setOpen(!open);
             setError("");

@@ -1,0 +1,80 @@
+.card {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition:
+    box-shadow 200ms ease,
+    transform 200ms ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card);
+  transform: translateY(-2px);
+}
+
+.imageWrap {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--surface-subtle);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rank {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--ink);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.info {
+  padding: 16px;
+}
+
+.category {
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.title {
+  min-height: 44px;
+  margin-top: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.scoreRow {
+  margin-top: 14px;
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+}
+
+.scoreRow strong {
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
