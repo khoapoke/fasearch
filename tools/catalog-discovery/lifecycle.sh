@@ -55,7 +55,7 @@ guard_listener() {
   local pid=$1 port=$2 listeners addresses
   listeners=$(lsof -tiTCP:$port -sTCP:LISTEN 2>/dev/null) || return 1
   [[ $listeners == "$pid" ]] || { echo "REFUSE: listener mismatch on $port" >&2; return 1; }
-  addresses=$(lsof -a -p "$pid" -iTCP:$port -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n//p')
+  addresses=$(lsof -nP -a -p "$pid" -iTCP:$port -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n//p')
   [[ $addresses == "127.0.0.1:$port" ]] || { echo "REFUSE: task listener must bind loopback $port" >&2; return 1; }
 }
 
