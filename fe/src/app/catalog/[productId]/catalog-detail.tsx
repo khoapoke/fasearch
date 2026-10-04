@@ -58,8 +58,7 @@ function DetailInner({ productId }: { productId: string }) {
         if (requestIdRef.current !== requestId) return;
         if (!response.ok) {
           const error = payload as CatalogError;
-          const missing =
-            response.status === 404 || response.status === 409;
+          const missing = [400, 404, 409].includes(response.status);
           setSettled({
             key,
             state: {
@@ -69,6 +68,8 @@ function DetailInner({ productId }: { productId: string }) {
                   ? "Sản phẩm không có trong publication đang công bố (không rõ, đã ẩn hoặc khác phiên bản)."
                   : response.status === 409
                     ? "Snapshot đã thay đổi so với publication đang công bố. Hãy tải lại từ danh sách hoặc kết quả tìm kiếm."
+                    : response.status === 400
+                      ? "Tham chiếu sản phẩm thiếu, trùng hoặc không hợp lệ. Hãy mở lại từ danh sách hoặc kết quả tìm kiếm."
                     : error.message || "Không tải được chi tiết sản phẩm.",
               traceId: error.trace_id ?? undefined,
               code: error.code,
