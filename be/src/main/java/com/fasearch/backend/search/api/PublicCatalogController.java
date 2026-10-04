@@ -44,8 +44,7 @@ public class PublicCatalogController {
 
 	@GetMapping
 	public ResponseEntity<PublicCatalogBrowseUseCase.PageResult> list(HttpServletRequest request) {
-		String traceId = resolveTraceId(request.getHeader("X-Trace-Id"));
-		request.setAttribute("fasearch.trace-id", traceId);
+		String traceId = safeTraceId(request);
 		Map<String, String> params = parseQuery(request.getQueryString(), LIST_PARAMS);
 		int page = parsePage(params.get("page"));
 		int size = parseSize(params.get("size"));
@@ -63,8 +62,7 @@ public class PublicCatalogController {
 	public ResponseEntity<PublicCatalogBrowseUseCase.DetailResult> detail(
 			@PathVariable String productId,
 			HttpServletRequest request) {
-		String traceId = resolveTraceId(request.getHeader("X-Trace-Id"));
-		request.setAttribute("fasearch.trace-id", traceId);
+		String traceId = safeTraceId(request);
 		if (productId == null || productId.isBlank()) {
 			throw invalid("Invalid product identity");
 		}
@@ -176,6 +174,25 @@ public class PublicCatalogController {
 			throw invalid("Invalid snapshot reference");
 		}
 		return raw;
+	}
+
+	/**
+	 * Resolve the incoming trace, or mint a safe one. A rejected trace value
+	 * is never reflected in the error envelope: the handler falls back to
+	 * the request attribute, so it must already hold a generated identity
+	 * before any validation failure is thrown.
+	 */
+	private static String safeTraceId(HttpServletRequest request) {
+		try {
+			String traceId = resolveTraceId(request.getHeader("X-Trace-Id"));
+			request.setAttribute("fasearch.trace-id", traceId);
+			return traceId;
+		}
+		catch (SearchException invalid) {
+			String generated = UUID.randomUUID().toString();
+			request.setAttribute("fasearch.trace-id", generated);
+			throw invalid;
+		}
 	}
 
 	private static String resolveTraceId(String incomingTraceId) {

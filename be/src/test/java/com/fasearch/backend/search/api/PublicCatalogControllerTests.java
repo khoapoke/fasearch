@@ -110,7 +110,26 @@ class PublicCatalogControllerTests {
 		mockMvc.perform(get("/api/v1/catalog/products/p1")
 				.queryParam("product_version_id", "p1-v1"))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void rejectedTraceIsNeverReflected() throws Exception {
+		String unsafe = "A".repeat(200);
+		org.springframework.test.web.servlet.MvcResult result = mockMvc.perform(get("/api/v1/catalog/products")
+				.queryParam("size", "1")
+				.header("X-Trace-Id", unsafe))
+				.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+			.andReturn();
+		String headerTrace = result.getResponse().getHeader("X-Trace-Id");
+		String bodyTrace = com.jayway.jsonpath.JsonPath.read(
+				result.getResponse().getContentAsString(), "$.trace_id");
+		org.assertj.core.api.Assertions.assertThat(headerTrace)
+				.doesNotContain(unsafe)
+				.matches("[0-9a-f-]{36}");
+		org.assertj.core.api.Assertions.assertThat(bodyTrace)
+				.isEqualTo(headerTrace);
 	}
 
 	@TestConfiguration

@@ -39,7 +39,9 @@ export interface CatalogError {
   message: string;
 }
 
-/** Allowlisted local return targets for detail back-navigation. */
+/** Allowlisted local return targets for detail back-navigation.
+ * Only the path is kept: any caller-supplied query is dropped so untrusted
+ * query keys/values cannot ride into catalog/search routes. */
 export function safeReturnHref(raw: string | null): string {
   if (!raw) return "/catalog";
   if (!raw.startsWith("/")) return "/catalog";
@@ -51,9 +53,9 @@ export function safeReturnHref(raw: string | null): string {
     path === "/search/composed" ||
     path === "/"
   ) {
-    return raw;
+    return path;
   }
-  if (/^\/catalog\/[^/]+$/.test(path)) return raw;
+  if (/^\/catalog\/[^/]+$/.test(path)) return path;
   return "/catalog";
 }
 

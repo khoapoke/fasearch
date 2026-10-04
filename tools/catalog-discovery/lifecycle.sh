@@ -93,20 +93,32 @@ do_start() {
     > /private/tmp/fasearch-catalog-discovery-boot.log 2>&1 &
   echo $! > $BOOT_PID_FILE
 
-  cd "$ROOT/fe"
-  FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
-  nohup npm run start -- --port $FE_PORT > /private/tmp/fasearch-catalog-discovery-fe.log 2>&1 &
-  echo $! > $FE_PID_FILE
+  ( cd "$ROOT/fe" && \
+    FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
+    nohup npm run start -- --port $FE_PORT > /private/tmp/fasearch-catalog-discovery-fe.log 2>&1 & \
+    echo $! > $FE_PID_FILE )
 
   for i in $(seq 1 40); do do_health >/dev/null 2>&1 && break; sleep 3; done
   do_health
 }
 
 do_stop() {
-  local pid
+  local pid child
   if [[ -f $FE_PID_FILE ]]; then
-    pid=$(guard_pid "$FE_PID_FILE" "npm run start --port $FE_PORT|next-server") \
-    && kill "$pid" && echo "stopped FE wrapper $pid" || return 1
+    pid=$(guard_pid "$FE_PID_FILE" "npm run start|next-server") \
+      || return 1
+    child=""
+    for candidate in $(pgrep -g "$(ps -o pgid= -p "$pid" | tr -d ' ')" 2>/dev/null); do
+      if lsof -a -p "$candidate" -iTCP:$FE_PORT -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
+        child=$candidate
+        break
+      fi
+    done
+    if [[ -z $child ]]; then echo "REFUSE: no task listener on $FE_PORT" >&2; return 1; fi
+    kill "$child" 2>/dev/null || true
+    echo "stopped FE server $child (wrapper $pid)"
+    sleep 2
+    kill -0 "$pid" 2>/dev/null && kill "$pid" 2>/dev/null || true
   fi
   if [[ -f $BOOT_PID_FILE ]]; then
     pid=$(guard_pid "$BOOT_PID_FILE" "backend-0.0.1-SNAPSHOT.jar") \

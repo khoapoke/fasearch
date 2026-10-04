@@ -27,12 +27,12 @@ describe("detailHref", () => {
 });
 
 describe("safeReturnHref", () => {
-  it("keeps allowlisted local routes", () => {
+  it("keeps allowlisted local routes, dropping untrusted query", () => {
     assert.equal(safeReturnHref("/catalog"), "/catalog");
-    assert.equal(safeReturnHref("/catalog?page=3"), "/catalog?page=3");
+    assert.equal(safeReturnHref("/catalog?page=3"), "/catalog");
     assert.equal(safeReturnHref("/search/text"), "/search/text");
     assert.equal(safeReturnHref("/search/composed"), "/search/composed");
-    assert.equal(safeReturnHref("/catalog/10011?v=x&s=y"), "/catalog/10011?v=x&s=y");
+    assert.equal(safeReturnHref("/catalog/10011?v=x&s=y"), "/catalog/10011");
   });
 
   it("rejects external and open-redirect targets", () => {
