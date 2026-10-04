@@ -3,6 +3,7 @@ package com.fasearch.backend.search.api;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -23,8 +24,13 @@ public final class SearchApiExceptionHandler {
 	ResponseEntity<ApiError> handleSearchException(
 			SearchException exception,
 			HttpServletRequest request) {
-		return ResponseEntity.status(exception.status())
-				.body(ApiError.of(exception.code(), exception.getMessage(), traceId(request)));
+		String trace = traceId(request);
+		var builder = ResponseEntity.status(exception.status())
+				.cacheControl(CacheControl.noStore());
+		if (trace != null) {
+			builder = builder.header("X-Trace-Id", trace);
+		}
+		return builder.body(ApiError.of(exception.code(), exception.getMessage(), trace));
 	}
 
 	@ExceptionHandler({
@@ -38,16 +44,26 @@ public final class SearchApiExceptionHandler {
 	ResponseEntity<ApiError> handleValidationException(
 			Exception exception,
 			HttpServletRequest request) {
-		return ResponseEntity.badRequest()
-				.body(ApiError.of("INVALID_REQUEST", "Request validation failed", traceId(request)));
+		String trace = traceId(request);
+		var builder = ResponseEntity.badRequest()
+				.cacheControl(CacheControl.noStore());
+		if (trace != null) {
+			builder = builder.header("X-Trace-Id", trace);
+		}
+		return builder.body(ApiError.of("INVALID_REQUEST", "Request validation failed", trace));
 	}
 
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	ResponseEntity<ApiError> handleUploadLimit(
 			MaxUploadSizeExceededException exception,
 			HttpServletRequest request) {
-		return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
-				.body(ApiError.of("IMAGE_TOO_LARGE", "Image exceeds the upload limit", traceId(request)));
+		String trace = traceId(request);
+		var builder = ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+				.cacheControl(CacheControl.noStore());
+		if (trace != null) {
+			builder = builder.header("X-Trace-Id", trace);
+		}
+		return builder.body(ApiError.of("IMAGE_TOO_LARGE", "Image exceeds the upload limit", trace));
 	}
 
 	private static String traceId(HttpServletRequest request) {

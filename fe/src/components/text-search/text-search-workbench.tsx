@@ -206,7 +206,7 @@ export function TextSearchWorkbench() {
                     </span>
                     <h3>{product.title}</h3>
                     <p>
-                      Mức tương đồng {(product.similarity_score * 100).toFixed(1)} ·{" "}
+                      Mức tương đồng thô {product.similarity_score.toFixed(4)} ·{" "}
                       {product.product_id}
                     </p>
                   </div>

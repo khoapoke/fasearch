@@ -360,6 +360,9 @@ def create_app() -> FastAPI:
         header_trace = request.headers.get("x-trace-id")
         raw = await request.body()
         if len(raw) > MAX_JSON_BYTES:
+            oversize_headers = {"Cache-Control": "no-store"}
+            if header_trace:
+                oversize_headers["X-Trace-Id"] = header_trace
             return JSONResponse(
                 status_code=413,
                 content=ErrorResponse(
@@ -367,7 +370,7 @@ def create_app() -> FastAPI:
                     message="Request body exceeds the 16 KiB limit",
                     trace_id=header_trace,
                 ).model_dump(),
-                headers={"Cache-Control": "no-store"},
+                headers=oversize_headers,
             )
         try:
             payload = _json.loads(raw.decode("utf-8")) if raw else None

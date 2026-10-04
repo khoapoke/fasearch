@@ -53,7 +53,7 @@ public final class HttpAiTextSearchAdapter implements AiTextSearchPort {
 							(httpRequest, resp) -> { throw mapConflict(resp); })
 					.onStatus(status -> status.value() == 413,
 							(httpRequest, resp) -> {
-								throw unavailable("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+								throw unavailable("INVALID_REQUEST", HttpStatus.CONTENT_TOO_LARGE,
 										"AI service rejected the text body size");
 							})
 					.onStatus(status -> status.value() == 422,

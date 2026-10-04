@@ -63,7 +63,7 @@ Request JSON (Boot → AI):
 ## 6. Next contract
 
 - Validates `Content-Type` JSON, applies 16 KiB cap, forwards `{schema_version,query_text,k}` + `X-Trace-Id` + session cookie + `x-csrf-token` to Boot. Never logs query body. Propagates status/body/headers (`X-Trace-Id`, `no-store`). `BACKEND_UNAVAILABLE` 502 only on fetch throw.
-- UI `TextSearchWorkbench`: free text (textarea, maxlength guidance 1024 code points), K number 1..100 default 10, submit. States: idle/loading/success(empty vs results)/error. Shows `PILOT_ONLY`, provenance secondary details, rank/similarity (raw, not %), stale guard via `createRequestGuard` + AbortController on reset/mode-switch. Keyboard labels/focus, reduced-motion safe (no autoplay).
+- UI `TextSearchWorkbench`: free text (textarea, maxlength guidance 1024 code points), K number 1..100 default 10, submit. States: idle/loading/success(empty vs results)/error. Shows `PILOT_ONLY`, provenance secondary details, rank/raw similarity to 4 decimals (never %/confidence), stale guard via `createRequestGuard` + AbortController on reset/mode-switch. Keyboard labels/focus, reduced-motion safe (no autoplay).
 
 ## 7. OpenAPI
 
