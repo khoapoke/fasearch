@@ -1,0 +1,6 @@
+HEAD=cb4bc19d12528270aa126bde1e461cb9ce29046e
+CMD: npm run lint && node --test (cwd fe/)
+
+ℹ tests 17
+ℹ pass 17
+ℹ fail 0

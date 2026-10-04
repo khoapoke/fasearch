@@ -1,0 +1,7 @@
+HEAD=cb4bc19d12528270aa126bde1e461cb9ce29046e
+CMD: chunked/missing-length probes (python http.client, task stack FE3210/Boot18180/AI18011)
+next-text chunked small -> 200
+next-text chunked oversize -> 413 b'{"schema_version":"1.0.0","trace_id":"30d756db-494f-425d-a6d9-66994781a9ee","cod'
+next-composed chunked oversize -> 413
+boot-text chunked oversize -> 413 b'{"schema_version":"1.0.0","trace_id":"ebdd72b6-d31a-4de7-a0ab-b06b63bf8d75","cod'
+ai-text chunked oversize -> 413

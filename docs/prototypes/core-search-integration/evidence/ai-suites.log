@@ -1,0 +1,4 @@
+HEAD=cb4bc19d12528270aa126bde1e461cb9ce29046e
+CMD: pytest test_internal_api+composed+text+schemas (cwd ai/, 3.12.14)
+.................................                                        [100%]
+33 passed in 0.96s

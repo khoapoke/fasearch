@@ -1,0 +1,4 @@
+HEAD=cb4bc19d12528270aa126bde1e461cb9ce29046e
+CMD: pytest test_text_token_budget_hf.py standalone offline (cwd ai/)
+..                                                                       [100%]
+2 passed in 1.57s

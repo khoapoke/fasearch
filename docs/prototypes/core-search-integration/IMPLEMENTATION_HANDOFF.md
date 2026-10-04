@@ -1,7 +1,7 @@
 # IMPLEMENTATION_HANDOFF — core-search-integration-2h closure
 
 Base a207f9f. Branch codex/core-search-integration-2h, checkout /private/tmp/fasearch-core-search-integration-2h.
-Final HEAD: 392ccd1422f3ec3f5a2488e7315c7ccf474a544c (this commit includes this handoff; code commit 392ccd1^ identical tree plus this file).
+Final HEAD: this commit (includes this handoff; code tree identical to 392ccd1 except evidence re-run logs + this file). Evidence logs re-run at cb4bc19 (e2e-final 23/23, drafts-lifecycle 15/15, ai-suites 33, hf-text 2, be 61, fe 17, chunked probes) — see evidence/.
 Prior clean HEAD 119efa0a (round-1 APPROVE) + closure fixes. No push/PR/merge/deploy.
 
 ## Stack (task-owned, proven restart via runbook)

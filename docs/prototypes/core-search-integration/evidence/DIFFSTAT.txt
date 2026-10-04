@@ -1,0 +1,40 @@
+SCOPE: git diff 119efa0a..worktree at commit time (code freeze cb4bc19 for app code; this file + evidence logs + handoff text added after)
+GENERATED: 2026-10-04T14:59:08+0700 at worktree, HEAD was cb4bc19d12528270aa126bde1e461cb9ce29046e
+
+ ai/fasearch_ai/main.py                             |  40 +++++-
+ ai/fasearch_ai/module.py                           |   4 +
+ ai/tests/test_internal_text.py                     |  40 ++++++
+ ai/tests/test_text_token_budget_hf.py              |  60 +++++++++
+ .../backend/search/api/TextSearchController.java   |  51 +++++++-
+ .../search/api/TextSearchControllerTests.java      | 139 +++++++++++++++++++++
+ contracts/internal-ai.openapi.json                 |  10 +-
+ .../IMPLEMENTATION_HANDOFF.md                      |  47 ++++---
+ docs/prototypes/core-search-integration/RUNBOOK.md |  50 +++-----
+ .../core-search-integration/SPEC_TEXT.md           |   5 +
+ .../evidence/draft-evidence.log                    |  15 +++
+ .../evidence/drafts-lifecycle.log                  |  18 +++
+ .../core-search-integration/evidence/e2e-final.log |  32 +++++
+ .../evidence/fasearch-core-search-2h-ai.log        |  38 ++++++
+ .../evidence/fasearch-core-search-2h-boot.log      |  30 +++++
+ .../evidence/fx-home-reduced-1440.png              | Bin 0 -> 70999 bytes
+ .../evidence/fx-text-390.png                       | Bin 0 -> 46690 bytes
+ .../evidence/fx-text-768.png                       | Bin 0 -> 47541 bytes
+ .../evidence/fx-text-empty-1440.png                | Bin 0 -> 61657 bytes
+ .../evidence/fx-text-error-1440.png                | Bin 0 -> 59920 bytes
+ .../evidence/fx-text-success-1440.png              | Bin 0 -> 67947 bytes
+ fe/src/app/api/search/composed/route.ts            |  54 +++++++-
+ fe/src/app/api/search/text/route.ts                |  58 ++++++++-
+ fe/src/components/stitch-search/trust-row.tsx      |   4 +-
+ tools/core-search-integration/lifecycle.sh         | 115 +++++++++++++++++
+ tools/core-search-integration/verify-drafts.sh     |  45 +++++++
+ tools/core-search-integration/verify-e2e.sh        |  88 +++++++++++++
+ 27 files changed, 871 insertions(+), 72 deletions(-)
+
+APP-CODE-ONLY (excl docs/tools/evidence/tests):
+ai/fasearch_ai/main.py
+ai/fasearch_ai/module.py
+be/src/main/java/com/fasearch/backend/search/api/TextSearchController.java
+contracts/internal-ai.openapi.json
+fe/src/app/api/search/composed/route.ts
+fe/src/app/api/search/text/route.ts
+fe/src/components/stitch-search/trust-row.tsx

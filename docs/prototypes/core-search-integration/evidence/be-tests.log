@@ -1,0 +1,6 @@
+HEAD=cb4bc19d12528270aa126bde1e461cb9ce29046e
+CMD: ./mvnw test (cwd be/)
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in com.fasearch.backend.search.infrastructure.ai.HttpAiImageSearchAdapterTests
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in com.fasearch.backend.search.infrastructure.ai.HttpAiComposedSearchAdapterTests
+[INFO] Tests run: 61, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
