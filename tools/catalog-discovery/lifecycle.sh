@@ -123,6 +123,17 @@ do_warm() {
     | grep -q '"mode":"TEXT"' && echo "WARM OK $trace" || { echo "WARM FAIL"; return 1; }
 }
 
+launch_detached() { # cwd, logfile, argv...; stdout is the actual child PID
+  "$VENV312" - "$@" <<'LAUNCH_PY'
+import os, subprocess, sys
+cwd, logfile, *argv = sys.argv[1:]
+with open(logfile, "ab") as log:
+    process = subprocess.Popen(argv, cwd=cwd, env=os.environ.copy(),
+        stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
+print(process.pid)
+LAUNCH_PY
+}
+
 do_start() {
   expect_free $AI_PORT; expect_free $BOOT_PORT; expect_free $FE_PORT
   "$VENV312" "$ROOT/tools/catalog-discovery/container_guard.py" check
@@ -132,19 +143,21 @@ do_start() {
   done
 
   cd "$ROOT/ai"
-  FASEARCH_CONFIG_PATH="$ASSET_ROOT/ai/configs/baseline.v1.yaml" \
+  local ai_pid
+  ai_pid=$(FASEARCH_CONFIG_PATH="$ASSET_ROOT/ai/configs/baseline.v1.yaml" \
   FASEARCH_INDEX_DIR="$ASSET_ROOT/artifacts/indexes/week4-baseline-20260908-v1" \
   FASEARCH_ENCODER=hf_clip \
   FASEARCH_CATALOG_SNAPSHOT_ID="$PUB_CATALOG" \
   HF_HOME="$ASSET_ROOT/.cache/huggingface" HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   TOKENIZERS_PARALLELISM=false \
   PYTHONPATH="$ROOT/ai" \
-  nohup "$VENV312" -m uvicorn fasearch_ai.main:app --host 127.0.0.1 --port $AI_PORT \
-    > /private/tmp/fasearch-catalog-discovery-ai.log 2>&1 &
-  echo $! > $AI_PID_FILE
+  launch_detached "$ROOT/ai" /private/tmp/fasearch-catalog-discovery-ai.log \
+    "$VENV312" -m uvicorn fasearch_ai.main:app --host 127.0.0.1 --port "$AI_PORT")
+  printf '%s\n' "$ai_pid" > "$AI_PID_FILE"
 
   cd "$ROOT/be"
-  FASEARCH_DB_URL=jdbc:postgresql://127.0.0.1:$PG_PORT/fasearch FASEARCH_DB_USER=fasearch \
+  local boot_pid
+  boot_pid=$(FASEARCH_DB_URL=jdbc:postgresql://127.0.0.1:$PG_PORT/fasearch FASEARCH_DB_USER=fasearch \
   FASEARCH_DB_PASSWORD=task-test-pw FASEARCH_OBJECT_ENDPOINT=http://127.0.0.1:$S3_PORT \
   FASEARCH_OBJECT_ACCESS_KEY=task-test-key FASEARCH_OBJECT_SECRET_KEY=task-test-secret \
   FASEARCH_AI_BASE_URL=http://127.0.0.1:$AI_PORT SERVER_PORT=$BOOT_PORT \
@@ -153,14 +166,14 @@ do_start() {
   FASEARCH_CATALOG_FILE="$ASSET_ROOT/data/processed/catalog-20260908-pilot-v1/catalog.cleaned.v1.jsonl" \
   FASEARCH_BOOTSTRAP_ADMIN_USERNAME=task-admin FASEARCH_BOOTSTRAP_ADMIN_EMAIL=task-admin@example.test \
   FASEARCH_BOOTSTRAP_ADMIN_PASSWORD=Task-Admin-Test-Pass-123 FASEARCH_COOKIE_SECURE=false \
-  nohup java -jar target/backend-0.0.1-SNAPSHOT.jar \
-    > /private/tmp/fasearch-catalog-discovery-boot.log 2>&1 &
-  echo $! > $BOOT_PID_FILE
+  launch_detached "$ROOT/be" /private/tmp/fasearch-catalog-discovery-boot.log \
+    "$JAVA_EXE" -jar target/backend-0.0.1-SNAPSHOT.jar)
+  printf '%s\n' "$boot_pid" > "$BOOT_PID_FILE"
 
   cd "$ROOT/fe" || return 1
-  FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
-    nohup npm run start -- --port $FE_PORT > /private/tmp/fasearch-catalog-discovery-fe.log 2>&1 &
-  local wrapper=$!
+  local wrapper
+  wrapper=$(FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
+    launch_detached "$ROOT/fe" /private/tmp/fasearch-catalog-discovery-fe.log npm run start -- --port "$FE_PORT")
 
   for i in $(seq 1 40); do do_health >/dev/null 2>&1 && break; sleep 3; done
   do_health
