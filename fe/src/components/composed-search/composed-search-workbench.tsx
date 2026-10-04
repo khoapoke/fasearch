@@ -73,10 +73,13 @@ export function ComposedSearchWorkbench() {
   const [k, setK] = useState(10);
   const [modeChoice, setModeChoice] = useState<{ key: string; mode: "UPLOAD" | "PRODUCT" } | null>(null);
   const mode = modeChoice?.key === anchorKey ? modeChoice.mode : hasAnchor ? "PRODUCT" : "UPLOAD";
+  const searchContextKey = JSON.stringify([anchorKey, mode]);
   const [anchorValidationNonce, setAnchorValidationNonce] = useState(0);
   const anchorValidationKey = `${anchorKey}:r${anchorValidationNonce}`;
   const [settledAnchor, setSettledAnchor] = useState<{ key: string; state: AnchorState } | null>(null);
-  const [state, setState] = useState<SearchState>({ status: "idle" });
+  const [settledSearch, setSettledSearch] = useState<{ key: string; state: SearchState } | null>(null);
+  const state: SearchState = settledSearch?.key === searchContextKey ? settledSearch.state : { status: "idle" };
+  const setState = (next: SearchState) => setSettledSearch({ key: searchContextKey, state: next });
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -86,6 +89,17 @@ export function ComposedSearchWorkbench() {
       anchorAbortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    // Context owns both request acceptance and visible results. An A response
+    // cannot survive in-place navigation to B, even before this effect runs.
+    requestIdRef.current += 1;
+    abortRef.current?.abort();
+    return () => {
+      requestIdRef.current += 1;
+      abortRef.current?.abort();
+    };
+  }, [searchContextKey]);
 
   // Validate the anchor product against the detail API before preview or
   // submit. A stale, private or missing anchor fails visibly — never falls
