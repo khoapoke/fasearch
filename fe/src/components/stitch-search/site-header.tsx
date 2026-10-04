@@ -8,6 +8,7 @@ import styles from "./site-header.module.css";
 // routes for the three live search modes (IMAGE home, TEXT, COMPOSED).
 
 const NAV = [
+  { href: "/catalog", label: "Catalog" },
   { href: "#tim-bang-anh", label: "Tìm bằng ảnh" },
   { href: "/search/text", label: "Tìm bằng chữ" },
   { href: "/search/composed", label: "Tìm kết hợp" },

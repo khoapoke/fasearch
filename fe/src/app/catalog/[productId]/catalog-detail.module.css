@@ -1,0 +1,252 @@
+.detail {
+  margin-top: 8px;
+}
+
+.backLink {
+  display: inline-block;
+  color: var(--brand);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 20px;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.backLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 40px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+.photoCol {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+
+.photo {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.infoCol {
+  min-width: 0;
+}
+
+.category {
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.title {
+  margin-top: 8px;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.description {
+  margin-top: 14px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.primaryButton {
+  display: inline-block;
+  margin-top: 22px;
+  padding: 13px 26px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background: var(--accent-deep);
+}
+
+.primaryButton:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.provenance {
+  margin-top: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 0.84rem;
+}
+
+.provenance summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.provenance dl {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.provenance dl div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.provenance dt {
+  color: var(--ink-soft);
+}
+
+.provenance dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.related {
+  margin-top: 48px;
+}
+
+.related h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.relatedGrid {
+  margin-top: 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .relatedGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.relatedCard {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.relatedCard img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-subtle);
+}
+
+.relatedCard span {
+  display: block;
+  padding: 10px 12px;
+}
+
+.relatedCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.errorBox {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.errorBox strong {
+  font-size: 1.05rem;
+}
+
+.errorBox span {
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.errorBox small {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.errorActions .backLink {
+  margin-bottom: 0;
+}
+
+.errorActions .primaryButton {
+  margin-top: 0;
+}
+
+.loadingGrid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 40px;
+}
+
+@media (max-width: 768px) {
+  .loadingGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.photoSkeleton,
+.textSkeleton {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+  min-height: 320px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photoSkeleton,
+  .textSkeleton {
+    min-height: 0;
+  }
+}

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ChangeEvent,
   DragEvent,
@@ -8,6 +10,11 @@ import {
   useRef,
   useState,
 } from "react";
+import type {
+  CatalogDetailResponse,
+  CatalogError,
+} from "@/lib/catalog-contract";
+import { detailHref } from "@/lib/catalog-contract";
 import type {
   ComposedSearchError,
   ComposedSearchResponse,
@@ -32,6 +39,18 @@ type SearchState =
   | { status: "success"; data: ComposedSearchResponse }
   | { status: "error"; message: string; traceId?: string };
 
+type AnchorState =
+  | { status: "none" }
+  | { status: "loading" }
+  | { status: "ready"; data: CatalogDetailResponse }
+  | { status: "error"; message: string };
+
+interface AnchorRef {
+  productId: string;
+  productVersionId: string;
+  snapshotId: string;
+}
+
 async function csrfToken(): Promise<{ header: string; token: string }> {
   const response = await fetch("/api/auth/csrf", { cache: "no-store" });
   if (!response.ok) throw new Error("Không thể bắt đầu phiên tìm kiếm.");
@@ -40,6 +59,18 @@ async function csrfToken(): Promise<{ header: string; token: string }> {
 }
 
 export function ComposedSearchWorkbench() {
+  const searchParams = useSearchParams();
+  const anchorParam: AnchorRef | null = (() => {
+    const productId = searchParams.get("anchor_product_id");
+    const productVersionId = searchParams.get("anchor_product_version_id");
+    const snapshotId = searchParams.get("anchor_catalog_snapshot_id");
+    if (!productId || !productVersionId || !snapshotId) return null;
+    return { productId, productVersionId, snapshotId };
+  })();
+  const anchorKey = anchorParam
+    ? `${anchorParam.productId}:${anchorParam.productVersionId}:${anchorParam.snapshotId}`
+    : "";
+
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const requestIdRef = useRef(0);
@@ -48,6 +79,10 @@ export function ComposedSearchWorkbench() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [k, setK] = useState(10);
+  const [mode, setMode] = useState<"UPLOAD" | "PRODUCT">(
+    anchorParam ? "PRODUCT" : "UPLOAD",
+  );
+  const [settledAnchor, setSettledAnchor] = useState<{ key: string; state: AnchorState } | null>(null);
   const [state, setState] = useState<SearchState>({ status: "idle" });
   const [isDragging, setIsDragging] = useState(false);
 
@@ -57,6 +92,76 @@ export function ComposedSearchWorkbench() {
       abortRef.current?.abort();
     };
   }, []);
+
+  // Validate the anchor product against the detail API before preview or
+  // submit. A stale, private or missing anchor fails visibly — never falls
+  // back to another version or to an upload.
+  useEffect(() => {
+    if (!anchorParam) return;
+    const key = anchorKey;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const params = new URLSearchParams({
+      product_version_id: anchorParam.productVersionId,
+      catalog_snapshot_id: anchorParam.snapshotId,
+    });
+    fetch(
+      `/api/catalog/products/${encodeURIComponent(anchorParam.productId)}?${params.toString()}`,
+      { cache: "no-store", signal: controller.signal },
+    )
+      .then(async (response) => {
+        if (requestIdRef.current !== requestId) return;
+        const payload = (await response.json()) as
+          | CatalogDetailResponse
+          | CatalogError;
+        if (requestIdRef.current !== requestId) return;
+        if (!response.ok) {
+          setSettledAnchor({
+            key,
+            state: {
+              status: "error",
+              message:
+                response.status === 404
+                  ? "Sản phẩm neo không còn trong publication đang công bố."
+                  : response.status === 409
+                    ? "Snapshot của sản phẩm neo đã thay đổi. Hãy chọn lại từ catalog."
+                    : "Không xác thực được sản phẩm neo. Hãy thử lại.",
+            },
+          });
+          return;
+        }
+        setSettledAnchor({
+          key,
+          state: { status: "ready", data: payload as CatalogDetailResponse },
+        });
+      })
+      .catch((failure: unknown) => {
+        if (requestIdRef.current !== requestId) return;
+        if (failure instanceof DOMException && failure.name === "AbortError") return;
+        setSettledAnchor({
+          key,
+          state: {
+            status: "error",
+            message: "Kết nối bị gián đoạn khi xác thực sản phẩm neo.",
+          },
+        });
+      });
+
+    return () => {
+      if (requestIdRef.current === requestId) controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorKey]);
+
+  const anchor: AnchorState = !anchorParam
+    ? { status: "none" }
+    : settledAnchor && settledAnchor.key === anchorKey
+      ? settledAnchor.state
+      : { status: "loading" };
 
   function replacePreview(nextFile: File | null) {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -84,6 +189,19 @@ export function ComposedSearchWorkbench() {
     selectFile(event.dataTransfer.files?.[0]);
   }
 
+  function switchMode(next: "UPLOAD" | "PRODUCT") {
+    if (next === mode) return;
+    requestIdRef.current += 1;
+    abortRef.current?.abort();
+    setMode(next);
+    setState({ status: "idle" });
+    if (next === "UPLOAD") {
+      setFile(null);
+      replacePreview(null);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
   function reset() {
     requestIdRef.current += 1;
     abortRef.current?.abort();
@@ -96,10 +214,31 @@ export function ComposedSearchWorkbench() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state.status === "searching") return;
-    const violation = validateComposedInput({ file, text, k });
-    if (violation) {
-      setState({ status: "error", message: violation });
-      return;
+
+    if (mode === "PRODUCT") {
+      if (!anchorParam) {
+        setState({
+          status: "error",
+          message: "Thiếu sản phẩm neo. Hãy mở trang này từ chi tiết sản phẩm.",
+        });
+        return;
+      }
+      if (anchor.status !== "ready") {
+        setState({
+          status: "error",
+          message:
+            anchor.status === "error"
+              ? anchor.message
+              : "Đang xác thực sản phẩm neo, hãy đợi một chút.",
+        });
+        return;
+      }
+    } else {
+      const violation = validateComposedInput({ file, text, k });
+      if (violation) {
+        setState({ status: "error", message: violation });
+        return;
+      }
     }
 
     const requestId = requestIdRef.current + 1;
@@ -114,9 +253,18 @@ export function ComposedSearchWorkbench() {
       if (requestIdRef.current !== requestId) return;
       const formData = new FormData();
       formData.set("schema_version", "1.0.0");
-      formData.set("image", file as File);
-      formData.set("modification_text", text);
-      formData.set("k", String(k));
+      if (mode === "PRODUCT" && anchorParam) {
+        // PRODUCT reference: exact anchor triple, strictly no image part.
+        formData.set("modification_text", text);
+        formData.set("k", String(k));
+        formData.set("anchor_product_id", anchorParam.productId);
+        formData.set("anchor_product_version_id", anchorParam.productVersionId);
+        formData.set("anchor_catalog_snapshot_id", anchorParam.snapshotId);
+      } else {
+        formData.set("image", file as File);
+        formData.set("modification_text", text);
+        formData.set("k", String(k));
+      }
       const response = await fetch("/api/search/composed", {
         method: "POST",
         headers: { [csrf.header]: csrf.token },
@@ -130,9 +278,14 @@ export function ComposedSearchWorkbench() {
       if (requestIdRef.current !== requestId) return;
       if (!response.ok) {
         const error = payload as ComposedSearchError;
+        const stale =
+          error.code === "ANCHOR_NOT_AVAILABLE" ||
+          error.code === "ANCHOR_PUBLICATION_MISMATCH";
         setState({
           status: "error",
-          message: error.message || "Tìm kiếm không hoàn tất. Hãy thử lại.",
+          message: stale
+            ? "Sản phẩm neo đã thay đổi hoặc không còn khả dụng. Hãy chọn lại từ catalog."
+            : error.message || "Tìm kiếm không hoàn tất. Hãy thử lại.",
           traceId: error.trace_id ?? undefined,
         });
         return;
@@ -150,57 +303,112 @@ export function ComposedSearchWorkbench() {
 
   const results = state.status === "success" ? state.data.results : [];
   const data = state.status === "success" ? state.data : null;
+  const snapshot = data?.publication.catalog_snapshot_id ?? "";
+  const anchorReady = anchor.status === "ready" ? anchor.data : null;
   const statusText =
     state.status === "searching"
       ? "Đang đối chiếu ảnh và mô tả thay đổi…"
       : state.status === "success"
         ? `Tìm thấy ${results.length} sản phẩm, giữ nguyên thứ tự xếp hạng của API.`
-        : "Chọn ảnh tham chiếu và nhập mô tả thay đổi.";
+        : mode === "PRODUCT"
+          ? "Dùng sản phẩm đã chọn làm ảnh tham chiếu, nhập mô tả thay đổi."
+          : "Chọn ảnh tham chiếu và nhập mô tả thay đổi.";
 
   return (
     <section className={styles.workbench} aria-label="Tìm kiếm composed trực tiếp">
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <label
-          className={`${styles.dropzone} ${isDragging ? styles.dragging : ""}`}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            className={styles.fileInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleInput}
-            aria-label="Chọn ảnh tham chiếu JPEG, PNG hoặc WebP, tối đa 10 MiB"
-          />
-          {previewUrl ? (
-            <span
-              className={styles.preview}
-              style={{ backgroundImage: `url(${previewUrl})` }}
-              role="img"
-              aria-label={`Ảnh tham chiếu: ${file?.name ?? ""}`}
-            />
-          ) : (
-            <span className={styles.dropCopy}>
-              <strong>Thả ảnh tham chiếu vào đây</strong>
-              <span>hoặc nhấn để chọn từ máy</span>
-            </span>
-          )}
-        </label>
+      {anchorParam && (
+        <div className={styles.modeSwitch} role="group" aria-label="Chế độ tham chiếu">
+          <button
+            type="button"
+            className={mode === "UPLOAD" ? `${styles.modeButton} ${styles.modeActive}` : styles.modeButton}
+            aria-pressed={mode === "UPLOAD"}
+            onClick={() => switchMode("UPLOAD")}
+          >
+            Tải ảnh lên
+          </button>
+          <button
+            type="button"
+            className={mode === "PRODUCT" ? `${styles.modeButton} ${styles.modeActive}` : styles.modeButton}
+            aria-pressed={mode === "PRODUCT"}
+            onClick={() => switchMode("PRODUCT")}
+          >
+            Dùng sản phẩm đã chọn
+          </button>
+        </div>
+      )}
 
-        <div className={styles.fileRow}>
-          <span className={styles.fileName}>{file?.name ?? "Chưa chọn ảnh"}</span>
-          {file && (
-            <button className={styles.clearButton} type="button" onClick={reset}>
-              Bỏ ảnh
-            </button>
+      {mode === "PRODUCT" && anchorParam && (
+        <div className={styles.anchorBox} aria-live="polite">
+          {anchor.status === "loading" && <p>Đang xác thực sản phẩm đã chọn…</p>}
+          {anchor.status === "error" && (
+            <p className={styles.anchorError} role="alert">
+              {anchor.message}
+            </p>
+          )}
+          {anchorReady && (
+            <div className={styles.anchorPreview}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={anchorReady.image_url} alt={anchorReady.title} />
+              <div>
+                <span className={styles.cardCategory}>
+                  Tham chiếu · {categoryNames[anchorReady.category]}
+                </span>
+                <strong>{anchorReady.title}</strong>
+                <span className={styles.anchorMeta}>
+                  {anchorReady.product_id} · {anchorReady.product_version_id}
+                </span>
+              </div>
+            </div>
           )}
         </div>
+      )}
+
+      <form className={styles.form} onSubmit={handleSubmit}>
+        {mode === "UPLOAD" && (
+          <>
+            <label
+              className={`${styles.dropzone} ${isDragging ? styles.dragging : ""}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              <input
+                ref={inputRef}
+                className={styles.fileInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleInput}
+                aria-label="Chọn ảnh tham chiếu JPEG, PNG hoặc WebP, tối đa 10 MiB"
+              />
+              {previewUrl ? (
+                <span
+                  className={styles.preview}
+                  style={{ backgroundImage: `url(${previewUrl})` }}
+                  role="img"
+                  aria-label={`Ảnh tham chiếu: ${file?.name ?? ""}`}
+                />
+              ) : (
+                <span className={styles.dropCopy}>
+                  <strong>Thả ảnh tham chiếu vào đây</strong>
+                  <span>hoặc nhấn để chọn từ máy</span>
+                </span>
+              )}
+            </label>
+
+            <div className={styles.fileRow}>
+              <span className={styles.fileName}>{file?.name ?? "Chưa chọn ảnh"}</span>
+              {file && (
+                <button className={styles.clearButton} type="button" onClick={reset}>
+                  Bỏ ảnh
+                </button>
+              )}
+            </div>
+          </>
+        )}
 
         <label className={styles.textLabel}>
           Mô tả thay đổi mong muốn
@@ -264,20 +472,29 @@ export function ComposedSearchWorkbench() {
           <ol className={styles.resultList}>
             {results.map((product) => (
               <li key={`${product.product_id}:${product.product_version_id}`}>
-                <article className={styles.card}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={product.image_url} alt={product.title} loading="lazy" />
-                  <div>
-                    <span className={styles.cardCategory}>
-                      Hạng {product.rank} · {categoryNames[product.category]}
-                    </span>
-                    <h3>{product.title}</h3>
-                    <p>
-                      Mức tương đồng {(product.similarity_score * 100).toFixed(1)}% ·{" "}
-                      {product.product_id}
-                    </p>
-                  </div>
-                </article>
+                <Link
+                  href={`${detailHref(
+                    product.product_id,
+                    product.product_version_id,
+                    snapshot,
+                  )}&return_to=${encodeURIComponent("/search/composed")}`}
+                  aria-label={`Xem chi tiết ${product.title}`}
+                >
+                  <article className={styles.card}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={product.image_url} alt={product.title} loading="lazy" />
+                    <div>
+                      <span className={styles.cardCategory}>
+                        Hạng {product.rank} · {categoryNames[product.category]}
+                      </span>
+                      <h3>{product.title}</h3>
+                      <p>
+                        Mức tương đồng {(product.similarity_score * 100).toFixed(1)}% ·{" "}
+                        {product.product_id}
+                      </p>
+                    </div>
+                  </article>
+                </Link>
               </li>
             ))}
           </ol>

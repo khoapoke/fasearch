@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { FashionCategory, SearchProduct } from "@/lib/search-contract";
 import styles from "./result-card.module.css";
 
@@ -13,10 +14,11 @@ export function categoryLabel(category: FashionCategory): string {
 
 // Live card: only actual API response fields (image, title, category, rank,
 // raw similarity). No prices, ratings, sizes or sale badges — the image-search
-// contract does not provide them.
-export function ResultCard({ product }: { product: SearchProduct }) {
-  return (
-    <article className={styles.card}>
+// contract does not provide them. When href is set the whole card links to
+// the exact product detail (version + snapshot from the actual response).
+export function ResultCard({ product, href }: { product: SearchProduct; href?: string }) {
+  const body = (
+    <>
       <div className={styles.imageWrap}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -37,6 +39,18 @@ export function ResultCard({ product }: { product: SearchProduct }) {
           <strong>{(product.similarity_score * 100).toFixed(1)}%</strong>
         </div>
       </div>
-    </article>
+    </>
+  );
+  if (!href) {
+    return <article className={styles.card}>{body}</article>;
+  }
+  return (
+    <Link
+      className={styles.cardLink}
+      href={href}
+      aria-label={`Xem chi tiết ${product.title}`}
+    >
+      <article className={styles.card}>{body}</article>
+    </Link>
   );
 }

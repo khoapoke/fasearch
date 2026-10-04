@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteHeader } from "@/components/stitch-search/site-header";
 import { Hero } from "@/components/stitch-search/hero";
 import { ImageSearchWorkbench } from "@/components/image-search-workbench";
@@ -12,6 +13,8 @@ export default function Home() {
       <main>
         <Hero />
         <nav aria-label="Chế độ tìm kiếm" className={styles.modeNav}>
+          <Link href="/catalog">Duyệt catalog</Link>
+          {" · "}
           <a href="#tim-bang-anh">Tìm bằng ảnh</a>
           {" · "}
           <a href="/search/text">Tìm bằng chữ</a>

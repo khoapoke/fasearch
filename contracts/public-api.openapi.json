@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "FaSearch Public API",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/api/v1/auth/csrf": {
@@ -475,6 +475,178 @@
           },
           "404": {
             "description": "Product version is not active or has no readable image"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/products": {
+      "get": {
+        "operationId": "listCatalogProducts",
+        "summary": "List public catalog products with bounded pagination",
+        "description": "Paginated read over the pinned immutable pilot publication in frozen file order.",
+        "parameters": [
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647,
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 24
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TOP",
+                "BOTTOM",
+                "ONE_PIECE"
+              ]
+            }
+          },
+          {
+            "name": "catalog_snapshot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the pinned publication",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Trace-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SearchError"
+          },
+          "409": {
+            "$ref": "#/components/responses/SearchError"
+          },
+          "503": {
+            "$ref": "#/components/responses/SearchError"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/products/{productId}": {
+      "get": {
+        "operationId": "getCatalogProduct",
+        "summary": "Read one public catalog product version",
+        "description": "Resolves exactly the public version in the pinned publication.",
+        "parameters": [
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "product_version_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "catalog_snapshot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact public product version",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Trace-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SearchError"
+          },
+          "404": {
+            "$ref": "#/components/responses/SearchError"
+          },
+          "409": {
+            "$ref": "#/components/responses/SearchError"
+          },
+          "503": {
+            "$ref": "#/components/responses/SearchError"
           }
         }
       }
@@ -1163,7 +1335,10 @@
               "IMAGE_TOO_LARGE",
               "AI_UNAVAILABLE",
               "AI_PUBLICATION_MISMATCH",
-              "CATALOG_VERSION_MISMATCH"
+              "CATALOG_VERSION_MISMATCH",
+              "CATALOG_SNAPSHOT_MISMATCH",
+              "CATALOG_PRODUCT_NOT_FOUND",
+              "CATALOG_UNAVAILABLE"
             ]
           },
           "message": {
@@ -1546,6 +1721,150 @@
                 "type": "number"
               }
             }
+          }
+        }
+      },
+      "CatalogItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "product_id",
+          "product_version_id",
+          "title",
+          "category",
+          "image_url"
+        ],
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "product_version_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
+          },
+          "image_url": {
+            "type": "string"
+          }
+        }
+      },
+      "CatalogPageResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "trace_id",
+          "publication",
+          "artifact_scope",
+          "page",
+          "size",
+          "total",
+          "has_more",
+          "items"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/Publication"
+          },
+          "artifact_scope": {
+            "type": "string",
+            "const": "PILOT_ONLY"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            }
+          }
+        }
+      },
+      "CatalogDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "trace_id",
+          "publication",
+          "artifact_scope",
+          "product_id",
+          "product_version_id",
+          "title",
+          "category",
+          "description",
+          "image_url"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/Publication"
+          },
+          "artifact_scope": {
+            "type": "string",
+            "const": "PILOT_ONLY"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "product_version_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_url": {
+            "type": "string"
           }
         }
       }

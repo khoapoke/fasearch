@@ -18,6 +18,9 @@ import com.fasearch.backend.search.application.ComposedSearchUseCase;
 import com.fasearch.backend.search.application.ImageSearchModule;
 import com.fasearch.backend.search.application.TextSearchModule;
 import com.fasearch.backend.search.application.ImageSearchUseCase;
+import com.fasearch.backend.search.application.PublicCatalogBrowseModule;
+import com.fasearch.backend.search.application.PublicCatalogBrowseUseCase;
+import com.fasearch.backend.search.application.PublicCatalogSnapshotProvider;
 import com.fasearch.backend.search.application.TextSearchUseCase;
 
 @Configuration
@@ -35,6 +38,20 @@ public class SearchConfiguration {
 				.baseUrl(properties.ai().baseUrl().toString())
 				.requestFactory(requestFactory)
 				.build();
+	}
+
+	@Bean
+	PublicCatalogSnapshotProvider publicCatalogSnapshotProvider(
+			FaSearchProperties properties,
+		tools.jackson.databind.json.JsonMapper jsonMapper) {
+		return new PublicCatalogSnapshotProvider(properties, jsonMapper);
+	}
+
+	@Bean
+	PublicCatalogBrowseUseCase publicCatalogBrowseUseCase(
+			PublicCatalogSnapshotProvider snapshots,
+			FaSearchProperties properties) {
+		return new PublicCatalogBrowseModule(snapshots, properties.publication());
 	}
 
 	@Bean

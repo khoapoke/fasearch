@@ -12,6 +12,7 @@ import type {
   ImageSearchResponse,
   SearchError,
 } from "@/lib/search-contract";
+import { detailHref } from "@/lib/catalog-contract";
 import { ResultCard } from "./stitch-search/result-card";
 import { createRequestGuard } from "./stitch-search/request-guard";
 import styles from "./image-search-workbench.module.css";
@@ -149,6 +150,8 @@ export function ImageSearchWorkbench() {
   }
 
   const results = state.status === "success" ? state.data.results : [];
+  const snapshot =
+    state.status === "success" ? state.data.publication.catalog_snapshot_id : "";
   const statusText =
     state.status === "searching"
       ? "Đang đối chiếu catalog…"
@@ -322,6 +325,11 @@ export function ImageSearchWorkbench() {
                   <ResultCard
                     key={`${product.product_id}:${product.product_version_id}`}
                     product={product}
+                    href={`${detailHref(
+                      product.product_id,
+                      product.product_version_id,
+                      snapshot,
+                    )}&return_to=${encodeURIComponent("/")}`}
                   />
                 ))}
               </div>

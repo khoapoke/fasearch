@@ -1,11 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type {
   FashionCategory,
   TextSearchError,
   TextSearchResponse,
 } from "@/lib/search-contract";
+import { detailHref } from "@/lib/catalog-contract";
 import { createRequestGuard } from "../stitch-search/request-guard";
 import {
   MAX_TEXT_CODE_POINTS,
@@ -197,6 +199,14 @@ export function TextSearchWorkbench() {
           <ol className={styles.resultList}>
             {results.map((product) => (
               <li key={`${product.product_id}:${product.product_version_id}`}>
+                <Link
+                  href={`${detailHref(
+                    product.product_id,
+                    product.product_version_id,
+                    data?.publication.catalog_snapshot_id ?? "",
+                  )}&return_to=${encodeURIComponent("/search/text")}`}
+                  aria-label={`Xem chi tiết ${product.title}`}
+                >
                 <article className={styles.card}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={product.image_url} alt={product.title} loading="lazy" />
@@ -211,6 +221,7 @@ export function TextSearchWorkbench() {
                     </p>
                   </div>
                 </article>
+                </Link>
               </li>
             ))}
           </ol>

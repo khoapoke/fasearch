@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ComposedSearchWorkbench } from "@/components/composed-search/composed-search-workbench";
 import styles from "./page.module.css";
 
@@ -16,7 +17,9 @@ export default function ComposedSearchPage() {
         cả hai với catalog đang được công bố và giữ nguyên thứ tự xếp hạng từ
         mô hình.
       </p>
-      <ComposedSearchWorkbench />
+      <Suspense fallback={<p>Đang tải công cụ tìm kiếm…</p>}>
+        <ComposedSearchWorkbench />
+      </Suspense>
     </main>
   );
 }
