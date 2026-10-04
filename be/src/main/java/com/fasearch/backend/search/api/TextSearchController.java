@@ -58,7 +58,7 @@ public class TextSearchController {
 		byte[] body = readCapped(request);
 		JsonNode node;
 		try {
-			node = json.readTree(new String(body, StandardCharsets.UTF_8));
+			node = json.readTree(strictUtf8(body));
 		}
 		catch (RuntimeException exception) {
 			throw invalid("Request validation failed");
@@ -79,15 +79,26 @@ public class TextSearchController {
 		if (queryText == null || !queryText.isTextual()) {
 			throw invalid("Missing query_text");
 		}
+		String rawQuery = queryText.asText();
+		if (hasLoneSurrogate(rawQuery)) {
+			throw invalid("Query text is not valid UTF-8 text");
+		}
 		int k = 10;
 		JsonNode kNode = node.get("k");
-		if (kNode != null && !kNode.isNull()) {
-			if (!kNode.isInt() && !kNode.isLong()) {
+		if (kNode != null) {
+			if (kNode.isNull()
+					|| kNode.isBoolean()
+					|| !kNode.isNumber()
+					|| kNode.isFloatingPointNumber()) {
 				throw invalid("Invalid k");
 			}
-			k = kNode.asInt();
+			long wide = kNode.asLong();
+			if (wide < 1 || wide > 100 || wide != kNode.asInt()) {
+				throw invalid("Invalid k");
+			}
+			k = (int) wide;
 		}
-		return new TextSearchUseCase.Command(queryText.asText(), k, traceId);
+		return new TextSearchUseCase.Command(rawQuery, k, traceId);
 	}
 
 	private static byte[] readCapped(HttpServletRequest request) {
@@ -115,6 +126,36 @@ public class TextSearchController {
 					"Request body could not be read",
 					exception);
 		}
+	}
+
+	private static String strictUtf8(byte[] body) {
+		try {
+			return java.nio.charset.Charset.forName("UTF-8")
+					.newDecoder()
+					.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+					.onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+					.decode(java.nio.ByteBuffer.wrap(body))
+					.toString();
+		}
+		catch (java.nio.charset.CharacterCodingException exception) {
+			throw invalid("Request body is not valid UTF-8");
+		}
+	}
+
+	private static boolean hasLoneSurrogate(String value) {
+		for (int i = 0; i < value.length(); i++) {
+			char ch = value.charAt(i);
+			if (Character.isHighSurrogate(ch)) {
+				if (i + 1 >= value.length() || !Character.isLowSurrogate(value.charAt(i + 1))) {
+					return true;
+				}
+				i++;
+			}
+			else if (Character.isLowSurrogate(ch)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static String resolveTraceId(String incomingTraceId) {

@@ -1,0 +1,32 @@
+== HEAD ==
+119efa0a27806a4c89ef803f8ab31c6925ffb037
+== 0. health ==
+PASS: AI health (=200)
+PASS: Boot health (=200)
+PASS: FE home (=200)
+PASS: admin login (=200)
+== 1. TEXT parity AI->Boot->Next ==
+PASS: TEXT parity order/count/scores<=1e-5/provenance/no-echo (3 results)
+PASS: TEXT short k=1 count (=1)
+PASS: TEXT empty gibberish (=200)
+== 2. IMAGE + COMPOSED live ==
+PASS: IMAGE live 3 results
+PASS: COMPOSED live UPLOAD
+PASS: COMPOSED no-store+trace
+== 3. negatives/privacy/headers ==
+PASS: blank 400 (=400)
+PASS: overlong TEXT_TOO_LONG (=TEXT_TOO_LONG)
+PASS: badK INVALID_REQUEST (=INVALID_REQUEST)
+PASS: unknown field (=INVALID_REQUEST)
+PASS: surrogate 400 typed (=INVALID_REQUEST)
+PASS: 16KiB Boot 413 (=413)
+PASS: 16KiB Next 413 (=413)
+PASS: 16KiB AI 413 (=413)
+PASS: bad trace 400 (=400)
+PASS: mime mismatch 415 (=415)
+PASS: internal pub mismatch 409 (=409)
+PASS: error no-store+trace
+== 4. swagger ==
+served:200
+PASS: swagger byte-equal canonical
+RESULT pass=23 fail=0

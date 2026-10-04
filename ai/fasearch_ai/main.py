@@ -67,6 +67,36 @@ def _codepoint_len(text: str) -> int:
     return len(text)
 
 
+MAX_TEXT_JSON_BYTES = 16 * 1024
+
+
+async def _read_bounded_json_body(request: Request) -> bytes | None:
+    """Stream the body with an early 16 KiB stop: never buffer a no-length
+    (chunked) body past the cap. Returns None when the cap is exceeded."""
+    total = 0
+    chunks: list[bytes] = []
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > MAX_TEXT_JSON_BYTES:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _rejectable_text(raw_text: str) -> str | None:
+    """Return an error message when raw_text is not usable, else None.
+
+    Rejects lone surrogates/non-UTF-8-encodable text before normalization or
+    the core ever sees it (strict UTF-8 round-trip)."""
+    if not raw_text:
+        return "Query text is empty"
+    try:
+        raw_text.encode("utf-8", errors="strict")
+    except (UnicodeEncodeError, ValueError):
+        return "Query text is not valid UTF-8 text"
+    return None
+
+
 def _text_error(status_code: int, code: str, message: str, trace_id: str | None) -> JSONResponse:
     payload = ErrorResponse(code=code, message=message, trace_id=trace_id)
     headers = {"Cache-Control": "no-store"}
@@ -356,10 +386,9 @@ def create_app() -> FastAPI:
         request: Request,
         module: TextSearchModule = Depends(provide_text_search_module),
     ) -> TextSearchResponse | JSONResponse:
-        MAX_JSON_BYTES = 16 * 1024
         header_trace = request.headers.get("x-trace-id")
-        raw = await request.body()
-        if len(raw) > MAX_JSON_BYTES:
+        raw = await _read_bounded_json_body(request)
+        if raw is None:
             oversize_headers = {"Cache-Control": "no-store"}
             if header_trace:
                 oversize_headers["X-Trace-Id"] = header_trace
@@ -415,8 +444,9 @@ def create_app() -> FastAPI:
         raw_text = payload.get("query_text")
         if not isinstance(raw_text, str):
             return _text_error(422, "INVALID_REQUEST", "Missing query_text", effective_trace)
-        if len(raw_text) == 0 or len(raw_text.encode("utf-8")) == 0:
-            return _text_error(400, "INVALID_REQUEST", "Query text is empty", effective_trace)
+        unusable = _rejectable_text(raw_text) if isinstance(raw_text, str) else "Missing query_text"
+        if unusable:
+            return _text_error(400, "INVALID_REQUEST", unusable, effective_trace)
         if _codepoint_len(raw_text) < 1:
             return _text_error(400, "INVALID_REQUEST", "Query text is empty", effective_trace)
         if _codepoint_len(raw_text) > 1024:

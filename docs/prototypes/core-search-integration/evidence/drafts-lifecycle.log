@@ -1,0 +1,18 @@
+HEAD=119efa0a27806a4c89ef803f8ab31c6925ffb037
+logins ok
+PASS: create v1 (=1)
+PASS: revise v2 (=2)
+PASS: stale revise 409 (=409)
+PASS: upload v3 primary (=3-True)
+PASS: image bytes match
+PASS: stale upload 409 (=409)
+PASS: staffA own-only (no B titles) (=ok)
+PASS: admin sees all >=2 (=yes)
+PASS: A reads B 403 (=403)
+PASS: registered 403 (=403)
+PASS: anon list 401 (=401)
+PASS: anon create 403 (=403)
+PASS: past-end empty (=0-False)
+PASS: logout 204 (=204)
+PASS: old session 401 (=401)
+RESULT pass=15 fail=0

@@ -77,3 +77,8 @@ Request JSON (Boot → AI):
 - `be/src/test/.../TextSearchModuleTests.java` + controller contract test: validation, fail-closed AI mismatch, join order, no-store/trace headers.
 - `fe/tests/text-workbench.test.mjs`: validation limits + stale guard.
 - Full-stack fixture: core→internal→Boot→Next→render parity (order/product/version/rank/count, score ≤1e-5).
+
+## 9. Closure addendum (bounded streaming + strict text)
+
+- Pre-buffer bounds: Next TEXT streams `request.body` with early 16 KiB stop (covers chunked/missing length); Next Composed streams raw bytes with early 11 MiB stop then rebuilds formData from the bounded bytes (same forward semantics); AI TEXT consumes `request.stream()` with early 16 KiB stop; Boot reads the servlet InputStream capped (covers chunked). A downstream 413 never substitutes for the pre-buffer guard.
+- Strict text: lone surrogates / non-UTF-8-encodable query text is rejected 400 `INVALID_REQUEST` (typed, trace + no-store) at Next (regex), AI (strict UTF-8 round-trip before normalize/core) and Boot (REPORT-decoder + surrogate scan), plus module-level `ValueError` guard. K: null/bool/float/out-of-int-range rejected; absent defaults 10.

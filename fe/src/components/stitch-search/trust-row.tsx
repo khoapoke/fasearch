@@ -12,8 +12,8 @@ const ITEMS = [
     body: "Browser chỉ giữ session ID HttpOnly; thao tác ghi dùng CSRF token trong bộ nhớ trang.",
   },
   {
-    title: "Tìm bằng ảnh trước",
-    body: "Slice này kiểm chứng image mode; text và composed theo roadmap website, không gắn nút giả.",
+    title: "Ba chế độ tìm kiếm thật",
+    body: "Image, text và composed đều gọi API live qua /search/image, /search/text và /search/composed; demo hero vẫn là minh họa gắn nhãn, không gọi API."
   },
   {
     title: "Truy vết từng request",

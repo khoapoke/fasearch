@@ -330,6 +330,10 @@ class RetrievalTextSearchModule:
     ) -> TextSearchOutcome:
         if expected_publication != self.publication:
             raise PublicationMismatchError(expected_publication, self.publication)
+        try:
+            raw_text.encode("utf-8", errors="strict")
+        except (UnicodeEncodeError, ValueError):
+            raise ValueError("Query text is not valid UTF-8 text")
         model_view = normalized_model_view(raw_text)
         if not model_view:
             raise ValueError("Query text is empty after normalization")

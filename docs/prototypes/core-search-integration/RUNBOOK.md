@@ -1,41 +1,31 @@
-# RUNBOOK — task-owned stack (ports/PIDs/namespaced)
+# RUNBOOK — task-owned stack (executable, guarded)
 
-Task root: /private/tmp/fasearch-core-search-integration-2h (branch codex/core-search-integration-2h).
+Task root: `/private/tmp/fasearch-core-search-integration-2h` (branch `codex/core-search-integration-2h`).
 Ports: FE 3210, Boot 18180, AI 18011, PG 55532, S3 38335. Never touch 18080/8001 or other tasks' containers.
-PIDs: /private/tmp/fasearch-core-search-2h-ai.pid, -boot.pid, -fe.pid. Logs: /private/tmp/fasearch-core-search-2h-{ai,boot,fe}.log.
+PID files: `/private/tmp/fasearch-core-search-2h-{ai,boot,fe}.pid` (written by the lifecycle script only).
+Logs: `/private/tmp/fasearch-core-search-2h-{ai,boot,fe}.log`.
+Task AI interpreter (required): `/Users/khoado/Documents/ChatGPT/Graduate Bachelor/.venv/bin/python` (3.12.14, pinned deps incl. jsonschema/transformers). Verify with `"$VENV" -c "import fastapi,jsonschema,transformers"` and import-origin check `PYTHONPATH=<root>/ai $VENV -c "import fasearch_ai.main"`. Never use the old 3.13 `/private/tmp/fasearch-ai-venv`.
 
-## Env (disposable test secrets only)
+## Env (disposable test secrets only; sanitized from logs)
 
-PG: POSTGRES_PASSWORD=task-test-pw. S3: task-test-key/task-test-secret, bucket fasearch-product-images.
-Boot: FASEARCH_DB_URL=jdbc:postgresql://127.0.0.1:55532/fasearch, FASEARCH_DB_USER=fasearch, FASEARCH_DB_PASSWORD=task-test-pw, FASEARCH_OBJECT_ENDPOINT=http://127.0.0.1:38335 (+keys above), FASEARCH_AI_BASE_URL=http://127.0.0.1:18011, SERVER_PORT=18180, FASEARCH_CATALOG_SNAPSHOT_ID=core-search-task-fixture-v1, FASEARCH_MODEL_VERSION=fixture-v1+4eaad46f9361, FASEARCH_INDEX_VERSION=api-prototype-index-v1, FASEARCH_CATALOG_FILE=/private/tmp/fasearch-ai-fixture/boot-catalog.jsonl (read-only fixture), FASEARCH_BOOTSTRAP_ADMIN_USERNAME=task-admin, _EMAIL=task-admin@example.test, _PASSWORD=Task-Admin-Test-Pass-123, FASEARCH_COOKIE_SECURE=false.
-AI: FASEARCH_CONFIG_PATH=/private/tmp/fasearch-api-prototype-3h/ai/configs/baseline.v1.yaml, FASEARCH_INDEX_DIR=/private/tmp/fasearch-ai-fixture/index (read-only), FASEARCH_ENCODER=fixture, FASEARCH_CATALOG_SNAPSHOT_ID as above, PYTHONPATH=<checkout>/ai, venv /private/tmp/fasearch-ai-venv/bin/python (py3.13; host lacks 3.12 — recorded deviation).
-FE: FASEARCH_BACKEND_URL=http://127.0.0.1:18180, PORT=3210.
+PG: `POSTGRES_PASSWORD=task-test-pw`. S3: `task-test-key`/`task-test-secret`, bucket `fasearch-product-images`.
+Boot: `FASEARCH_DB_URL=jdbc:postgresql://127.0.0.1:55532/fasearch`, `FASEARCH_DB_USER=fasearch`, `FASEARCH_DB_PASSWORD=task-test-pw`, `FASEARCH_OBJECT_ENDPOINT=http://127.0.0.1:38335` (+keys above), `FASEARCH_AI_BASE_URL=http://127.0.0.1:18011`, `SERVER_PORT=18180`, `FASEARCH_CATALOG_SNAPSHOT_ID=core-search-task-fixture-v1`, `FASEARCH_MODEL_VERSION=fixture-v1+4eaad46f9361`, `FASEARCH_INDEX_VERSION=api-prototype-index-v1`, `FASEARCH_CATALOG_FILE=/private/tmp/fasearch-ai-fixture/boot-catalog.jsonl` (read-only fixture), bootstrap admin `task-admin`/`task-admin@example.test`/`Task-Admin-Test-Pass-123` (env `TASK_ADMIN_PASS`), `FASEARCH_COOKIE_SECURE=false`.
+AI: `FASEARCH_CONFIG_PATH=/private/tmp/fasearch-api-prototype-3h/ai/configs/baseline.v1.yaml`, `FASEARCH_INDEX_DIR=/private/tmp/fasearch-ai-fixture/index` (read-only), `FASEARCH_ENCODER=fixture`, `FASEARCH_CATALOG_SNAPSHOT_ID` as above, `PYTHONPATH=<root>/ai`.
+FE: `FASEARCH_BACKEND_URL=http://127.0.0.1:18180`, `PORT=3210`.
 
-## Start (order PG/S3 → AI → Boot → FE)
+## Lifecycle (single executable; guards refuse unknown owners)
+
+All process control goes through `tools/core-search-integration/lifecycle.sh`:
 
 ```
-docker start fasearch-core-search-integration-2h-pg fasearch-core-search-integration-2h-s3
-# or create (first time):
-docker run -d --name fasearch-core-search-integration-2h-pg -e POSTGRES_DB=fasearch -e POSTGRES_USER=fasearch -e POSTGRES_PASSWORD=task-test-pw -p 127.0.0.1:55532:5432 postgres:16-alpine
-docker run -d --name fasearch-core-search-integration-2h-s3 -e AWS_ACCESS_KEY_ID=task-test-key -e AWS_SECRET_ACCESS_KEY=task-test-secret -e S3_BUCKET=fasearch-product-images -p 127.0.0.1:38335:8333 chrislusf/seaweedfs:4.47 mini
-cd <checkout>/ai && FASEARCH_CONFIG_PATH=... FASEARCH_INDEX_DIR=... FASEARCH_ENCODER=fixture FASEARCH_CATALOG_SNAPSHOT_ID=... PYTHONPATH=<checkout>/ai /private/tmp/fasearch-ai-venv/bin/python -m uvicorn fasearch_ai.main:app --host 127.0.0.1 --port 18011 > /private/tmp/fasearch-core-search-2h-ai.log 2>&1 & echo $! > /private/tmp/fasearch-core-search-2h-ai.pid
-curl -s http://127.0.0.1:18011/internal/v1/health
-cd <checkout>/be && <env above> nohup java -jar target/backend-0.0.1-SNAPSHOT.jar > /private/tmp/fasearch-core-search-2h-boot.log 2>&1 & echo $! > /private/tmp/fasearch-core-search-2h-boot.pid
-curl -s http://127.0.0.1:18180/actuator/health
-cd <checkout>/fe && FASEARCH_BACKEND_URL=http://127.0.0.1:18180 PORT=3210 nohup npm run start -- --port 3210 > /private/tmp/fasearch-core-search-2h-fe.log 2>&1 & echo $! > /private/tmp/fasearch-core-search-2h-fe.pid
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3210/
+tools/core-search-integration/lifecycle.sh start   # expects free ports, starts PG/S3 → AI → Boot → FE, writes PID files, polls health
+tools/core-search-integration/lifecycle.sh health  # AI /internal/v1/health, Boot /actuator/health, FE GET / (200)
+tools/core-search-integration/lifecycle.sh stop    # verifies PID cmdline + listener port per service, kills FE wrapper → Boot → AI, stops task containers
 ```
 
-Build first time: `cd be && ./mvnw -q package -DskipTests`; `cd fe && npm ci && npm run build`.
+Stop guards: PID file must name a live process whose command line matches this task's service (`npm run start --port 3210`, `backend-0.0.1-SNAPSHOT.jar`, `uvicorn fasearch_ai.main:app.*--port 18011`) AND whose TCP listener is the task port (FE child resolved via parent PID). Anything else → loud `REFUSE`, no kill. No broad pkill/pgrep-first-match anywhere.
 
-## Health / test / stop / restart
+First-time build: `cd be && ./mvnw -q package -DskipTests`; `cd fe && npm ci && npm run build`.
+Restart proof (this task only): `lifecycle.sh stop` → ports free → `lifecycle.sh start` → `lifecycle.sh health`. See IMPLEMENTATION_HANDOFF for the last proven restart.
 
-Health: AI /internal/v1/health, Boot /actuator/health, FE GET / (200). Bounded polling, no blind sleeps in scripts.
-Test: ai `/private/tmp/fasearch-ai-venv/bin/python -m pytest tests/test_internal_api.py tests/test_internal_composed.py tests/test_internal_text.py`; be `./mvnw -q test` (cwd be/); fe `npm run lint && npm run build` + `node --test tests/*.test.mjs`.
-Stop (exact PID + cmdline check, never broad pkill):
-```
-kill $(cat /private/tmp/fasearch-core-search-2h-fe.pid) $(cat /private/tmp/fasearch-core-search-2h-boot.pid) $(cat /private/tmp/fasearch-core-search-2h-ai.pid)
-docker stop fasearch-core-search-integration-2h-pg fasearch-core-search-integration-2h-s3
-```
-Restart: stop, verify ports free (`lsof -i :3210,:18180,:18011`), start again same order.
-Preview: http://127.0.0.1:3210/ (combined app). No secrets in Git; fixture/model/index read-only, never committed.
+Preview: http://127.0.0.1:3210/ (combined app). No secrets/raw assets in Git; fixture/model/index read-only, never committed.

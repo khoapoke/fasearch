@@ -1,0 +1,15 @@
+HEAD=119efa0a27806a4c89ef803f8ab31c6925ffb037
+--- re-login staff-a (was logged out) ---
+{"username":"scope-staff-a","authenticated":true}
+--- revise/upload/409/scopes (ids from prior journey) ---
+PIDA=46f5429d-9aec-4d39-8b0a-ef5ec90e47fa PIDB=4db65616-d9f7-4102-b557-a4e0e9d8cd36
+read latest: v3 Áo của A sửa img= True
+admin list all: limit= 2 offset= 0 more= True n= 2
+admin list offset1: n= 2 more= False
+--- AI-down 503 (stop AI, probe, restart) ---
+ai pid=2141 /Users/khoado/Documents/ChatGPT/Graduate Bachelor/.venv/bin/python -m uvicorn fa
+ai-down:000
+HTTP/1.1 503 
+Cache-Control: no-store
+X-Trace-Id: down-2
+{"schema_version":"1.0.0","trace_id":"down-2","code":"AI_UNAVAILABLE","message":"AI service is unavailable"}

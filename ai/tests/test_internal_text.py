@@ -137,3 +137,43 @@ def test_text_publication_mismatch():
         )
     assert r.status_code == 409
     assert r.json()["code"] == "PUBLICATION_MISMATCH"
+
+
+def test_text_lone_surrogate_rejected_typed_before_core():
+    with _client() as client:
+        raw = (
+            '{"schema_version":"1.0.0","query_text":"\\ud800","k":2,'
+            '"trace_id":"t-surr","catalog_snapshot_id":"catalog-fixture-v1",'
+            '"model_version":"fixture-model-v1","index_version":"fixture-index-v1"}'
+        )
+        r = client.post(
+            "/internal/v1/search/text",
+            content=raw.encode("ascii"),
+            headers={"content-type": "application/json", "x-trace-id": "t-surr"},
+        )
+    assert r.status_code == 400, r.text
+    assert r.json()["code"] == "INVALID_REQUEST"
+    assert r.headers.get("x-trace-id") == "t-surr"
+    assert r.headers.get("cache-control") == "no-store"
+
+
+def test_text_chunked_body_bounded_before_buffering():
+    with _client() as client:
+        big = (
+            '{"schema_version":"1.0.0","query_text":"' + "z" * 17000 + '","k":3,'
+            '"trace_id":"t-chunk","catalog_snapshot_id":"c","model_version":"m","index_version":"i"}'
+        )
+        data = big.encode()
+
+        def chunks():
+            for i in range(0, len(data), 997):
+                yield data[i : i + 997]
+
+        r = client.post(
+            "/internal/v1/search/text",
+            content=chunks(),
+            headers={"content-type": "application/json", "x-trace-id": "t-chunk"},
+        )
+    assert r.status_code == 413, r.status_code
+    assert r.headers.get("x-trace-id") == "t-chunk"
+    assert r.headers.get("cache-control") == "no-store"

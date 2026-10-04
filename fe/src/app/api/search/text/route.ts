@@ -32,10 +32,50 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Bounded pre-buffer guard: stream with an early 16 KiB stop so a
+  // chunked/missing-length body cannot force full text buffering.
+  async function readBoundedText(): Promise<string | null> {
+    const stream = request.body;
+    if (!stream) return "";
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > MAX_JSON_BYTES) {
+          try { await reader.cancel(); } catch { /* already closed */ }
+          return null;
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return new TextDecoder("utf-8", { fatal: true }).decode(
+      Buffer.concat(chunks.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength))),
+    );
+  }
+
   let raw: string;
   try {
-    raw = await request.text();
-  } catch {
+    const bounded = await readBoundedText();
+    if (bounded === null) throw new RangeError("body too large");
+    raw = bounded;
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return Response.json(
+        {
+          schema_version: "1.0.0",
+          trace_id: traceId,
+          code: "INVALID_REQUEST",
+          message: "Yêu cầu vượt quá giới hạn 16 KiB.",
+        },
+        { status: 413, headers: noStoreHeaders },
+      );
+    }
     return Response.json(
       {
         schema_version: "1.0.0",
@@ -78,6 +118,20 @@ export async function POST(request: NextRequest) {
         trace_id: traceId,
         code: "INVALID_REQUEST",
         message: "Yêu cầu JSON không hợp lệ.",
+      },
+      { status: 400, headers: noStoreHeaders },
+    );
+  }
+
+  const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+  const queryText = (payload as { query_text?: unknown }).query_text;
+  if (typeof queryText === "string" && LONE_SURROGATE.test(queryText)) {
+    return Response.json(
+      {
+        schema_version: "1.0.0",
+        trace_id: traceId,
+        code: "INVALID_REQUEST",
+        message: "Mô tả tìm kiếm chứa ký tự không hợp lệ.",
       },
       { status: 400, headers: noStoreHeaders },
     );
