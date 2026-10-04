@@ -1,0 +1,11 @@
+Tầng Khởi tạo (src/core/):
+Khi chạy main.py, hệ thống gọi file ai_model.py để đẩy mô hình CLIP lên card RTX. Mô hình này sẽ nằm im trên VRAM chờ đợi.
+
+Tầng Xử lý (src/services/search_service.py):
+Nơi đây chứa hàm search. Hàm này sẽ lấy cái model đã khởi tạo ở tầng Core để biến ảnh/text thành vector, sau đó mượn client Qdrant ở tầng Core để truy vấn. Tuyệt đối không gọi CLIPModel.from_pretrained ở đây.
+
+Tầng Giao tiếp (src/api/endpoints.py):
+Khi frontend/user gọi API và upload 1 tấm ảnh, endpoint này sẽ lưu tạm ảnh vào storage/uploads/, sau đó gọi hàm ở tầng services để lấy kết quả, và cuối cùng trả về file JSON cho frontend.
+
+Tầng Dữ liệu ngoại tuyến (scripts/seed_data.py):
+Chính là file code bạn vừa viết. Khi nào bạn có thêm bộ dataset 10.000 ảnh mới, bạn chỉ cần mở terminal chạy python scripts/seed_data.py. Nó hoàn toàn độc lập và không ảnh hưởng đến server API đang chạy.
