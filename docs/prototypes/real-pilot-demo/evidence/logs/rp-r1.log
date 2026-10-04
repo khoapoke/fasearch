@@ -1,0 +1,21 @@
+== HEAD ==
+7b909a0257e6cc95db5a83e2dd5e7b61d84825ef
+== verifier 600x512 ==
+{
+  "status": "PASS",
+  "rows": 600,
+  "dimension": 512,
+  "catalog_sha256": "82b21a099c92dbf42eca43475e6cea5459da3c3ff27fc528589ad85517f9da44",
+  "model_version": "openai/clip-vit-base-patch32@092a3b7e3172+a6a0317b924b",
+  "index_version": "faiss-flatip-week4-v1",
+  "norm_min": 0.9999998807907104,
+  "norm_max": 1.0000001192092896
+}
+PASS: verifier exit 0
+PASS: catalog sha (=82b21a099c92dbf42eca43475e6cea5459da3c3ff27fc528589ad85517f9da44)
+PASS: mapping sha (=4ef3bb9ceb69955f02a1ca3347f000194e1d5fe027115e24ca38cb3f61decf6b)
+PASS: config sha (=47c89a1911e2bcfd2def03778cdbefd8447b63eff2e419eb43ea190a424127f8)
+PASS: 600 unique identities (=600 600)
+PASS: 600 images present (=0)
+PASS: weights 605247071 (=605247071)
+RESULT pass=7 fail=0

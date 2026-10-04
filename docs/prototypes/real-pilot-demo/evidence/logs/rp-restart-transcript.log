@@ -1,0 +1,15 @@
+=== stop ===
+stopped FE wrapper 68170
+stopped Boot 68169
+stopped AI 68168
+task containers stopped
+=== start ===
+AI 18021 UP
+Boot 18280 UP
+FE 3220 UP
+=== health ===
+AI 18021 UP
+Boot 18280 UP
+FE 3220 UP
+=== warm ===
+WARM OK warm-1791110058

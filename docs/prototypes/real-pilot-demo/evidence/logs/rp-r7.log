@@ -1,0 +1,31 @@
+== HEAD ==
+7b909a0257e6cc95db5a83e2dd5e7b61d84825ef
+PASS: lifecycle executable
+PASS: /private/tmp/fasearch-real-pilot-ai.pid pid 68168 running
+PASS: /private/tmp/fasearch-real-pilot-boot.pid pid 68169 running
+PASS: /private/tmp/fasearch-real-pilot-fe.pid pid 68170 running
+PASS: AI listener 18021
+PASS: Boot listener 18280
+PASS: old stack port 3210 still held
+PASS: old stack port 18180 still held
+PASS: old stack port 18011 still held
+PASS: old stack port 18080 still held
+PASS: old stack port 8001 still held
+PASS: restart transcript
+restart transcript: /tmp/rp-restart-transcript.log
+=== stop ===
+stopped FE wrapper 68170
+stopped Boot 68169
+stopped AI 68168
+task containers stopped
+=== start ===
+AI 18021 UP
+Boot 18280 UP
+FE 3220 UP
+=== health ===
+AI 18021 UP
+Boot 18280 UP
+FE 3220 UP
+=== warm ===
+WARM OK warm-1791110058
+RESULT pass=10 fail=0

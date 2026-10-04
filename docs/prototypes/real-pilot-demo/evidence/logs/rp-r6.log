@@ -1,0 +1,15 @@
+== HEAD ==
+7b909a0257e6cc95db5a83e2dd5e7b61d84825ef
+PASS: admin login (=200)
+PASS: me (=200)
+PASS: draft list (=200)
+PASS: draft create 33a7908f-8e43-418c-8156-42fd0e43a092
+PASS: revise v2 (=2)
+PASS: stale revise 409 (=409)
+PASS: upload v3 (=3)
+PASS: image bytes match
+PASS: draft not searchable (=200)
+PASS: anon list 401 (=401)
+PASS: logout 204 (=204)
+PASS: old session 401 (=401)
+RESULT pass=12 fail=0

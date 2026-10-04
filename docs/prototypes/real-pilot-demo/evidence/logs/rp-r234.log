@@ -1,0 +1,12 @@
+== HEAD ==
+7b909a0257e6cc95db5a83e2dd5e7b61d84825ef
+PASS: TEXT parity 'txt-fd6be6' order/count/scores<=1e-5
+PASS: TEXT parity 'txt-a43370' order/count/scores<=1e-5
+PASS: IMAGE parity self 11739 order/scores<=1e-5
+PASS: IMAGE parity self 10011 order/scores<=1e-5
+PASS: COMPOSED UPLOAD parity order/scores<=1e-5
+PASS: COMPOSED PRODUCT anchor exclusion
+PASS: stale snapshot 409
+PASS: wrong version 404
+PASS: image bytes 6236 match catalog
+RESULT pass=9 fail=0
