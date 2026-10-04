@@ -84,7 +84,7 @@ public final class PublicCatalogSnapshot {
 			catch (RuntimeException exception) {
 				throw new IllegalStateException("Invalid catalog row " + row, exception);
 			}
-			if (item.productId() == null || item.productId().isBlank()
+			if (item == null || item.productId() == null || item.productId().isBlank()
 					|| item.productVersionId() == null || item.productVersionId().isBlank()
 					|| item.title() == null || item.title().isBlank()
 					|| item.category() == null || !ALLOWED_CATEGORIES.contains(item.category())) {

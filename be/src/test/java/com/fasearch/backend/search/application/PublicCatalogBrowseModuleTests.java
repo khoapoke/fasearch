@@ -176,6 +176,18 @@ class PublicCatalogBrowseModuleTests {
 	}
 
 	@Test
+	void nullCatalogRowFailsClosedAsUnavailable() throws Exception {
+		Path file = tempDir.resolve("null-row.jsonl");
+		Files.writeString(file, "null\n", StandardCharsets.UTF_8);
+		var provider = new PublicCatalogSnapshotProvider(
+				new FaSearchProperties(null,
+						new FaSearchProperties.Publication("catalog-test-v1", "model-v1", "index-v1"),
+						new FaSearchProperties.Catalog(file.toString(), java.util.List.of())), new JsonMapper());
+		assertThatThrownBy(provider::snapshot).isInstanceOf(SearchException.class)
+				.extracting(exception -> ((SearchException) exception).code()).isEqualTo("CATALOG_UNAVAILABLE");
+	}
+
+	@Test
 	void duplicateProductIdFailsFast() throws Exception {
 		Path duplicated = tempDir.resolve("duplicated.jsonl");
 		Files.writeString(duplicated,

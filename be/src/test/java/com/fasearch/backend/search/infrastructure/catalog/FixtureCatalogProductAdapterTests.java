@@ -1,6 +1,7 @@
 package com.fasearch.backend.search.infrastructure.catalog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,11 +14,45 @@ import tools.jackson.databind.json.JsonMapper;
 
 import com.fasearch.backend.config.FaSearchProperties;
 import com.fasearch.backend.search.application.CatalogProductReader.Key;
+import com.fasearch.backend.search.application.SearchException;
 
 class FixtureCatalogProductAdapterTests {
 
 	@TempDir
 	Path directory;
+
+	@Test
+	void missingOrMalformedConfiguredFileDoesNotPreventStartupOrFallBack() throws Exception {
+		Path malformed = directory.resolve("malformed.jsonl");
+		Files.writeString(malformed, "not-json");
+		for (Path file : List.of(directory.resolve("missing.jsonl"), malformed)) {
+			FaSearchProperties properties = new FaSearchProperties(null, null,
+					new FaSearchProperties.Catalog(file.toString(), List.of()));
+			FixtureCatalogProductAdapter adapter = new FixtureCatalogProductAdapter(properties, new JsonMapper());
+			assertThatThrownBy(() -> adapter.findActive(List.of(new Key("p1", "p1-v1"))))
+					.isInstanceOf(SearchException.class)
+					.extracting(exception -> ((SearchException) exception).code())
+					.isEqualTo("CATALOG_UNAVAILABLE");
+			assertThatThrownBy(() -> adapter.findActiveImage(new Key("p1", "p1-v1")))
+					.isInstanceOf(SearchException.class);
+		}
+	}
+
+	@Test
+	void configuredFileCannotBeOverlaidWithDefaultProducts() throws Exception {
+		Path catalog = directory.resolve("catalog.jsonl");
+		Files.writeString(catalog, """
+				{"product_id":"p1","product_version_id":"p1-v1","title":"Publication title","category":"TOP","image_path":"%s"}
+				""".formatted(directory.resolve("p1.jpg")));
+		FaSearchProperties properties = new FaSearchProperties(null, null,
+				new FaSearchProperties.Catalog(catalog.toString(), List.of(
+						new FaSearchProperties.Product("p1", "p1-v1", "Overlay title", "TOP", "/overlay"),
+						new FaSearchProperties.Product("overlay", "overlay-v1", "Overlay", "TOP", "/overlay"))));
+		FixtureCatalogProductAdapter adapter = new FixtureCatalogProductAdapter(properties, new JsonMapper());
+		var found = adapter.findActive(List.of(new Key("p1", "p1-v1"), new Key("overlay", "overlay-v1")));
+		assertThat(found).hasSize(1);
+		assertThat(found.get(new Key("p1", "p1-v1")).title()).isEqualTo("Publication title");
+	}
 
 	@Test
 	void servesOnlyAnIndexedProductVersionWithItsCatalogImage() throws Exception {

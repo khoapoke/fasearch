@@ -52,9 +52,11 @@ guard_pid() { # PID file, argv pattern, cwd, executable
 }
 
 guard_listener() {
-  local pid=$1 port=$2 listeners
+  local pid=$1 port=$2 listeners addresses
   listeners=$(lsof -tiTCP:$port -sTCP:LISTEN 2>/dev/null) || return 1
   [[ $listeners == "$pid" ]] || { echo "REFUSE: listener mismatch on $port" >&2; return 1; }
+  addresses=$(lsof -a -p "$pid" -iTCP:$port -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n//p')
+  [[ $addresses == "127.0.0.1:$port" ]] || { echo "REFUSE: task listener must bind loopback $port" >&2; return 1; }
 }
 
 is_descendant() {
@@ -160,7 +162,7 @@ do_start() {
   boot_pid=$(FASEARCH_DB_URL=jdbc:postgresql://127.0.0.1:$PG_PORT/fasearch FASEARCH_DB_USER=fasearch \
   FASEARCH_DB_PASSWORD=task-test-pw FASEARCH_OBJECT_ENDPOINT=http://127.0.0.1:$S3_PORT \
   FASEARCH_OBJECT_ACCESS_KEY=task-test-key FASEARCH_OBJECT_SECRET_KEY=task-test-secret \
-  FASEARCH_AI_BASE_URL=http://127.0.0.1:$AI_PORT SERVER_PORT=$BOOT_PORT \
+  FASEARCH_AI_BASE_URL=http://127.0.0.1:$AI_PORT SERVER_PORT=$BOOT_PORT SERVER_ADDRESS=127.0.0.1 \
   FASEARCH_CATALOG_SNAPSHOT_ID="$PUB_CATALOG" \
   FASEARCH_MODEL_VERSION="$PUB_MODEL" FASEARCH_INDEX_VERSION="$PUB_INDEX" \
   FASEARCH_CATALOG_FILE="$ASSET_ROOT/data/processed/catalog-20260908-pilot-v1/catalog.cleaned.v1.jsonl" \
@@ -173,7 +175,7 @@ do_start() {
   cd "$ROOT/fe" || return 1
   local wrapper
   wrapper=$(FASEARCH_BACKEND_URL=http://127.0.0.1:$BOOT_PORT PORT=$FE_PORT \
-    launch_detached "$ROOT/fe" /private/tmp/fasearch-catalog-discovery-fe.log npm run start -- --port "$FE_PORT")
+    launch_detached "$ROOT/fe" /private/tmp/fasearch-catalog-discovery-fe.log npm run start -- --hostname 127.0.0.1 --port "$FE_PORT")
 
   for i in $(seq 1 40); do do_health >/dev/null 2>&1 && break; sleep 3; done
   do_health

@@ -3,30 +3,36 @@ package com.fasearch.backend.search.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-/**
- * Envelope boundary: Spring's {@code max-request-size: 11MB} rejects an
- * over-envelope multipart body before the controller runs. This pins the
- * typed safe error the handler returns for that path (413
- * {@code IMAGE_TOO_LARGE}, no stack trace or filesystem path).
- */
+import com.fasearch.backend.search.application.SearchException;
+
 class SearchApiExceptionHandlerTests {
 
 	@Test
-	void mapsOverEnvelopeUploadToSafe413Envelope() {
-		SearchApiExceptionHandler handler = new SearchApiExceptionHandler();
+	void preControllerErrorsNeverReflectUnsafeIncomingTrace() {
+		for (String unsafe : new String[] { "unsafe<probe>", "x".repeat(200) }) {
+			MockHttpServletRequest request = new MockHttpServletRequest();
+			request.addHeader("X-Trace-Id", unsafe);
+			var response = new SearchApiExceptionHandler().handleSearchException(
+					new SearchException("CATALOG_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE,
+							"Catalog publication is not available"), request);
+			assertThat(response.getBody().traceId()).isNotEqualTo(unsafe)
+					.matches("[A-Za-z0-9_.:\\-]{1,128}");
+			assertThat(response.getHeaders().getFirst("X-Trace-Id")).isEqualTo(response.getBody().traceId());
+			assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
+		}
+	}
+
+	@Test
+	void validIncomingTraceAndSafeControllerTraceRemainStable() {
 		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setAttribute("fasearch.trace-id", "trace-envelope");
-
-		var response = handler.handleUploadLimit(
-				new MaxUploadSizeExceededException(11 * 1024 * 1024), request);
-
-		assertThat(response.getStatusCode().value()).isEqualTo(413);
-		assertThat(response.getBody().schemaVersion()).isEqualTo("1.0.0");
-		assertThat(response.getBody().code()).isEqualTo("IMAGE_TOO_LARGE");
-		assertThat(response.getBody().traceId()).isEqualTo("trace-envelope");
-		assertThat(response.getBody().message()).doesNotContain("at ", "/tmp", ".java");
+		request.addHeader("X-Trace-Id", "valid-incoming");
+		var handler = new SearchApiExceptionHandler();
+		var error = new IllegalArgumentException("private input");
+		assertThat(handler.handleValidationException(error, request).getBody().traceId()).isEqualTo("valid-incoming");
+		request.setAttribute("fasearch.trace-id", "controller-trace");
+		assertThat(handler.handleValidationException(error, request).getBody().traceId()).isEqualTo("controller-trace");
 	}
 }

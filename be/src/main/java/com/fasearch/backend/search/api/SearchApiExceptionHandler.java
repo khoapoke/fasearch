@@ -68,11 +68,17 @@ public final class SearchApiExceptionHandler {
 
 	private static String traceId(HttpServletRequest request) {
 		Object generated = request.getAttribute("fasearch.trace-id");
-		if (generated != null) {
-			return generated.toString();
+		if (generated instanceof String trace && safeTrace(trace)) {
+			return trace;
 		}
 		String incoming = request.getHeader("X-Trace-Id");
-		return incoming == null || incoming.isBlank() ? null : incoming;
+		String trace = safeTrace(incoming) ? incoming : java.util.UUID.randomUUID().toString();
+		request.setAttribute("fasearch.trace-id", trace);
+		return trace;
+	}
+
+	private static boolean safeTrace(String trace) {
+		return trace != null && trace.length() <= 128 && trace.matches("[A-Za-z0-9_\\-.:]+");
 	}
 
 	public record ApiError(String schemaVersion, String traceId, String code, String message) {
