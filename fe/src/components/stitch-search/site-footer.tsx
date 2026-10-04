@@ -21,14 +21,14 @@ export function SiteFooter() {
         </div>
         <nav className={styles.col} aria-label="Luồng tìm kiếm">
           <p>Luồng tìm kiếm</p>
-          <Link href="#tim-bang-anh">Tìm bằng ảnh</Link>
-          <Link href="#ket-qua">Kết quả</Link>
-          <Link href="#cach-hoat-dong">Cách hoạt động</Link>
+          <Link href="/#tim-bang-anh">Tìm bằng ảnh</Link>
+          <Link href="/#ket-qua">Kết quả</Link>
+          <Link href="/#cach-hoat-dong">Cách hoạt động</Link>
         </nav>
         <nav className={styles.col} aria-label="Vận hành catalog">
           <p>Vận hành catalog</p>
           <Link href="/catalog/drafts/new">Tạo sản phẩm nháp</Link>
-          <Link href="#top">Về đầu trang</Link>
+          <Link href="/#top">Về đầu trang</Link>
         </nav>
       </div>
       <div className={styles.bottom}>

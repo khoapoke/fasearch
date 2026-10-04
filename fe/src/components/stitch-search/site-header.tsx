@@ -9,10 +9,10 @@ import styles from "./site-header.module.css";
 
 const NAV = [
   { href: "/catalog", label: "Catalog" },
-  { href: "#tim-bang-anh", label: "Tìm bằng ảnh" },
+  { href: "/#tim-bang-anh", label: "Tìm bằng ảnh" },
   { href: "/search/text", label: "Tìm bằng chữ" },
   { href: "/search/composed", label: "Tìm kết hợp" },
-  { href: "#cach-hoat-dong", label: "Cách hoạt động" },
+  { href: "/#cach-hoat-dong", label: "Cách hoạt động" },
 ];
 
 export function SiteHeader() {
@@ -23,7 +23,7 @@ export function SiteHeader() {
       </p>
       <header className={styles.header}>
         <div className={styles.bar}>
-          <a className={styles.brand} href="#top" aria-label="FaSearch — về đầu trang">
+          <a className={styles.brand} href="/#top" aria-label="FaSearch — về đầu trang">
             <span className={styles.brandMark} aria-hidden="true">
               FS
             </span>
@@ -41,7 +41,7 @@ export function SiteHeader() {
           <div className={styles.actions}>
             <a
               className={styles.cameraButton}
-              href="#tim-bang-anh"
+              href="/#tim-bang-anh"
               aria-label="Mở luồng tìm kiếm bằng ảnh"
               title="Tìm bằng ảnh"
             >
