@@ -1,0 +1,41 @@
+== list defaults ==
+PASS: defaults page=1 size=24 total=600 has_more
+== page union: 600 exact identities, no dup/gap ==
+union: 600 600
+PASS: union 600 unique
+== category totals ==
+PASS: category TOP total=200 (got 200)
+PASS: category BOTTOM total=200 (got 200)
+PASS: category ONE_PIECE total=200 (got 200)
+== boundaries ==
+PASS: max size=60 last page full
+PASS: past-end empty + total intact
+== rejections (400) ==
+PASS: 400 for [page=0] (got 400)
+PASS: 400 for [size=0] (got 400)
+PASS: 400 for [size=61] (got 400)
+PASS: 400 for [page=abc] (got 400)
+PASS: 400 for [size=] (got 400)
+PASS: 400 for [category=SHOES] (got 400)
+PASS: 400 for [category=] (got 400)
+PASS: 400 for [page=99999999999999999999] (got 400)
+PASS: 400 for [size=10&size=20] (got 400)
+PASS: 400 for [sort=price] (got 400)
+PASS: 400 for [page] (got 400)
+== snapshot mismatch (409) ==
+PASS: 409 stale snapshot (got 409)
+== detail ==
+PASS: detail identity parity + null description
+PASS: detail exact context OK
+PASS: 400 partial context (got 400)
+PASS: 409 stale detail context (got 409)
+PASS: 404 wrong version (got 404)
+PASS: 404 unknown (got 404)
+== no-store + trace on success and errors ==
+PASS: no-store success
+PASS: trace success
+PASS: no-store error
+== image identity/bytes ==
+PASS: image 200 + jpeg/png/webp (got 200 image/jpeg)
+PASS: 404 wrong-version image (got 404)
+RESULT: ALL API CHECKS PASS

@@ -102,3 +102,32 @@ FE `tests/catalog-contract.test.mjs` (7 tests) + suite hiện có; lint + build 
 - Journey tay: xem DEMO.md (~10 phút).
 - Blocker còn lại: verdict round 2 + manual gate của đại diện dự án. Không tồn
   tại blocker kỹ thuật nào khác ở thời điểm handoff.
+
+---
+
+## Lunch run 05/10/2026 11:53–12:04 +07 (Pi Implement, LUNCH_PROMPT, 90 phút)
+
+- Nhận việc HEAD `86bf4545` sạch (đúng SHA Control kiểm); preview sẵn healthy
+  nên KHÔNG restart stack. Browser hostname `http://catalog.localhost:3230`.
+- `git diff 15d6e1df..86bf4545 -- be/ fe/` rỗng → BE 81/FE 32/lint/build cũ
+  vẫn hiệu lực cho app-tree; lunch chạy lại trên HEAD hiện tại:
+  `verify-catalog-api.sh 18380` 30/30 PASS; `PublicCatalogControllerTests`
+  5/5; FE `node --test` 32/32; Swagger served `/docs/openapi.json` byte-equal
+  `contracts/public-api.openapi.json`; catalog SHA `82b21a09…` khớp pins.
+- C6 script mới `c6-readonly-check.sh` (reusable, exit status): guest browse
+  full 600 + details → counts PG y nguyên (`user_accounts=1`, catalog/audit
+  tables 0); guest/auth equality trace-normalized PASS; login→/me 200 →
+  logout→401; `/me` không session → 401. Hai vấp trong script (login JSON
+  403 do form-login+CSRF; logout token cũ 403) là artifact test-flow, đã sửa
+  trong runner, KHÔNG phải defect sản phẩm.
+- Browser thật (Playwright MCP): list/filter TOP/page/detail 10011 exact;
+  TEXT → top 59983 khớp API; IMAGE 10011.jpg → top-1 chính nó; COMPOSED
+  anchor 10011 → 10 kết quả, anchor excluded, `return_to` back đúng;
+  detail 28500 exact + strip "Cùng danh mục"; 404/409 UI có trace UUID;
+  query không vào URL/storage; overflow=false ở 768 và 390; Tab focus
+  di chuyển; header/footer IMAGE → `/#tim-bang-anh`.
+- Evidence: `docs/prototypes/catalog-discovery/evidence-lunch/` (3 logs) +
+  packet `evidence/lunch-*.png` (detail-1440, image-results-1440,
+  catalog-768, catalog-390).
+- Commit lunch chỉ thêm runner + handoff + logs (không đổi be/fe).
+  Manual 10–15 phút + quyết định nghiệm thu/publish thuộc về bạn.

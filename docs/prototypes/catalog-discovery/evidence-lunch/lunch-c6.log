@@ -1,0 +1,29 @@
+== counts before ==
+audit_events=0
+catalog_products=0
+product_images=0
+product_versions=0
+user_accounts=1
+== guest full browse (25 pages + 3 details) ==
+guest browse done (pid sample: 10011 + 10011 + 10425)
+== counts after guest browse ==
+audit_events=0
+catalog_products=0
+product_images=0
+product_versions=0
+user_accounts=1
+PASS: db counts unchanged by guest browse
+== authenticated session (task-local test account) ==
+login http status: 200
+PASS: guest/auth list equality (trace-normalized)
+PASS: guest/auth detail equality (trace-normalized)
+PASS: session valid for /me (got 200)
+PASS: logout destroys session (me=401)
+== counts final ==
+audit_events=0
+catalog_products=0
+product_images=0
+product_versions=0
+user_accounts=1
+PASS: db counts unchanged overall
+RESULT: C6 READ-ONLY CHECKS PASS
