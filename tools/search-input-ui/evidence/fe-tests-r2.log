@@ -1,0 +1,116 @@
+(node:72425) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/lib/catalog-contract.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ detailHref
+  ✔ carries version and snapshot as query, not raw search text (1.086791ms)
+  ✔ encodes unsafe product ids (0.433416ms)
+✔ detailHref (3.123792ms)
+▶ safeReturnHref
+  ✔ keeps allowlisted local routes, dropping untrusted query (0.414208ms)
+  ✔ rejects external and open-redirect targets (0.335084ms)
+✔ safeReturnHref (2.359708ms)
+▶ parseCatalogView
+  ✔ accepts valid category and page (1.994083ms)
+  ✔ falls back to defaults on invalid input (0.707667ms)
+✔ parseCatalogView (2.961791ms)
+▶ composedAnchorHref
+  ✔ builds the exact anchor triple for PRODUCT search (0.79775ms)
+✔ composedAnchorHref (1.110542ms)
+▶ closure regressions
+  ✔ honors bounded size URL input (0.437167ms)
+  ✔ return route rejects URL normalization escapes and private catalog routes (0.4415ms)
+✔ closure regressions (1.129917ms)
+▶ expected context never falls back
+  ✔ forwards partial, blank and duplicate detail context for typed backend rejection (0.800583ms)
+  ✔ distinguishes absent PRODUCT URL from malformed PRODUCT context (0.439792ms)
+✔ expected context never falls back (1.454875ms)
+(node:72426) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/lib/catalog-proxy.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ rejects unsafe trace without fetching or reflecting it (67.969834ms)
+✔ connection refusal preserves only a valid trace in typed no-store error (1.535166ms)
+✔ forwards exact query and sanitizes an invalid upstream trace header (1.082458ms)
+(node:72427) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/lib/clipboard-image.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ decidePaste
+  ✔ accepts an image file from the dropzone target (1.400792ms)
+  ✔ accepts paste when the hidden file input is focused (0.213875ms)
+  ✔ never hijacks text entry, auth, or rich-text fields (0.333959ms)
+  ✔ rejects pasted links/rich content without fetching anything (0.213291ms)
+  ✔ ignores plain-text pastes on the dropzone (0.160834ms)
+  ✔ ignores empty or missing clipboard data (0.112625ms)
+✔ decidePaste (4.42525ms)
+✔ actual PRODUCT component rejects stale validation and search across context transitions (466.313791ms)
+(node:72429) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/components/stitch-search/composed-demo/composed-scenes.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ composed demo fixtures
+  ✔ has two scenes with three presets each (0.938917ms)
+  ✔ keeps fixture scores in descending rank order (0.451083ms)
+  ✔ anchors and results reference known scene garments (0.482375ms)
+  ✔ keeps staged edit texts non-empty and distinct per scene (0.385625ms)
+✔ composed demo fixtures (3.565916ms)
+(node:72430) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/components/composed-search/validation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ composed workbench validation
+  ✔ counts Unicode code points, not UTF-16 units (1.158416ms)
+  ✔ collapses whitespace like the backend model view (0.689875ms)
+  ✔ accepts a complete valid input (0.483667ms)
+  ✔ rejects missing/invalid files (0.398083ms)
+  ✔ rejects overlong/empty text and out-of-range k (0.175042ms)
+✔ composed workbench validation (4.768417ms)
+▶ css tokens
+  ✔ src/components/text-search/text-search-workbench.module.css has no legacy undefined tokens (5.031666ms)
+  ✔ src/components/text-search/text-search-workbench.module.css only uses defined tokens (0.976125ms)
+  ✔ src/app/search/text/page.module.css has no legacy undefined tokens (0.863458ms)
+  ✔ src/app/search/text/page.module.css only uses defined tokens (0.343ms)
+  ✔ src/components/image-search-workbench.module.css has no legacy undefined tokens (0.545083ms)
+  ✔ src/components/image-search-workbench.module.css only uses defined tokens (0.621333ms)
+✔ css tokens (10.304791ms)
+(node:72447) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/components/stitch-search/request-guard.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ request guard
+  ✔ accepts the latest ticket (0.853542ms)
+  ✔ marks the first request stale when a second one begins (0.1845ms)
+  ✔ marks everything stale on invalidate (image change / reset) (0.126625ms)
+  ✔ rejects unknown tickets (0.108709ms)
+✔ request guard (2.509667ms)
+(node:72448) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/components/text-search/search-state.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ text search view-state
+  ✔ typing never discards the last settled success (S1) (1.07325ms)
+  ✔ editing during pending exits the skeleton; late response is ignored (S4) (0.190208ms)
+  ✔ current success replaces old results; empty success is honest (S3) (0.140083ms)
+  ✔ failure retains previous success with the old query label (S3) (0.135083ms)
+  ✔ validation failure starts no request and keeps settled results (0.217708ms)
+  ✔ reset clears draft, results, errors and pending (0.1225ms)
+✔ text search view-state (3.059417ms)
+(node:72449) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/fasearch-catalog-discovery/fe/src/components/text-search/validation.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/fasearch-catalog-discovery/fe/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ text workbench validation
+  ✔ counts Unicode code points, not UTF-16 units (0.68925ms)
+  ✔ collapses whitespace like the backend model view (0.322875ms)
+  ✔ accepts a complete valid input (0.145625ms)
+  ✔ rejects blank/overlong text and bad k (0.245208ms)
+✔ text workbench validation (2.486292ms)
+ℹ tests 50
+ℹ suites 13
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 604.039542

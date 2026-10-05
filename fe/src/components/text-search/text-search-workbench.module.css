@@ -127,6 +127,61 @@
   text-align: center;
 }
 
+.skeletonGrid {
+  margin-top: 16px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+  list-style: none;
+}
+
+.skeletonCard {
+  display: grid;
+  gap: 10px;
+  padding: 0 0 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.skeletonPhoto {
+  height: 190px;
+  background: var(--line-soft);
+}
+
+.skeletonLine,
+.skeletonLineShort {
+  height: 12px;
+  margin: 0 14px;
+  border-radius: 6px;
+  background: var(--line-soft);
+}
+
+.skeletonLineShort {
+  width: 55%;
+}
+
+@keyframes text-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.skeletonPhoto,
+.skeletonLine,
+.skeletonLineShort {
+  animation: text-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonPhoto,
+  .skeletonLine,
+  .skeletonLineShort {
+    animation: none;
+  }
+}
+
 .resultList {
   margin-top: 16px;
   padding: 0;

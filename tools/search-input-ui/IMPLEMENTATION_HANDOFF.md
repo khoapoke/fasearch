@@ -53,6 +53,27 @@
 
 ---
 
+## Revision2 handoff (S1–S5 + Q1)
+
+- Files: `search-state.ts` (mới), workbench rework (view-state +
+  skeleton), CSS skeleton, `tests/text-state.test.mjs` (6 cases),
+  `RETRIEVAL_DIAGNOSTIC.md`, `evidence/fe-tests-r2.log` (50 pass).
+- Browser S5 trên preview đã rebuild: idle sạch; success→sửa chữ giữ 10
+  cards + nhãn query cũ; skeleton (aria-busy, 8 cards, delay-labelled) →
+  success; edit giữa pending thoát về settled + late response bị bỏ;
+  blank submit → lỗi + giữ 10 cards cũ; reset → idle sạch. Empty-live
+  không đạt được (API luôn trả đủ K) → chỉ unit-covered, ghi rõ.
+- Screenshots r2-*: loading (delay-labelled), edit-keeps, error-keeps +
+  q1 top1.
+- Q1: public top3 == internal top3 (pink dress); red shirt plausible;
+  crimson jacket/black sock là absence (không có article); pink dress 10/10
+  dresses. Không claim benchmark/nguyên nhân; proposal trong diagnostic.
+- Rerun final: 50/50 tests, tsc/lint/build xanh; FE restart guarded.
+- Manual bạn: sửa chữ giữa lúc đang tìm → skeleton thoát về cũ; submit
+  rỗng sau success; reset; đọc diagnostic trước khi quyết retrieval.
+
+---
+
 ## Follow-up FIX (3 mục Control, cùng branch)
 
 1. **Header/footer TEXT:** `src/app/search/text/page.tsx` bọc `SiteHeader`/

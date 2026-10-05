@@ -14,6 +14,15 @@ import {
   codePointCount,
   validateTextInput,
 } from "./validation";
+import {
+  SubmittedSnapshot,
+  editDraft,
+  initialView,
+  resetView,
+  settleFailure,
+  settleSuccess,
+  validationFailure,
+} from "./search-state";
 import styles from "./text-search-workbench.module.css";
 
 const categoryNames: Record<FashionCategory, string> = {
@@ -21,12 +30,6 @@ const categoryNames: Record<FashionCategory, string> = {
   BOTTOM: "Quần / váy rời",
   ONE_PIECE: "Trang phục liền",
 };
-
-type SearchState =
-  | { status: "idle" }
-  | { status: "searching" }
-  | { status: "success"; data: TextSearchResponse }
-  | { status: "error"; message: string; traceId?: string };
 
 async function csrfToken(): Promise<{ header: string; token: string }> {
   const response = await fetch("/api/auth/csrf", { cache: "no-store" });
@@ -39,9 +42,10 @@ export function TextSearchWorkbench() {
   const guardRef = useRef<ReturnType<typeof createRequestGuard> | null>(null);
   if (guardRef.current === null) guardRef.current = createRequestGuard();
   const abortRef = useRef<AbortController | null>(null);
-  const [text, setText] = useState("");
-  const [k, setK] = useState(10);
-  const [state, setState] = useState<SearchState>({ status: "idle" });
+  // Draft inputs stay editable without discarding the last settled success.
+  const [view, setView] = useState(() => initialView(10));
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   useEffect(() => {
     return () => {
@@ -49,27 +53,43 @@ export function TextSearchWorkbench() {
     };
   }, []);
 
+  function editText(next: string) {
+    // Editing during a pending request invalidates it and exits the
+    // skeleton back to the prior settled state (S4).
+    guardRef.current?.invalidate();
+    abortRef.current?.abort();
+    setView((prev) => editDraft(prev, { draftText: next }));
+  }
+
+  function editK(next: number) {
+    guardRef.current?.invalidate();
+    abortRef.current?.abort();
+    setView((prev) => editDraft(prev, { draftK: next }));
+  }
+
   function reset() {
     guardRef.current?.invalidate();
     abortRef.current?.abort();
-    setText("");
-    setState({ status: "idle" });
+    setView(resetView(10));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (state.status === "searching") return;
-    const violation = validateTextInput({ text, k });
+    const current = viewRef.current;
+    if (current.pending) return;
+    const violation = validateTextInput({ text: current.draftText, k: current.draftK });
     if (violation) {
-      setState({ status: "error", message: violation });
+      setView((prev) => validationFailure(prev, violation));
       return;
     }
 
+    // Snapshot draft at submit time; later typing cannot mutate it (S4).
+    const snapshot: SubmittedSnapshot = { text: current.draftText, k: current.draftK };
     const ticket = guardRef.current?.begin() ?? { id: 0 };
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setState({ status: "searching" });
+    setView((prev) => ({ ...prev, pending: snapshot, failure: null }));
 
     try {
       const csrf = await csrfToken();
@@ -80,7 +100,7 @@ export function TextSearchWorkbench() {
           "Content-Type": "application/json",
           [csrf.header]: csrf.token,
         },
-        body: JSON.stringify({ schema_version: "1.0.0", query_text: text, k }),
+        body: JSON.stringify({ schema_version: "1.0.0", query_text: snapshot.text, k: snapshot.k }),
         signal: controller.signal,
       });
       if (!guardRef.current?.isCurrent(ticket)) return;
@@ -90,32 +110,38 @@ export function TextSearchWorkbench() {
       if (!guardRef.current?.isCurrent(ticket)) return;
       if (!response.ok) {
         const error = payload as TextSearchError;
-        setState({
-          status: "error",
-          message: error.message || "Tìm kiếm không hoàn tất. Hãy thử lại.",
-          traceId: error.trace_id ?? undefined,
-        });
+        setView((prev) =>
+          settleFailure(prev, snapshot, {
+            message: error.message || "Tìm kiếm không hoàn tất. Hãy thử lại.",
+            traceId: error.trace_id ?? undefined,
+          }) ?? prev,
+        );
         return;
       }
-      setState({ status: "success", data: payload as TextSearchResponse });
+      setView((prev) => settleSuccess(prev, snapshot, payload as TextSearchResponse) ?? prev);
     } catch (failure) {
       if (!guardRef.current?.isCurrent(ticket)) return;
       if (failure instanceof DOMException && failure.name === "AbortError") return;
-      setState({
-        status: "error",
-        message: "Kết nối bị gián đoạn. Kiểm tra lại và thử một lần nữa.",
-      });
+      setView((prev) =>
+        settleFailure(prev, snapshot, {
+          message: "Kết nối bị gián đoạn. Kiểm tra lại và thử một lần nữa.",
+        }) ?? prev,
+      );
     }
   }
 
-  const results = state.status === "success" ? state.data.results : [];
-  const data = state.status === "success" ? state.data : null;
-  const statusText =
-    state.status === "searching"
-      ? "Đang đối chiếu mô tả chữ với catalog…"
-      : state.status === "success"
-        ? `Tìm thấy ${results.length} sản phẩm, giữ nguyên thứ tự xếp hạng của API.`
-        : "Nhập mô tả chữ và số kết quả mong muốn.";
+  const pending = view.pending;
+  const settled = view.settled;
+  const failure = view.failure;
+  const results = settled && !pending ? settled.data.results : [];
+  const data = settled && !pending ? settled.data : null;
+  const skeletonCount = pending ? Math.min(Math.max(pending.k, 1), 8) : 0;
+  const isSearching = pending !== null;
+  const statusText = isSearching
+    ? `Đang tìm “${pending.text}” (K=${pending.k})…`
+    : settled
+      ? `Tìm thấy ${settled.data.results.length} sản phẩm cho “${settled.submitted.text}”, giữ nguyên thứ tự xếp hạng của API.`
+      : "Nhập mô tả chữ và số kết quả mong muốn.";
 
   return (
     <section className={styles.workbench} aria-label="Tìm kiếm bằng chữ trực tiếp">
@@ -124,21 +150,16 @@ export function TextSearchWorkbench() {
           Mô tả sản phẩm bằng chữ
           <textarea
             className={styles.textInput}
-            value={text}
+            value={view.draftText}
             maxLength={MAX_TEXT_CODE_POINTS + 16}
             rows={3}
             placeholder="Ví dụ: váy đỏ tay dài"
-            onChange={(event) => {
-              guardRef.current?.invalidate();
-              abortRef.current?.abort();
-              setText(event.target.value);
-              setState({ status: "idle" });
-            }}
+            onChange={(event) => editText(event.target.value)}
             aria-label="Nhập mô tả sản phẩm bằng chữ, tối đa 1024 ký tự"
           />
         </label>
         <p className={styles.counter}>
-          {codePointCount(text)}/{MAX_TEXT_CODE_POINTS} ký tự
+          {codePointCount(view.draftText)}/{MAX_TEXT_CODE_POINTS} ký tự
         </p>
 
         <label className={styles.kLabel}>
@@ -148,8 +169,8 @@ export function TextSearchWorkbench() {
             type="number"
             min={1}
             max={100}
-            value={k}
-            onChange={(event) => setK(Number(event.target.value))}
+            value={view.draftK}
+            onChange={(event) => editK(Number(event.target.value))}
             aria-label="Số kết quả K từ 1 đến 100"
           />
         </label>
@@ -158,15 +179,15 @@ export function TextSearchWorkbench() {
           <button
             className={styles.searchButton}
             type="submit"
-            disabled={state.status === "searching"}
+            disabled={isSearching}
           >
-            {state.status === "searching" ? "Đang tìm kiếm…" : "Tìm bằng chữ"}
+            {isSearching ? "Đang tìm kiếm…" : "Tìm bằng chữ"}
           </button>
           <button
             className={styles.resetButton}
             type="button"
             onClick={reset}
-            disabled={state.status === "searching"}
+            disabled={isSearching}
           >
             Đặt lại
           </button>
@@ -174,28 +195,49 @@ export function TextSearchWorkbench() {
 
         <div className={styles.liveRegion} aria-live="polite">
           <p>{statusText}</p>
-          {state.status === "error" && (
+          {failure && (
             <div className={styles.errorBox} role="alert">
               <strong>Không thể tìm kiếm</strong>
-              <span>{state.message}</span>
-              {state.traceId && <small>Mã tra cứu: {state.traceId}</small>}
+              <span>{failure.message}</span>
+              {settled ? (
+                <span>
+                  Giữ kết quả của “{settled.submitted.text}” (K={settled.submitted.k}).
+                </span>
+              ) : (
+                <span>Truy vấn lỗi: “{failure.failed.text}” (K={failure.failed.k}).</span>
+              )}
+              {failure.traceId && <small>Mã tra cứu: {failure.traceId}</small>}
             </div>
           )}
         </div>
       </form>
 
-      <div className={styles.results} aria-label="Kết quả tìm kiếm bằng chữ">
+      <div className={styles.results} aria-label="Kết quả tìm kiếm bằng chữ" aria-busy={isSearching}>
         <h2>
-          {state.status === "success"
-            ? `${results.length} sản phẩm gần nhất`
-            : "Kết quả sẽ xuất hiện tại đây"}
+          {isSearching
+            ? "Đang tải kết quả…"
+            : settled
+              ? `${settled.data.results.length} sản phẩm gần nhất`
+              : "Kết quả sẽ xuất hiện tại đây"}
         </h2>
-        {state.status === "success" && results.length === 0 && (
-          <p className={styles.emptyState}>
-            Catalog chưa có sản phẩm phù hợp với mô tả này.
-          </p>
-        )}
-        {results.length > 0 && (
+        {isSearching ? (
+          <div className={styles.skeletonGrid} aria-hidden="true">
+            {Array.from({ length: skeletonCount }, (_, index) => (
+              <div key={index} className={styles.skeletonCard}>
+                <span className={styles.skeletonPhoto} />
+                <span className={styles.skeletonLine} />
+                <span className={styles.skeletonLineShort} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {settled && settled.data.results.length === 0 && (
+              <p className={styles.emptyState}>
+                Catalog chưa có sản phẩm phù hợp với mô tả “{settled.submitted.text}”.
+              </p>
+            )}
+            {results.length > 0 && (
           <ol className={styles.resultList}>
             {results.map((product) => (
               <li key={`${product.product_id}:${product.product_version_id}`}>
@@ -225,6 +267,8 @@ export function TextSearchWorkbench() {
               </li>
             ))}
           </ol>
+        )}
+          </>
         )}
         {data && (
           <details className={styles.diagnostics}>

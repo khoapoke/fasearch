@@ -32,3 +32,17 @@ Base `9dc64600`, branch `codex/search-input-ui`, worktree
 - Browser thật: computed styles, TEXT Anh → 10 results grid → detail exact,
   Việt qua proxy OK; paste synthetic (image/link/reset) trong browser;
   viewports 1440/768/390 + Tab. Native Ctrl/Cmd+V OS là manual gate.
+
+---
+
+## Revision2 — TEXT settled continuity (S1–S5) + Q1 read-only
+
+- Mới `search-state.ts`: draft/pending(snapshot)/settled(success incl.
+  empty)/failure thuần túy, unit-test races (typing giữ settled, edit giữa
+  pending thoát skeleton + late response bị bỏ, success thay thế, failure
+  giữ cũ + nhãn query, validation không nổ request, reset sạch).
+- Component dùng view-state: submit snapshot draft; skeleton grid Stitch
+  (`skeletonCount=min(k,8)`, aria-busy, reduced-motion tĩnh); lỗi hiện nhãn
+  `Giữ kết quả của “…”`; empty success trung thực (live API TEXT không bao
+  giờ rỗng — nhánh này chỉ unit-covered, ghi rõ).
+- Q1: xem RETRIEVAL_DIAGNOSTIC.md (4 query top10 + coverage + public==internal).
