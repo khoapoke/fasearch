@@ -1,3 +1,7 @@
+## Runtime chung sau cleanup05/10/2026
+
+Container hiện tại là `fasearch-postgres` và `fasearch-storage`, Composeproject `fasearch`. Lifecycleguard đã đổi tên và nhận identitymới, vẫn dùng các cổng55732/38535 và dữ liệu cũ. Các tên `fasearch-catalog-discovery-*` trong lịch sử phía dưới không còn tồn tại. Xem `/Users/khoado/Documents/ChatGPT/Graduate Bachelor/infra/fasearch/README.md`. Không tạo PG/S3 theo từng task nữa.
+
 # RUNBOOK — catalog-discovery (vận hành stack task)
 
 Branch `codex/catalog-discovery`, checkout `/private/tmp/fasearch-catalog-discovery`.

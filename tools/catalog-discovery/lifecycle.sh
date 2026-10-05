@@ -139,9 +139,9 @@ LAUNCH_PY
 do_start() {
   expect_free $AI_PORT; expect_free $BOOT_PORT; expect_free $FE_PORT
   "$VENV312" "$ROOT/tools/catalog-discovery/container_guard.py" check
-  docker start fasearch-$TASK-pg fasearch-$TASK-s3 >/dev/null
+  docker start fasearch-postgres fasearch-storage >/dev/null
   for i in $(seq 1 30); do
-    docker exec fasearch-$TASK-pg pg_isready -U fasearch >/dev/null 2>&1 && break; sleep 1
+    docker exec fasearch-postgres pg_isready -U fasearch >/dev/null 2>&1 && break; sleep 1
   done
 
   cd "$ROOT/ai"
@@ -203,7 +203,7 @@ do_stop() {
     rm "$record" "$record.identity"
     echo "STOPPED exact task PID $pid"
   done
-  docker stop fasearch-$TASK-pg fasearch-$TASK-s3 >/dev/null
+  docker stop fasearch-postgres fasearch-storage >/dev/null
   echo "task containers stopped"
 }
 

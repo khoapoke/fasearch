@@ -6,8 +6,8 @@ import sys
 
 RECORD = Path("/private/tmp/fasearch-catalog-discovery-containers.identity.json")
 EXPECTED = {
-    "fasearch-catalog-discovery-pg": ("postgres:16-alpine", "5432/tcp", "55732"),
-    "fasearch-catalog-discovery-s3": ("chrislusf/seaweedfs:4.47", "8333/tcp", "38535"),
+    "fasearch-postgres": ("postgres:16-alpine", "5432/tcp", "55732"),
+    "fasearch-storage": ("chrislusf/seaweedfs:4.47", "8333/tcp", "38535"),
 }
 
 
@@ -17,6 +17,7 @@ def observe():
         item = json.loads(subprocess.check_output(["docker", "inspect", name]))[0]
         bindings = item["HostConfig"]["PortBindings"]
         if (item["Name"] != "/" + name or item["Config"]["Image"] != image or
+            (item["Config"].get("Labels") or {}).get("com.docker.compose.project") != "fasearch" or
             bindings.get(inner) != [{"HostIp": "127.0.0.1", "HostPort": outer}]):
             raise RuntimeError("REFUSE: container task identity/binding mismatch")
         records[name] = {"id": item["Id"], "image_id": item["Image"], "bindings": bindings,
