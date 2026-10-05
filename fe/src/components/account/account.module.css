@@ -1,0 +1,224 @@
+/* Shared account card/form grammar. Reuses global tokens; Stitch layout
+ * intent (sidebar greeting + cards) without commerce sections. */
+
+.layout {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 48px 4vw 72px;
+}
+
+.kicker {
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.layout h1 {
+  margin-top: 8px;
+  max-width: 640px;
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin-top: 12px;
+  max-width: 640px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.grid {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.side {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+}
+
+.sideNav {
+  display: grid;
+  gap: 4px;
+}
+
+.sideNav a {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.sideNav a[aria-current="page"] {
+  color: var(--brand-ink);
+  background: var(--surface-tint);
+  border-color: var(--line);
+}
+
+.greeting {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-weight: 650;
+}
+
+.field input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+}
+
+.field input[readonly] {
+  background: var(--surface-subtle);
+  color: var(--ink-soft);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.fieldError {
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.alert {
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--danger);
+  background: #fff5f4;
+}
+
+.notice {
+  border: 1px solid var(--ok);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--ok);
+  background: #f2faf8;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent-deep);
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary:hover {
+  background: var(--accent-deep);
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reveal {
+  align-self: start;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.inputRow input {
+  flex: 1;
+}
+
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--line-soft) 25%, var(--surface-subtle) 50%, var(--line-soft) 75%);
+  background-size: 200% 100%;
+  animation: account-shimmer 1.4s infinite;
+  min-height: 20px;
+}
+
+@keyframes account-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

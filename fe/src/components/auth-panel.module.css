@@ -116,4 +116,11 @@
     gap: 8px;
     font-size: 0.78rem;
   }
+
+  .signedIn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 32vw;
+  }
 }

@@ -44,11 +44,12 @@ public class SecurityConfiguration {
 								"/api/v1/search/composed",
 								"/api/v1/search/text",
 								"/api/v1/catalog/images/**", "/api/v1/auth/csrf",
-								"/api/v1/auth/login").permitAll()
+								"/api/v1/auth/login", "/api/v1/auth/register").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/catalog/products",
 								"/api/v1/catalog/products/**").permitAll()
 						.requestMatchers("/docs/**", "/webjars/**").permitAll()
-						.requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout").authenticated()
+						.requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout",
+								"/api/v1/auth/profile", "/api/v1/auth/password").authenticated()
 						.requestMatchers("/api/v1/catalog/admin/drafts", "/api/v1/catalog/admin/drafts/**")
 								.hasAuthority("CATALOG_DRAFT_WRITE")
 						.requestMatchers("/api/v1/catalog/admin/publications", "/api/v1/catalog/admin/publications/**")
