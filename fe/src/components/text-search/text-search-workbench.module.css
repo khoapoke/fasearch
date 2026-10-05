@@ -1,6 +1,6 @@
 .workbench {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: 340px minmax(0, 1fr);
   gap: 32px;
   align-items: start;
 }
@@ -10,87 +10,10 @@
   display: grid;
   gap: 12px;
   padding: 24px;
-  border: 1px solid var(--thread-dark);
-  background: var(--paper);
-}
-
-.dropzone {
-  position: relative;
-  min-height: 260px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  cursor: pointer;
-  color: var(--ink-soft);
-  background: var(--porcelain);
-  border: 1px dashed var(--thread-dark);
-}
-
-.dropzone:hover,
-.dragging {
-  border-color: var(--cobalt);
-}
-
-.dropzone:focus-within {
-  border-color: var(--cobalt);
-  outline: 2px solid var(--cobalt);
-  outline-offset: 2px;
-}
-
-.fileInput {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.dropCopy {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  padding: 24px;
-  text-align: center;
-}
-
-.dropCopy strong {
-  color: var(--ink);
-}
-
-.preview {
-  position: absolute;
-  inset: 0;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-}
-
-.fileRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.fileName {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  font-weight: 650;
-}
-
-.clearButton {
-  flex: none;
-  border: 0;
-  color: var(--aubergine);
-  background: transparent;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .textLabel,
@@ -105,22 +28,29 @@
 .textInput {
   min-height: 76px;
   padding: 10px 12px;
-  border: 1px solid var(--thread-dark);
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   color: var(--ink);
-  background: white;
+  background: var(--surface);
   font: inherit;
   resize: vertical;
+}
+
+.textInput:focus-visible,
+.kInput:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .kInput {
   max-width: 140px;
   min-height: 40px;
   padding: 8px 10px;
-  border: 1px solid var(--thread-dark);
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   color: var(--ink);
-  background: white;
+  background: var(--surface);
 }
 
 .counter {
@@ -130,17 +60,28 @@
 }
 
 .searchButton {
-  min-height: 50px;
-  border: 1px solid var(--cobalt);
-  border-radius: 9px;
+  min-height: 52px;
+  width: 100%;
+  border: 1px solid var(--accent-deep);
+  border-radius: 10px;
   color: white;
-  background: var(--cobalt);
+  background: var(--accent);
   cursor: pointer;
   font-weight: 720;
+  font-size: 1rem;
+}
+
+.searchButton:hover:not(:disabled) {
+  background: var(--accent-deep);
+}
+
+.searchButton:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 2px;
 }
 
 .searchButton:disabled {
-  border-color: var(--thread);
+  border-color: var(--line);
   color: #8894a8;
   background: #edf0f6;
   cursor: not-allowed;
@@ -179,38 +120,49 @@
 .emptyState {
   margin-top: 16px;
   padding: 24px;
-  border: 1px dashed var(--thread-dark);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
   color: var(--ink-soft);
+  background: var(--surface-subtle);
   text-align: center;
 }
 
 .resultList {
   margin-top: 16px;
+  padding: 0;
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
   list-style: none;
 }
 
 .card {
   display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 16px;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid var(--thread);
-  background: white;
+  grid-template-columns: 1fr;
+  gap: 0;
+  align-items: start;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .card img {
-  width: 96px;
-  height: 120px;
+  width: 100%;
+  height: 190px;
   object-fit: cover;
   display: block;
-  background: #eef1f7;
+  background: var(--line-soft);
+}
+
+.card > div {
+  padding: 12px 14px 14px;
 }
 
 .cardCategory {
-  color: var(--aubergine);
+  color: var(--brand);
   font-size: 0.72rem;
   font-weight: 720;
 }
@@ -229,8 +181,9 @@
 
 .diagnostics {
   margin-top: 16px;
-  border: 1px solid var(--thread);
-  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
   font-size: 0.8rem;
 }
 
@@ -262,14 +215,13 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 960px) {
   .workbench {
     grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dropzone,
   .searchButton {
     transition: none;
   }
@@ -281,14 +233,19 @@
 }
 
 .resetButton {
-  min-height: 50px;
+  min-height: 52px;
   padding: 0 20px;
-  border: 1px solid var(--thread-dark);
-  border-radius: 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   color: var(--ink);
   background: transparent;
   cursor: pointer;
   font-weight: 600;
+}
+
+.resetButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .resetButton:disabled {

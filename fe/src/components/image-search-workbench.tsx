@@ -2,6 +2,7 @@
 
 import {
   ChangeEvent,
+  ClipboardEvent,
   DragEvent,
   FormEvent,
   useEffect,
@@ -13,6 +14,7 @@ import type {
   SearchError,
 } from "@/lib/search-contract";
 import { detailHref } from "@/lib/catalog-contract";
+import { decidePaste, type PasteTarget } from "@/lib/clipboard-image";
 import { ResultCard } from "./stitch-search/result-card";
 import { createRequestGuard } from "./stitch-search/request-guard";
 import styles from "./image-search-workbench.module.css";
@@ -95,6 +97,25 @@ export function ImageSearchWorkbench() {
     event.preventDefault();
     setIsDragging(false);
     selectFile(event.dataTransfer.files?.[0]);
+  }
+
+  // Ctrl/Cmd+V on the dropzone reuses the exact file pipeline (validate,
+  // preview, guard invalidation). Editable targets keep native behavior;
+  // links/rich content are rejected visibly and never fetched.
+  function handlePaste(event: ClipboardEvent<HTMLLabelElement>) {
+    const decision = decidePaste(event.target as unknown as PasteTarget, event.clipboardData);
+    if (decision.kind === "ignored") return;
+    event.preventDefault();
+    if (decision.kind === "image") {
+      selectFile(decision.file);
+      return;
+    }
+    guardRef.current?.invalidate();
+    setState({
+      status: "error",
+      message:
+        "Chỉ nhận ảnh dán trực tiếp (JPEG, PNG, WebP). Liên kết và văn bản không được tải làm ảnh.",
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -182,6 +203,7 @@ export function ImageSearchWorkbench() {
             <ul className={styles.facts}>
               <li>JPEG, PNG hoặc WebP — tối đa 10 MiB mỗi ảnh</li>
               <li>Kéo thả hoặc nhấn để chọn, xem trước rồi mới tìm</li>
+              <li>Mẹo: focus khung ảnh rồi nhấn Ctrl+V / ⌘V để dán ảnh</li>
               <li>Kết quả giữ nguyên thứ tự xếp hạng của API</li>
             </ul>
             <dl className={styles.stats}>
@@ -203,6 +225,9 @@ export function ImageSearchWorkbench() {
           <form className={styles.form} onSubmit={handleSubmit}>
             <label
               className={`${styles.dropzone} ${isDragging ? styles.dragging : ""} ${previewUrl ? styles.hasPreview : ""}`}
+              tabIndex={0}
+              onPaste={handlePaste}
+              aria-label="Khung ảnh truy vấn. Focus rồi nhấn Ctrl V để dán ảnh từ clipboard."
               onDragEnter={(event) => {
                 event.preventDefault();
                 setIsDragging(true);
@@ -249,6 +274,7 @@ export function ImageSearchWorkbench() {
                   </span>
                   <strong>Kéo thả ảnh vào đây</strong>
                   <span>hoặc nhấn để chọn từ máy</span>
+                  <span className={styles.pasteHint}>Hoặc focus khung này rồi nhấn Ctrl+V / ⌘V để dán ảnh</span>
                 </span>
               )}
             </label>
