@@ -1,4 +1,6 @@
 import { TextSearchWorkbench } from "@/components/text-search/text-search-workbench";
+import { SiteFooter } from "@/components/stitch-search/site-footer";
+import { SiteHeader } from "@/components/stitch-search/site-header";
 import styles from "./page.module.css";
 
 export const metadata = {
@@ -8,14 +10,18 @@ export const metadata = {
 
 export default function TextSearchPage() {
   return (
-    <main className={styles.page}>
-      <p className={styles.kicker}>Tìm kiếm bằng chữ</p>
-      <h1>Mô tả bằng chữ, nhận kết quả thật.</h1>
-      <p className={styles.lede}>
-        Nhập mô tả sản phẩm, FaSearch đối chiếu với catalog đang được công bố
-        và giữ nguyên thứ tự xếp hạng từ mô hình.
-      </p>
-      <TextSearchWorkbench />
-    </main>
+    <div>
+      <SiteHeader />
+      <main className={styles.page}>
+        <p className={styles.kicker}>Tìm kiếm bằng chữ</p>
+        <h1>Mô tả bằng chữ, nhận kết quả thật.</h1>
+        <p className={styles.lede}>
+          Nhập mô tả sản phẩm, FaSearch đối chiếu với catalog đang được công bố
+          và giữ nguyên thứ tự xếp hạng từ mô hình.
+        </p>
+        <TextSearchWorkbench />
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

@@ -23,14 +23,14 @@ export function SiteHeader() {
       </p>
       <header className={styles.header}>
         <div className={styles.bar}>
-          <a className={styles.brand} href="/#top" aria-label="FaSearch — về đầu trang">
+          <Link className={styles.brand} href="/#top" aria-label="FaSearch — về đầu trang">
             <span className={styles.brandMark} aria-hidden="true">
               FS
             </span>
             <span>
               FashionSearch <strong>AI</strong>
             </span>
-          </a>
+          </Link>
           <nav className={styles.nav} aria-label="Điều hướng slice">
             {NAV.map((item) => (
               <Link key={item.href} href={item.href}>
@@ -39,7 +39,7 @@ export function SiteHeader() {
             ))}
           </nav>
           <div className={styles.actions}>
-            <a
+            <Link
               className={styles.cameraButton}
               href="/#tim-bang-anh"
               aria-label="Mở luồng tìm kiếm bằng ảnh"
@@ -60,7 +60,7 @@ export function SiteHeader() {
                 <circle cx="12" cy="13" r="4" />
               </svg>
               <span className={styles.cameraText}>Tìm bằng ảnh</span>
-            </a>
+            </Link>
             <AuthPanel />
           </div>
         </div>

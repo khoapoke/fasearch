@@ -50,3 +50,21 @@
 3. Dán chữ vào ô TEXT → vẫn là text bình thường.
 4. TEXT nhập query → kết quả → detail; thử file quá lớn/sai định dạng.
 5. Xem 390px + Tab toàn trang.
+
+---
+
+## Follow-up FIX (3 mục Control, cùng branch)
+
+1. **Header/footer TEXT:** `src/app/search/text/page.tsx` bọc `SiteHeader`/
+   `SiteFooter` như Catalog (hero + workbench giữ nguyên). Browser xác nhận
+   header/nav/footer đầy đủ, route continuity
+   (`/catalog`, `/#tim-bang-anh`, `/search/text`, `/search/composed`).
+2. **Evidence đúng state:** `fix-text-results-1440.png` chụp sau khi success +
+   10/10 ảnh ready, URL vẫn `/search/text` (không navigate trước); detail
+   chụp riêng `fix-detail-37267-1440.png`; responsive sau wiring
+   `fix-text-768/390.png` (overflow=false).
+3. **Lint site-header:** 2 `<a href="/#…">` → Next `Link`, giữ nguyên
+   class/label/điều hướng, không disable rule. `npm run lint` exit 0.
+   Regression: brand Link → `/#top` landing OK; paste synthetic vẫn preview.
+- Rerun: tests 44/44, tsc sạch, lint 0, build xanh; FE restart guarded
+  (drain 13401 → listener/descendant mới verified).
