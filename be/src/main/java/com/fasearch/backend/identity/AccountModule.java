@@ -256,7 +256,8 @@ public class AccountModule {
 			throw new AccountException("CURRENT_PASSWORD_INVALID", HttpStatus.BAD_REQUEST,
 					"Current password is incorrect");
 		}
-		jdbc.update("UPDATE user_accounts SET password_hash = ?, updated_at = CURRENT_TIMESTAMP "
+		jdbc.update("UPDATE user_accounts SET password_hash = ?, password_version = password_version + 1, "
+				+ "updated_at = CURRENT_TIMESTAMP "
 					+ "WHERE id = ?", passwords.encode(next), account.id());
 		jdbc.update("DELETE FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?", account.username());
 		jdbc.update("INSERT INTO audit_events (id, actor_id, action, resource_type, resource_id) "

@@ -144,8 +144,11 @@
   flex-wrap: wrap;
 }
 
+/* CTA normal-text contrast: default --accent-deep (#d43f00) >= 4.5:1, hover
+ * --brand (#aa3000, Stitch primary) darker still. Both are existing Stitch
+ * tokens (promo-container/primary); orange identity preserved, no new hues. */
 .primary {
-  background: var(--accent);
+  background: var(--accent-deep);
   color: #fff;
   border: 1px solid var(--accent-deep);
   border-radius: 6px;
@@ -155,7 +158,8 @@
 }
 
 .primary:hover {
-  background: var(--accent-deep);
+  background: var(--brand);
+  border-color: var(--brand);
 }
 
 .primary:disabled {
