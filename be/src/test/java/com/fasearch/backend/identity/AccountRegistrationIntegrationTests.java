@@ -65,6 +65,16 @@ class AccountRegistrationIntegrationTests {
 		assertThat(json.readTree(registered.body()).get("username").asText())
 				.isEqualTo("new_user.01");
 
+		// Business intent explicit: ACTIVE status with the default role only.
+		assertThat(jdbc.queryForObject(
+				"SELECT status FROM user_accounts WHERE LOWER(username) = 'new_user.01'",
+				String.class)).isEqualTo("ACTIVE");
+		assertThat(jdbc.queryForObject(
+				"SELECT r.code FROM user_roles ur JOIN roles r ON r.id = ur.role_id "
+						+ "JOIN user_accounts u ON u.id = ur.user_id "
+						+ "WHERE LOWER(u.username) = 'new_user.01'",
+				String.class)).isEqualTo("REGISTERED_USER");
+
 		// No autologin: fresh cookie jar sees 401 on /me, registering jar too.
 		assertThat(send(browser, get(base, "/api/v1/auth/me")).statusCode()).isEqualTo(401);
 

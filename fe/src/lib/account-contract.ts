@@ -31,22 +31,38 @@ export function safeAccountReturnHref(raw: string | null): string {
   const hashIndex = raw.indexOf("#");
   const end = queryIndex === -1 ? hashIndex : hashIndex === -1 ? queryIndex : Math.min(queryIndex, hashIndex);
   const path = end === -1 ? raw : raw.slice(0, end);
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(path);
+  // Bounded recursive canonicalization (max 3 rounds): catches single and
+  // double encoding without unbounded decode loops. Any encoded ambiguity
+  // (changed form, malformed escapes, decoded backslash/control/traversal)
+  // fails closed to the fallback.
+  let canonical = path;
+  for (let round = 0; round < 3; round++) {
+    let next: string;
+    try {
+      next = decodeURIComponent(canonical);
+    }
+    catch {
+      return fallback;
+    }
+    if (next === canonical) break;
+    canonical = next;
   }
-  catch {
+  if (
+    canonical !== path ||
+    canonical.includes("\\") ||
+    hasControlChar(canonical) ||
+    canonical.split("/").includes("..")
+  ) {
     return fallback;
   }
-  if (decoded.split("/").includes("..")) return fallback;
   const allowed =
-    path === "/" ||
-    path === "/tai-khoan" ||
-    path.startsWith("/tai-khoan/") ||
-    path === "/catalog" ||
-    path.startsWith("/catalog/") ||
-    path === "/search/text" ||
-    path === "/search/composed";
+    canonical === "/" ||
+    canonical === "/tai-khoan" ||
+    canonical.startsWith("/tai-khoan/") ||
+    canonical === "/catalog" ||
+    canonical.startsWith("/catalog/") ||
+    canonical === "/search/text" ||
+    canonical === "/search/composed";
   if (!allowed) return fallback;
   return raw;
 }

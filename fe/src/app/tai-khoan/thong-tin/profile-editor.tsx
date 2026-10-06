@@ -17,6 +17,7 @@ export function ProfileEditor() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [issue, setIssue] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -55,7 +56,8 @@ export function ProfileEditor() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     const found = validateDisplayNameInput(draft);
     setIssue(found ?? "");
     if (found) {
@@ -90,6 +92,7 @@ export function ProfileEditor() {
       setError(failure instanceof Error ? failure.message : "Lưu không hoàn tất. Bản nháp được giữ lại.");
       errorRef.current?.focus();
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }

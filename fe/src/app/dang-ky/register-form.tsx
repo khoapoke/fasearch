@@ -18,6 +18,7 @@ export function RegisterForm() {
   const [displayName, setDisplayName] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [issues, setIssues] = useState<RegisterIssues>({});
   const [error, setError] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -36,7 +37,8 @@ export function RegisterForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     const found = validateRegisterInput({
       username,
       email,
@@ -80,6 +82,7 @@ export function RegisterForm() {
       setPassword("");
       errorRef.current?.focus();
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }

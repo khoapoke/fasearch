@@ -81,6 +81,25 @@ class AccountProfileIntegrationTests {
 		assertThat(json.readTree(user.get("/api/v1/auth/profile").body())
 				.get("display_name").asText()).isEqualTo("Tên Mới Có Dấu");
 
+		// Wrong content type with a valid session + CSRF is 415 (no 401/403 mask),
+		// no-store, and does not touch the settled profile.
+		{
+			String csrf = json.readTree(user.browser().send(HttpRequest.newBuilder(
+					base.resolve("/api/v1/auth/csrf")).GET().build(),
+					HttpResponse.BodyHandlers.ofString()).body()).get("token").asText();
+			HttpResponse<String> unsupported = user.browser().send(HttpRequest
+					.newBuilder(base.resolve("/api/v1/auth/profile"))
+					.header("Content-Type", "text/plain")
+					.header("X-CSRF-TOKEN", csrf)
+					.method("PATCH", HttpRequest.BodyPublishers.ofString("hello")).build(),
+					HttpResponse.BodyHandlers.ofString());
+			assertThat(unsupported.statusCode()).isEqualTo(415);
+			assertThat(unsupported.headers().firstValue("cache-control")).hasValue("no-store");
+			assertThat(json.readTree(unsupported.body()).get("code").asText())
+					.isEqualTo("UNSUPPORTED_MEDIA_TYPE");
+			assertThat(json.readTree(user.get("/api/v1/auth/profile").body())
+					.get("display_name").asText()).isEqualTo("Tên Mới Có Dấu");
+		}
 		// Second user unaffected; anonymous PATCH without CSRF is 403 (CSRF first),
 		// anonymous PATCH with a valid token but no login is 401.
 		assertThat(json.readTree(other.get("/api/v1/auth/profile").body())

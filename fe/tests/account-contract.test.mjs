@@ -25,6 +25,18 @@ describe("safeAccountReturnHref", () => {
     assert.equal(safeAccountReturnHref("/catalog/%2F..%2F"), "/tai-khoan");
   });
 
+  it("fails closed on single, double, and malformed encoding", () => {
+    assert.equal(safeAccountReturnHref("/tai-khoan/%2e%2e/%2e%2e/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%252e%252e/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%25252e/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%zz/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%5c/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%5Cevil"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/tai-khoan/%0a/x"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/%2f%2fevil.test/x"), "/tai-khoan");
+  });
+
   it("rejects auth routes as return targets to avoid login loops", () => {
     assert.equal(safeAccountReturnHref("/dang-nhap"), "/tai-khoan");
     assert.equal(safeAccountReturnHref("/dang-ky"), "/tai-khoan");

@@ -47,8 +47,8 @@ public class AccountModule {
 		UUID id = UUID.randomUUID();
 		try {
 			jdbc.update(
-					"INSERT INTO user_accounts (id, username, email, password_hash, display_name) "
-							+ "VALUES (?, ?, ?, ?, ?)",
+					"INSERT INTO user_accounts (id, username, email, password_hash, display_name, status) "
+							+ "VALUES (?, ?, ?, ?, ?, 'ACTIVE')",
 					id, username, email, passwords.encode(password), displayName);
 			jdbc.update("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
 					id, REGISTERED_USER_ROLE);
@@ -174,6 +174,12 @@ public class AccountModule {
 		if (raw == null) {
 			throw new AccountException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST,
 					"Missing required field: email");
+		}
+		for (int i = 0; i < raw.length(); i++) {
+			if (Character.isISOControl(raw.charAt(i))) {
+				throw new AccountException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST,
+						"Email address must not contain control characters");
+			}
 		}
 		String email = raw.trim();
 		if (email.length() > 254 || !EMAIL.matcher(email).matches()) {

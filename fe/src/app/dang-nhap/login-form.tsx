@@ -17,6 +17,7 @@ export function LoginForm({ next, registered, passwordChanged }: {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [error, setError] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
 
@@ -34,7 +35,8 @@ export function LoginForm({ next, registered, passwordChanged }: {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     if (!username.trim() || !password) {
       setError("Nhập tên đăng nhập và mật khẩu.");
       errorRef.current?.focus();
@@ -61,6 +63,7 @@ export function LoginForm({ next, registered, passwordChanged }: {
       setPassword("");
       errorRef.current?.focus();
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }

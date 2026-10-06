@@ -83,6 +83,24 @@ class AccountPasswordIntegrationTests {
 				"{\"current_password\":\"" + INITIAL + "\",\"new_password\":\""
 						+ INITIAL + "\",\"role\":\"ADMIN\"}").statusCode()).isEqualTo(400);
 
+		// Wrong content type with a valid session + CSRF is 415 (no 401/403 mask),
+		// no-store, and the password still works afterwards.
+		{
+			String csrf = json.readTree(user.browser().send(HttpRequest.newBuilder(
+					base.resolve("/api/v1/auth/csrf")).GET().build(),
+					HttpResponse.BodyHandlers.ofString()).body()).get("token").asText();
+			HttpResponse<String> unsupported = user.browser().send(HttpRequest
+					.newBuilder(base.resolve("/api/v1/auth/password"))
+					.header("Content-Type", "text/plain")
+					.header("X-CSRF-TOKEN", csrf)
+					.POST(HttpRequest.BodyPublishers.ofString("hello")).build(),
+					HttpResponse.BodyHandlers.ofString());
+			assertThat(unsupported.statusCode()).isEqualTo(415);
+			assertThat(unsupported.headers().firstValue("cache-control")).hasValue("no-store");
+			assertThat(json.readTree(unsupported.body()).get("code").asText())
+					.isEqualTo("UNSUPPORTED_MEDIA_TYPE");
+			assertThat(user.get("/api/v1/auth/me").statusCode()).isEqualTo(200);
+		}
 		// Anonymous with token -> 401; missing CSRF -> 403; wrong content -> 415.
 		assertThat(anonymousPost(base, null).statusCode()).isEqualTo(403);
 		assertThat(user.post("/api/v1/auth/password",

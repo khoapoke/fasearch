@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,6 +16,7 @@ export function AccountHub() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -40,13 +41,15 @@ export function AccountHub() {
   }, [router]);
 
   async function signOut() {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await logout();
       router.replace("/dang-nhap");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Đăng xuất không hoàn tất.");
+      busyRef.current = false;
       setBusy(false);
     }
   }

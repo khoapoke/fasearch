@@ -16,6 +16,7 @@ export function PasswordForm() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNext, setShowNext] = useState(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [currentIssue, setCurrentIssue] = useState("");
   const [nextIssue, setNextIssue] = useState("");
   const [confirmIssue, setConfirmIssue] = useState("");
@@ -43,7 +44,8 @@ export function PasswordForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     const nextFound = validateNewPasswordInput(next);
     setNextIssue(nextFound ?? "");
     setConfirmIssue(next !== confirm ? "Mật khẩu nhập lại chưa khớp." : "");
@@ -88,6 +90,7 @@ export function PasswordForm() {
       setError(failure instanceof Error ? failure.message : "Đổi mật khẩu không hoàn tất.");
       errorRef.current?.focus();
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }

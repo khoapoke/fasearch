@@ -58,6 +58,15 @@ class AccountRegisterValidationIntegrationTests {
 		// email invalid / too long.
 		assertThat(post(base, "{\"username\":\"valid_user\",\"email\":\"not-an-email\","
 				+ "\"password\":\"a-very-long-test-passphrase-01\"}").statusCode()).isEqualTo(400);
+		// control characters are rejected even where trim would strip them.
+		assertThat(post(base, "{\"username\":\"ctrl_user\",\"email\":\"a\t@example.test\","
+				+ "\"password\":\"a-very-long-test-passphrase-01\"}").statusCode()).isEqualTo(400);
+		assertThat(post(base, "{\"username\":\"ctrl_user\",\"email\":\"a\n@example.test\","
+				+ "\"password\":\"a-very-long-test-passphrase-01\"}").statusCode()).isEqualTo(400);
+		assertThat(post(base, "{\"username\":\"ctrl_user\",\"email\":\"a@example.test\\u0007\","
+				+ "\"password\":\"a-very-long-test-passphrase-01\"}").statusCode()).isEqualTo(400);
+		assertThat(post(base, "{\"username\":\"ctrl_user\",\"email\":\"  spaced@example.test  \","
+				+ "\"password\":\"a-very-long-test-passphrase-01\"}").statusCode()).isEqualTo(201);
 		// password too short.
 		assertThat(post(base, "{\"username\":\"valid_user\",\"email\":\"a@example.test\","
 				+ "\"password\":\"short\"}").statusCode()).isEqualTo(400);
