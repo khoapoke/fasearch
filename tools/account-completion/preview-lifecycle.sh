@@ -133,7 +133,7 @@ build_isolated() {
   [ -e "$dest" ] && fail "dest exists: $dest"
   mkdir -p "$dest" || fail "mkdir $dest"
   (cd "$ROOT" && git archive HEAD fe | tar -x -C "$dest") || fail "git archive"
-  cp -r "$ROOT/fe/node_modules" "$dest/fe/node_modules" || fail "node_modules copy"
+  cp -a "$ROOT/fe/node_modules" "$dest/fe/node_modules" || fail "node_modules copy"
   (cd "$dest/fe" && npm run build) || fail "isolated build"
   info "isolated build OK at $dest/fe (own .next, shared tree untouched)"
 }
