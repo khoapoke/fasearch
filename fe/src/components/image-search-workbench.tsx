@@ -15,6 +15,7 @@ import type {
 } from "@/lib/search-contract";
 import { detailHref } from "@/lib/catalog-contract";
 import { decidePaste, type PasteTarget } from "@/lib/clipboard-image";
+import { SaveButton } from "@/components/library/save-button";
 import { ResultCard } from "./stitch-search/result-card";
 import { createRequestGuard } from "./stitch-search/request-guard";
 import styles from "./image-search-workbench.module.css";
@@ -25,8 +26,15 @@ const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 type SearchState =
   | { status: "idle" }
   | { status: "searching" }
-  | { status: "success"; data: ImageSearchResponse }
+  | { status: "success"; data: ImageSearchResponse; historyStatus: string }
   | { status: "error"; message: string; traceId?: string };
+
+async function csrfToken(): Promise<{ header: string; token: string }> {
+  const response = await fetch("/api/auth/csrf", { cache: "no-store" });
+  if (!response.ok) throw new Error("Không thể bắt đầu phiên tìm kiếm.");
+  const payload = (await response.json()) as { header_name: string; token: string };
+  return { header: payload.header_name, token: payload.token };
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KiB`;
@@ -133,8 +141,11 @@ export function ImageSearchWorkbench() {
     formData.set("k", "8");
 
     try {
+      const csrf = await csrfToken();
+      if (!guard.isCurrent(ticket)) return;
       const response = await fetch("/api/search/image", {
         method: "POST",
+        headers: { [csrf.header]: csrf.token },
         body: formData,
         signal: controller.signal,
       });
@@ -150,7 +161,11 @@ export function ImageSearchWorkbench() {
         });
         return;
       }
-      setState({ status: "success", data: payload as ImageSearchResponse });
+      setState({
+        status: "success",
+        data: payload as ImageSearchResponse,
+        historyStatus: response.headers.get("x-history-status") ?? "NOT_RECORDED",
+      });
     } catch (failure) {
       if (!guard.isCurrent(ticket)) return;
       if (failure instanceof DOMException && failure.name === "AbortError") return;
@@ -348,17 +363,27 @@ export function ImageSearchWorkbench() {
             <>
               <div className={styles.resultGrid}>
                 {results.map((product) => (
-                  <ResultCard
+                  <div
                     key={`${product.product_id}:${product.product_version_id}`}
-                    product={product}
-                    href={`${detailHref(
-                      product.product_id,
-                      product.product_version_id,
-                      snapshot,
-                    )}&return_to=${encodeURIComponent("/")}`}
-                  />
+                    className={styles.resultCell}
+                  >
+                    <ResultCard
+                      product={product}
+                      href={`${detailHref(
+                        product.product_id,
+                        product.product_version_id,
+                        snapshot,
+                      )}&return_to=${encodeURIComponent("/")}`}
+                    />
+                    <SaveButton productId={product.product_id} title={product.title} />
+                  </div>
                 ))}
               </div>
+              {state.status === "success" && state.historyStatus === "RECORDED" && (
+                <p className={styles.historyNote}>
+                  Đã lưu lần tìm này vào lịch sử của bạn.
+                </p>
+              )}
               <p className={styles.similarityNote}>
                 “Mức tương đồng” là độ tương đồng thô từ mô hình, không phải
                 xác suất hay độ chính xác.

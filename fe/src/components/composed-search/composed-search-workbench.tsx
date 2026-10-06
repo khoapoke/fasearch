@@ -15,6 +15,7 @@ import type {
   CatalogError,
 } from "@/lib/catalog-contract";
 import { detailHref, parseCatalogAnchor } from "@/lib/catalog-contract";
+import { SaveButton } from "@/components/library/save-button";
 import type {
   ComposedSearchError,
   ComposedSearchResponse,
@@ -36,7 +37,7 @@ const categoryNames: Record<FashionCategory, string> = {
 type SearchState =
   | { status: "idle" }
   | { status: "searching" }
-  | { status: "success"; data: ComposedSearchResponse }
+  | { status: "success"; data: ComposedSearchResponse; historyStatus: string }
   | { status: "error"; message: string; traceId?: string };
 
 type AnchorState =
@@ -302,7 +303,11 @@ export function ComposedSearchWorkbench() {
         });
         return;
       }
-      setState({ status: "success", data: payload as ComposedSearchResponse });
+      setState({
+        status: "success",
+        data: payload as ComposedSearchResponse,
+        historyStatus: response.headers.get("x-history-status") ?? "NOT_RECORDED",
+      });
     } catch (failure) {
       if (requestIdRef.current !== requestId) return;
       if (failure instanceof DOMException && failure.name === "AbortError") return;
@@ -507,9 +512,13 @@ export function ComposedSearchWorkbench() {
                     </div>
                   </article>
                 </Link>
+                <SaveButton productId={product.product_id} title={product.title} />
               </li>
             ))}
           </ol>
+        )}
+        {state.status === "success" && state.historyStatus === "RECORDED" && (
+          <p className={styles.historyNote}>Đã lưu lần tìm này vào lịch sử của bạn.</p>
         )}
         {data && (
           <details className={styles.diagnostics}>

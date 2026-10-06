@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "content-type": response.headers.get("content-type") ?? "application/json",
         "X-Trace-Id": response.headers.get("x-trace-id") ?? traceId,
+        "X-History-Status": response.headers.get("x-history-status") ?? "NOT_RECORDED",
         "Cache-Control": "no-store",
       },
     });

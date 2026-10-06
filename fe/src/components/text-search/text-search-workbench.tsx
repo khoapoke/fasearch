@@ -2,12 +2,14 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type {
   FashionCategory,
   TextSearchError,
   TextSearchResponse,
 } from "@/lib/search-contract";
 import { detailHref } from "@/lib/catalog-contract";
+import { SaveButton } from "@/components/library/save-button";
 import { createRequestGuard } from "../stitch-search/request-guard";
 import {
   MAX_TEXT_CODE_POINTS,
@@ -39,11 +41,20 @@ async function csrfToken(): Promise<{ header: string; token: string }> {
 }
 
 export function TextSearchWorkbench() {
+  const searchParams = useSearchParams();
+  const prefill = searchParams.get("q") ?? "";
   const guardRef = useRef<ReturnType<typeof createRequestGuard> | null>(null);
   if (guardRef.current === null) guardRef.current = createRequestGuard();
   const abortRef = useRef<AbortController | null>(null);
   // Draft inputs stay editable without discarding the last settled success.
-  const [view, setView] = useState(() => initialView(10));
+  // A history "Tìm lại" link carries ?q=: adopted once as an editable draft
+  // in the lazy initializer (never auto-searched, user submits explicitly).
+  const [view, setView] = useState(() => {
+    const initial = initialView(10);
+    const seeded = prefill ? prefill.slice(0, 1024) : "";
+    return seeded ? editDraft(initial, { draftText: seeded }) : initial;
+  });
+  const [historyStatus, setHistoryStatus] = useState("");
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -110,6 +121,7 @@ export function TextSearchWorkbench() {
       if (!guardRef.current?.isCurrent(ticket)) return;
       if (!response.ok) {
         const error = payload as TextSearchError;
+        setHistoryStatus("");
         setView((prev) =>
           settleFailure(prev, snapshot, {
             message: error.message || "Tìm kiếm không hoàn tất. Hãy thử lại.",
@@ -118,6 +130,7 @@ export function TextSearchWorkbench() {
         );
         return;
       }
+      setHistoryStatus(response.headers.get("x-history-status") ?? "");
       setView((prev) => settleSuccess(prev, snapshot, payload as TextSearchResponse) ?? prev);
     } catch (failure) {
       if (!guardRef.current?.isCurrent(ticket)) return;
@@ -264,9 +277,13 @@ export function TextSearchWorkbench() {
                   </div>
                 </article>
                 </Link>
+                <SaveButton productId={product.product_id} title={product.title} />
               </li>
             ))}
           </ol>
+        )}
+        {historyStatus === "RECORDED" && settled && !pending && (
+          <p className={styles.historyNote}>Đã lưu lần tìm này vào lịch sử của bạn.</p>
         )}
           </>
         )}

@@ -250,3 +250,8 @@
     min-height: 0;
   }
 }
+
+.saveRow {
+  margin-top: 18px;
+  display: flex;
+}

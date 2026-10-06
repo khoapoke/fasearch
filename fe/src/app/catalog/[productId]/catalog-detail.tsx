@@ -9,6 +9,7 @@ import type {
   CatalogPageResponse,
 } from "@/lib/catalog-contract";
 import { composedAnchorHref, detailHref, detailContextQuery, safeReturnHref } from "@/lib/catalog-contract";
+import { SaveButton } from "@/components/library/save-button";
 import styles from "./catalog-detail.module.css";
 
 type DetailState =
@@ -181,6 +182,9 @@ function DetailInner({ productId }: { productId: string }) {
           <p className={styles.description}>
             {detail.description ?? "Chưa có mô tả"}
           </p>
+          <div className={styles.saveRow}>
+            <SaveButton productId={detail.product_id} title={detail.title} />
+          </div>
           <Link
             className={styles.primaryButton}
             href={composedAnchorHref(

@@ -82,6 +82,8 @@ export function AccountHub() {
         </section>
         <nav className={`${styles.card} ${styles.sideNav}`} aria-label="Quản lý tài khoản">
           <Link href="/tai-khoan" aria-current="page">Tổng quan</Link>
+          <Link href="/tai-khoan/san-pham-da-luu">Sản phẩm đã lưu</Link>
+          <Link href="/tai-khoan/lich-su-tim-kiem">Lịch sử tìm kiếm</Link>
           <Link href="/tai-khoan/thong-tin">Thông tin cá nhân</Link>
           <Link href="/tai-khoan/bao-mat">Bảo mật</Link>
         </nav>
@@ -99,6 +101,12 @@ export function AccountHub() {
             </p>
           )}
           <div className={styles.actions} style={{ marginTop: 16 }}>
+            <Link className={styles.secondary} href="/tai-khoan/san-pham-da-luu">
+              Sản phẩm đã lưu
+            </Link>
+            <Link className={styles.secondary} href="/tai-khoan/lich-su-tim-kiem">
+              Lịch sử tìm kiếm
+            </Link>
             <Link className={styles.secondary} href="/tai-khoan/thong-tin">
               Thông tin cá nhân
             </Link>

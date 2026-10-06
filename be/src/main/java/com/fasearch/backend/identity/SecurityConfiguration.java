@@ -37,8 +37,7 @@ public class SecurityConfiguration {
 		HttpSessionCsrfTokenRepository csrfRepository = new HttpSessionCsrfTokenRepository();
 		http
 				.csrf(csrf -> csrf
-						.csrfTokenRepository(csrfRepository)
-						.ignoringRequestMatchers("/api/v1/search/image"))
+						.csrfTokenRepository(csrfRepository))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/actuator/health", "/api/v1/search/image",
 								"/api/v1/search/composed",
@@ -50,6 +49,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/docs/**", "/webjars/**").permitAll()
 						.requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout",
 								"/api/v1/auth/profile", "/api/v1/auth/password").authenticated()
+						.requestMatchers("/api/v1/me/**").authenticated()
 						.requestMatchers("/api/v1/catalog/admin/drafts", "/api/v1/catalog/admin/drafts/**")
 								.hasAuthority("CATALOG_DRAFT_WRITE")
 						.requestMatchers("/api/v1/catalog/admin/publications", "/api/v1/catalog/admin/publications/**")

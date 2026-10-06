@@ -39,4 +39,23 @@ class PublicApiContractTests {
 				.contains("\"ImageSearchResponse\"")
 				.contains("\"CATALOG_VERSION_MISMATCH\"");
 	}
+
+	@Test
+	void checkedInContractDeclaresThePersonalLibrarySurface() throws IOException {
+		Path contractPath = Path.of("..", "contracts", "public-api.openapi.json");
+		String contract = Files.readString(contractPath);
+
+		assertThat(contract)
+				.contains("\"/api/v1/me/saved-products\"")
+				.contains("\"/api/v1/me/saved-products/{productId}\"")
+				.contains("\"/api/v1/me/search-history\"")
+				.contains("\"/api/v1/me/search-history/{entryId}\"")
+				.contains("\"/api/v1/me/library-preferences\"")
+				.contains("\"SavedProductsPage\"")
+				.contains("\"SearchHistoryPage\"")
+				.contains("\"LibraryPreferences\"")
+				.contains("\"X-History-Status\"")
+				.contains("PRODUCT_NOT_FOUND")
+				.contains("HISTORY_NOT_FOUND");
+	}
 }

@@ -6,7 +6,7 @@ const backendUrl =
 export async function forwardSessionRequest(
   request: NextRequest,
   path: string,
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   body?: BodyInit,
   contentType?: string,
 ): Promise<Response> {

@@ -356,6 +356,19 @@
   background: var(--surface);
 }
 
+.resultCell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.historyNote {
+  margin-top: 12px;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
 .similarityNote {
   margin-top: 16px;
   color: var(--ink-soft);

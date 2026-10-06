@@ -191,6 +191,19 @@
   list-style: none;
 }
 
+.resultList > li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.historyNote {
+  margin-top: 12px;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
 .card {
   display: grid;
   grid-template-columns: 96px 1fr;

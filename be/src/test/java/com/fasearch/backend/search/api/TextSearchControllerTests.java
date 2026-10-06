@@ -123,6 +123,24 @@ class TextSearchControllerTests {
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TestConfig {
 		@Bean
+		com.fasearch.backend.library.LibraryModule libraryModule() {
+			return new com.fasearch.backend.library.LibraryModule(null, null, null, null) {
+				@Override
+				public com.fasearch.backend.library.LibraryModule.HistoryStatus recordAfterSuccess(
+						org.springframework.security.core.Authentication actor,
+						String mode,
+						String queryTextOrNull,
+						String catalogSnapshotId,
+						String modelVersion,
+						String indexVersion,
+						java.util.List<com.fasearch.backend.library.LibraryModule.ProductRef> refs,
+						int resultCount,
+						String traceId) {
+					return com.fasearch.backend.library.LibraryModule.HistoryStatus.NOT_RECORDED;
+				}
+			};
+		}
+		@Bean
 		FakeTextSearchUseCase textSearchUseCase() {
 			return new FakeTextSearchUseCase();
 		}

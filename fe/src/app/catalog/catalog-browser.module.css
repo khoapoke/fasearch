@@ -55,6 +55,13 @@
   gap: 20px;
 }
 
+.cardCell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
 @media (max-width: 1024px) {
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

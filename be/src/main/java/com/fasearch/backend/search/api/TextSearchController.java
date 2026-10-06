@@ -13,11 +13,13 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasearch.backend.library.LibraryModule;
 import com.fasearch.backend.search.application.SearchException;
 import com.fasearch.backend.search.application.TextSearchUseCase;
 
@@ -33,24 +35,37 @@ public class TextSearchController {
 	private static final Set<String> ALLOWED_FIELDS = Set.of("schema_version", "query_text", "k");
 
 	private final TextSearchUseCase textSearch;
+	private final LibraryModule library;
 	private final JsonMapper json;
 
-	public TextSearchController(TextSearchUseCase textSearch, JsonMapper json) {
+	public TextSearchController(TextSearchUseCase textSearch, LibraryModule library, JsonMapper json) {
 		this.textSearch = textSearch;
+		this.library = library;
 		this.json = json;
 	}
 
 	@PostMapping(path = "/text", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<TextSearchUseCase.Result> search(
 			HttpServletRequest request,
+			Authentication authentication,
 			@RequestHeader(name = "X-Trace-Id", required = false) String incomingTraceId) {
 		String traceId = resolveTraceId(incomingTraceId);
 		request.setAttribute("fasearch.trace-id", traceId);
 		TextSearchUseCase.Command command = parse(request, traceId);
 		TextSearchUseCase.Result result = textSearch.search(command);
+		LibraryModule.HistoryStatus history = library.recordAfterSuccess(
+				authentication, "TEXT", command.queryText(),
+				result.publication().catalogSnapshotId(), result.publication().modelVersion(),
+				result.publication().indexVersion(),
+				result.results().stream()
+						.map(product -> new LibraryModule.ProductRef(
+									product.productId(), product.productVersionId(), product.rank()))
+						.toList(),
+				result.results().size(), command.traceId());
 		return ResponseEntity.ok()
 				.cacheControl(CacheControl.noStore())
 				.header("X-Trace-Id", traceId)
+				.header("X-History-Status", history.name())
 				.body(result);
 	}
 

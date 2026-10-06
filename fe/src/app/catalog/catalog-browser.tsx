@@ -10,6 +10,7 @@ import type {
 } from "@/lib/catalog-contract";
 import { detailHref, parseCatalogView } from "@/lib/catalog-contract";
 import type { FashionCategory } from "@/lib/search-contract";
+import { SaveButton } from "@/components/library/save-button";
 import styles from "./catalog-browser.module.css";
 
 const CATEGORIES: Array<{ value: FashionCategory | null; label: string }> = [
@@ -26,32 +27,35 @@ type BrowseState =
 
 function CatalogCard({ item, snapshot }: { item: CatalogItem; snapshot: string }) {
   return (
-    <Link
-      className={styles.card}
-      href={detailHref(item.product_id, item.product_version_id, snapshot)}
-      aria-label={`Xem chi tiết ${item.title}`}
-    >
-      <span className={styles.imageWrap}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          className={styles.image}
-          src={item.image_url}
-          alt={item.title}
-          loading="lazy"
-        />
-      </span>
-      <span className={styles.info}>
-        <span className={styles.category}>
-          {item.category === "TOP"
-            ? "Áo"
-            : item.category === "BOTTOM"
-              ? "Quần / váy rời"
-              : "Trang phục liền"}
+    <div className={styles.cardCell}>
+      <Link
+        className={styles.card}
+        href={detailHref(item.product_id, item.product_version_id, snapshot)}
+        aria-label={`Xem chi tiết ${item.title}`}
+      >
+        <span className={styles.imageWrap}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className={styles.image}
+            src={item.image_url}
+            alt={item.title}
+            loading="lazy"
+          />
         </span>
-        <span className={styles.title}>{item.title}</span>
-        <span className={styles.meta}>{item.product_id}</span>
-      </span>
-    </Link>
+        <span className={styles.info}>
+          <span className={styles.category}>
+            {item.category === "TOP"
+              ? "Áo"
+              : item.category === "BOTTOM"
+                ? "Quần / váy rời"
+                : "Trang phục liền"}
+          </span>
+          <span className={styles.title}>{item.title}</span>
+          <span className={styles.meta}>{item.product_id}</span>
+        </span>
+      </Link>
+      <SaveButton productId={item.product_id} title={item.title} />
+    </div>
   );
 }
 

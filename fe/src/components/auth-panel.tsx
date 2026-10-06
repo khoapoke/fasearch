@@ -84,6 +84,7 @@ export function AuthPanel() {
     <div className={styles.auth}>
       {user ? (
         <div className={styles.signedIn}>
+          <Link href="/tai-khoan">Thư viện của tôi</Link>
           {user.authorities.includes("CATALOG_DRAFT_WRITE") && (
             <Link href="/catalog/drafts">Danh sách nháp</Link>
           )}

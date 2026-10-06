@@ -1,0 +1,5 @@
+{"product_id": "p1", "product_version_id": "p1-v1", "title": "Áo đỏ", "category": "TOP", "catalog_snapshot_id": "catalog-test-v1", "image_path": "src/test/resources/library-fixture.png"}
+{"product_id": "p2", "product_version_id": "p2-v1", "title": "Quần xanh", "category": "BOTTOM", "catalog_snapshot_id": "catalog-test-v1", "image_path": "src/test/resources/library-fixture.png"}
+{"product_id": "p3", "product_version_id": "p3-v1", "title": "Váy hoa", "category": "ONE_PIECE", "catalog_snapshot_id": "catalog-test-v1", "image_path": "src/test/resources/library-fixture.png"}
+{"product_id": "p4", "product_version_id": "p4-v1", "title": "Áo trắng", "category": "TOP", "catalog_snapshot_id": "catalog-test-v1", "image_path": "src/test/resources/library-fixture.png"}
+{"product_id": "p5", "product_version_id": "p5-v1", "title": "Quần đen", "category": "BOTTOM", "catalog_snapshot_id": "catalog-test-v1", "image_path": "src/test/resources/library-fixture.png"}

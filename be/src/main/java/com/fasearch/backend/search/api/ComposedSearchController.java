@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
+import com.fasearch.backend.library.LibraryModule;
 import com.fasearch.backend.search.application.ComposedSearchUseCase;
 import com.fasearch.backend.search.application.ComposedSearchUseCase.Reference;
 import com.fasearch.backend.search.application.SearchException;
@@ -36,23 +38,36 @@ public class ComposedSearchController {
 	private static final int MAX_TRACE_LENGTH = 128;
 
 	private final ComposedSearchUseCase composedSearch;
+	private final LibraryModule library;
 
-	public ComposedSearchController(ComposedSearchUseCase composedSearch) {
+	public ComposedSearchController(ComposedSearchUseCase composedSearch, LibraryModule library) {
 		this.composedSearch = composedSearch;
+		this.library = library;
 	}
 
 	@PostMapping(path = "/composed", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ComposedSearchUseCase.Result> search(
 			MultipartHttpServletRequest multipart,
 			@RequestHeader(name = "X-Trace-Id", required = false) String incomingTraceId,
+			Authentication authentication,
 			HttpServletRequest request) {
 		String traceId = resolveTraceId(incomingTraceId);
 		request.setAttribute("fasearch.trace-id", traceId);
 		ComposedSearchUseCase.Command command = parse(multipart, traceId);
 		ComposedSearchUseCase.Result result = composedSearch.search(command);
+		LibraryModule.HistoryStatus history = library.recordAfterSuccess(
+				authentication, "COMPOSED", command.modificationText(),
+				result.publication().catalogSnapshotId(), result.publication().modelVersion(),
+				result.publication().indexVersion(),
+				result.results().stream()
+					.map(product -> new LibraryModule.ProductRef(
+								product.productId(), product.productVersionId(), product.rank()))
+					.toList(),
+				result.results().size(), command.traceId());
 		return ResponseEntity.ok()
 				.cacheControl(CacheControl.noStore())
 				.header("X-Trace-Id", traceId)
+				.header("X-History-Status", history.name())
 				.body(result);
 	}
 
