@@ -57,7 +57,6 @@ export function ProfileEditor() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyRef.current) return;
-    busyRef.current = true;
     const found = validateDisplayNameInput(draft);
     setIssue(found ?? "");
     if (found) {
@@ -65,6 +64,7 @@ export function ProfileEditor() {
       errorRef.current?.focus();
       return;
     }
+    busyRef.current = true;
     setBusy(true);
     setError("");
     setSaved(false);

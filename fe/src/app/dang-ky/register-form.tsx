@@ -38,7 +38,6 @@ export function RegisterForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyRef.current) return;
-    busyRef.current = true;
     const found = validateRegisterInput({
       username,
       email,
@@ -51,6 +50,7 @@ export function RegisterForm() {
       errorRef.current?.focus();
       return;
     }
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {

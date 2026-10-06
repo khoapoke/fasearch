@@ -34,6 +34,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 // Round-2 P0: obsolete credentials must not establish/resurrect a valid session
 // after a password change. Public HTTP boundary only; no private-state assertions.
+// Seam limit (honest): no public seam forces the exact in-flight interleave
+// (auth-read + session-save vs SELECT FOR UPDATE -> UPDATE hash -> DELETE
+// sessions -> commit). Test 1 is deterministic (post-commit use cannot
+// resurrect); test 2 is a high-collision stress (2 rounds x 20 racing logins)
+// asserting the final invariant. A green run is strong signal, not a proof of
+// absence for the inherent window. Owner of any future failure proof: account
+// ticket (Implement) -> minimal server-side gate proposal to Control.
 @Testcontainers
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)

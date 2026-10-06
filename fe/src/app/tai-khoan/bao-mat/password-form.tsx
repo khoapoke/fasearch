@@ -45,7 +45,6 @@ export function PasswordForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyRef.current) return;
-    busyRef.current = true;
     const nextFound = validateNewPasswordInput(next);
     setNextIssue(nextFound ?? "");
     setConfirmIssue(next !== confirm ? "Mật khẩu nhập lại chưa khớp." : "");
@@ -54,6 +53,7 @@ export function PasswordForm() {
       errorRef.current?.focus();
       return;
     }
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {

@@ -36,12 +36,12 @@ export function LoginForm({ next, registered, passwordChanged }: {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyRef.current) return;
-    busyRef.current = true;
     if (!username.trim() || !password) {
       setError("Nhập tên đăng nhập và mật khẩu.");
       errorRef.current?.focus();
       return;
     }
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {
