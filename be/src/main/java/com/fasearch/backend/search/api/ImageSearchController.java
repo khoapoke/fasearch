@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasearch.backend.library.HistoryCsrfAuthorizer;
 import com.fasearch.backend.library.LibraryModule;
 import com.fasearch.backend.search.application.ImageSearchUseCase;
 import com.fasearch.backend.search.application.SearchException;
@@ -27,10 +28,13 @@ public class ImageSearchController {
 
 	private final ImageSearchUseCase imageSearch;
 	private final LibraryModule library;
+	private final HistoryCsrfAuthorizer csrfAuthorizer;
 
-	public ImageSearchController(ImageSearchUseCase imageSearch, LibraryModule library) {
+	public ImageSearchController(ImageSearchUseCase imageSearch, LibraryModule library,
+			HistoryCsrfAuthorizer csrfAuthorizer) {
 		this.imageSearch = imageSearch;
 		this.library = library;
+		this.csrfAuthorizer = csrfAuthorizer;
 	}
 
 	@PostMapping(path = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -51,15 +55,22 @@ public class ImageSearchController {
 					image.getOriginalFilename(),
 					k,
 					traceId));
-			LibraryModule.HistoryStatus history = library.recordAfterSuccess(
-					authentication, "IMAGE", null,
-					result.publication().catalogSnapshotId(), result.publication().modelVersion(),
-					result.publication().indexVersion(),
-					result.results().stream()
-						.map(product -> new LibraryModule.ProductRef(
+			// The image endpoint stays public and CSRF-exempt (ADR 0001): the
+			// search itself never requires a token. Only the personal-history
+			// side effect additionally requires a valid current-session token;
+			// missing/invalid/foreign tokens yield a genuine public result with
+			// no history write.
+			LibraryModule.HistoryStatus history = csrfAuthorizer.isValidCurrentSessionToken(request)
+					? library.recordAfterSuccess(
+							authentication, "IMAGE", null,
+						result.publication().catalogSnapshotId(), result.publication().modelVersion(),
+						result.publication().indexVersion(),
+						result.results().stream()
+							.map(product -> new LibraryModule.ProductRef(
 									product.productId(), product.productVersionId(), product.rank()))
-						.toList(),
-					result.results().size(), traceId);
+							.toList(),
+						result.results().size(), traceId)
+					: LibraryModule.HistoryStatus.NOT_RECORDED;
 			return ResponseEntity.ok()
 				.cacheControl(CacheControl.noStore())
 					.header("X-Trace-Id", traceId)

@@ -127,6 +127,15 @@ class ImageSearchControllerTests {
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TestConfig {
 		@Bean
+		com.fasearch.backend.library.HistoryCsrfAuthorizer historyCsrfAuthorizer() {
+			return new com.fasearch.backend.library.HistoryCsrfAuthorizer() {
+				@Override
+				public boolean isValidCurrentSessionToken(jakarta.servlet.http.HttpServletRequest request) {
+					return false;
+				}
+			};
+		}
+		@Bean
 		com.fasearch.backend.library.LibraryModule libraryModule() {
 			return new com.fasearch.backend.library.LibraryModule(null, null, null, null) {
 				@Override

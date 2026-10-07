@@ -183,32 +183,21 @@ class SessionSecurityIntegrationTests {
 	}
 
 	@Test
-	void publicImageSearchStaysLoginFreeButRequiresCsrfToken() throws Exception {
-		// Personal-library history rides this endpoint, so every call carries a
-		// CSRF-validated request now (TASK revision 2). The token is anonymous:
-		// guests fetch one without logging in and still search publicly.
+	void publicImageSearchDoesNotRequireSessionOrCsrf() throws Exception {
+		// ADR 0001 stateless public exception (closure contract): a valid Guest
+		// image request without cookie/CSRF succeeds with no history side effect.
+		// History for opted-in accounts is guarded separately by
+		// HistoryCsrfAuthorizer, covered in LibraryHistoryIntegrationTests.
 		URI base = URI.create("http://127.0.0.1:" + port);
-		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
-		HttpClient guest = HttpClient.newBuilder().cookieHandler(cookies).build();
-		String csrf = json.readTree(send(guest, get(base, "/api/v1/auth/csrf")).body())
-				.get("token").asText();
-
 		HttpRequest request = HttpRequest.newBuilder(base.resolve("/api/v1/search/image"))
 				.header("Content-Type", "multipart/form-data; boundary=empty-image")
-				.header("X-CSRF-TOKEN", csrf)
 				.POST(HttpRequest.BodyPublishers.ofString("--empty-image--\r\n"))
 				.build();
 
-		HttpResponse<String> response = send(guest, request);
+		HttpResponse<String> response = send(HttpClient.newHttpClient(), request);
 		assertThat(response.statusCode()).isEqualTo(400);
 		assertThat(json.readTree(response.body()).get("code").asText()).isEqualTo("INVALID_REQUEST");
-
-		// Missing mutation authorization: rejected before validation, nothing stored.
-		HttpRequest bare = HttpRequest.newBuilder(base.resolve("/api/v1/search/image"))
-				.header("Content-Type", "multipart/form-data; boundary=empty-image")
-				.POST(HttpRequest.BodyPublishers.ofString("--empty-image--\r\n"))
-				.build();
-		assertThat(send(HttpClient.newHttpClient(), bare).statusCode()).isEqualTo(403);
+		assertThat(response.headers().allValues("set-cookie")).isEmpty();
 	}
 
 	@Test

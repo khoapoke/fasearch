@@ -37,7 +37,8 @@ public class SecurityConfiguration {
 		HttpSessionCsrfTokenRepository csrfRepository = new HttpSessionCsrfTokenRepository();
 		http
 				.csrf(csrf -> csrf
-						.csrfTokenRepository(csrfRepository))
+						.csrfTokenRepository(csrfRepository)
+						.ignoringRequestMatchers("/api/v1/search/image"))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/actuator/health", "/api/v1/search/image",
 								"/api/v1/search/composed",

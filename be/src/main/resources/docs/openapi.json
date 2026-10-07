@@ -671,8 +671,8 @@
           {
             "name": "X-CSRF-TOKEN",
             "in": "header",
-            "required": true,
-            "description": "Session CSRF token (guests fetch one anonymously; it is not login). Required since history capture rides this endpoint.",
+            "required": false,
+            "description": "Optional session CSRF token. The search itself is public and stateless (ADR 0001); a valid current-session token plus explicit history opt-in additionally records one personal history entry, otherwise nothing is stored.",
             "schema": {
               "type": "string"
             }
@@ -705,7 +705,7 @@
         },
         "responses": {
           "200": {
-            "description": "Ranked products from one consistent publication",
+            "description": "Ranked products from one consistent publication; X-History-Status is RECORDED only with a valid current-session token and opt-in",
             "headers": {
               "X-Trace-Id": {
                 "schema": {
@@ -742,9 +742,6 @@
           },
           "503": {
             "$ref": "#/components/responses/SearchError"
-          },
-          "403": {
-            "$ref": "#/components/responses/AuthError"
           }
         }
       }

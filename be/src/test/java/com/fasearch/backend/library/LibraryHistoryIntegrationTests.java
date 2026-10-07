@@ -212,23 +212,108 @@ class LibraryHistoryIntegrationTests {
 	}
 
 	@Test
-	void sessionImageSearchWithoutCsrfTokenIsRejectedWithNoHistory() throws Exception {
+	void guestImageSearchWithoutTokenSucceedsWithNoHistory() throws Exception {
+		// Frozen Guest compatibility: original stateless public behavior.
+		HttpClient guest = HttpClient.newHttpClient();
+		URI base = URI.create("http://127.0.0.1:" + port);
+		int before = historyRows();
+		byte[] png = java.nio.file.Files.readAllBytes(
+				java.nio.file.Path.of("src/test/resources/library-fixture.png"));
+
+		HttpResponse<String> search = send(guest, postMultipart(base, "/api/v1/search/image",
+				png, "query.png", "image/png", null, null));
+
+		assertThat(search.statusCode()).isEqualTo(200);
+		assertThat(search.headers().firstValue("X-History-Status")).hasValue("NOT_RECORDED");
+		assertThat(json.readTree(search.body()).get("results").size()).isGreaterThan(0);
+		assertThat(historyRows()).isEqualTo(before);
+	}
+
+	@Test
+	void optedInImageSearchWithoutTokenSucceedsWithNoHistory() throws Exception {
 		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
 		HttpClient browser = HttpClient.newBuilder().cookieHandler(cookies).build();
 		URI base = URI.create("http://127.0.0.1:" + port);
-		register(browser, base, "hist_stale", "hist_stale@example.test");
-		String csrf = login(browser, base, "hist_stale");
+		register(browser, base, "hist_compat", "hist_compat@example.test");
+		String csrf = login(browser, base, "hist_compat");
 		assertThat(send(browser, patchJson(base,
 				"/api/v1/me/library-preferences", "{\"record_history\":true}", csrf)).statusCode())
 				.isEqualTo(200);
 
 		byte[] png = java.nio.file.Files.readAllBytes(
 				java.nio.file.Path.of("src/test/resources/library-fixture.png"));
-		// Stale/missing mutation authorization: rejected, nothing stored.
-		HttpResponse<String> rejected = send(browser, postMultipart(base, "/api/v1/search/image",
+		// Missing history authorization: genuine public result, nothing stored.
+		HttpResponse<String> search = send(browser, postMultipart(base, "/api/v1/search/image",
 				png, "query.png", "image/png", null, null));
-		assertThat(rejected.statusCode()).isEqualTo(403);
-		assertThat(historyRowsFor("hist_stale")).isEqualTo(0);
+		assertThat(search.statusCode()).isEqualTo(200);
+		assertThat(search.headers().firstValue("X-History-Status")).hasValue("NOT_RECORDED");
+		assertThat(historyRowsFor("hist_compat")).isEqualTo(0);
+	}
+
+	@Test
+	void optedInImageSearchWithInvalidTokenSucceedsWithNoHistory() throws Exception {
+		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient browser = HttpClient.newBuilder().cookieHandler(cookies).build();
+		URI base = URI.create("http://127.0.0.1:" + port);
+		register(browser, base, "hist_tamper", "hist_tamper@example.test");
+		String csrf = login(browser, base, "hist_tamper");
+		assertThat(send(browser, patchJson(base,
+				"/api/v1/me/library-preferences", "{\"record_history\":true}", csrf)).statusCode())
+				.isEqualTo(200);
+
+		byte[] png = java.nio.file.Files.readAllBytes(
+				java.nio.file.Path.of("src/test/resources/library-fixture.png"));
+		HttpResponse<String> search = send(browser, postMultipart(base, "/api/v1/search/image",
+				png, "query.png", "image/png", null, "forged-token-value"));
+		assertThat(search.statusCode()).isEqualTo(200);
+		assertThat(search.headers().firstValue("X-History-Status")).hasValue("NOT_RECORDED");
+		assertThat(historyRowsFor("hist_tamper")).isEqualTo(0);
+	}
+
+	@Test
+	void optedInImageSearchWithCrossSessionTokenSucceedsWithNoHistory() throws Exception {
+		CookieManager cookiesA = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient browserA = HttpClient.newBuilder().cookieHandler(cookiesA).build();
+		CookieManager cookiesB = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient browserB = HttpClient.newBuilder().cookieHandler(cookiesB).build();
+		URI base = URI.create("http://127.0.0.1:" + port);
+		register(browserA, base, "hist_victim", "hist_victim@example.test");
+		register(browserB, base, "hist_attacker", "hist_attacker@example.test");
+		String csrfA = login(browserA, base, "hist_victim");
+		String csrfB = login(browserB, base, "hist_attacker");
+		assertThat(send(browserA, patchJson(base,
+				"/api/v1/me/library-preferences", "{\"record_history\":true}", csrfA)).statusCode())
+				.isEqualTo(200);
+
+		byte[] png = java.nio.file.Files.readAllBytes(
+				java.nio.file.Path.of("src/test/resources/library-fixture.png"));
+		// Attacker's token replayed into the victim's session: public result only.
+		HttpResponse<String> search = send(browserA, postMultipart(base, "/api/v1/search/image",
+				png, "query.png", "image/png", null, csrfB));
+		assertThat(search.statusCode()).isEqualTo(200);
+		assertThat(search.headers().firstValue("X-History-Status")).hasValue("NOT_RECORDED");
+		assertThat(historyRowsFor("hist_victim")).isEqualTo(0);
+		assertThat(historyRowsFor("hist_attacker")).isEqualTo(0);
+	}
+
+	@Test
+	void optedInImageSearchWithValidOwnTokenRecordsExactlyOneEntry() throws Exception {
+		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient browser = HttpClient.newBuilder().cookieHandler(cookies).build();
+		URI base = URI.create("http://127.0.0.1:" + port);
+		register(browser, base, "hist_owner", "hist_owner@example.test");
+		String csrf = login(browser, base, "hist_owner");
+		assertThat(send(browser, patchJson(base,
+				"/api/v1/me/library-preferences", "{\"record_history\":true}", csrf)).statusCode())
+				.isEqualTo(200);
+
+		byte[] png = java.nio.file.Files.readAllBytes(
+				java.nio.file.Path.of("src/test/resources/library-fixture.png"));
+		HttpResponse<String> search = send(browser, postMultipart(base, "/api/v1/search/image",
+				png, "query.png", "image/png", null, csrf));
+		assertThat(search.statusCode()).isEqualTo(200);
+		assertThat(search.headers().firstValue("X-History-Status")).hasValue("RECORDED");
+		assertThat(historyRowsFor("hist_owner")).isEqualTo(1);
 	}
 
 	@Test
