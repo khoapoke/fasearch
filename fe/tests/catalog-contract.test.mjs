@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   composedAnchorHref,
   detailHref,
+  discoveryCardHrefs,
   parseCatalogView,
   detailContextQuery,
   parseCatalogAnchor,
@@ -110,5 +111,50 @@ describe("expected context never falls back", () => {
       assert.equal(parseCatalogAnchor(new URLSearchParams(query)).status, "invalid");
     }
     assert.deepEqual(parseCatalogAnchor(new URLSearchParams("anchor_product_id=10011&anchor_product_version_id=v&anchor_catalog_snapshot_id=s")), {status:"valid",reference:{productId:"10011",productVersionId:"v",snapshotId:"s"}});
+  });
+});
+
+describe("discoveryCardHrefs", () => {
+  const item = (id) => ({
+    product_id: id,
+    product_version_id: `dataset-a-${id}-v1`,
+    title: `Item ${id}`,
+    category: "BOTTOM",
+    image_url: `/api/catalog/images/${id}/dataset-a-${id}-v1`,
+  });
+  const page = (snapshot, ids) => ({
+    schema_version: "1.0.0",
+    trace_id: "t",
+    publication: {
+      catalog_snapshot_id: snapshot,
+      model_version: "m",
+      index_version: "i",
+    },
+    artifact_scope: "PILOT_ONLY",
+    page: 1,
+    size: 8,
+    total: ids.length,
+    has_more: false,
+    items: ids.map(item),
+  });
+
+  it("derives every href snapshot from the same payload (F1 regression)", () => {
+    const cards = discoveryCardHrefs(page("catalog-20260908-pilot-v1", ["10011", "10012"]));
+    assert.equal(cards.length, 2);
+    for (const card of cards) {
+      assert.ok(card.href.includes("s=catalog-20260908-pilot-v1"), card.href);
+      assert.ok(!card.href.includes("s=&"), card.href);
+    }
+  });
+
+  it("emits no cards when the snapshot is missing or blank", () => {
+    assert.deepEqual(discoveryCardHrefs(page("", ["10011"])), []);
+    const missing = page("x", ["10011"]);
+    missing.publication = {};
+    assert.deepEqual(discoveryCardHrefs(missing), []);
+  });
+
+  it("emits no cards when there are no items", () => {
+    assert.deepEqual(discoveryCardHrefs(page("catalog-20260908-pilot-v1", [])), []);
   });
 });

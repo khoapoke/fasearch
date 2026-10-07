@@ -1,0 +1,108 @@
+.section {
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-subtle);
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.inner h2 {
+  font-size: 1.3rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.lede {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.body {
+  padding: 20px 22px 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.body h3 {
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.body p {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.primary {
+  color: #fff;
+  background: var(--accent);
+}
+
+.primary:hover {
+  background: var(--accent-deep);
+}
+
+.secondary {
+  color: var(--ink);
+  border: 1.5px solid var(--line);
+}
+
+.secondary:hover {
+  border-color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inner {
+    padding: 32px 16px;
+  }
+}

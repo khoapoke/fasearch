@@ -1,17 +1,38 @@
 import Link from "next/link";
-import { ComposedDemo } from "./composed-demo/composed-demo";
+import { HeroPhotoCard } from "./hero-photo";
 import styles from "./hero.module.css";
 
-// Stitch home hero, two-column desktop composition. Copy is faithful to this
-// slice (no 98%/0.45s demo claims, no commerce promises): CTAs scroll into
-// the working image flow. The right panel is a labelled composed-search
-// illustration (local fixtures, zero backend requests); live composed API
-// remains a separate ticket.
+// Stitch home hero, photo-led per reference composition. Copy is faithful
+// (no 98%/0.45s demo claims, no commerce promises): CTAs scroll into the
+// working image flow. The right panel is the supplied Stitch hero photo
+// (local capture, see fe/public/stitch-assets/manifest.json); the composed
+// illustration remains available as a labelled secondary module below.
 
 const CATEGORIES = [
-  { code: "TOP", label: "Áo", note: "Tops", href: "/catalog?category=TOP" },
-  { code: "BOTTOM", label: "Quần / váy rời", note: "Bottoms", href: "/catalog?category=BOTTOM" },
-  { code: "ONE_PIECE", label: "Trang phục liền", note: "One-piece", href: "/catalog?category=ONE_PIECE" },
+  {
+    code: "TOP",
+    label: "Áo",
+    note: "Tops",
+    href: "/catalog?category=TOP",
+    photo: "/stitch-assets/category-top.jpg",
+    alt: "Ảnh áo thun đen gấp gọn trên nền trắng",
+  },
+  {
+    code: "BOTTOM",
+    label: "Quần / váy rời",
+    note: "Bottoms",
+    href: "/catalog?category=BOTTOM",
+    photo: "/stitch-assets/category-bottom.jpg",
+    alt: "Ảnh quần short thể thao xanh trên nền sáng",
+  },
+  {
+    code: "ONE_PIECE",
+    label: "Trang phục liền",
+    note: "One-piece",
+    href: "/catalog?category=ONE_PIECE",
+    photo: "/stitch-assets/category-onepiece.jpg",
+    alt: "Ảnh đầm liền màu hồng trong studio sáng",
+  },
 ];
 
 export function Hero() {
@@ -43,9 +64,7 @@ export function Hero() {
           </p>
         </div>
 
-        <div className={styles.demo}>
-          <ComposedDemo />
-        </div>
+        <HeroPhotoCard />
       </div>
 
       <div className={styles.categories}>
@@ -55,8 +74,10 @@ export function Hero() {
         <ul>
           {CATEGORIES.map((category) => (
             <li key={category.code}>
-              <Link className={styles.chip} href={category.href}>
-                {category.label}
+              <Link className={styles.circleLink} href={category.href} aria-label={`${category.label} — lọc catalog`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className={styles.circlePhoto} src={category.photo} alt={category.alt} />
+                <span className={styles.chip}>{category.label}</span>
               </Link>
               <span className={styles.chipNote}>{category.note}</span>
             </li>

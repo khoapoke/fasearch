@@ -123,6 +123,23 @@ export function detailHref(
   return `/catalog/${encodeURIComponent(productId)}?${params.toString()}`;
 }
 
+/** Home discovery cards: hrefs derived from the SAME fetch payload.
+ * Returns [] when the authoritative snapshot is missing/blank or there
+ * are no items, so callers never emit misleading snapshot-less cards. */
+export function discoveryCardHrefs(page: CatalogPageResponse): Array<{
+  product_id: string;
+  product_version_id: string;
+  href: string;
+}> {
+  const snapshot = page.publication?.catalog_snapshot_id ?? "";
+  if (!snapshot || page.items.length === 0) return [];
+  return page.items.map((item) => ({
+    product_id: item.product_id,
+    product_version_id: item.product_version_id,
+    href: detailHref(item.product_id, item.product_version_id, snapshot),
+  }));
+}
+
 /** Composed anchor URL for the detail CTA. */
 export function composedAnchorHref(
   productId: string,

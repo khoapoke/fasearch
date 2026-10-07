@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { CatalogItem, CatalogPageResponse } from "@/lib/catalog-contract";
-import { detailHref } from "@/lib/catalog-contract";
+import { discoveryCardHrefs } from "@/lib/catalog-contract";
 import { SaveButton } from "@/components/library/save-button";
 import styles from "./home-discovery.module.css";
 
 // Honest discovery strip: the first page of the live catalog, labelled as a
 // sample — never ranked, never "bestsellers".
 export function HomeDiscovery() {
-  const [items, setItems] = useState<CatalogItem[] | null>(null);
+  const [view, setView] = useState<{ item: CatalogItem; href: string }[] | null>(null);
   const [failed, setFailed] = useState(false);
   const startedRef = useRef(false);
 
@@ -24,13 +24,26 @@ export function HomeDiscovery() {
           return;
         }
         const payload = (await response.json()) as CatalogPageResponse;
-        setItems(payload.items.slice(0, 8));
+        // One mapping from the SAME payload: cards + authoritative snapshot.
+        // Empty snapshot or no items => no cards at all (never misleading).
+        const cards = discoveryCardHrefs({ ...payload, items: payload.items.slice(0, 8) });
+        if (cards.length === 0) {
+          setFailed(true);
+          return;
+        }
+        const byId = new Map(payload.items.map((item) => [item.product_id, item]));
+        setView(
+          cards.flatMap((card) => {
+            const item = byId.get(card.product_id);
+            return item ? [{ item, href: card.href }] : [];
+          }),
+        );
       })
       .catch(() => setFailed(true));
   }, []);
 
   if (failed) return null;
-  if (!items) {
+  if (!view) {
     return (
       <section className={styles.section} aria-label="Một số sản phẩm trong catalog">
         <div className={styles.head}>
@@ -40,7 +53,7 @@ export function HomeDiscovery() {
       </section>
     );
   }
-  if (items.length === 0) return null;
+  if (view.length === 0) return null;
 
   return (
     <section className={styles.section} aria-label="Một số sản phẩm trong catalog">
@@ -56,11 +69,11 @@ export function HomeDiscovery() {
         </Link>
       </div>
       <ol className={styles.grid}>
-        {items.map((item) => (
+        {view.map(({ item, href }) => (
           <li key={`${item.product_id}:${item.product_version_id}`} className={styles.cell}>
             <Link
               className={styles.card}
-              href={detailHref(item.product_id, item.product_version_id, "")}
+              href={href}
               aria-label={`Xem chi tiết ${item.title}`}
             >
               <span className={styles.imageWrap}>

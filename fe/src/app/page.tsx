@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/stitch-search/site-header";
 import { Hero } from "@/components/stitch-search/hero";
-import { HomeDiscovery } from "@/components/stitch-search/home-discovery";
 import { ImageSearchWorkbench } from "@/components/image-search-workbench";
+import { HomeDiscovery } from "@/components/stitch-search/home-discovery";
+import { ComposedSpotlight } from "@/components/stitch-search/composed-spotlight";
+import { StyleBanners } from "@/components/stitch-search/style-banners";
 import { TrustRow } from "@/components/stitch-search/trust-row";
 import { SiteFooter } from "@/components/stitch-search/site-footer";
 import styles from "./page.module.css";
@@ -24,6 +26,8 @@ export default function Home() {
         </nav>
         <ImageSearchWorkbench />
         <HomeDiscovery />
+        <StyleBanners />
+        <ComposedSpotlight />
         <TrustRow />
       </main>
       <SiteFooter />

@@ -1,0 +1,101 @@
+{
+  "captured_at": "2026-10-07T12:14:37.217017+00:00",
+  "assets": [
+    {
+      "dest": "fe/public/stitch-assets/hero.jpg",
+      "source_file": "/Users/khoado/Downloads/stitch_fashionsearch_ai_storefront/fashionsearch_ai_trang_ch_th_ng_m_i_i_n_t/code.html",
+      "html_line": 275,
+      "source_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuAaem4xOu4OvherVMJv8vMnLJzZpC-2hDAzhX5DzJEotRVRXOmiVpfDa59LL7HVeDvVA-qXjkZV-T1EvUOv9EYk33u7whC7hbY8LJbBnSFuRv3ICONcnO99LcKh6CRz9XPg1JjUeUOi8z3JHnrtpqcTspHA2EDrZfJhGPWB7AbJbb0qdbj0zPCFxxPsseodnxGv4driCxqPZSs0tMetLNVi5hIKtCYv8SkrnjFEHTnCcvBMSLA418j4",
+      "role": "home hero photo card",
+      "alt": "A modern young Vietnamese male model posing in clean, minimalist urban activewear against a soft, bright neutral studio backdrop. He wears a crisp white performance t-shirt, tailored charcoal grey tech shorts, and sleek white sneakers. High-key natural lighting emphasizes the lightweight texture of the breathable fabric. The composition exudes minimalist utility, effortless confidence, and direct-to-consumer athletic elegance.",
+      "format": "JPEG",
+      "dimensions": [
+        512,
+        246
+      ],
+      "bytes": 16091,
+      "sha256": "4aac4773bb6704dc0f12d185917c01d685d12cafaf1ccf52e31c8500fd877152",
+      "modification": "cropped rows 0-29 + 276-285 (baked browser tab/status bars); photo content exact"
+    },
+    {
+      "dest": "fe/public/stitch-assets/category-top.jpg",
+      "source_file": "/Users/khoado/Downloads/stitch_fashionsearch_ai_storefront/fashionsearch_ai_trang_ch_th_ng_m_i_i_n_t/code.html",
+      "html_line": 310,
+      "source_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuAtSPSUTNiW8J0-By8KTLXTtT5j2g-5wKCd1A4phfaQOpCcef9N_drlbIvfDTkHjxWPFjC4VtjSGbjmiwfPy97PShdDIG7qvrTnOnhmKsH6FU03mDv7SzfzT9e5BysBpFm4QhHDN_ZWZq5MieIEkJJf_VAGWCixbJNMrBSMwVSUNm6nMTaQfGA6tERBa_MQ3demsFEU4ZbyPhxPvv-m0IUE9z5_HC0BxqA2t42tdGDisWeXcpv52Vvu",
+      "role": "TOP category circle",
+      "alt": "Close up photograph of a neatly folded premium black cotton crewneck t-shirt on a crisp white surface with bright high-key lighting showcasing soft compact jersey texture.",
+      "format": "JPEG",
+      "dimensions": [
+        512,
+        279
+      ],
+      "bytes": 11663,
+      "sha256": "b1b1ad9f7def4fbbfdbdf232e9c193713d80c35e881bdc8604628cd1034bb6e9",
+      "modification": "exact, unmodified"
+    },
+    {
+      "dest": "fe/public/stitch-assets/category-bottom.jpg",
+      "source_file": "/Users/khoado/Downloads/stitch_fashionsearch_ai_storefront/fashionsearch_ai_trang_ch_th_ng_m_i_i_n_t/code.html",
+      "html_line": 317,
+      "source_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuDqVzjNW05X654qkxC5hmei2oLhJdqD6BAVb4FKA3FNHNz7gS18GDUdcbaz7sw65MPti4HUVBi_ESj4oC1nKf0Ozw46o8Q6Qq1-qSTqaTN34InQV3AFKPN2diapnLFZzWJ2ZOyIM5OjPUC_az4G_te2Tcxn1r2EPkds0j7Q84iQAgRD7d98AqayNm7HMER7mu0px_CcoCJKqSSJZKwKeRDmuRJMJ2R6X0BPCXKkYOdKhKwLOgqp6jRf",
+      "role": "BOTTOM category circle",
+      "alt": "Flat lay photograph of athletic stretch shorts in deep navy blue laid on a bright light background with sharp clean minimalist styling.",
+      "format": "JPEG",
+      "dimensions": [
+        512,
+        279
+      ],
+      "bytes": 22154,
+      "sha256": "6d149a209efd90fd347b7b4e0edde9ac027391824680483ce089840b711c3e75",
+      "modification": "exact, unmodified (photo includes paired sneakers as supplied)"
+    },
+    {
+      "dest": "fe/public/stitch-assets/banner-active.jpg",
+      "source_file": "/Users/khoado/Downloads/stitch_fashionsearch_ai_storefront/fashionsearch_ai_trang_ch_th_ng_m_i_i_n_t/code.html",
+      "html_line": 698,
+      "source_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuDf_2uPTVjPiyb9pPhDLy7yWgCoDH1BFsZQSFFukvczgmareKnNAhoQUP1f9JbudnLCMgQS7CiJ0JNtPIusgd29UuQ67IzdSG38hs8Sauw_MCj34sJuN8l0yQxBHueaZ2siKGp5J-pA8v4qWVFj8keoXkoaR3tuh30um0Uu4Cy--xEmpdO1IOa0biscYGd8kavK2fjP-v3n3GyuFXsX7OREQomLASXWUSRvu546g9hUlFzm8c_qHL1c",
+      "role": "activewear banner card",
+      "alt": "Athletic fitness male athlete stretching outdoors in lightweight sportswear under early morning daylight in a modern city sports park setting with crisp minimalist aesthetic.",
+      "format": "JPEG",
+      "dimensions": [
+        482,
+        270
+      ],
+      "bytes": 47833,
+      "sha256": "6733c29e1b7b0efdf58680f85f42737d285a8eff144569585d801bb3fa73120f",
+      "modification": "cropped rows 0-15 + cols 482-511 (baked browser tab bar + scrollbar); photo content exact"
+    },
+    {
+      "dest": "fe/public/stitch-assets/banner-street.jpg",
+      "source_file": "/Users/khoado/Downloads/stitch_fashionsearch_ai_storefront/fashionsearch_ai_trang_ch_th_ng_m_i_i_n_t/code.html",
+      "html_line": 720,
+      "source_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuAl5jaUn6cq6WoN3PywXMJKC8314OvDfVxoWhdd_g4ljJQ8udzJhfxGP5A6KjiVAPZiSN6xv4sQZE-Gd0qUUtsPdaWS2VCqGNdgdWTIFvh2rZw4Rk8TP6cw-EQAndSwKeQEMdfnCwQI9FDr0atNRMkz7PFQl_dCgSnjh96my_yL1ERrzJCdPD59Y42IKrjiUvo3EfUkJMdGZREmLLm1NtrpqVmw5rSUGplC6M929PwvoAZqmNJ-MMdd",
+      "role": "street-style banner card",
+      "alt": "Editorial street style shot of a modern professional man walking casually wearing an understated crisp minimalist cotton shirt and trousers under bright urban afternoon light.",
+      "format": "JPEG",
+      "dimensions": [
+        512,
+        279
+      ],
+      "bytes": 49592,
+      "sha256": "36914731cf4b548a5871f0cca596d49d257d56e65e2a4c9d99bb2d85e7bae896",
+      "modification": "exact, unmodified"
+    },
+    {
+      "dest": "fe/public/stitch-assets/category-onepiece.jpg",
+      "source_file": "/Users/khoado/Downloads/stitch_fashionsearch_ai_storefront/fashionsearch_ai_danh_m_c_n/code.html",
+      "html_line": 535,
+      "source_url": "https://lh3.googleusercontent.com/aida-public/AB6AXuC92BaEJkm4ZqZ6vqpgsCWjTNIFi60vJqUZavv_lbnMIJU6x3VM1AhRqmRHjBhXHGOV32Y3syriFQGvRZ8K8MSk-3d8hQM4T-pu8ZEcyNXbCxDnvwIJqtWra5GSWtOnLgDN248L51ckv2rmI7AMseL9Y9pOeQKf-K-5HqVnqodYfosVl38VRIY51PqHKC3oOK2Qkuqhb5QI7B9V7-2LGTQTln9YGpVAGSCceask0Aw8mhDAvfszQ3Fc",
+      "role": "ONE_PIECE category circle",
+      "alt": "A fashionable young woman model walking gracefully wearing an elegant pastel blush pink silk modal midi dress with soft fluid drape, photographed in a high-key sunlit minimalist architectural studio with modern light-mode aesthetics and warm orange highlights in contemporary editorial fashion style.",
+      "format": "JPEG",
+      "dimensions": [
+        512,
+        279
+      ],
+      "bytes": 29649,
+      "sha256": "ccf22d73476043bfb9fdfce88703c3bbb021351e91df1de08f29cf579f3e82ed",
+      "modification": "exact, unmodified; source file danh_m_c_n/code.html"
+    }
+  ]
+}
