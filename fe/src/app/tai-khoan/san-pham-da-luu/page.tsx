@@ -1,5 +1,6 @@
 import { SiteFooter } from "@/components/stitch-search/site-footer";
 import { SiteHeader } from "@/components/stitch-search/site-header";
+import { AccountShell } from "@/components/account/account-shell";
 import styles from "@/components/account/account.module.css";
 import { SavedList } from "./saved-list";
 
@@ -13,13 +14,15 @@ export default function SavedProductsPage() {
     <div>
       <SiteHeader />
       <main className={styles.layout}>
-        <p className={styles.kicker}>Thư viện của tôi</p>
-        <h1>Sản phẩm đã lưu.</h1>
-        <p className={styles.lede}>
-          Dấu trang của chính bạn trên catalog đang công bố — không giá, không
-          giỏ hàng, không điểm thưởng.
-        </p>
-        <SavedList />
+        <AccountShell
+          active="saved"
+          kicker="Thư viện của tôi"
+          title="Sản phẩm đã lưu"
+          lede="Những sản phẩm bạn đánh dấu quan tâm trên catalog đang được công bố."
+          crumb="Sản phẩm đã lưu"
+        >
+          <SavedList />
+        </AccountShell>
       </main>
       <SiteFooter />
     </div>

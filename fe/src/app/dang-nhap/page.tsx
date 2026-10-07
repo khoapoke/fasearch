@@ -23,9 +23,9 @@ export default async function LoginPage({
       <SiteHeader />
       <main className={styles.layout}>
         <p className={styles.kicker}>Tài khoản</p>
-        <h1>Đăng nhập.</h1>
+        <h1>Đăng nhập</h1>
         <p className={styles.lede}>
-          Dùng tên đăng nhập đã tạo khi đăng ký — FaSearch không dùng email để đăng nhập.
+          Dùng tên đăng nhập đã tạo khi đăng ký.
         </p>
         <div className={styles.grid} style={{ gridTemplateColumns: "1fr" }}>
           <section className={styles.card} aria-label="Form đăng nhập">

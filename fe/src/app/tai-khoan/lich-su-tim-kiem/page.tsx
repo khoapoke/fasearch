@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { SiteFooter } from "@/components/stitch-search/site-footer";
 import { SiteHeader } from "@/components/stitch-search/site-header";
+import { AccountShell } from "@/components/account/account-shell";
 import styles from "@/components/account/account.module.css";
 import { HistoryList } from "./history-list";
 
@@ -14,15 +15,17 @@ export default function SearchHistoryPage() {
     <div>
       <SiteHeader />
       <main className={styles.layout}>
-        <p className={styles.kicker}>Thư viện của tôi</p>
-        <h1>Lịch sử tìm kiếm.</h1>
-        <p className={styles.lede}>
-          Chỉ những lần tìm bạn đồng ý ghi lại — không ảnh tải lên, không dùng
-          cho huấn luyện hay cá nhân hóa.
-        </p>
-        <Suspense fallback={<p>Đang tải lịch sử…</p>}>
-          <HistoryList />
-        </Suspense>
+        <AccountShell
+          active="history"
+          kicker="Thư viện của tôi"
+          title="Lịch sử tìm kiếm"
+          lede="Chỉ những lần tìm bạn đồng ý ghi lại. Ảnh tải lên không hiển thị lại ở đây."
+          crumb="Lịch sử tìm kiếm"
+        >
+          <Suspense fallback={<p>Đang tải lịch sử…</p>}>
+            <HistoryList />
+          </Suspense>
+        </AccountShell>
       </main>
       <SiteFooter />
     </div>

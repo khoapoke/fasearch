@@ -4,7 +4,47 @@
 .layout {
   width: min(1200px, 100%);
   margin: 0 auto;
-  padding: 48px 4vw 72px;
+  padding: 28px 4vw 64px;
+}
+
+/* Stitch Phase A shell: neutral canvas, breadcrumb, compact heading,
+ * persistent sidebar + top tabs. Source-derived density, not SaaS cards. */
+.shell {
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  margin: 0 -4vw;
+  padding: 0 4vw 8px;
+}
+
+.shell > :first-child {
+  margin-top: 0;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  padding-top: 20px;
+}
+
+.crumbs a:hover {
+  color: var(--brand-ink);
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.title {
+  margin-top: 10px;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
 }
 
 .kicker {
@@ -13,12 +53,12 @@
   font-weight: 720;
 }
 
-.layout h1 {
+.layout h1:not(.title) {
   margin-top: 8px;
   max-width: 640px;
-  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-  font-weight: 650;
-  letter-spacing: -0.03em;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
   text-wrap: balance;
 }
 
@@ -30,11 +70,98 @@
 }
 
 .grid {
-  margin-top: 32px;
+  margin-top: 24px;
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 24px;
+  grid-template-columns: 264px 1fr;
+  gap: 20px;
   align-items: start;
+  padding-bottom: 8px;
+}
+
+.main {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 12px !important;
+}
+
+.tabs a {
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font-weight: 650;
+  font-size: 0.92rem;
+  border-bottom: 2px solid transparent;
+  transition: color 160ms ease-out, background-color 160ms ease-out;
+}
+
+.tabs a:hover {
+  color: var(--brand-ink);
+  background: var(--surface-subtle);
+}
+
+.tabs a[aria-current="page"] {
+  color: var(--brand-ink);
+  border-bottom-color: var(--accent);
+}
+
+.identity {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.identity > div {
+  min-width: 0;
+}
+
+.identity .muted {
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #fff;
+  background: var(--brand);
+}
+
+.logoutLink {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background-color 160ms ease-out;
+}
+
+.logoutLink:hover:not(:disabled) {
+  background: #fff5f4;
+}
+
+.logoutLink:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .side {
@@ -67,6 +194,7 @@
   color: var(--brand-ink);
   background: var(--surface-tint);
   border-color: var(--line);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .greeting {
@@ -224,5 +352,13 @@
 @media (max-width: 860px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .main {
+    order: -1;
+  }
+
+  .layout {
+    padding-top: 20px;
   }
 }

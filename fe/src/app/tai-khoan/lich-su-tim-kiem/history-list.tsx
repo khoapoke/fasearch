@@ -308,10 +308,13 @@ export function HistoryList() {
                       <span className={styles.modeBadge}>{modeLabel(item.mode)}</span>
                       <div>
                         <p className={styles.summary}>{entrySummary(item)}</p>
-                        <p className={styles.entryMeta}>
-                          {formatTime(item.created_at)} · {item.catalog_snapshot_id} ·{" "}
-                          {item.model_version} / {item.index_version}
-                        </p>
+                        <p className={styles.entryMeta}>Lúc {formatTime(item.created_at)}</p>
+                        <details className={styles.entryMeta}>
+                          <summary>Chi tiết kỹ thuật</summary>
+                          <span>
+                            {item.catalog_snapshot_id} · {item.model_version} / {item.index_version}
+                          </span>
+                        </details>
                         {item.mode !== "TEXT" && (
                           <p className={styles.replayNote}>
                             Ảnh gốc không được lưu — tải lại ảnh để tìm lại chính xác.

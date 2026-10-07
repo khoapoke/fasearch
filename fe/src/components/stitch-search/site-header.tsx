@@ -19,7 +19,7 @@ export function SiteHeader() {
   return (
     <>
       <p className={styles.promo}>
-        FaSearch · Slice tìm kiếm bằng ảnh — catalog pilot được version hóa
+        Tìm thời trang từ một bức ảnh · Bằng ảnh, bằng chữ hoặc kết hợp
       </p>
       <header className={styles.header}>
         <div className={styles.bar}>

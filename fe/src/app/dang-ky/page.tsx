@@ -14,10 +14,9 @@ export default function RegisterPage() {
       <SiteHeader />
       <main className={styles.layout}>
         <p className={styles.kicker}>Tài khoản</p>
-        <h1>Tạo tài khoản.</h1>
+        <h1>Tạo tài khoản</h1>
         <p className={styles.lede}>
-          Tài khoản mới có trạng thái hoạt động với quyền người dùng đã đăng ký.
-          Tạo xong, bạn đăng nhập bằng tên đăng nhập.
+          Tạo xong, bạn đăng nhập bằng tên đăng nhập vừa tạo.
         </p>
         <div className={styles.grid} style={{ gridTemplateColumns: "1fr" }}>
           <section className={styles.card} aria-label="Form tạo tài khoản">
