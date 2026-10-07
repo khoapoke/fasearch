@@ -64,6 +64,7 @@ function BrowserInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { category, page, size } = parseCatalogView(searchParams);
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -84,6 +85,34 @@ function BrowserInner() {
     },
     [pathname, router, size],
   );
+
+  useEffect(() => {
+    // Real per-category totals for the filter panel (one size=1 call each).
+    // Panel renders without counts until they settle; never mocked.
+    let live = true;
+    const wanted: Array<FashionCategory> = ["TOP", "BOTTOM", "ONE_PIECE"];
+    Promise.all(
+      wanted.map((value) =>
+        fetch(`/api/catalog/products?category=${value}&page=1&size=1`, { cache: "no-store" })
+          .then(async (response) => {
+            if (!response.ok) return [value, null] as const;
+            const payload = (await response.json()) as CatalogPageResponse;
+            return [value, payload.total] as const;
+          })
+          .catch(() => [value, null] as const),
+      ),
+    ).then((entries) => {
+      if (!live) return;
+      const next: Record<string, number> = {};
+      for (const [value, total] of entries) {
+        if (total !== null) next[value] = total;
+      }
+      setCounts(next);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     const key = viewKey;
@@ -153,35 +182,51 @@ function BrowserInner() {
 
   return (
     <div className={styles.browser}>
-      <div
-        className={styles.chips}
-        role="group"
-        aria-label="Lọc theo danh mục"
-      >
-        {CATEGORIES.map((chip) => {
-          const active = chip.value === category;
-          return (
-            <button
-              key={chip.label}
-              type="button"
-              className={active ? `${styles.chip} ${styles.chipActive}` : styles.chip}
-              aria-pressed={active}
-              onClick={() => navigate(chip.value, 1)}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
-      </div>
+      <aside className={styles.panel} aria-label="Lọc catalog">
+        <section className={styles.panelCard} aria-label="Danh mục sản phẩm">
+          <h2>Danh mục</h2>
+          <div className={styles.panelList} role="group" aria-label="Lọc theo danh mục">
+            {CATEGORIES.map((chip) => {
+              const active = chip.value === category;
+              const count = chip.value ? counts?.[chip.value] : undefined;
+              return (
+                <button
+                  key={chip.label}
+                  type="button"
+                  className={active ? `${styles.panelItem} ${styles.panelActive}` : styles.panelItem}
+                  aria-pressed={active}
+                  onClick={() => navigate(chip.value, 1)}
+                >
+                  <span>{chip.label}</span>
+                  {count !== undefined && <span className={styles.panelCount}>{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+        <section className={styles.panelCard} aria-label="Tìm bằng ảnh">
+          <h2>Chưa thấy mẫu ưng ý?</h2>
+          <p>Tải ảnh trang phục tương tự để tìm trong catalog.</p>
+          <Link className={styles.panelCta} href="/#tim-bang-anh">
+            Tìm bằng ảnh chụp
+          </Link>
+        </section>
+      </aside>
 
-      <div className={styles.liveRegion} aria-live="polite">
+      <div className={styles.results}>
+      <div className={styles.topbar} aria-live="polite">
         {state.status === "loading" && <p>Đang tải sản phẩm…</p>}
         {data && (
           <p>
             {data.total === 0
               ? "Chưa có sản phẩm trong phạm vi này."
-              : `Hiển thị trang ${data.page}/${totalPages} · tổng ${data.total} sản phẩm.`}
+              : `Trang ${data.page}/${totalPages} · tổng ${data.total} sản phẩm.`}
           </p>
+        )}
+        {category && (
+          <button type="button" className={styles.clearPill} onClick={() => navigate(null, 1)}>
+            {CATEGORIES.find((chip) => chip.value === category)?.label} ×
+          </button>
         )}
       </div>
 
@@ -257,6 +302,7 @@ function BrowserInner() {
           </nav>
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -1,23 +1,24 @@
 import styles from "./trust-row.module.css";
 
-// Faithful project facts in the source "trust box" layout. No commerce
-// promises (returns, shipping, 24/7) — only what this slice actually does.
+// Plain-language facts in the source "trust box" layout. No commerce
+// promises (returns, shipping, 24/7) and no technical banners — only what
+// FaSearch actually does, in ordinary product language.
 const ITEMS = [
   {
-    title: "Catalog được version hóa",
-    body: "Kết quả đọc từ publication đã phê duyệt, mỗi response ghi rõ snapshot, model và index.",
+    title: "Catalog thật đang công bố",
+    body: "Mọi kết quả đọc từ catalog đang được công bố, mỗi lần tìm đều ghi rõ nguồn để tra cứu.",
   },
   {
-    title: "Phiên đăng nhập server-side",
-    body: "Browser chỉ giữ session ID HttpOnly; thao tác ghi dùng CSRF token trong bộ nhớ trang.",
+    title: "Phiên đăng nhập của bạn",
+    body: "Trình duyệt chỉ giữ mã phiên, mọi thao tác ghi đều xác nhận lại trước khi thực hiện.",
   },
   {
-    title: "Ba chế độ tìm kiếm thật",
-    body: "Image, text và composed đều gọi API live qua /search/image, /search/text và /search/composed; demo hero vẫn là minh họa gắn nhãn, không gọi API."
+    title: "Ba chế độ tìm kiếm",
+    body: "Tìm bằng ảnh, bằng chữ và kết hợp ảnh với chữ — tất cả đều chạy thật trên catalog này.",
   },
   {
-    title: "Truy vết từng request",
-    body: "Mỗi lần tìm trả trace ID và độ trễ AI/toàn tuyến trong mục chẩn đoán.",
+    title: "Mọi lần tìm đều tra cứu được",
+    body: "Mỗi kết quả kèm mã tra cứu và thời gian xử lý trong mục chi tiết.",
   },
 ];
 
@@ -26,11 +27,11 @@ export function TrustRow() {
     <section
       id="cach-hoat-dong"
       className={styles.section}
-      aria-label="Cách hoạt động của slice"
+      aria-label="Cách FaSearch hoạt động"
     >
       <div className={styles.inner}>
         <p className={styles.eyebrow}>Cách hoạt động</p>
-        <h2>Đúng phạm vi slice, truy vết được</h2>
+        <h2>Tìm đồ thế nào cũng rõ nguồn</h2>
         <ul>
           {ITEMS.map((item) => (
             <li key={item.title}>

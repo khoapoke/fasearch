@@ -31,7 +31,7 @@ export function SiteHeader() {
               FashionSearch <strong>AI</strong>
             </span>
           </Link>
-          <nav className={styles.nav} aria-label="Điều hướng slice">
+          <nav className={styles.nav} aria-label="Điều hướng chính">
             {NAV.map((item) => (
               <Link key={item.href} href={item.href}>
                 {item.label}

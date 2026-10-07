@@ -66,9 +66,9 @@ function DetailInner({ productId }: { productId: string }) {
               status: "error",
               message:
                 response.status === 404
-                  ? "Sản phẩm không có trong publication đang công bố (không rõ, đã ẩn hoặc khác phiên bản)."
+                  ? "Sản phẩm này không có trong catalog đang được công bố (không rõ, đã ẩn hoặc khác phiên bản)."
                   : response.status === 409
-                    ? "Snapshot đã thay đổi so với publication đang công bố. Hãy tải lại từ danh sách hoặc kết quả tìm kiếm."
+                    ? "Danh mục tham chiếu đã thay đổi. Hãy tải lại từ danh sách hoặc kết quả tìm kiếm."
                     : response.status === 400
                       ? "Tham chiếu sản phẩm thiếu, trùng hoặc không hợp lệ. Hãy mở lại từ danh sách hoặc kết quả tìm kiếm."
                     : error.message || "Không tải được chi tiết sản phẩm.",
@@ -196,7 +196,7 @@ function DetailInner({ productId }: { productId: string }) {
             Tìm kết hợp với sản phẩm này
           </Link>
           <details className={styles.provenance}>
-            <summary>Thông tin publication</summary>
+            <summary>Chi tiết kỹ thuật</summary>
             <dl>
               <div>
                 <dt>Mã sản phẩm</dt>

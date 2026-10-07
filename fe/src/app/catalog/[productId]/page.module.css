@@ -1,7 +1,26 @@
 .page {
   width: min(1200px, 100%);
   margin: 0 auto;
-  padding: 48px 4vw 72px;
+  padding: 28px 4vw 64px;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+
+.crumbs a:hover {
+  color: var(--brand-ink);
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .kicker {

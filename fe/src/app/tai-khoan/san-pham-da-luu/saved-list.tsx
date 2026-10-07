@@ -177,7 +177,7 @@ export function SavedList() {
                   ×
                 </span>
                 <strong>{item.product_id}</strong>
-                <span>Sản phẩm không còn trong publication đang công bố.</span>
+                <span>Sản phẩm không còn trong catalog đang được công bố.</span>
               </div>
             )}
             <div className={styles.cellActions}>

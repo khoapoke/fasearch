@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ComposedDemo } from "./composed-demo/composed-demo";
 import styles from "./hero.module.css";
 
@@ -8,9 +9,9 @@ import styles from "./hero.module.css";
 // remains a separate ticket.
 
 const CATEGORIES = [
-  { code: "TOP", label: "Áo", note: "Tops" },
-  { code: "BOTTOM", label: "Quần / váy rời", note: "Bottoms" },
-  { code: "ONE_PIECE", label: "Trang phục liền", note: "One-piece" },
+  { code: "TOP", label: "Áo", note: "Tops", href: "/catalog?category=TOP" },
+  { code: "BOTTOM", label: "Quần / váy rời", note: "Bottoms", href: "/catalog?category=BOTTOM" },
+  { code: "ONE_PIECE", label: "Trang phục liền", note: "One-piece", href: "/catalog?category=ONE_PIECE" },
 ];
 
 export function Hero() {
@@ -54,14 +55,15 @@ export function Hero() {
         <ul>
           {CATEGORIES.map((category) => (
             <li key={category.code}>
-              <span className={styles.chip}>{category.label}</span>
+              <Link className={styles.chip} href={category.href}>
+                {category.label}
+              </Link>
               <span className={styles.chipNote}>{category.note}</span>
             </li>
           ))}
         </ul>
         <p className={styles.categoriesNote}>
-          Lọc và duyệt theo danh mục thuộc ticket website sau; slice này tìm
-          trên toàn catalog đang công bố.
+          Ba nhóm trong catalog đang được công bố — chọn một nhóm để lọc ngay.
         </p>
       </div>
     </section>
