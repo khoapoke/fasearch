@@ -20,7 +20,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/v1/auth/login": {
@@ -69,7 +72,11 @@
           "403": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Sign in with username and password"
       }
     },
     "/api/v1/auth/logout": {
@@ -95,7 +102,11 @@
           "403": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Sign out and invalidate the current session"
       }
     },
     "/api/v1/auth/me": {
@@ -115,7 +126,11 @@
           "401": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Account"
+        ],
+        "summary": "Read the current authenticated user"
       }
     },
     "/api/v1/catalog/admin/drafts": {
@@ -164,7 +179,11 @@
           "403": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "summary": "List catalog drafts"
       },
       "post": {
         "operationId": "createCatalogDraft",
@@ -217,7 +236,11 @@
           "403": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "summary": "Create a catalog draft"
       }
     },
     "/api/v1/catalog/admin/drafts/{productId}": {
@@ -251,7 +274,11 @@
           "404": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "summary": "Read a catalog draft and its latest version"
       },
       "patch": {
         "operationId": "reviseCatalogDraft",
@@ -295,7 +322,11 @@
           "409": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "summary": "Update a catalog draft"
       }
     },
     "/api/v1/catalog/admin/drafts/{productId}/image": {
@@ -346,7 +377,10 @@
           "404": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Drafts"
+        ]
       },
       "post": {
         "operationId": "replaceDraftPrimaryImage",
@@ -424,7 +458,10 @@
           "503": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Drafts"
+        ]
       }
     },
     "/api/v1/catalog/images/{productId}/{productVersionId}": {
@@ -479,7 +516,10 @@
           "503": {
             "$ref": "#/components/responses/SearchError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Images"
+        ]
       }
     },
     "/api/v1/catalog/products": {
@@ -573,7 +613,10 @@
           "503": {
             "$ref": "#/components/responses/SearchError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Products"
+        ]
       }
     },
     "/api/v1/catalog/products/{productId}": {
@@ -651,7 +694,10 @@
           "503": {
             "$ref": "#/components/responses/SearchError"
           }
-        }
+        },
+        "tags": [
+          "Catalog Products"
+        ]
       }
     },
     "/api/v1/search/image": {
@@ -743,7 +789,10 @@
           "503": {
             "$ref": "#/components/responses/SearchError"
           }
-        }
+        },
+        "tags": [
+          "Search"
+        ]
       }
     },
     "/api/v1/search/composed": {
@@ -868,7 +917,10 @@
           "503": {
             "$ref": "#/components/responses/ComposedError"
           }
-        }
+        },
+        "tags": [
+          "Search"
+        ]
       }
     },
     "/api/v1/search/text": {
@@ -951,7 +1003,10 @@
           "503": {
             "$ref": "#/components/responses/SearchError"
           }
-        }
+        },
+        "tags": [
+          "Search"
+        ]
       }
     },
     "/api/v1/auth/register": {
@@ -1008,7 +1063,10 @@
           "415": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/v1/auth/profile": {
@@ -1029,7 +1087,10 @@
           "401": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Account"
+        ]
       },
       "patch": {
         "operationId": "updateOwnProfile",
@@ -1077,7 +1138,10 @@
           "415": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Account"
+        ]
       }
     },
     "/api/v1/auth/password": {
@@ -1127,7 +1191,10 @@
           "415": {
             "$ref": "#/components/responses/AuthError"
           }
-        }
+        },
+        "tags": [
+          "Account"
+        ]
       }
     },
     "/api/v1/me/saved-products": {
@@ -1198,7 +1265,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Saved Products"
+        ]
       }
     },
     "/api/v1/me/saved-products/{productId}": {
@@ -1268,7 +1338,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Saved Products"
+        ]
       },
       "delete": {
         "operationId": "removeSavedProduct",
@@ -1326,7 +1399,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Saved Products"
+        ]
       }
     },
     "/api/v1/me/search-history": {
@@ -1410,7 +1486,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Search History"
+        ]
       },
       "delete": {
         "operationId": "clearSearchHistory",
@@ -1449,7 +1528,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Search History"
+        ]
       }
     },
     "/api/v1/me/search-history/{entryId}": {
@@ -1519,7 +1601,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Search History"
+        ]
       }
     },
     "/api/v1/me/library-preferences": {
@@ -1557,7 +1642,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Library Preferences"
+        ]
       },
       "patch": {
         "operationId": "updateLibraryPreferences",
@@ -1623,7 +1711,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Library Preferences"
+        ]
       }
     }
   },
@@ -2892,5 +2983,43 @@
         }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Đăng ký, đăng nhập, đăng xuất và lấy CSRF token cho phiên đăng nhập bằng cookie."
+    },
+    {
+      "name": "Account",
+      "description": "Thông tin tài khoản hiện tại, cập nhật tên hiển thị và đổi mật khẩu của chính bạn."
+    },
+    {
+      "name": "Catalog Products",
+      "description": "Duyệt danh sách và chi tiết sản phẩm thuộc catalog đang được công bố."
+    },
+    {
+      "name": "Catalog Images",
+      "description": "Đọc ảnh của phiên bản sản phẩm công khai trong catalog."
+    },
+    {
+      "name": "Catalog Drafts",
+      "description": "Đọc, tạo, sửa sản phẩm nháp và quản lý ảnh. Yêu cầu quyền CATALOG_DRAFT_WRITE."
+    },
+    {
+      "name": "Search",
+      "description": "Tìm kiếm bằng ảnh, văn bản hoặc ảnh kết hợp mô tả thay đổi."
+    },
+    {
+      "name": "Saved Products",
+      "description": "Lưu, bỏ lưu và xem sản phẩm quan tâm thuộc tài khoản hiện tại."
+    },
+    {
+      "name": "Search History",
+      "description": "Xem, lọc và xóa lịch sử tìm kiếm của chính bạn."
+    },
+    {
+      "name": "Library Preferences",
+      "description": "Bật hoặc tắt ghi lịch sử. Mặc định tắt; tắt ghi không xóa các mục đã lưu."
+    }
+  ]
 }
