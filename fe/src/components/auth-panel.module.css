@@ -80,7 +80,7 @@
   border: 0;
   border-radius: var(--radius);
   color: white;
-  background: var(--accent);
+  background: var(--accent-deep);
   cursor: pointer;
   font-weight: 700;
 }

@@ -1,0 +1,54 @@
+# Shadow experiment configuration v1
+
+schema_version: "1.0.0"
+task: ai-draft-hardening
+
+api:
+  host: "127.0.0.1"
+  port: 18041
+  cors_allow_origins: []
+  max_concurrent_inference: 4
+  request_timeout_s: 60
+
+qdrant:
+  host: "127.0.0.1"
+  http_port: 16333
+  grpc_port: 16334
+  prefer_grpc: false
+  collection_name: "fasearch_shadow_week4_v1"
+  vector_size: 512
+  distance: "DOT"
+  exact_search: true
+  container_name: "fasearch-qdrant"
+  volume_name: "ai-draft-hardening-qdrant"
+
+publication:
+  catalog_snapshot_id: "catalog-20260908-pilot-v1"
+  model_id: "openai/clip-vit-base-patch32"
+  model_revision: "092a3b7e31726acc3a0207eea00f6040ac8b03a7"
+  model_version: "openai/clip-vit-base-patch32@092a3b7e3172+a6a0317b924b"
+  shadow_index_version: "qdrant-dot-exact-shadow-v1"
+  source_index_version: "faiss-flatip-week4-v1"
+  fusion_version: "equal-weight-l2-v1"
+
+assets:
+  embeddings: "artifacts/embeddings/week4-baseline-20260908-v1/catalog-image-embeddings.v1.npy"
+  mapping: "artifacts/embeddings/week4-baseline-20260908-v1/embedding-row-to-product.v1.jsonl"
+  embeddings_manifest: "artifacts/embeddings/week4-baseline-20260908-v1/embeddings-manifest.v1.json"
+  catalog: "data/processed/catalog-20260908-pilot-v1/catalog.cleaned.v1.jsonl"
+  photo_dir: "data/raw/dataset_a/images"
+
+model:
+  id: "openai/clip-vit-base-patch32"
+  revision: "092a3b7e31726acc3a0207eea00f6040ac8b03a7"
+  device: "cpu"
+
+limits:
+  legacy_default: 5
+  k_min: 1
+  k_max: 100
+  internal_default_k: 10
+  raw_text_cap: 1024
+  image_max_bytes: 10485760
+  envelope_max_bytes: 11534336
+  json_max_bytes: 16384

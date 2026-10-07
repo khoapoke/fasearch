@@ -81,11 +81,11 @@
 
 .primary {
   color: #fff;
-  background: var(--accent);
+  background: var(--accent-deep);
 }
 
 .primary:hover {
-  background: var(--accent-deep);
+  background: var(--brand);
 }
 
 .secondary {

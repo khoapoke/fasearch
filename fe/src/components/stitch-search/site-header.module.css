@@ -1,5 +1,5 @@
 .promo {
-  background: var(--accent);
+  background: var(--accent-deep);
   color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
@@ -88,7 +88,7 @@
   min-height: 42px;
   padding: 0 16px;
   color: #fff;
-  background: var(--accent);
+  background: var(--accent-deep);
   border-radius: 9999px;
   font-size: 0.82rem;
   font-weight: 700;
@@ -99,7 +99,7 @@
 }
 
 .cameraButton:hover {
-  background: var(--accent-deep);
+  background: var(--brand);
   transform: translateY(-1px);
 }
 

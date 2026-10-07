@@ -1,0 +1,4 @@
+name: fasearch
+include:
+  - path: /Users/khoado/Documents/ChatGPT/Graduate Bachelor/infra/fasearch/compose.yaml
+    env_file: /Users/khoado/Documents/ChatGPT/Graduate Bachelor/infra/fasearch/.env

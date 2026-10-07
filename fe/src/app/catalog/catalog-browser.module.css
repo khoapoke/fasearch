@@ -81,7 +81,7 @@
   text-align: center;
   padding: 10px 16px;
   border-radius: 8px;
-  background: var(--accent);
+  background: var(--accent-deep);
   color: #fff;
   font-weight: 700;
   font-size: 0.85rem;
@@ -295,7 +295,7 @@
   padding: 10px 20px;
   border: none;
   border-radius: 9999px;
-  background: var(--accent);
+  background: var(--accent-deep);
   color: #fff;
   font: inherit;
   font-size: 0.85rem;

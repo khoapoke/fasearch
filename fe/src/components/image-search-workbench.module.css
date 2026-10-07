@@ -256,7 +256,7 @@
   border: 0;
   border-radius: var(--radius);
   color: white;
-  background: var(--accent);
+  background: var(--accent-deep);
   cursor: pointer;
   font-size: 0.92rem;
   font-weight: 700;

@@ -1,0 +1,17 @@
+# Pinned CPU runtime for the ai-draft-hardening shadow experiment.
+# Verified reference versions; no CUDA extra index, no GPU-only packages.
+--index-url https://pypi.org/simple
+
+torch==2.4.1
+transformers==4.44.2
+numpy==1.26.4
+pillow==10.4.0
+faiss-cpu==1.8.0.post1
+qdrant-client==1.12.2
+grpcio==1.68.1
+PyYAML==6.0.2
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+httpx==0.28.1
+pytest==8.3.4

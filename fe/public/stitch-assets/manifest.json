@@ -1,5 +1,6 @@
 {
   "captured_at": "2026-10-07T12:14:37.217017+00:00",
+  "provenance_note": "sha256/dimensions/bytes below describe the FINAL served files only. Pre-crop screenshot bytes were transient and never hashed, so no original hashes are claimed; crop coordinates are recorded verbatim in each entry's modification field. Do not treat final hashes as source-byte proof.",
   "assets": [
     {
       "dest": "fe/public/stitch-assets/hero.jpg",
