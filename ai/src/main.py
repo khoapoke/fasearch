@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from src.api.body_guard import BoundedBodyMiddleware
+from src.db.schemas import HealthResponse
 
 from src.api.endpoints import router as search_router
 from src.api.validation import ApiError, error_response
@@ -126,6 +127,15 @@ async def root():
 @app.get("/health", tags=["Lifecycle"])
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/internal/v1/health", response_model=HealthResponse,
+           tags=["Internal probes"])
+async def internal_health():
+    """Canonical internal liveness (no model inference; never 503s on data)."""
+    return JSONResponse(status_code=200,
+                        content=HealthResponse(version="1.1.0").model_dump(),
+                        headers={"Cache-Control": "no-store"})
 
 
 @app.get("/ready", tags=["Lifecycle"])

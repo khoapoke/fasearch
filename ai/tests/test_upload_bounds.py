@@ -93,7 +93,7 @@ def test_internal_stale_publication_rejected(client):
             "query_text": "áo thun đỏ", "k": 5}
     r = client.post("/internal/v1/search/text", json=body)
     assert r.status_code == 409
-    assert r.json()["code"] == "STALE_PUBLICATION"
+    assert r.json()["code"] == "PUBLICATION_MISMATCH"
 
 
 def test_internal_unknown_multipart_part_rejected(client):

@@ -40,6 +40,14 @@ class SearchResponse(BaseModel):
     results: List[SearchResultItem]
 
 
+class HealthResponse(BaseModel):
+    """Canonical internal liveness shape (contracts/internal-ai.openapi.json)."""
+    model_config = ConfigDict(extra="forbid")
+    status: str = "UP"
+    module: str = "fasearch-ai"
+    version: str = Field(min_length=1)
+
+
 class InternalSearchItem(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     product_id: str

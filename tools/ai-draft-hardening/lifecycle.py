@@ -1,4 +1,10 @@
-"""Guarded local lifecycle; no global kills, resets or volume deletion."""
+"""Guarded local lifecycle; no global kills, resets or volume deletion.
+
+Scope: ai-draft-hardening SHADOW experiment only (AI port 18041,
+shadow collection/config). NOT the ai-qdrant-web-integration candidate
+(AI 18042, web.v1.yaml, ports 3270/18680) — candidate lifecycle is in
+the packet RUNBOOK.md §3-5. Quarantined per R2-S5; behavior unchanged.
+"""
 import argparse
 import json
 import os

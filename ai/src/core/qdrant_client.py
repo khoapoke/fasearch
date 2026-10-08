@@ -13,7 +13,10 @@ from typing import Any
 from qdrant_client import QdrantClient
 
 from src.core.config import load_shadow_config, settings
-from src.core.shadow_ids import TASK_COLLECTIONS
+from src.core.shadow_ids import TASK_COLLECTIONS, stable_point_id
+
+_frozen_vectors_cache: dict = {}
+_frozen_vectors_lock = threading.Lock()
 
 _client = None
 _lock = threading.Lock()
@@ -52,6 +55,51 @@ def get_qdrant_client() -> QdrantClient:
         return _client
 
 
+def _frozen_id_vectors() -> dict[str, Any]:
+    """Hash-verified frozen point-id -> float32 vector map (EXPECTED side).
+
+    Only the frozen expectation is cached (immutable pinned files,
+    hash-verified on load); live points are always re-read from the
+    server, so caching can never bless altered stored data.
+    """
+    from src.core.config import task_repo_root
+    from src.core.publication import load_frozen_inputs
+    shadow = _shadow()
+    pub = shadow["publication"]
+    root = task_repo_root()
+    key = (root, pub["catalog_snapshot_id"], pub["model_version"])
+    with _frozen_vectors_lock:
+        hit = _frozen_vectors_cache.get(key)
+        if hit is not None:
+            return hit
+        vectors, rows, _ = load_frozen_inputs(root, shadow)
+        import numpy as _np
+        mapping = {}
+        for i, row in enumerate(rows):
+            pid = stable_point_id(pub["catalog_snapshot_id"],
+                                  pub["model_version"],
+                                  str(row["product_version_id"]))
+            mapping[pid] = _np.asarray(vectors[i], dtype=_np.float32)
+        _frozen_vectors_cache[key] = mapping
+        return mapping
+
+
+def _stored_vectors_match(points, expected: dict[str, Any]) -> bool:
+    import numpy as _np
+    for point in points:
+        want = expected.get(str(point.id))
+        vec = getattr(point, "vector", None)
+        if want is None or not isinstance(vec, (list, tuple)):
+            return False
+        try:
+            arr = _np.asarray(vec, dtype=_np.float32)
+        except (TypeError, ValueError):
+            return False
+        if arr.shape != (512,) or not _np.array_equal(arr, want):
+            return False
+    return True
+
+
 def check_qdrant_ready() -> dict[str, Any]:
     """Validate collection identity/dimension/metric/count for the shadow."""
     try:
@@ -87,11 +135,14 @@ def check_qdrant_ready() -> dict[str, Any]:
         from src.core.publication import expected_inventory, validate_records
         expected = expected_inventory()
         points, cursor = client.scroll(collection, limit=601, with_payload=True,
-                                       with_vectors=False)
+                                       with_vectors=True)
         if cursor is not None or validate_records(points, expected) != set(expected):
             return {"ok": False, "reason": "publication-coverage-mismatch"}
+        if not _stored_vectors_match(points, _frozen_id_vectors()):
+            return {"ok": False, "reason": "stored-vector-mismatch"}
         return {"ok": True, "collection": collection, "points": count,
-                "dim": got_dim, "distance": got_dist}
+                "dim": got_dim, "distance": got_dist,
+                "vectors": "frozen-exact"}
     except Exception as exc:  # readiness must fail closed, never raise
         return {"ok": False, "reason": f"qdrant-error: {type(exc).__name__}"}
 

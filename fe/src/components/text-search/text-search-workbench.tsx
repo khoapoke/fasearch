@@ -56,7 +56,12 @@ export function TextSearchWorkbench() {
   });
   const [historyStatus, setHistoryStatus] = useState("");
   const viewRef = useRef(view);
-  viewRef.current = view;
+  // Commit-phase sync: render must never write the ref (react-hooks/refs).
+  // Event handlers run after commit effects flush, so they still observe
+  // the latest view for the pending guard and submit snapshot.
+  useEffect(() => {
+    viewRef.current = view;
+  });
 
   useEffect(() => {
     return () => {

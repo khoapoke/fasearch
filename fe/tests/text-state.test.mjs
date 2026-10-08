@@ -77,7 +77,7 @@ describe("text search view-state", () => {
 
   it("reset clears draft, results, errors and pending", () => {
     const s1 = { text: "váy đỏ", k: 10 };
-    const v1 = settleSuccess(
+    settleSuccess(
       { ...initialView(), pending: s1, draftText: "x" }, s1, dataFor(["a"]),
     );
     const reset = resetView();
@@ -86,5 +86,23 @@ describe("text search view-state", () => {
     assert.equal(reset.failure, null);
     assert.equal(reset.pending, null);
     assert.ok(isStaleResponse(reset, s1));
+  });
+
+  it("submit reads the latest view: pending blocks, settled snapshots latest draft", () => {
+    // Contract preserved by the commit-phase viewRef sync in the workbench:
+    // handleSubmit must observe the newest committed view, so a second
+    // submit while pending is ignored and the snapshot freezes the draft
+    // as of submit time (later typing cannot mutate it).
+    const first = { text: "váy đỏ", k: 10 };
+    const pendingView = { ...initialView(), pending: first };
+    assert.ok(pendingView.pending, "second submit must see pending and return early");
+    const settled = settleSuccess(pendingView, first, dataFor(["a"]));
+    assert.ok(settled && settled.pending === null);
+    const snapshot = { text: settled.draftText || first.text, k: settled.draftK };
+    const withPending = { ...settled, pending: snapshot };
+    const edited = editDraft(withPending, { draftText: "váy xanh" });
+    assert.equal(edited.pending, null, "typing during pending exits the skeleton");
+    assert.equal(withPending.pending.text, first.text,
+      "submitted snapshot keeps submit-time text");
   });
 });

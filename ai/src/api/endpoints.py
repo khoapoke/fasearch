@@ -138,7 +138,7 @@ async def _run_worker(request, fn, *args, cleanup=None):
     try:
         return await asyncio.wait_for(asyncio.shield(worker), timeout)
     except asyncio.TimeoutError:
-        raise ApiError(503, "UNAVAILABLE", "Thời gian xử lý vượt giới hạn.")
+        raise ApiError(503, "MODEL_UNAVAILABLE", "Thời gian xử lý vượt giới hạn.")
 
 
 def _checked_text_search(text, k, exclude=None):
@@ -299,7 +299,7 @@ async def internal_search_text(request: Request):
             cap = 16 * 1024
         raw_body = await request.body()
         if len(raw_body) > cap:
-            raise ApiError(413, "PAYLOAD_TOO_LARGE",
+            raise ApiError(413, "INVALID_REQUEST",
                            "JSON vượt quá 16 KiB.", trace_id)
         try:
             body = json.loads(raw_body.decode("utf-8"))
@@ -331,11 +331,27 @@ async def internal_search_text(request: Request):
         rows = await _run_worker(request, _checked_text_search, normalized, k)
         return _internal_response(pub, trace_id, rows, "TEXT", k, started)
     except ApiError as exc:
-        return error_response(exc.status_code, exc.code, str(exc),
-                              exc.trace_id or trace_id)
+        return _internal_error_response(exc, trace_id, image_route=False)
     except Exception:
         return error_response(500, "INTERNAL_ERROR",
                               "Tìm kiếm nội bộ thất bại.", trace_id)
+
+
+def _internal_error_response(exc: ApiError, trace_id: Optional[str],
+                             image_route: bool):
+    """Canonical ErrorResponse vocabulary for internal routes only.
+
+    Legacy prototype routes keep their documented vocabulary (COMPATIBILITY);
+    shared helpers still raise prototype codes, translated here at the
+    internal boundary. Statuses are unchanged (Boot maps by status).
+    """
+    code = exc.code
+    if code == "UNSUPPORTED_MEDIA_TYPE":
+        code = "INVALID_IMAGE"
+    elif code == "PAYLOAD_TOO_LARGE":
+        code = "IMAGE_TOO_LARGE" if image_route else "INVALID_REQUEST"
+    return error_response(exc.status_code, code, str(exc),
+                           exc.trace_id or trace_id)
 
 
 def _internal_response(pub: dict, trace_id: str, rows: list, mode: str, k: int, started: float, exclude=None):
@@ -437,8 +453,7 @@ async def internal_search_image(request: Request):
                                  raw, k, exclude or None)
         return _internal_response(pub, trace_id, rows, "IMAGE", k, started)
     except ApiError as exc:
-        return error_response(exc.status_code, exc.code, str(exc),
-                              exc.trace_id or trace_id)
+        return _internal_error_response(exc, trace_id, image_route=True)
     except Exception:
         return error_response(500, "INTERNAL_ERROR",
                               "Tìm kiếm ảnh nội bộ thất bại.", trace_id)
@@ -457,8 +472,7 @@ async def internal_search_composed(request: Request):
                                  raw, text_value or "", k, exclude or None)
         return _internal_response(pub, trace_id, rows, "COMPOSED", k, started, exclude)
     except ApiError as exc:
-        return error_response(exc.status_code, exc.code, str(exc),
-                              exc.trace_id or trace_id)
+        return _internal_error_response(exc, trace_id, image_route=True)
     except Exception:
         return error_response(500, "INTERNAL_ERROR",
                               "Tìm kiếm composed nội bộ thất bại.", trace_id)

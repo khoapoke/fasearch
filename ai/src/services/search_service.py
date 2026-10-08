@@ -49,7 +49,7 @@ def _format_results(hits) -> list[dict[str, Any]]:
         if any(not math.isfinite(float(hit.score)) for hit in hits):
             raise ValueError("Nonfinite score")
     except ValueError:
-        raise ApiError(503, "UNAVAILABLE", "Publication shadow không hợp lệ.")
+        raise ApiError(503, "INDEX_UNAVAILABLE", "Publication đang phục vụ không hợp lệ.")
     formatted = []
     for hit in hits:
         payload = hit.payload or {}
@@ -85,7 +85,7 @@ def _query_exact(vector: list[float], limit: int,
             query_filter=_exclusion_filter(exclude_product_id),
         ).points
     except Exception:
-        raise ApiError(503, "UNAVAILABLE", "Qdrant shadow chưa sẵn sàng.")
+        raise ApiError(503, "INDEX_UNAVAILABLE", "Qdrant chưa sẵn sàng.")
 
 
 def encode_text_vector(query_text: str) -> list[float]:

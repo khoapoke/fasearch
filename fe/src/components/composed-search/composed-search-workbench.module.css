@@ -28,12 +28,12 @@
 
 .dropzone:hover,
 .dragging {
-  border-color: var(--cobalt);
+  border-color: var(--accent-deep);
 }
 
 .dropzone:focus-within {
-  border-color: var(--cobalt);
-  outline: 2px solid var(--cobalt);
+  border-color: var(--accent-deep);
+  outline: 2px solid var(--accent-deep);
   outline-offset: 2px;
 }
 
@@ -131,12 +131,17 @@
 
 .searchButton {
   min-height: 50px;
-  border: 1px solid var(--cobalt);
+  border: 1px solid var(--accent-deep);
   border-radius: 9px;
   color: white;
-  background: var(--cobalt);
+  background: var(--accent-deep);
   cursor: pointer;
   font-weight: 720;
+}
+
+.searchButton:hover:not(:disabled) {
+  background: var(--brand);
+  border-color: var(--brand);
 }
 
 .searchButton:disabled {

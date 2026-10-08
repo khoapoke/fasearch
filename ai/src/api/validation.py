@@ -33,6 +33,7 @@ def error_response(status_code: int, code: str, message: str,
     if not isinstance(trace_id, str) or not TRACE_PATTERN.fullmatch(trace_id):
         trace_id = None
     return JSONResponse(status_code=status_code, content={
+        "schema_version": "1.0.0",
         "code": code, "message": message, "trace_id": trace_id},
         headers={"Cache-Control": "no-store"})
 
@@ -64,8 +65,8 @@ def check_publication(body: dict[str, Any], trace_id: Optional[str]) -> None:
             raise ApiError(422, "INVALID_REQUEST",
                            f"Thiếu {field}.", trace_id)
         if got != want:
-            raise ApiError(409, "STALE_PUBLICATION",
-                           f"{field} không khớp bản phát hành shadow đang phục vụ.",
+            raise ApiError(409, "PUBLICATION_MISMATCH",
+                           f"{field} không khớp bản phát hành đang phục vụ.",
                            trace_id)
 
 
@@ -101,7 +102,7 @@ def check_token_budget(normalized_text: str, trace_id: Optional[str]) -> None:
     except ApiError:
         raise
     except Exception:
-        raise ApiError(503, "UNAVAILABLE", "Bộ kiểm tra token chưa sẵn sàng.", trace_id)
+        raise ApiError(503, "MODEL_UNAVAILABLE", "Bộ kiểm tra token chưa sẵn sàng.", trace_id)
 
 
 def validate_k(raw: Any, default: int, trace_id: Optional[str]) -> int:

@@ -23,19 +23,29 @@ class BoundedBodyMiddleware:
         headers = dict(scope.get("headers", []))
         content_type = headers.get(b"content-type", b"").lower().split(b";", 1)[0]
         json_route = path.endswith("/text")
+        internal = "/internal/" in path
+        header_trace = headers.get(b"x-trace-id", b"").decode("latin-1", "ignore") or None
         expected = b"application/json" if json_route else b"multipart/form-data"
         if content_type != expected:
-            return await error_response(415, "UNSUPPORTED_MEDIA_TYPE",
-                                        "Content-Type không được hỗ trợ.")(scope, receive, no_store)
+            code = ("INVALID_REQUEST" if json_route else "INVALID_IMAGE") if internal else "UNSUPPORTED_MEDIA_TYPE"
+            return await error_response(415, code,
+                                        "Content-Type không được hỗ trợ.",
+                                        header_trace)(scope, receive, no_store)
         cap = 16384 if json_route else 11 * 1024 * 1024
+        if internal:
+            over_code = "INVALID_REQUEST" if json_route else "IMAGE_TOO_LARGE"
+        else:
+            over_code = "PAYLOAD_TOO_LARGE"
         try:
             declared = headers.get(b"content-length")
             if declared is not None and (not declared.isdigit() or int(declared) > cap):
-                return await error_response(413, "PAYLOAD_TOO_LARGE",
-                                            "Envelope vượt giới hạn.")(scope, receive, no_store)
+                return await error_response(413, over_code,
+                                            "Envelope vượt giới hạn.",
+                                            header_trace)(scope, receive, no_store)
         except ValueError:
-            return await error_response(413, "PAYLOAD_TOO_LARGE",
-                                        "Envelope vượt giới hạn.")(scope, receive, no_store)
+            return await error_response(413, over_code,
+                                        "Envelope vượt giới hạn.",
+                                        header_trace)(scope, receive, no_store)
         chunks, total = [], 0
         while True:
             message = await receive()
@@ -44,8 +54,9 @@ class BoundedBodyMiddleware:
             chunk = message.get("body", b"")
             total += len(chunk)
             if total > cap:
-                return await error_response(413, "PAYLOAD_TOO_LARGE",
-                                            "Envelope vượt giới hạn.")(scope, receive, no_store)
+                return await error_response(413, over_code,
+                                            "Envelope vượt giới hạn.",
+                                            header_trace)(scope, receive, no_store)
             chunks.append(chunk)
             if not message.get("more_body", False):
                 break
@@ -64,7 +75,8 @@ class BoundedBodyMiddleware:
                 json.loads(body.decode("utf-8", errors="strict"),
                            object_pairs_hook=unique_object, parse_constant=reject_constant)
             except (ValueError, RecursionError):
-                return await error_response(422, "INVALID_REQUEST", "JSON không hợp lệ.")(scope, receive, no_store)
+                return await error_response(422, "INVALID_REQUEST", "JSON không hợp lệ.",
+                                            header_trace)(scope, receive, no_store)
         delivered = False
         async def replay():
             nonlocal delivered

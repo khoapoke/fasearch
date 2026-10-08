@@ -15,3 +15,6 @@ uvicorn==0.34.0
 python-multipart==0.0.20
 httpx==0.28.1
 pytest==8.3.4
+jsonschema==4.26.0  # contract-validation tests (internal/public OpenAPI)
+ImageHash==4.3.1  # research-check only (catalog phash; repo resolved.lock pin)
+scipy==1.17.1  # research-check only (ImageHash backend; repo resolved.lock pin)
