@@ -157,11 +157,42 @@
               "minimum": 0,
               "default": 0
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Title substring filter, trimmed, at most 250 characters",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TOP",
+                "BOTTOM",
+                "ONE_PIECE"
+              ]
+            }
+          },
+          {
+            "name": "has_primary_image",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Non-archived products whose latest Product Version is DRAFT; Staff sees own, CATALOG_PUBLISH sees all",
+            "description": "Non-archived products whose latest Product Version is DRAFT with authorized server-side filters; Staff sees own, CATALOG_PUBLISH sees all",
             "content": {
               "application/json": {
                 "schema": {
@@ -462,6 +493,280 @@
         "tags": [
           "Catalog Drafts"
         ]
+      }
+    },
+    "/api/v1/catalog/admin/drafts/summary": {
+      "get": {
+        "operationId": "getCatalogDraftSummary",
+        "summary": "Read authorized draft summary counts",
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible-draft totals scoped to the caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftSummaryCounts"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/admin/drafts/{productId}/versions": {
+      "parameters": [
+        {
+          "name": "productId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listCatalogDraftVersions",
+        "summary": "List immutable versions of a catalog draft",
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actual versions sorted version_no DESC",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/AuthError"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/admin/drafts/{productId}/versions/{productVersionId}": {
+      "parameters": [
+        {
+          "name": "productId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "productVersionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getCatalogDraftVersion",
+        "summary": "Read one historical product version",
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical title/description/category and safe image metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/AuthError"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/admin/drafts/{productId}/versions/{productVersionId}/image": {
+      "parameters": [
+        {
+          "name": "productId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "productVersionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getCatalogDraftVersionImage",
+        "summary": "Read one version's actual primary image bytes",
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "responses": {
+          "200": {
+            "description": "That version's primary image bytes; private, no-store and nosniff",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/AuthError"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/admin/drafts/{productId}/audit": {
+      "parameters": [
+        {
+          "name": "productId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listCatalogDraftAudit",
+        "summary": "List the product-scoped catalog audit trail",
+        "tags": [
+          "Catalog Drafts"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Allowlisted CATALOG_PRODUCT create/revise/primary-image events with version lineage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "403": {
+            "$ref": "#/components/responses/AuthError"
+          },
+          "404": {
+            "$ref": "#/components/responses/AuthError"
+          }
+        }
       }
     },
     "/api/v1/catalog/images/{productId}/{productVersionId}": {
@@ -1973,7 +2278,8 @@
           "items",
           "limit",
           "offset",
-          "has_more"
+          "has_more",
+          "total"
         ],
         "properties": {
           "items": {
@@ -1993,6 +2299,11 @@
           },
           "has_more": {
             "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Authorized filtered result count for stable paging"
           }
         }
       },
@@ -2979,6 +3290,322 @@
             "items": {
               "$ref": "#/components/schemas/SearchHistoryEntry"
             }
+          }
+        }
+      },
+      "DraftSummaryCounts": {
+        "type": "object",
+        "required": [
+          "total",
+          "with_primary_image",
+          "without_primary_image",
+          "top",
+          "bottom",
+          "one_piece"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "with_primary_image": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "without_primary_image": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "top": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bottom": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "one_piece": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "VersionEntry": {
+        "type": "object",
+        "required": [
+          "product_version_id",
+          "version_no",
+          "status",
+          "title",
+          "category",
+          "created_at",
+          "has_primary_image"
+        ],
+        "properties": {
+          "product_version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROCESSING",
+              "NEEDS_REVIEW",
+              "INDEXED",
+              "ACTIVE",
+              "FAILED",
+              "ARCHIVED"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "has_primary_image": {
+            "type": "boolean"
+          }
+        }
+      },
+      "VersionList": {
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VersionEntry"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "VersionDetail": {
+        "type": "object",
+        "required": [
+          "product_version_id",
+          "version_no",
+          "status",
+          "title",
+          "category",
+          "created_at",
+          "has_primary_image"
+        ],
+        "properties": {
+          "product_version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROCESSING",
+              "NEEDS_REVIEW",
+              "INDEXED",
+              "ACTIVE",
+              "FAILED",
+              "ARCHIVED"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "TOP",
+              "BOTTOM",
+              "ONE_PIECE"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "has_primary_image": {
+            "type": "boolean"
+          },
+          "media_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              null
+            ]
+          },
+          "byte_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "quality_state": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "PENDING",
+              "VERIFIED",
+              "REJECTED",
+              null
+            ]
+          }
+        }
+      },
+      "AuditEntry": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "action",
+          "created_at",
+          "product_id"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CATALOG_DRAFT_CREATED",
+              "CATALOG_DRAFT_REVISED",
+              "CATALOG_PRIMARY_IMAGE_REPLACED"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "previous_version_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "new_version_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "previous_version_no": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "new_version_no": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "trace_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 128
+          },
+          "actor_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "AuditList": {
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -85,9 +86,13 @@ public final class S3CatalogObjectStore implements CatalogObjectStore {
 				@Value("${fasearch.object.region}") String region,
 				@Value("${fasearch.object.access-key}") String accessKey,
 				@Value("${fasearch.object.secret-key}") String secretKey,
-				@Value("${fasearch.object.require-https:false}") boolean requireHttps) {
+				@Value("${fasearch.object.require-https:false}") boolean requireHttps,
+				@Value("${fasearch.object.anonymous:false}") boolean anonymous) {
 			if (accessKey.isBlank() != secretKey.isBlank()) {
 				throw new IllegalStateException("Set both object-store access and secret keys, or neither");
+			}
+			if (anonymous && !accessKey.isBlank()) {
+				throw new IllegalStateException("Anonymous object access cannot be combined with static keys");
 			}
 			if (requireHttps && !"https".equalsIgnoreCase(URI.create(endpoint).getScheme())) {
 				throw new IllegalStateException("Production object storage must use HTTPS");
@@ -99,6 +104,11 @@ public final class S3CatalogObjectStore implements CatalogObjectStore {
 			if (!accessKey.isBlank()) {
 				builder.credentialsProvider(StaticCredentialsProvider.create(
 						AwsBasicCredentials.create(accessKey, secretKey)));
+			}
+			else if (anonymous) {
+				// Local auth-less S3 emulators reject signed requests; explicit
+				// opt-in only, never combined with static keys or as a default.
+				builder.credentialsProvider(AnonymousCredentialsProvider.create());
 			}
 			return builder.build();
 		}

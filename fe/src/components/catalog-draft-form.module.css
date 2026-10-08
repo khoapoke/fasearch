@@ -217,6 +217,99 @@
   overflow-wrap: anywhere;
 }
 
+.back {
+  margin: 16px 0 0;
+  font-size: 0.85rem;
+}
+
+.back a {
+  color: var(--brand);
+}
+
+.dirty {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.fileInfo {
+  font-size: 0.83rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.history {
+  margin-top: 28px;
+  border: 1px solid var(--line);
+  background: white;
+  padding: clamp(20px, 3vw, 32px);
+}
+
+.conflict {
+  border: 1px solid var(--brand);
+  border-left: 4px solid var(--brand);
+  background: #fff8f4;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.conflict h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.conflict p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: white;
+}
+
+.compareTable caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 8px 0;
+}
+
+.compareTable th,
+.compareTable td {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.conflictActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.conflictActions button {
+  padding: 10px 18px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.conflictActions button[type="submit"] {
+  border: 0;
+  background: var(--brand);
+  color: white;
+  font-weight: 700;
+}
+
+.conflictActions button[type="button"] {
+  border: 1px solid var(--line);
+  background: white;
+}
+
 @media (max-width: 760px) {
   .page {
     padding: 0 20px 48px;

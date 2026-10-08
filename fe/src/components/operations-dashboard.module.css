@@ -1,0 +1,115 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.card:hover {
+  border-color: var(--brand);
+}
+
+.value {
+  font-size: 2rem;
+  font-weight: 780;
+  letter-spacing: -0.02em;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.skeleton {
+  min-height: 110px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+}
+
+.status {
+  color: var(--ink-soft);
+  min-height: 1.5em;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.primary {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 22px;
+  border-radius: 7px;
+  background: var(--brand);
+  color: white;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.secondary {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20px;
+  border: 1px solid var(--brand);
+  border-radius: 7px;
+  background: white;
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.note {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.error {
+  border-left: 3px solid var(--danger);
+  background: white;
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.error button {
+  justify-self: start;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 390px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

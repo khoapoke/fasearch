@@ -52,8 +52,11 @@ public class CatalogDraftController {
 	public DraftList list(
 			@RequestParam(name = "limit", required = false) String limit,
 			@RequestParam(name = "offset", required = false) String offset,
+			@RequestParam(name = "q", required = false) String query,
+			@RequestParam(name = "category", required = false) String category,
+			@RequestParam(name = "has_primary_image", required = false) String hasPrimaryImage,
 			Authentication actor) {
-		return module.list(limit, offset, actor);
+		return module.list(limit, offset, query, category, hasPrimaryImage, actor);
 	}
 
 	@GetMapping("/{productId}")
