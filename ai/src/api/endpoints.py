@@ -162,7 +162,11 @@ def _task_temp_dir() -> str:
 
 
 def _decode_image_bytes(raw: bytes, declared: Optional[str],
-                        trace_id: Optional[str]) -> bytes:
+                        trace_id: Optional[str], canonical: bool = False) -> bytes:
+    """canonical=True speaks the canonical failure contract (internal routes):
+    empty/undecodable -> 400 INVALID_IMAGE, decoded-MIME mismatch -> 415
+    INVALID_IMAGE. Legacy prototype routes keep documented 422 vocabulary.
+    The stronger declared-vs-decoded agreement rejection is preserved."""
     try:
         limits = load_shadow_config()["limits"]
         if len(raw) > int(limits["image_max_bytes"]):
@@ -175,15 +179,23 @@ def _decode_image_bytes(raw: bytes, declared: Optional[str],
     if declared not in ALLOWED_IMAGE_TYPES:
         raise ApiError(415, "UNSUPPORTED_MEDIA_TYPE",
                        "Định dạng ảnh không được hỗ trợ.", trace_id)
+    if canonical and len(raw) == 0:
+        raise ApiError(400, "INVALID_IMAGE", "Ảnh rỗng.", trace_id)
     want_format, _suffix = ALLOWED_IMAGE_TYPES[declared]
     try:
         with Image.open(io.BytesIO(raw)) as img:
             img.load()
             got_format = img.format
     except Exception:
+        if canonical:
+            raise ApiError(400, "INVALID_IMAGE",
+                           "Không thể giải mã ảnh.", trace_id)
         raise ApiError(422, "INVALID_REQUEST",
                        "Không thể giải mã ảnh.", trace_id)
     if got_format != want_format:
+        if canonical:
+            raise ApiError(415, "INVALID_IMAGE",
+                           "Khai báo MIME không khớp nội dung ảnh.", trace_id)
         raise ApiError(422, "INVALID_REQUEST",
                        "Khai báo MIME không khớp nội dung ảnh.", trace_id)
     return raw
@@ -432,7 +444,7 @@ async def _parse_image_form(request: Request, allowed: frozenset,
             raise ApiError(422, "INVALID_REQUEST", "Thiếu phần ảnh.", trace_id)
         declared = (getattr(image_value, "content_type", "") or "").lower()
         raw = await _read_upload_bounded(image_value, trace_id)
-        raw = await _run_worker(request, _decode_image_bytes, raw, declared, trace_id)
+        raw = await _run_worker(request, _decode_image_bytes, raw, declared, trace_id, True)
         try:
             await image_value.close()
         except Exception:

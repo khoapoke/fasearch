@@ -102,6 +102,32 @@ def test_image_oversize_is_image_too_large(client):
     assert r.json()["code"] == "IMAGE_TOO_LARGE"
 
 
+def test_undecodable_image_is_invalid_image(client):
+    r = client.post("/internal/v1/search/image",
+                    files={"image": ("a.png", b"not-an-image" * 64, "image/png")},
+                    data=_image_form())
+    assert r.status_code == 400
+    assert r.json()["code"] == "INVALID_IMAGE"
+    assert r.json()["schema_version"] == "1.0.0"
+
+
+def test_empty_image_is_invalid_image(client):
+    r = client.post("/internal/v1/search/image",
+                    files={"image": ("empty.png", b"", "image/png")},
+                    data=_image_form())
+    assert r.status_code == 400
+    assert r.json()["code"] == "INVALID_IMAGE"
+
+
+def test_decoded_mime_mismatch_is_invalid_image(client):
+    # Stronger rejection preserved (canonical accepts this); canonical code.
+    r = client.post("/internal/v1/search/image",
+                    files={"image": ("a.jpg", _png_bytes(), "image/jpeg")},
+                    data=_image_form())
+    assert r.status_code == 415
+    assert r.json()["code"] == "INVALID_IMAGE"
+
+
 def test_no_legacy_vocabulary_on_internal_routes(client):
     bodies = [
         ("/internal/v1/search/text", _text_body(
