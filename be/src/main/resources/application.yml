@@ -40,6 +40,8 @@ fasearch:
     bucket: ${FASEARCH_OBJECT_BUCKET:fasearch-product-images}
     access-key: ${FASEARCH_OBJECT_ACCESS_KEY:}
     secret-key: ${FASEARCH_OBJECT_SECRET_KEY:}
+    # Local auth-less S3 emulators only; default false, never enabled in production.
+    anonymous: ${FASEARCH_OBJECT_ANONYMOUS:false}
   ai:
     base-url: ${FASEARCH_AI_BASE_URL:http://127.0.0.1:8001}
     connect-timeout: ${FASEARCH_AI_CONNECT_TIMEOUT:1s}

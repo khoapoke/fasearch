@@ -61,7 +61,7 @@ class ApiDocsWebTests {
 
 		JsonMapper json = new JsonMapper();
 		JsonNode contract = json.readTree(served);
-		assertThat(contract.get("paths").size()).isEqualTo(21);
+		assertThat(contract.get("paths").size()).isEqualTo(26);
 		int operations = 0;
 		for (JsonNode item : contract.get("paths")) {
 			for (String method : new String[] { "get", "post", "put", "patch", "delete" }) {
@@ -70,7 +70,7 @@ class ApiDocsWebTests {
 				}
 			}
 		}
-		assertThat(operations).isEqualTo(28);
+		assertThat(operations).isEqualTo(33);
 	}
 
 	@Test

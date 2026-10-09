@@ -1,0 +1,165 @@
+.heading {
+  font-size: 1.2rem;
+  margin: 0 0 8px;
+}
+
+.note,
+.status,
+.meta {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.timeline {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.item {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toggle {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.current {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.detail {
+  display: grid;
+  gap: 8px;
+  font-size: 0.88rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+
+.detail p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.thumb {
+  max-width: min(100%, 320px);
+  height: auto;
+  border: 1px solid var(--line);
+  background: var(--surface-subtle);
+}
+
+.error {
+  border-left: 3px solid var(--danger);
+  background: white;
+  padding: 12px 14px;
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.error button {
+  justify-self: start;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.compare {
+  margin-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.compare h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.comparePickers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.comparePickers label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.comparePickers select {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: white;
+}
+
+.compareTable caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 8px 0;
+}
+
+.compareTable th,
+.compareTable td {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.compareTable thead th {
+  background: var(--surface-subtle);
+}
+
+@media (max-width: 760px) {
+  .comparePickers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compareTable {
+    display: block;
+    overflow-x: auto;
+  }
+}

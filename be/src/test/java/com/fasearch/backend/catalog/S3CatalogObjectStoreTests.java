@@ -52,8 +52,17 @@ class S3CatalogObjectStoreTests {
 	@Test
 	void productionConfigurationRejectsPlaintextObjectEndpoint() {
 		assertThatThrownBy(() -> new S3CatalogObjectStore.S3Configuration()
-				.catalogS3Client("http://object-store.example.test", "us-east-1", "", "", true))
+				.catalogS3Client("http://object-store.example.test", "us-east-1", "", "", true, false))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("HTTPS");
+	}
+
+	@Test
+	void anonymousAccessRejectsStaticKeyCombination() {
+		assertThatThrownBy(() -> new S3CatalogObjectStore.S3Configuration()
+				.catalogS3Client("http://object-store.example.test", "us-east-1",
+						"some-key", "some-secret", false, true))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("Anonymous");
 	}
 }

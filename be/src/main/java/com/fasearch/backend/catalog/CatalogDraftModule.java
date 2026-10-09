@@ -151,24 +151,53 @@ public class CatalogDraftModule {
 	@PreAuthorize("hasAuthority('CATALOG_DRAFT_WRITE')")
 	@Transactional(readOnly = true)
 	public DraftList list(String limitParam, String offsetParam, Authentication actor) {
+		return list(limitParam, offsetParam, null, null, null, actor);
+	}
+
+	@PreAuthorize("hasAuthority('CATALOG_DRAFT_WRITE')")
+	@Transactional(readOnly = true)
+	public DraftList list(String limitParam, String offsetParam, String queryParam,
+			String categoryParam, String hasImageParam, Authentication actor) {
 		int limit = parseLimit(limitParam);
 		int offset = parseOffset(offsetParam);
+		String query = parseQuery(queryParam);
+		Category category = parseCategory(categoryParam);
+		Boolean hasPrimaryImage = parseHasPrimaryImage(hasImageParam);
 		UUID actorId = accountId(actor);
 		boolean isAdministrator = actor.getAuthorities().stream()
 				.anyMatch(authority -> authority.getAuthority().equals("CATALOG_PUBLISH"));
-		String ownerFilter = isAdministrator ? "" : "AND p.created_by = ? ";
-		Object[] args = isAdministrator
-				? new Object[] { limit + 1, offset }
-				: new Object[] { actorId, limit + 1, offset };
+		StringBuilder where = new StringBuilder(
+				"WHERE p.archived_at IS NULL AND v.status = 'DRAFT' AND v.version_no = "
+						+ "(SELECT MAX(v2.version_no) FROM product_versions v2 WHERE v2.product_id = p.id) ");
+		java.util.List<Object> filters = new java.util.ArrayList<>();
+		if (!isAdministrator) {
+			where.append("AND p.created_by = ? ");
+			filters.add(actorId);
+		}
+		if (query != null) {
+			where.append("AND v.title ILIKE ? ");
+			filters.add("%" + escapeLike(query) + "%");
+		}
+		if (category != null) {
+			where.append("AND v.category = ? ");
+			filters.add(category.name());
+		}
+		if (hasPrimaryImage != null) {
+			where.append(hasPrimaryImage
+					? "AND EXISTS (SELECT 1 FROM product_images i WHERE i.product_version_id = v.id AND i.is_primary) "
+					: "AND NOT EXISTS (SELECT 1 FROM product_images i WHERE i.product_version_id = v.id AND i.is_primary) ");
+		}
+		String from = "FROM catalog_products p JOIN product_versions v ON v.product_id = p.id " + where;
+		Integer total = jdbc.queryForObject("SELECT COUNT(*) " + from, Integer.class, filters.toArray());
+		java.util.List<Object> pageArgs = new java.util.ArrayList<>(filters);
+		pageArgs.add(limit + 1);
+		pageArgs.add(offset);
 		List<DraftSummary> rows = jdbc.query(
 				"SELECT p.id AS product_id, v.id AS version_id, v.version_no, v.status, "
 						+ "v.title, v.category, v.created_at, "
 						+ "EXISTS (SELECT 1 FROM product_images i WHERE i.product_version_id = v.id "
 						+ "AND i.is_primary) AS has_primary_image "
-						+ "FROM catalog_products p JOIN product_versions v ON v.product_id = p.id "
-						+ "WHERE p.archived_at IS NULL AND v.status = 'DRAFT' AND v.version_no = "
-						+ "(SELECT MAX(v2.version_no) FROM product_versions v2 WHERE v2.product_id = p.id) "
-						+ ownerFilter
+						+ from
 						+ "ORDER BY v.created_at DESC, p.id DESC LIMIT ? OFFSET ?",
 				(result, row) -> new DraftSummary(
 						(UUID) result.getObject("product_id"),
@@ -179,9 +208,14 @@ public class CatalogDraftModule {
 						Category.valueOf(result.getString("category")),
 						result.getObject("created_at", OffsetDateTime.class),
 						result.getBoolean("has_primary_image")),
-				args);
+				pageArgs.toArray());
 		boolean hasMore = rows.size() > limit;
-		return new DraftList(hasMore ? rows.subList(0, limit) : rows, limit, offset, hasMore);
+		return new DraftList(hasMore ? rows.subList(0, limit) : rows, limit, offset, hasMore,
+				total == null ? 0 : total);
+	}
+
+	private static String escapeLike(String query) {
+		return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 	}
 
 	private static int parseLimit(String limitParam) {
@@ -218,6 +252,49 @@ public class CatalogDraftModule {
 			throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
 					"Offset must be a non-negative integer");
 		}
+	}
+
+	private static String parseQuery(String queryParam) {
+		if (queryParam == null) {
+			return null;
+		}
+		String query = queryParam.trim();
+		if (query.isEmpty()) {
+			return null;
+		}
+		if (query.length() > 250) {
+			throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+					"Search query must be at most 250 characters");
+		}
+		return query;
+	}
+
+	private static Category parseCategory(String categoryParam) {
+		if (categoryParam == null || categoryParam.trim().isEmpty()) {
+			return null;
+		}
+		try {
+			return Category.valueOf(categoryParam.trim().toUpperCase(Locale.ROOT));
+		}
+		catch (IllegalArgumentException invalid) {
+			throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+					"Category must be TOP, BOTTOM or ONE_PIECE", invalid);
+		}
+	}
+
+	private static Boolean parseHasPrimaryImage(String hasImageParam) {
+		if (hasImageParam == null || hasImageParam.trim().isEmpty()) {
+			return null;
+		}
+		String normalized = hasImageParam.trim().toLowerCase(Locale.ROOT);
+		if (normalized.equals("true")) {
+			return Boolean.TRUE;
+		}
+		if (normalized.equals("false")) {
+			return Boolean.FALSE;
+		}
+		throw new CatalogDraftException("INVALID_REQUEST", HttpStatus.BAD_REQUEST,
+				"has_primary_image must be true or false");
 	}
 
 	private UUID accountId(Authentication actor) {
@@ -269,7 +346,8 @@ public class CatalogDraftModule {
 			List<DraftSummary> items,
 			int limit,
 			int offset,
-			boolean hasMore) {
+			boolean hasMore,
+			int total) {
 	}
 
 	private record VersionRef(UUID id, int versionNo) {
