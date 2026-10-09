@@ -80,6 +80,8 @@ def main(argv=None) -> int:
         base["exclude"] = rows[base["row"]]["product_id"]
         probes.append(base)
 
+    parent = os.path.dirname(os.path.abspath(args.out))
+    os.makedirs(parent, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump({"probes": probes}, fh)
     print(f"[*] {len(probes)} probe vectors -> {args.out}")
