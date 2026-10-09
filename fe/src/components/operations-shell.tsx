@@ -59,7 +59,7 @@ export function OperationsShell({ children }: { children: React.ReactNode }) {
           {meState === "loading" && <span>Đang kiểm tra quyền…</span>}
           {meState === "expired" && (
             <span>
-              Phiên đăng nhập đã hết hạn. <Link href="/account">Đăng nhập lại</Link>
+              Phiên đăng nhập đã hết hạn. <Link href="/dang-nhap">Đăng nhập lại</Link>
             </span>
           )}
           {meState === "ready" && user && (
