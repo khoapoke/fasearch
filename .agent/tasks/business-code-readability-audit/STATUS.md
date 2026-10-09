@@ -1,0 +1,9 @@
+# Status — business/code readability audit
+
+09/10/2026 SCOUT_READY, first read-only reconciliation performed. Control read all7 original proposal pages using bundledPDF text reader, inspected current heads/directory inventory and IMAGE/Draft source traces, and consulted current draft business records. No production edits/refactor/deletion/fork/remotechanges/runtimechanges/workers/sessions launched.
+
+Observed: team/GVHD approval of full Week5 baseline not recorded; requirements marked0.1-draft, several semanticsOPEN; roadmap/analysis status includes old unimplemented claims that are stale relative to current feature branches. Current work split across main/Qdrant/Console heads, actual teammate inspected ref unknown. AI research/old adapter/new Qdrant serving and historical tools/agent artifacts coexist, lacking a single small onboarding route. Current Draft operations do not publish new products into frozen600 search catalog.
+
+Created SOURCES_AND_FINDINGS.md, TEAM_CODE_GUIDE.md, BUSINESS_SCENARIOS.md. These are initial audit/reading/discussion artifacts, not teacher-approved business model or full code quality verdict. Next owner Control with representative/team: review actual scenarios/source together, choose clarified scope and simplifications, then create a specific separate Implement assignment if warranted. Preserve original code/evidence and pending reviews. No administrative caps added.
+
+Representative clarification09/10: teammate actually readcodex/vertical-slice and apologized for snapshot misunderstanding; requiresconsolidatingcurrentworkintoonebranch beforedissection. This supersedes the earlier unknown-inspected-ref note, nothistoricalteacherbusinessapproval. Control preparesapp-consolidationpacket/codexteam-integrationtarget; separateImplement integrates. Future teammatebackendpush/Discordexplanation stillpending, noarchitecture/package refactorchosen. Fork/deletion plan remainssetaside, code/statussourcealignment first.

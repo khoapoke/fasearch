@@ -11,6 +11,9 @@
 .kaggle/
 .cache/
 
+# Official proposal contains personal information; keep the local reference out of Git.
+references/CNTT_KLCN198_*.pdf
+
 # Python
 .venv/
 venv/

@@ -1,3 +1,5 @@
+> Docker runtime chung 05/10/2026: dùng project **fasearch** tại [infra/fasearch](../infra/fasearch/README.md), PostgreSQL 127.0.0.1:55732 và S3 38535. Khi chạy backend dùng `FASEARCH_DB_URL=jdbc:postgresql://127.0.0.1:55732/fasearch` và `FASEARCH_OBJECT_ENDPOINT=http://127.0.0.1:38535`; mật khẩu giữ trong local ignored `.env`. Các Compose entrypoints trong `be/` chuyển tiếp tới runtime chung, không tạo stack riêng.
+
 # FaSearch Backend
 
 Spring Boot modular backend sở hữu catalog metadata, public search contract và orchestration tới AI module.

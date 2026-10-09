@@ -1,0 +1,27 @@
+{
+  "name": "oxk",
+  "version": "0.1.0-fasearch.1",
+  "description": "A portable four-session coding and design workflow for pi and ChatGPT.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "oxk": "./bin/oxk.mjs"
+  },
+  "scripts": {
+    "test": "node test/cli.test.mjs",
+    "check": "node bin/oxk.mjs check-kit"
+  },
+  "pi": {
+    "skills": [
+      "./skills/oxk"
+    ],
+    "prompts": [
+      "./prompts/*.md"
+    ],
+    "extensions": [],
+    "themes": []
+  }
+}

@@ -1,19 +1,4 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: fasearch
-      POSTGRES_USER: fasearch
-      POSTGRES_PASSWORD: ${FASEARCH_DB_PASSWORD:?Set FASEARCH_DB_PASSWORD in your local environment}
-    ports:
-      - "127.0.0.1:${FASEARCH_DB_PORT:-5432}:5432"
-    volumes:
-      - fasearch_postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fasearch -d fasearch"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-volumes:
-  fasearch_postgres:
+name: fasearch
+include:
+  - path: ../infra/fasearch/compose.yaml
+    env_file: ../infra/fasearch/.env

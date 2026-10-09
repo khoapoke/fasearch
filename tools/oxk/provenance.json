@@ -1,0 +1,7 @@
+{
+  "bundle": "oxk-v0.1.0.bundle",
+  "upstreamVersion": "0.1.0",
+  "upstreamCommit": "6e5014c67d1864c3c4ff8798e4922c036554d3c5",
+  "bundleSha256": "3f4b9493f9a872a73abb05f867899ffa6dd815adca25a07b96d92a6b02481feb",
+  "adaptation": "FaSearch project-local workflow; see docs/agents/oxk-integration.md"
+}

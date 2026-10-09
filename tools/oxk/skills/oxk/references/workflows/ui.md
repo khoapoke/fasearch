@@ -1,0 +1,10 @@
+# UI exploration and implementation
+
+1. Define the user journey, visual constraints, existing tokens/components and the states that matter. Gather current references when browsing is available; record URLs/screenshots, date and the exact qualities worth learning. A skill does not supply current references by itself.
+2. Use Anthropic frontend-design for a new visual direction when appropriate. Use Emil's design engineering guidance for component craft, interaction and motion. Keep the project's visual identity; load Apple-specific guidance only for a deliberate relevant direction.
+3. When the direction is unsettled, use an isolated prototype surface with two or three meaningfully different directions, preferably one component/flow at a time. Present each clearly at useful size; implement interactions needed to evaluate the choice. Do not hide all options behind tiny thumbnails or replace the main app while exploring.
+4. Obtain the user's selection. Assign a DESIGN.md owner and record reference-derived choices, tokens, typography, spacing, composition, motion purpose/timing, responsive behavior, accessible interactions and all relevant states. Freeze the contract before unattended implementation. Overnight exploration can prepare alternatives for morning selection.
+5. Implement the chosen direction in the real app. Preserve purposeful motion and composition during simplification. Use existing UI dependencies by default; compare libraries only if a real capability is missing. Do not apply global visual rules that contradict the chosen design without raising the tradeoff.
+6. Verify viewport sizes and affected states: loading, empty, error, success, disabled, focus, hover and keyboard. Check reduced motion and touch behavior when applicable. Record actual viewport/browser and visual evidence. Use animation review for motion issues; keep API and data correctness checks separate.
+
+Freshness comes from task-specific references and design choices. Premium appearance still requires readable hierarchy, restrained detail, useful states and coherent interactions. A beautiful single screenshot is insufficient to verify the full flow.

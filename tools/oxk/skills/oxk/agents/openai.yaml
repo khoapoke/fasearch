@@ -1,0 +1,4 @@
+interface:
+  display_name: "oxk FaSearch"
+  short_description: "Coordinate four sessions with shared task context"
+  default_prompt: "Use $oxk to prepare and execute this project task."

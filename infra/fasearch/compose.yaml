@@ -1,0 +1,52 @@
+name: fasearch
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    pull_policy: never
+    container_name: fasearch-postgres
+    environment:
+      POSTGRES_DB: ${FASEARCH_POSTGRES_DB:?Use the local .env}
+      POSTGRES_USER: ${FASEARCH_POSTGRES_USER:?Use the local .env}
+      POSTGRES_PASSWORD: ${FASEARCH_POSTGRES_PASSWORD:?Use the local .env}
+    ports:
+      - "127.0.0.1:55732:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  storage:
+    image: chrislusf/seaweedfs:4.47
+    pull_policy: never
+    container_name: fasearch-storage
+    command: ["mini"]
+    ports:
+      - "127.0.0.1:38535:8333"
+    volumes:
+      - storage_data:/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4@sha256:241edb9d7778327516ef218f8c74e1bd61b5ea42cd4f193cb8d0896199705636
+    pull_policy: never
+    container_name: fasearch-qdrant
+    profiles: [shadow]
+    ports:
+      - "127.0.0.1:16333:6333"
+      - "127.0.0.1:16334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  postgres_data:
+    external: true
+    name: ${FASEARCH_POSTGRES_VOLUME:?Use the existing data volume}
+  storage_data:
+    external: true
+    name: ${FASEARCH_STORAGE_VOLUME:?Use the existing data volume}
+  qdrant_data:
+    external: true
+    name: ${FASEARCH_QDRANT_VOLUME:?Use the existing data volume}

@@ -24,9 +24,13 @@ Nhóm áp dụng implementation-informed modeling:
 4. hoàn thiện use case, sequence, class model và ERD từ hành vi đã kiểm chứng;
 5. lặp lại cho vertical slice tiếp theo.
 
-Codex và Pi dùng chung [quy tắc agent](AGENTS.md) và các task packet đã version hóa trong `.agent/tasks/`. Packet ghi tiến độ/review theo ticket, không thay thế Decision Register, requirements hay schema.
+Codex và Pi dùng chung [quy tắc agent](AGENTS.md), [workflow nhiều session](docs/agents/session-workflow.md) và các task packet đã version hóa trong `.agent/tasks/`. Packet ghi tiến độ/review theo ticket, không thay thế Decision Register, requirements hay schema.
 
 Vertical slice đầu tiên là image search trên frozen catalog. Không mở mobile, commerce, VTON/3D hoặc fine-tuning trong mốc này.
+
+## Workflow oxk cho FaSearch
+
+Đã tích hợp bản local `0.1.0-fasearch.1`: [audit và cách dùng](docs/agents/oxk-integration.md), [project context](.agent/PROJECT.md), skill `.agents/skills/oxk/` và bốn prompt Pi. Tạo packet ở `.agent/tasks/` bằng `node tools/oxk/bin/oxk.mjs task <slug> --project .`; thêm `--mode ui` khi cần DESIGN.md. Công cụ không sửa production code, cài plugin global hay tự merge.
 
 ## AI baseline
 

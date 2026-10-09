@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-30",
+  "purpose": "Reference provenance; does not install or vendor upstream code.",
+  "sources": [
+    {
+      "id": "pstack",
+      "repository": "cursor/plugins",
+      "commit": "fae2c6ed95821bd85f614a73e4842e13229fa5e5",
+      "referenceOnly": true,
+      "paths": [
+        "pstack/skills/poteto-mode/SKILL.md",
+        "pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+        "pstack/skills/poteto-mode/playbooks/babysit.md"
+      ]
+    },
+    {
+      "id": "emil",
+      "repository": "emilkowalski/skills",
+      "commit": "d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128",
+      "referenceOnly": true,
+      "paths": [
+        "README.md",
+        "skills/emil-design-eng/SKILL.md",
+        "skills/prototype/SKILL.md"
+      ]
+    },
+    {
+      "id": "humanlayer",
+      "repository": "humanlayer/humanlayer",
+      "commit": "99abe673498cf8bdcd5f989aebe9406a27185b3b",
+      "referenceOnly": true,
+      "paths": [
+        "README.md",
+        ".claude/commands/research_codebase.md",
+        ".claude/commands/create_plan.md",
+        ".claude/commands/implement_plan.md"
+      ]
+    },
+    {
+      "id": "matt",
+      "repository": "mattpocock/skills",
+      "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+      "referenceOnly": true,
+      "paths": [
+        "skills/engineering/grill-with-docs/SKILL.md",
+        "skills/engineering/code-review/SKILL.md"
+      ]
+    },
+    {
+      "id": "frontend-design",
+      "repository": "anthropics/skills",
+      "commit": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "referenceOnly": true,
+      "paths": [
+        "skills/frontend-design/SKILL.md"
+      ]
+    },
+    {
+      "id": "pi",
+      "repository": "earendil-works/pi",
+      "commit": "1b347794e2a630e4359f2584f4eea388145d0ddf",
+      "referenceOnly": true,
+      "paths": [
+        "packages/coding-agent/docs/packages.md",
+        "packages/coding-agent/docs/skills.md",
+        "packages/coding-agent/docs/prompt-templates.md"
+      ]
+    }
+  ]
+}
