@@ -9,6 +9,9 @@ spring:
 
   flyway:
     enabled: true
+    locations: classpath:db/migration, classpath:db/seed
+    
+    baseline-on-migrate: false 
 
   jpa:
     hibernate:
