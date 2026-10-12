@@ -119,7 +119,7 @@ export function LoginForm({ next, passwordChanged }: {
         </button>
       </div>
       <p className={styles.muted}>
-        Chưa có tài khoản? <Link href="/dang-ky">Tạo tài khoản mới</Link>.
+        Chưa có tài khoản? <Link href="/dang-ky">Xem thông tin tạo tài khoản</Link>.
       </p>
     </form>
   );
