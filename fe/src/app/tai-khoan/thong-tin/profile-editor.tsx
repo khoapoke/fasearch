@@ -10,39 +10,17 @@ import {
   type CustomerProfile,
   type OwnProfile,
 } from "@/components/account/account-session";
+import {
+  EMPTY_DRAFT,
+  draftFromCustomer,
+  type ProfileDraft,
+} from "@/lib/profile-draft";
 import styles from "@/components/account/account.module.css";
-
-type Draft = {
-  ho: string;
-  ten: string;
-  gioiTinh: string;
-  ngaySinh: string;
-  diaChi: string;
-  email: string;
-};
-
-const EMPTY: Draft = { ho: "", ten: "", gioiTinh: "", ngaySinh: "", diaChi: "", email: "" };
-
-function toDraft(customer: CustomerProfile | null): Draft {
-  if (!customer) return EMPTY;
-  const parts = (customer.hoTen || "").split(" ");
-  // Họ là mọi phần trừ từ cuối; tên là từ cuối (khớp cách BE gộp hoTen).
-  const ten = parts.length > 1 ? (parts.pop() as string) : (parts[0] ?? "");
-  const ho = parts.join(" ");
-  return {
-    ho,
-    ten,
-    gioiTinh: customer.gioiTinh ?? "",
-    ngaySinh: customer.ngaySinh ?? "",
-    diaChi: customer.diaChi ?? "",
-    email: customer.email ?? "",
-  };
-}
 
 export function ProfileEditor() {
   const router = useRouter();
   const [settled, setSettled] = useState<OwnProfile | null>(null);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<ProfileDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -61,7 +39,7 @@ export function ProfileEditor() {
           return;
         }
         setSettled(result);
-        setDraft(toDraft(result.customer));
+        setDraft(draftFromCustomer(result.customer));
       })
       .catch(() => {
         if (active) setError("Không thể tải thông tin. Hãy thử lại.");
@@ -74,12 +52,12 @@ export function ProfileEditor() {
     };
   }, [router]);
 
-  function set(field: keyof Draft, value: string) {
+  function set(field: keyof ProfileDraft, value: string) {
     setDraft((prev) => ({ ...prev, [field]: value }));
   }
 
   function cancel() {
-    setDraft(toDraft(settled?.customer ?? null));
+    setDraft(draftFromCustomer(settled?.customer ?? null));
     setIssue("");
     setError("");
     setSaved(false);
@@ -145,7 +123,7 @@ export function ProfileEditor() {
       setSettled((prev) =>
         prev ? { ...prev, customer: updated.result, hasCustomerProfile: true } : prev,
       );
-      setDraft(toDraft(updated.result));
+      setDraft(draftFromCustomer(updated.result));
       setSaved(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Lưu không hoàn tất. Bản nháp được giữ lại.");

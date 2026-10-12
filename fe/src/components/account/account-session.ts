@@ -39,6 +39,8 @@ export type AccountIdentity = {
 export type CustomerProfile = {
   id: number;
   hoTen: string;
+  ho: string | null;
+  ten: string | null;
   sdt: string;
   gioiTinh: string | null;
   ngaySinh: string | null;
