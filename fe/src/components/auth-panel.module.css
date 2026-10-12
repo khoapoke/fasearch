@@ -1,0 +1,126 @@
+.auth {
+  position: relative;
+}
+
+.openButton,
+.signedIn button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 9999px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.openButton:hover,
+.signedIn button:hover {
+  border-color: var(--ink);
+}
+
+.signedIn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.signedIn a {
+  color: var(--brand);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.form {
+  position: absolute;
+  z-index: 50;
+  top: 50px;
+  right: 0;
+  width: min(320px, calc(100vw - 32px));
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: white;
+}
+
+.form input:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.submit {
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--radius);
+  color: white;
+  background: var(--accent-deep);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.submit:hover:not(:disabled) {
+  background: var(--accent-deep);
+}
+
+.submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.error {
+  padding: 12px;
+  border-radius: var(--radius);
+  color: var(--danger);
+  background: #fff3f3;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.signedIn + .error {
+  position: absolute;
+  z-index: 50;
+  top: 50px;
+  right: 0;
+  width: min(320px, calc(100vw - 32px));
+}
+
+@media (max-width: 520px) {
+  .signedIn {
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+
+  .signedIn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 32vw;
+  }
+}

@@ -1,0 +1,364 @@
+/* Shared account card/form grammar. Reuses global tokens; Stitch layout
+ * intent (sidebar greeting + cards) without commerce sections. */
+
+.layout {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 28px 4vw 64px;
+}
+
+/* Stitch Phase A shell: neutral canvas, breadcrumb, compact heading,
+ * persistent sidebar + top tabs. Source-derived density, not SaaS cards. */
+.shell {
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  margin: 0 -4vw;
+  padding: 0 4vw 8px;
+}
+
+.shell > :first-child {
+  margin-top: 0;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  padding-top: 20px;
+}
+
+.crumbs a:hover {
+  color: var(--brand-ink);
+}
+
+.crumbs [aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.title {
+  margin-top: 10px;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.kicker {
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.layout h1:not(.title) {
+  margin-top: 8px;
+  max-width: 640px;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin-top: 12px;
+  max-width: 640px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  gap: 20px;
+  align-items: start;
+  padding-bottom: 8px;
+}
+
+.main {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 12px !important;
+}
+
+.tabs a {
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font-weight: 650;
+  font-size: 0.92rem;
+  border-bottom: 2px solid transparent;
+  transition: color 160ms ease-out, background-color 160ms ease-out;
+}
+
+.tabs a:hover {
+  color: var(--brand-ink);
+  background: var(--surface-subtle);
+}
+
+.tabs a[aria-current="page"] {
+  color: var(--brand-ink);
+  border-bottom-color: var(--accent);
+}
+
+.identity {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.identity > div {
+  min-width: 0;
+}
+
+.identity .muted {
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #fff;
+  background: var(--brand);
+}
+
+.logoutLink {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background-color 160ms ease-out;
+}
+
+.logoutLink:hover:not(:disabled) {
+  background: #fff5f4;
+}
+
+.logoutLink:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.side {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+}
+
+.sideNav {
+  display: grid;
+  gap: 4px;
+}
+
+.sideNav a {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.sideNav a[aria-current="page"] {
+  color: var(--brand-ink);
+  background: var(--surface-tint);
+  border-color: var(--line);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.greeting {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-weight: 650;
+}
+
+.field input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+}
+
+.field input[readonly] {
+  background: var(--surface-subtle);
+  color: var(--ink-soft);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.fieldError {
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.alert {
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--danger);
+  background: #fff5f4;
+}
+
+.notice {
+  border: 1px solid var(--ok);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--ok);
+  background: #f2faf8;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* CTA normal-text contrast: default --accent-deep (#d43f00) >= 4.5:1, hover
+ * --brand (#aa3000, Stitch primary) darker still. Both are existing Stitch
+ * tokens (promo-container/primary); orange identity preserved, no new hues. */
+.primary {
+  background: var(--accent-deep);
+  color: #fff;
+  border: 1px solid var(--accent-deep);
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reveal {
+  align-self: start;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.inputRow input {
+  flex: 1;
+}
+
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--line-soft) 25%, var(--surface-subtle) 50%, var(--line-soft) 75%);
+  background-size: 200% 100%;
+  animation: account-shimmer 1.4s infinite;
+  min-height: 20px;
+}
+
+@keyframes account-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    order: -1;
+  }
+
+  .layout {
+    padding-top: 20px;
+  }
+}

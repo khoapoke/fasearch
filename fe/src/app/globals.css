@@ -1,0 +1,93 @@
+/* Stitch "Kinetic Minimalist Retail" tokens, reconciled per DESIGN.md.
+ * Actual source HTML/config govern: primary #aa3000 (brand/nav/active),
+ * promo-banner #FF4D00 (top banner, primary CTAs, upload triggers),
+ * primary-container #d43f00 (CTA hover). Surfaces/text/borders below are the
+ * exact values used by the selected home/list components. */
+
+:root {
+  --surface: #ffffff;
+  --surface-subtle: #f9fafb;
+  --surface-tint: #fff1ea;
+  --ink: #151c27;
+  --ink-soft: #575e70;
+  --brand: #aa3000;
+  --brand-ink: #852400;
+  --accent: #ff4d00;
+  --accent-deep: #d43f00;
+  --line: #e5e7eb;
+  --line-soft: #eef1f6;
+  --danger: #ba1a1a;
+  --ok: #147d73;
+  --radius: 8px;
+  --font-sans:
+    var(--font-be-vietnam-pro), "Be Vietnam Pro", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --shadow-card:
+    0 10px 25px -5px rgb(17 24 39 / 0.06), 0 8px 10px -6px rgb(17 24 39 / 0.04);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+label,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+::selection {
+  color: white;
+  background: var(--brand);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
