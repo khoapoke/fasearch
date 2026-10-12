@@ -1,0 +1,277 @@
+/* Quản trị + catalog: cùng ngôn ngữ với account.module.css (card/actions/muted). */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  margin: 12px 0;
+}
+
+.toolbar label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.toolbar input,
+.toolbar select {
+  padding: 8px 10px;
+  border: 1px solid #c9c9c9;
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 40px;
+  background: #fff;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid #e2e2e2;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 640px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.table th {
+  background: #f7f7f7;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #eef4ee;
+  border: 1px solid #cfe0cf;
+}
+
+.badgeWarn {
+  background: #fdf3e7;
+  border-color: #ecd3ac;
+}
+
+.badgeMuted {
+  background: #f1f1f1;
+  border-color: #ddd;
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.linkButton {
+  border: 1px solid #c9c9c9;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.linkButton:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.danger {
+  border-color: #d9a5a5;
+  color: #8f1d1d;
+}
+
+.formGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+  margin: 12px 0;
+}
+
+@media (min-width: 720px) {
+  .formGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.formGrid label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  padding: 8px 10px;
+  border: 1px solid #c9c9c9;
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 40px;
+  background: #fff;
+  width: 100%;
+}
+
+.formGrid textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.fullRow {
+  grid-column: 1 / -1;
+}
+
+/* Catalog cards: tái dùng ý tưởng donor (grid + card + ảnh), contract số mới. */
+.cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  margin: 12px 0;
+}
+
+.card {
+  border: 1px solid #e2e2e2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+}
+
+.cardImg {
+  aspect-ratio: 1 / 1;
+  background: #f4f4f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cardImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noImg {
+  color: #888;
+  font-size: 13px;
+  padding: 8px;
+  text-align: center;
+}
+
+.cardBody {
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.cardTitle {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.cardPrice {
+  color: #1d6b1d;
+  font-weight: 700;
+}
+
+.cardMeta {
+  color: #666;
+  font-size: 12px;
+}
+
+.detailImg {
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #e2e2e2;
+  background: #f4f4f4;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.chip {
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  background: #fafafa;
+}
+
+.pager {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+/* Tem mã vạch in khổ 80mm: màn hình xem lưới, print chỉ còn tem. */
+.labels {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  margin: 12px 0;
+}
+
+.label {
+  border: 1px dashed #999;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  background: #fff;
+  width: 80mm;
+  max-width: 100%;
+}
+
+.label img {
+  width: 100%;
+  height: auto;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printArea,
+  .printArea * {
+    visibility: visible;
+  }
+  .printArea {
+    position: absolute;
+    inset: 0;
+  }
+  .noPrint {
+    display: none !important;
+  }
+}

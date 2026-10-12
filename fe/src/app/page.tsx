@@ -22,11 +22,17 @@ export default function Home() {
         <div className={styles.grid} style={{ gridTemplateColumns: "1fr" }}>
           <section className={styles.card} aria-label="Bắt đầu">
             <div className={styles.actions}>
-              <Link className={styles.primary} href="/dang-nhap">
+              <Link className={styles.primary} href="/catalog">
+                Xem catalog
+              </Link>
+              <Link className={styles.secondary} href="/dang-nhap">
                 Đăng nhập
               </Link>
               <Link className={styles.secondary} href="/tai-khoan" id="tai-khoan">
                 Trung tâm tài khoản
+              </Link>
+              <Link className={styles.secondary} href="/quan-tri/san-pham">
+                Quản trị
               </Link>
             </div>
           </section>
