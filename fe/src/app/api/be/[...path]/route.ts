@@ -1,20 +1,7 @@
 import type { NextRequest } from "next/server";
+import { buildUpstreamHeaders } from "@/lib/server/be-headers";
 
 const backendUrl = process.env.FASEARCH_BACKEND_URL ?? "http://127.0.0.1:18083";
-
-const HOP_BY_HOP = new Set([
-  "connection",
-  "content-length",
-  "expect",
-  "host",
-  "keep-alive",
-  "proxy-authenticate",
-  "proxy-authorization",
-  "te",
-  "trailer",
-  "transfer-encoding",
-  "upgrade",
-]);
 
 /**
  * Proxy chung FE → BE cho các trang quản trị + catalog (CONTRACT §8).
@@ -29,14 +16,10 @@ async function proxy(request: NextRequest, method: string): Promise<Response> {
   const search = request.nextUrl.search;
   const target = `${backendUrl}/api/${segments}${search}`;
 
-  const headers = new Headers();
-  request.headers.forEach((value, key) => {
-    const name = key.toLowerCase();
-    if (HOP_BY_HOP.has(name) || name === "cookie" || name === "content-length") return;
-    headers.set(key, value);
-  });
-  const sessionId = request.cookies.get("FASEARCH_SESSION")?.value;
-  if (sessionId) headers.set("cookie", `FASEARCH_SESSION=${sessionId}`);
+  const headers = buildUpstreamHeaders(
+    request.headers,
+    request.cookies.get("FASEARCH_SESSION")?.value,
+  );
 
   let body: BodyInit | undefined;
   if (method !== "GET" && method !== "HEAD") {
