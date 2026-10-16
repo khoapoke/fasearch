@@ -11,10 +11,10 @@ public class UserMapper {
     public UserResponse toResponseDTO(User user) {
         if (user == null) return null;
 
-        String hoTenFull = (user.getHo() != null ? user.getHo() + " " : "") + user.getTen();
+        String hoTenFull = (user.getHoKh() != null ? user.getHoKh() + " " : "") + user.getTenKh();
 
         return UserResponse.builder()
-                .id(user.getId())
+                .id(user.getMaKh())
                 .hoTen(hoTenFull)
                 .sdt(user.getSdt())
                 //.email(user.getEmail())
