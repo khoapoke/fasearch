@@ -1,0 +1,78 @@
+/* Storefront preview flows: cart/checkout/orders/vouchers/AI/addresses. */
+
+.pvWrap { max-width: 1280px; margin: 0 auto; padding: 18px 20px 8px; }
+.pvGrid { display: grid; grid-template-columns: 1fr 360px; gap: 22px; align-items: start; margin-top: 16px; }
+.pvCard {
+  border: 1px solid var(--line-soft); border-radius: 16px; background: #fff;
+  padding: 20px; box-shadow: var(--shadow-card); margin-bottom: 16px;
+}
+.pvCard h2 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+.pvCard > p.sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 12px; }
+.pvRow {
+  display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line-soft); align-items: center;
+}
+.pvRow:last-child { border-bottom: 0; }
+.pvThumb {
+  width: 84px; height: 104px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+  background: linear-gradient(160deg, #f3f4f6, #e9e4de); display: block;
+}
+.pvRow b.name { display: block; font-size: 13.5px; }
+.pvRow small { font-size: 12px; color: var(--ink-soft); }
+.pvQty { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; margin-top: 8px; }
+.pvQty button { border: 0; background: transparent; width: 30px; height: 32px; cursor: pointer; font-size: 15px; }
+.pvQty b { min-width: 26px; text-align: center; font-size: 13px; }
+.pvLine { display: flex; justify-content: space-between; font-size: 13.5px; padding: 6px 0; }
+.pvLine.total { font-size: 16px; font-weight: 800; border-top: 1px solid var(--line-soft); margin-top: 8px; padding-top: 12px; }
+.pvLine.total span:last-child { color: var(--accent); }
+.pvFree { background: var(--surface-subtle); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 10px; }
+.pvFreeBar { height: 7px; border-radius: 999px; background: var(--line-soft); margin-top: 8px; overflow: hidden; }
+.pvFreeBar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--brand)); border-radius: 999px; }
+.pvCoupon { display: flex; gap: 8px; margin: 10px 0; }
+.pvCoupon input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; min-width: 0; }
+.pvSteps { display: flex; gap: 8px; margin: 14px 0; }
+.pvSteps span { flex: 1; text-align: center; font-size: 12.5px; font-weight: 700; padding: 9px; border-radius: 10px; background: var(--surface-subtle); color: var(--ink-soft); }
+.pvSteps span[aria-current="step"] { background: var(--ink); color: #fff; }
+.pvField { margin-bottom: 12px; }
+.pvField label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 5px; }
+.pvField input, .pvField select, .pvField textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; background: #fff;
+}
+.pvRadio {
+  display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--line);
+  border-radius: 12px; padding: 13px 14px; margin-bottom: 10px; cursor: pointer; font-size: 13.5px;
+}
+.pvRadio input { accent-color: var(--accent); margin-top: 3px; }
+.pvRadio[aria-checked="true"] { border-color: var(--accent); background: #fff8f4; }
+.pvRadio b { display: block; }
+.pvRadio small { color: var(--ink-soft); }
+.pvTabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.pvTabs button, .pvTabs a {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 15px;
+  font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: none; color: var(--ink);
+}
+.pvTabs button[aria-pressed="true"], .pvTabs a[aria-current="page"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.pvVoucher {
+  border: 1px dashed #f0b49a; border-radius: 14px; padding: 16px; display: flex; gap: 14px; align-items: center;
+  background: #fff8f4; margin-bottom: 12px;
+}
+.pvVoucherCode {
+  font-family: ui-monospace, monospace; font-weight: 800; background: var(--accent); color: #fff;
+  border-radius: 9px; padding: 9px 13px; font-size: 13px; white-space: nowrap;
+}
+.pvVoucher b { display: block; font-size: 14px; }
+.pvVoucher small { font-size: 12px; color: var(--ink-soft); }
+.pvVoucher button { margin-left: auto; flex-shrink: 0; }
+.pvDrop {
+  border: 1.5px dashed #f0b49a; border-radius: 16px; background: #fff8f4;
+  padding: 30px 20px; text-align: center;
+}
+.pvDrop img { max-height: 220px; border-radius: 12px; margin: 0 auto 12px; display: block; }
+.pvAddr { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+.pvAddr[aria-current="true"] { border-color: var(--accent); background: #fff8f4; }
+.pvAddr b { font-size: 14px; }
+.pvAddr p { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+@media (max-width: 1024px) { .pvGrid { grid-template-columns: 1fr; } }
+
+.mpSwitch { width: 46px; height: 26px; border-radius: 999px; border: 0; cursor: pointer; position: relative; flex-shrink: 0; }
+.mpSwitch::after { content: ""; position: absolute; top: 3px; left: 23px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 160ms ease-out; }
+.mpSwitch[aria-checked="false"]::after { left: 3px; }

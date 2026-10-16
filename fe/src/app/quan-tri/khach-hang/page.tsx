@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MgmtShell } from "@/components/mgmt/mgmt-shell";
-import account from "@/components/account/account.module.css";
-import mgmt from "@/components/mgmt/mgmt.module.css";
+import { MerchantShell } from "@/components/merchant/merchant-shell";
 import { beFetch, beWrite, unwrap, type Page } from "@/lib/mgmt-client";
 
 type Customer = {
@@ -60,53 +58,56 @@ export default function CustomersPage() {
   }, [ten, sdt, page, reloadKey]);
 
   return (
-    <MgmtShell
-      title="Quản lý khách hàng"
-      lede="Tra cứu, tạo và sửa hồ sơ khách hàng (FR22, FR36–37). Điểm/hạng chỉ đọc — không có công thức tích điểm tự bịa."
-      need={["ADMIN", "STAFF"]}
+    <MerchantShell
+      active="customers"
+      topActions={
+        <button className="mpTopBtn primary" type="button" onClick={() => setShowCreate((v) => !v)}>
+          + {showCreate ? "Đóng form tạo" : "Tạo hồ sơ"}
+        </button>
+      }
     >
+      <div className="mpCard">
+        <h2>Quản lý khách hàng</h2>
+        <p className="mpMuted">Tra cứu, tạo và sửa hồ sơ khách hàng. Điểm/hạng chỉ đọc.</p>
       <form
-        className={mgmt.toolbar}
+        style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}
         onSubmit={(e) => {
           e.preventDefault();
           setPage(0);
           reload();
         }}
       >
-        <label>
-          Tên
-          <input value={ten} onChange={(e) => setTen(e.target.value)} maxLength={100} />
-        </label>
-        <label>
-          SĐT
-          <input value={sdt} onChange={(e) => setSdt(e.target.value)} maxLength={15} />
-        </label>
-        <button className={account.primary} type="submit">
+        <div className="mpSearch" style={{ maxWidth: 240 }}>
+          <input value={ten} onChange={(e) => setTen(e.target.value)} maxLength={100} placeholder="Tên…" aria-label="Tên" />
+        </div>
+        <div className="mpSearch" style={{ maxWidth: 200 }}>
+          <input value={sdt} onChange={(e) => setSdt(e.target.value)} maxLength={15} placeholder="SĐT…" aria-label="SĐT" />
+        </div>
+        <button className="mpTopBtn primary" type="submit">
           Lọc
-        </button>
-        <button type="button" className={account.secondary} onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? "Đóng form tạo" : "Tạo hồ sơ"}
         </button>
       </form>
       {notice && (
-        <p className={account.muted} role="alert">
+        <p className="mpMuted" role="alert" style={{ color: "#ba1a1a" }}>
           Lỗi: {notice}
         </p>
       )}
-      {showCreate && <CreateForm onDone={() => { setShowCreate(false); reload(); }} />}
+      </div>
+      {showCreate && <div className="mpCard"><CreateForm onDone={() => { setShowCreate(false); reload(); }} /></div>}
       {editing && (
-        <EditForm
+        <div className="mpCard"><EditForm
           customer={editing}
           onClose={() => setEditing(null)}
           onDone={() => { setEditing(null); reload(); }}
-        />
+        /></div>
       )}
-      {!data && <p className={account.muted}>Đang tải…</p>}
-      {data && data.data.length === 0 && <p className={account.muted}>Không có khách hàng nào.</p>}
+      <div className="mpCard">
+      {!data && <p className="mpMuted" role="status">Đang tải…</p>}
+      {data && data.data.length === 0 && <p className="mpMuted">Không có khách hàng nào.</p>}
       {data && data.data.length > 0 && (
         <>
-          <div className={mgmt.tableWrap}>
-            <table className={mgmt.table}>
+          <div className="mpTableWrap">
+            <table className="mpTable">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -130,8 +131,8 @@ export default function CustomersPage() {
                     </td>
                     <td>{row.email ?? "—"}</td>
                     <td>
-                      <div className={mgmt.rowActions}>
-                        <button className={mgmt.linkButton} onClick={() => setEditing(row)}>
+                      <div className="mpRowBtns">
+                        <button className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => setEditing(row)}>
                           Xem / Sửa
                         </button>
                       </div>
@@ -141,24 +142,23 @@ export default function CustomersPage() {
               </tbody>
             </table>
           </div>
-          <div className={mgmt.pager}>
-            <span>
+          <p className="mpMuted" style={{ marginTop: 10 }}>
               Trang {data.page + 1}/{Math.max(data.totalPages, 1)} — {data.totalElements} hồ sơ
-            </span>
             {page > 0 && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page - 1)}>
+              <button className="mpTopBtn" style={{ marginLeft: 8 }} onClick={() => setPage(page - 1)}>
                 Trước
               </button>
             )}
             {page + 1 < data.totalPages && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page + 1)}>
+              <button className="mpTopBtn" style={{ marginLeft: 8 }} onClick={() => setPage(page + 1)}>
                 Sau
               </button>
             )}
-          </div>
+          </p>
         </>
       )}
-    </MgmtShell>
+      </div>
+    </MerchantShell>
   );
 }
 
@@ -190,14 +190,14 @@ function CreateForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <section className={account.card} aria-label="Tạo hồ sơ khách hàng">
-      <p className={account.greeting}>Tạo hồ sơ nối vào tài khoản đã có</p>
-      <p className={account.muted}>
+    <section aria-label="Tạo hồ sơ khách hàng">
+      <h2>Tạo hồ sơ nối vào tài khoản đã có</h2>
+      <p className="mpMuted">
         Hồ sơ gắn vào tài khoản CUSTOMER chưa có hồ sơ (lấy mã tài khoản ở trang Tài khoản). SĐT
         trùng → 409.
       </p>
       <form
-        className={mgmt.formGrid}
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}
         onSubmit={(e) => {
           e.preventDefault();
           submit(new FormData(e.currentTarget));
@@ -231,12 +231,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
           Email (cập nhật cùng tài khoản)
           <input name="email" type="email" maxLength={100} />
         </label>
-        <div className={mgmt.fullRow}>
-          <button className={account.primary} type="submit" disabled={saving}>
+        <div style={{ gridColumn: "1/-1" }}>
+          <button className="mpTopBtn primary" type="submit" disabled={saving}>
             {saving ? "Đang tạo…" : "Tạo hồ sơ"}
           </button>
           {error && (
-            <p className={account.muted} role="alert">
+            <p role="alert" style={{ color: "#ba1a1a" }}>
               Lỗi: {error}
             </p>
           )}
@@ -280,16 +280,14 @@ function EditForm({
   }
 
   return (
-    <section className={account.card} aria-label={`Sửa khách hàng ${customer.id}`}>
-      <p className={account.greeting}>
-        Hồ sơ #{customer.id} — {customer.hoTen}
-      </p>
-      <p className={account.muted}>
+    <section aria-label={`Sửa khách hàng ${customer.id}`}>
+      <h2>Hồ sơ #{customer.id} — {customer.hoTen}</h2>
+      <p className="mpMuted">
         SĐT {customer.sdt} (không đổi) · Hạng {customer.tenHang ?? "—"} · {customer.diemTichLuy}{" "}
-        điểm (chỉ đọc) · Tiền chi tiêu: chưa có định nghĩa tổng hợp nên không lọc được.
+        điểm (chỉ đọc).
       </p>
       <form
-        className={mgmt.formGrid}
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}
         onSubmit={(e) => {
           e.preventDefault();
           submit(new FormData(e.currentTarget));
@@ -315,17 +313,17 @@ function EditForm({
           Email (nguyên tử cùng tài khoản)
           <input name="email" type="email" defaultValue={customer.email ?? ""} maxLength={100} />
         </label>
-        <div className={mgmt.fullRow}>
-          <div className={mgmt.rowActions}>
-            <button className={account.primary} type="submit" disabled={saving}>
+        <div style={{ gridColumn: "1/-1" }}>
+          <div className="mpRowBtns">
+            <button className="mpTopBtn primary" type="submit" disabled={saving}>
               {saving ? "Đang lưu…" : "Lưu"}
             </button>
-            <button className={account.secondary} type="button" onClick={onClose}>
+            <button className="mpTopBtn" type="button" onClick={onClose}>
               Đóng
             </button>
           </div>
           {error && (
-            <p className={account.muted} role="alert">
+            <p role="alert" style={{ color: "#ba1a1a" }}>
               Lỗi: {error}
             </p>
           )}

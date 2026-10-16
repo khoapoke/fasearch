@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { SiteFooter } from "@/components/stitch-search/site-footer";
-import { SiteHeader } from "@/components/stitch-search/site-header";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import account from "@/components/account/account.module.css";
 import mgmt from "@/components/mgmt/mgmt.module.css";
 import { beFetch, unwrap, vnd, type Page } from "@/lib/mgmt-client";
@@ -25,7 +24,8 @@ function CatalogInner() {
   const maDanhMuc = params.get("maDanhMuc") ?? "";
   const page = Number(params.get("page") ?? "0") || 0;
   const [categories, setCategories] = useState<PublicCategory[]>([]);
-  const viewKey = `${q}|${maDanhMuc}|${page}`;
+  const [reloadKey, setReloadKey] = useState(0);
+  const viewKey = `${q}|${maDanhMuc}|${page}|${reloadKey}`;
   const [settled, setSettled] = useState<{
     key: string;
     data?: Page<PublicProduct>;
@@ -71,7 +71,7 @@ function CatalogInner() {
     <main className={account.layout}>
       <p className={account.kicker}>FaSearch</p>
       <h1>Danh mục sản phẩm</h1>
-      <p className={account.lede}>Hàng đang bán thật từ hệ thống — không hàng ẩn, không giá nhập.</p>
+      <p className={account.lede}>Hàng đang bán thật từ hệ thống — không hàng ẩn, không giá nhập. Giao diện danh mục mới: <Link href="/nam">Áo Thun Nam & Polo</Link>.</p>
       <form method="get" className={mgmt.toolbar} aria-label="Lọc sản phẩm">
         <label>
           Tìm theo tên
@@ -96,11 +96,14 @@ function CatalogInner() {
       {error && (
         <section className={account.card} aria-label="Lỗi tải">
           <p className={account.greeting}>Không tải được danh sách</p>
-          <p className={account.muted}>{error}</p>
+          <p className={account.muted}>{error} Bộ lọc đã giữ nguyên — bấm thử lại.</p>
+          <button className={account.primary} type="button" onClick={() => setReloadKey((k) => k + 1)}>
+            Thử lại
+          </button>
         </section>
       )}
       {data && data.data.length === 0 && (
-        <p className={account.muted}>Chưa có sản phẩm nào đang bán phù hợp.</p>
+        <p className={account.muted}>Chưa có sản phẩm nào đang bán phù hợp — thử nới điều kiện tìm.</p>
       )}
       {data && data.data.length > 0 && (
         <>
@@ -164,12 +167,10 @@ function buildQuery(q: string, maDanhMuc: string, page: number): string {
 
 export default function CatalogPage() {
   return (
-    <div>
-      <SiteHeader />
+    <StorefrontShell active="/nam" previewNote="Trang Catalog giữ nguyên luồng dữ liệu thật; giao diện danh mục mới nằm ở /nam.">
       <Suspense fallback={<p>Đang tải…</p>}>
         <CatalogInner />
       </Suspense>
-      <SiteFooter />
-    </div>
+    </StorefrontShell>
   );
 }

@@ -3,7 +3,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { unwrap, vnd, trangThaiTaiKhoan, trangThaiSanPham } from "../src/lib/mgmt-client.ts";
+import { beWrite, unwrap, vnd, trangThaiTaiKhoan, trangThaiSanPham } from "../src/lib/mgmt-client.ts";
 
 function jsonResponse(status, payload) {
   return new Response(JSON.stringify(payload), {
@@ -61,5 +61,43 @@ describe("unwrap", () => {
       headers: { "content-type": "text/html" },
     });
     await assert.rejects(() => unwrap(response), /HTTP 502/);
+  });
+});
+
+describe("beWrite CSRF gate (parity whWrite)", () => {
+  it("csrf 401 → chặn write bằng 401, không gọi upstream", async () => {
+    let upstreamHit = 0;
+    globalThis.fetch = (async (url) => {
+      if (url === "/api/auth/csrf") return new Response("{}", { status: 401 });
+      upstreamHit += 1;
+      return new Response("{}", { status: 200 });
+    });
+    try {
+      const r = await beWrite("v1/danh-muc", "POST", { tenDanhMuc: "X" });
+      assert.equal(r.status, 401);
+      assert.equal(upstreamHit, 0);
+    } finally {
+      // @ts-expect-error restore
+      delete globalThis.fetch;
+    }
+  });
+
+  it("csrf 200 sai envelope → 502, không gọi upstream", async () => {
+    let upstreamHit = 0;
+    globalThis.fetch = (async (url) => {
+      if (url === "/api/auth/csrf") {
+        return new Response(JSON.stringify({ success: true, code: 200, result: { nope: 1 } }), { status: 200 });
+      }
+      upstreamHit += 1;
+      return new Response("{}", { status: 200 });
+    });
+    try {
+      const r = await beWrite("v1/danh-muc", "POST", { tenDanhMuc: "X" });
+      assert.equal(r.status, 502);
+      assert.equal(upstreamHit, 0);
+    } finally {
+      // @ts-expect-error restore
+      delete globalThis.fetch;
+    }
   });
 });

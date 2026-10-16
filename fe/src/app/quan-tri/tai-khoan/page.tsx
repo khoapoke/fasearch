@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MgmtShell } from "@/components/mgmt/mgmt-shell";
-import account from "@/components/account/account.module.css";
-import mgmt from "@/components/mgmt/mgmt.module.css";
-import { beFetch, beWrite, trangThaiTaiKhoan, unwrap, type Page } from "@/lib/mgmt-client";
+import { Icon } from "@/components/ui/icon";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { beFetch, beWrite, unwrap, type Page } from "@/lib/mgmt-client";
 
 type AdminAccount = {
   maTk: number;
@@ -19,10 +18,30 @@ type AdminAccount = {
 
 type Notice = { kind: "ok" | "err"; text: string } | null;
 
-function profileLabel(row: AdminAccount): string {
+function profileName(row: AdminAccount): string {
   if (row.nhanVien) return `${row.nhanVien.ho ?? ""} ${row.nhanVien.ten}`.trim();
   if (row.khachHang) return row.khachHang.hoTen;
+  return row.tenDangNhap;
+}
+
+function profilePhone(row: AdminAccount): string {
+  if (row.nhanVien) return row.nhanVien.sdt;
+  if (row.khachHang) return row.khachHang.sdt;
   return "—";
+}
+
+const AVATAR_COLORS = ["#4338ca", "#0ea5e9", "#d97706", "#059669", "#64748b", "#dc2626"];
+
+function avatarColor(name: string): string {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 997;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export default function AdminAccountsPage() {
@@ -98,173 +117,174 @@ export default function AdminAccountsPage() {
   }
 
   return (
-    <MgmtShell
-      title="Quản trị tài khoản"
-      lede="Danh sách, tạo, sửa, khóa/xóa mềm, đặt lại mật khẩu và thu hồi phiên (FR01–07). Xóa là xóa mềm — không mất lịch sử."
-      need={["ADMIN"]}
+    <AdminShell
+      active="accounts"
+      crumbs={[{ label: "Hệ thống" }, { label: "Quản trị tài khoản" }, { label: "Danh sách tài khoản" }]}
+      title="Quản trị tài khoản người dùng"
+      tag="ENTERPRISE IAM"
+      lede="Quản lý tài khoản truy cập, phân quyền theo vai trò (ADMIN/STAFF/CUSTOMER), kiểm soát trạng thái và giám sát phiên vận hành hệ thống FashionSearch AI."
+      actions={
+        <>
+          <button className="adBtn" type="button">
+            <Icon name="upload" size={16} /> Xuất dữ liệu
+          </button>
+          <button className="adBtn adBtnPrimary" type="button" onClick={() => setShowCreate((v) => !v)}>
+            <Icon name="plus" size={16} /> {showCreate ? "Đóng form tạo" : "Thêm tài khoản mới"}
+          </button>
+        </>
+      }
     >
-      <form
-        className={mgmt.toolbar}
-        onSubmit={(e) => {
-          e.preventDefault();
-          setPage(0);
-          reload();
-        }}
-      >
-        <label>
-          Tìm (tên/username/SĐT/email)
-          <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={100} />
-        </label>
-        <label>
-          Vai trò
-          <select value={vaiTro} onChange={(e) => setVaiTro(e.target.value)}>
-            <option value="">Tất cả</option>
+      <section className="adStats" aria-label="Tổng quan tài khoản">
+        <div className="adStat">
+          <div><p>Tổng tài khoản</p><b>{data?.totalElements ?? "…"}</b><small className="adStatOk">Máy chủ trực tiếp</small></div>
+          <span className="adStatIco"><Icon name="user" size={22} /></span>
+        </div>
+        <div className="adStat">
+          <div><p>Vai trò hỗ trợ</p><b>3</b><small>ADMIN · STAFF · CUSTOMER</small></div>
+          <span className="adStatIco"><Icon name="shield" size={22} /></span>
+        </div>
+        <div className="adStat">
+          <div><p>Hoạt động (trang này)</p><b>{data ? data.data.filter((r) => r.trangThai === "HOAT_DONG").length : "…"}</b><small className="adStatOk">Khả dụng ổn định</small></div>
+          <span className="adStatIco"><Icon name="check" size={22} /></span>
+        </div>
+        <div className="adStat">
+          <div><p>Khóa/xóa (trang này)</p><b>{data ? data.data.filter((r) => r.trangThai !== "HOAT_DONG").length : "…"}</b><small className="adStatBad">Cần kiểm tra</small></div>
+          <span className="adStatIco"><Icon name="lock" size={22} /></span>
+        </div>
+      </section>
+
+      {showCreate && <CreateForm onDone={() => { setShowCreate(false); reload(); }} />}
+
+      <div className="adCard">
+        <form
+          className="adFilters"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setPage(0);
+            reload();
+          }}
+        >
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            maxLength={100}
+            placeholder="Họ tên, username, email, SĐT…"
+            aria-label="Tìm tài khoản"
+          />
+          <select value={vaiTro} onChange={(e) => setVaiTro(e.target.value)} aria-label="Vai trò">
+            <option value="">Tất cả vai trò</option>
             <option value="ADMIN">ADMIN</option>
             <option value="STAFF">STAFF</option>
             <option value="CUSTOMER">CUSTOMER</option>
           </select>
-        </label>
-        <label>
-          Trạng thái
-          <select value={trangThai} onChange={(e) => setTrangThai(e.target.value)}>
-            <option value="">Tất cả</option>
+          <select value={trangThai} onChange={(e) => setTrangThai(e.target.value)} aria-label="Trạng thái">
+            <option value="">Tất cả trạng thái</option>
             <option value="HOAT_DONG">Hoạt động</option>
             <option value="KHOA">Đã khóa</option>
             <option value="DA_XOA">Đã xóa</option>
           </select>
-        </label>
-        <button className={account.primary} type="submit">
-          Lọc
-        </button>
-        <button type="button" className={account.secondary} onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? "Đóng form tạo" : "Tạo tài khoản"}
-        </button>
-      </form>
+          <button className="adBtn" type="submit">Lọc</button>
+        </form>
+        {notice ? (
+          <p className="adMono" role={notice.kind === "err" ? "alert" : "status"} style={{ marginTop: 10, color: notice.kind === "err" ? "#ba1a1a" : "#047857" }}>
+            {notice.kind === "err" ? "Lỗi: " : "OK: "}{notice.text}
+          </p>
+        ) : null}
+      </div>
 
-      {notice && (
-        <p className={account.muted} role={notice.kind === "err" ? "alert" : "status"}>
-          {notice.kind === "err" ? "Lỗi: " : "OK: "}
-          {notice.text}
-        </p>
-      )}
-      {showCreate && <CreateForm onDone={() => { setShowCreate(false); reload(); }} />}
-
-      {!data && <p className={account.muted}>Đang tải…</p>}
-      {data && data.data.length === 0 && <p className={account.muted}>Không có tài khoản nào.</p>}
-      {data && data.data.length > 0 && (
-        <>
-          <div className={mgmt.tableWrap}>
-            <table className={mgmt.table}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Username / Email</th>
-                  <th>Hồ sơ</th>
-                  <th>Vai trò</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.data.map((row) => (
-                  <tr key={row.maTk}>
-                    <td>{row.maTk}</td>
-                    <td>
-                      <b>{row.tenDangNhap}</b>
-                      <br />
-                      {row.email}
-                    </td>
-                    <td>{profileLabel(row)}</td>
-                    <td>{row.tenVaiTro}</td>
-                    <td>
-                      <span
-                        className={
-                          row.trangThai === "HOAT_DONG"
-                            ? mgmt.badge
-                            : row.trangThai === "KHOA"
-                              ? mgmt.badge + " " + mgmt.badgeWarn
-                              : mgmt.badge + " " + mgmt.badgeMuted
-                        }
-                      >
-                        {trangThaiTaiKhoan(row.trangThai)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={mgmt.rowActions}>
-                        <EditForm row={row} onDone={reload} />
-                        {row.trangThai === "HOAT_DONG" && (
-                          <button
-                            className={mgmt.linkButton}
-                            disabled={busyId === row.maTk}
-                            onClick={() =>
-                              act(row.maTk, "/khoa", "POST", `Khóa ${row.tenDangNhap}? Phiên hiện tại hết hiệu lực ngay.`)
-                            }
-                          >
-                            Khóa
-                          </button>
-                        )}
-                        {row.trangThai === "KHOA" && (
-                          <button
-                            className={mgmt.linkButton}
-                            disabled={busyId === row.maTk}
-                            onClick={() => act(row.maTk, "/mo-khoa", "POST", `Mở khóa ${row.tenDangNhap}?`)}
-                          >
-                            Mở khóa
-                          </button>
-                        )}
-                        {row.trangThai !== "DA_XOA" && (
-                          <button
-                            className={mgmt.linkButton + " " + mgmt.danger}
-                            disabled={busyId === row.maTk}
-                            onClick={() =>
-                              act(row.maTk, "", "DELETE", `XÓA MỀM ${row.tenDangNhap}? Không đăng nhập được nữa. ADMIN cuối được bảo vệ.`)
-                            }
-                          >
-                            Xóa
-                          </button>
-                        )}
-                        <button
-                          className={mgmt.linkButton}
-                          disabled={busyId === row.maTk}
-                          onClick={() => resetPassword(row.maTk, row.tenDangNhap)}
-                        >
-                          Đặt MK
-                        </button>
-                        <button
-                          className={mgmt.linkButton}
-                          disabled={busyId === row.maTk}
-                          onClick={() =>
-                            act(row.maTk, "/phien", "DELETE", `Thu hồi mọi phiên của ${row.tenDangNhap}?`)
-                          }
-                        >
-                          Thu hồi phiên
-                        </button>
-                      </div>
-                    </td>
+      <div className="adCard">
+        {!data ? (
+          <p className="adState" role="status">Đang tải danh sách tài khoản…</p>
+        ) : data.data.length === 0 ? (
+          <p className="adState">Không có tài khoản nào khớp bộ lọc.</p>
+        ) : (
+          <>
+            <div className="adTableWrap">
+              <table className="adTable">
+                <thead>
+                  <tr>
+                    <th>Họ tên</th>
+                    <th>Email &amp; tài khoản</th>
+                    <th>Số điện thoại</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={mgmt.pager}>
-            <span>
-              Trang {data.page + 1}/{Math.max(data.totalPages, 1)} — {data.totalElements} tài khoản
-            </span>
-            {page > 0 && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page - 1)}>
-                Trước
-              </button>
-            )}
-            {page + 1 < data.totalPages && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page + 1)}>
-                Sau
-              </button>
-            )}
-          </div>
-        </>
-      )}
-    </MgmtShell>
+                </thead>
+                <tbody>
+                  {data.data.map((row) => {
+                    const name = profileName(row);
+                    return (
+                      <tr key={row.maTk}>
+                        <td>
+                          <span className="adWho">
+                            <span className="adAvatar" style={{ background: avatarColor(name) }} aria-hidden="true">
+                              {initialsOf(name)}
+                            </span>
+                            <b>{name}</b>
+                          </span>
+                        </td>
+                        <td>
+                          <span className="adMono">{row.email}</span>
+                          <br />
+                          <span className="adMono" style={{ color: "#4338ca" }}>@{row.tenDangNhap}</span>
+                        </td>
+                        <td className="adMono">{profilePhone(row)}</td>
+                        <td><span className="adRole">{roleLabel(row.tenVaiTro)}</span></td>
+                        <td>
+                          {row.trangThai === "HOAT_DONG" ? (
+                            <span className="adStatusLive">Hoạt động</span>
+                          ) : row.trangThai === "KHOA" ? (
+                            <span className="adStatusLock">Đã khóa</span>
+                          ) : (
+                            <span className="adMono">Đã xóa</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="adRowBtns">
+                            <EditForm row={row} onDone={reload} />
+                            {row.trangThai === "HOAT_DONG" ? (
+                              <button className="adBtn" type="button" disabled={busyId === row.maTk}
+                                onClick={() => act(row.maTk, "/khoa", "POST", `Khóa ${row.tenDangNhap}? Phiên hiện tại hết hiệu lực ngay.`)}>Khóa</button>
+                            ) : row.trangThai === "KHOA" ? (
+                              <button className="adBtn" type="button" disabled={busyId === row.maTk}
+                                onClick={() => act(row.maTk, "/mo-khoa", "POST", `Mở khóa ${row.tenDangNhap}?`)}>Mở khóa</button>
+                            ) : null}
+                            {row.trangThai !== "DA_XOA" ? (
+                              <button className="adBtn" type="button" disabled={busyId === row.maTk}
+                                onClick={() => act(row.maTk, "", "DELETE", `XÓA MỀM ${row.tenDangNhap}? Không đăng nhập được nữa. ADMIN cuối được bảo vệ.`)}>Xóa</button>
+                            ) : null}
+                            <button className="adBtn" type="button" disabled={busyId === row.maTk}
+                              onClick={() => resetPassword(row.maTk, row.tenDangNhap)}>Đặt MK</button>
+                            <button className="adBtn" type="button" disabled={busyId === row.maTk}
+                              onClick={() => act(row.maTk, "/phien", "DELETE", `Thu hồi mọi phiên của ${row.tenDangNhap}?`)}>Thu hồi phiên</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="adPager">
+              <span className="adMono">Hiển thị {data.data.length} trong số {data.totalElements} kết quả</span>
+              {page > 0 ? <button className="adBtn" type="button" onClick={() => setPage(page - 1)}>‹</button> : null}
+              <span className="pg" aria-current="page">{page + 1}</span>
+              {page + 1 < data.totalPages ? <button className="adBtn" type="button" onClick={() => setPage(page + 1)}>›</button> : null}
+            </div>
+          </>
+        )}
+      </div>
+      <p className="adNote">Chính sách kiểm soát quyền (RBAC) áp dụng đúng 3 vai trò máy chủ: ADMIN · STAFF · CUSTOMER. Mọi thao tác khóa/xóa/đặt lại mật khẩu đều ghi audit.</p>
+    </AdminShell>
   );
+}
+
+function roleLabel(role: string): string {
+  if (role === "ADMIN") return "Quản trị viên";
+  if (role === "STAFF") return "Nhân viên";
+  return "Khách hàng";
 }
 
 function CreateForm({ onDone }: { onDone: () => void }) {
@@ -309,62 +329,31 @@ function CreateForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <section className={account.card} aria-label="Tạo tài khoản">
-      <p className={account.greeting}>Tạo tài khoản + hồ sơ (nguyên tử)</p>
+    <section className="adCard" aria-label="Tạo tài khoản">
+      <h2 style={{ fontSize: 15 }}>Tạo tài khoản + hồ sơ (nguyên tử)</h2>
       <form
-        className={mgmt.formGrid}
+        className="adFilters"
+        style={{ marginTop: 10 }}
         onSubmit={(e) => {
           e.preventDefault();
           submit(new FormData(e.currentTarget));
         }}
       >
-        <label>
-          Loại hồ sơ
-          <select value={kind} onChange={(e) => setKind(e.target.value as "CUSTOMER" | "STAFF")}>
-            <option value="CUSTOMER">Khách hàng</option>
-            <option value="STAFF">Nhân viên (STAFF)</option>
-          </select>
-        </label>
-        <label>
-          Tên đăng nhập*
-          <input name="tenDangNhap" required minLength={3} maxLength={50} />
-        </label>
-        <label>
-          Mật khẩu* (≥15 ký tự)
-          <input name="matKhau" type="password" required minLength={15} maxLength={64} />
-        </label>
-        <label>
-          Email*
-          <input name="email" type="email" required maxLength={100} />
-        </label>
-        <label>
-          Họ
-          <input name="ho" maxLength={50} />
-        </label>
-        <label>
-          Tên*
-          <input name="ten" required maxLength={50} />
-        </label>
-        <label>
-          SĐT*
-          <input name="sdt" required maxLength={15} />
-        </label>
-        {kind === "STAFF" && (
-          <label>
-            CCCD* (nhân viên bắt buộc)
-            <input name="cccd" required maxLength={20} />
-          </label>
-        )}
-        <div className={mgmt.fullRow}>
-          <button className={account.primary} type="submit" disabled={saving}>
-            {saving ? "Đang tạo…" : "Tạo tài khoản"}
-          </button>
-          {error && (
-            <p className={account.muted} role="alert">
-              Lỗi: {error}
-            </p>
-          )}
-        </div>
+        <select value={kind} onChange={(e) => setKind(e.target.value as "CUSTOMER" | "STAFF")} aria-label="Loại hồ sơ">
+          <option value="CUSTOMER">Khách hàng</option>
+          <option value="STAFF">Nhân viên (STAFF)</option>
+        </select>
+        <input name="tenDangNhap" required minLength={3} maxLength={50} placeholder="Tên đăng nhập*" aria-label="Tên đăng nhập" />
+        <input name="matKhau" type="password" required minLength={15} maxLength={64} placeholder="Mật khẩu* (≥15 ký tự)" aria-label="Mật khẩu" />
+        <input name="email" type="email" required maxLength={100} placeholder="Email*" aria-label="Email" />
+        <input name="ho" maxLength={50} placeholder="Họ" aria-label="Họ" />
+        <input name="ten" required maxLength={50} placeholder="Tên*" aria-label="Tên" />
+        <input name="sdt" required maxLength={15} placeholder="SĐT*" aria-label="SĐT" />
+        {kind === "STAFF" ? <input name="cccd" required maxLength={20} placeholder="CCCD* (nhân viên)" aria-label="CCCD" /> : null}
+        <button className="adBtn adBtnPrimary" type="submit" disabled={saving}>
+          {saving ? "Đang tạo…" : "Tạo tài khoản"}
+        </button>
+        {error ? <p role="alert" style={{ color: "#ba1a1a", fontSize: 13 }}>Lỗi: {error}</p> : null}
       </form>
     </section>
   );
@@ -397,7 +386,7 @@ function EditForm({ row, onDone }: { row: AdminAccount; onDone: () => void }) {
 
   if (!open) {
     return (
-      <button className={mgmt.linkButton} onClick={() => setOpen(true)}>
+      <button className="adBtn" type="button" onClick={() => setOpen(true)}>
         Sửa
       </button>
     );
@@ -410,27 +399,19 @@ function EditForm({ row, onDone }: { row: AdminAccount; onDone: () => void }) {
       }}
       style={{ display: "grid", gap: 6, minWidth: 220 }}
     >
-      <label>
-        Email
-        <input name="email" type="email" defaultValue={row.email} maxLength={100} />
-      </label>
-      <label>
-        Vai trò (hiệu lực ngay)
-        <select name="vaiTro" defaultValue={row.tenVaiTro}>
-          <option value="ADMIN">ADMIN</option>
-          <option value="STAFF">STAFF</option>
-          <option value="CUSTOMER">CUSTOMER</option>
-        </select>
-      </label>
-      <div className={mgmt.rowActions}>
-        <button className={mgmt.linkButton} type="submit" disabled={saving}>
+      <input name="email" type="email" defaultValue={row.email} maxLength={100} aria-label="Email" />
+      <select name="vaiTro" defaultValue={row.tenVaiTro} aria-label="Vai trò">
+        <option value="ADMIN">ADMIN</option>
+        <option value="STAFF">STAFF</option>
+        <option value="CUSTOMER">CUSTOMER</option>
+      </select>
+      <div className="adRowBtns">
+        <button className="adBtn adBtnPrimary" type="submit" disabled={saving}>
           {saving ? "Đang lưu…" : "Lưu"}
         </button>
-        <button className={mgmt.linkButton} type="button" onClick={() => setOpen(false)}>
-          Hủy
-        </button>
+        <button className="adBtn" type="button" onClick={() => setOpen(false)}>Hủy</button>
       </div>
-      {error && <span role="alert">{error}</span>}
+      {error ? <span role="alert" style={{ fontSize: 12 }}>{error}</span> : null}
     </form>
   );
 }

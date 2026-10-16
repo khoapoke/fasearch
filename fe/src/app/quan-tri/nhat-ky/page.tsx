@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MgmtShell } from "@/components/mgmt/mgmt-shell";
-import account from "@/components/account/account.module.css";
-import mgmt from "@/components/mgmt/mgmt.module.css";
+import { Icon } from "@/components/ui/icon";
+import { AdminShell } from "@/components/admin/admin-shell";
 import { beFetch, unwrap, type Page } from "@/lib/mgmt-client";
 
 type Audit = {
@@ -18,6 +17,7 @@ type Audit = {
 export default function AuditPage() {
   const [hanhDong, setHanhDong] = useState("");
   const [page, setPage] = useState(0);
+  const [openId, setOpenId] = useState<number | null>(null);
   const [data, setData] = useState<Page<Audit> | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -49,13 +49,21 @@ export default function AuditPage() {
   }, [hanhDong, page, reloadKey]);
 
   return (
-    <MgmtShell
+    <AdminShell
+      active="audit"
+      crumbs={[{ label: "Hệ thống" }, { label: "Nhật ký hệ thống" }]}
       title="Nhật ký hệ thống"
-      lede="Vết Thêm/Sửa/Xóa của quản trị (FR07). Mới nhất trước; không chứa mật khẩu/hash/token."
-      need={["ADMIN"]}
+      tag="AUDIT TRAIL · LIVE"
+      lede="Vết Thêm/Sửa/Xóa của quản trị. Mới nhất trước; không chứa mật khẩu/hash/token."
+      actions={
+        <button className="adBtn" type="button" onClick={reload}>
+          <Icon name="refresh" size={16} /> Làm mới
+        </button>
+      }
     >
+      <div className="adCard">
       <form
-        className={mgmt.toolbar}
+        className="adFilters"
         onSubmit={(e) => {
           e.preventDefault();
           setPage(0);
@@ -71,21 +79,22 @@ export default function AuditPage() {
             maxLength={60}
           />
         </label>
-        <button className={account.primary} type="submit">
+        <button className="adBtn adBtnPrimary" type="submit">
           Lọc
         </button>
       </form>
       {notice && (
-        <p className={account.muted} role="alert">
+        <p className="adMono" role="alert" style={{ color: "#ba1a1a" }}>
           Lỗi: {notice}
         </p>
       )}
-      {!data && <p className={account.muted}>Đang tải…</p>}
-      {data && data.data.length === 0 && <p className={account.muted}>Chưa có vết nào.</p>}
+      {!data && <p className="adState" role="status">Đang tải nhật ký…</p>}
+      {data && data.data.length === 0 && <p className="adState">Chưa có vết nào.</p>}
+      </div>
       {data && data.data.length > 0 && (
-        <>
-          <div className={mgmt.tableWrap}>
-            <table className={mgmt.table}>
+      <div className="adCard">
+          <div className="adTableWrap">
+            <table className="adTable">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -98,39 +107,53 @@ export default function AuditPage() {
               <tbody>
                 {data.data.map((row) => (
                   <tr key={row.maNhatKy}>
-                    <td>{row.maNhatKy}</td>
+                    <td><button className="adBtn" style={{ padding: "4px 10px", fontSize: 12 }} aria-expanded={openId === row.maNhatKy} onClick={() => setOpenId(openId === row.maNhatKy ? null : row.maNhatKy)}>#{row.maNhatKy}</button></td>
                     <td>{new Date(row.thoiGian).toLocaleString("vi-VN")}</td>
                     <td>
                       {row.tenDangNhap ?? `#${row.maTk ?? "?"}`}
                     </td>
                     <td>
-                      <span className={mgmt.badge}>{row.hanhDong}</span>
+                      <span className="adRole">{row.hanhDong}</span>
                     </td>
                     <td style={{ maxWidth: 420, overflowWrap: "anywhere" }}>
-                      {row.duLieuThayDoi ?? "—"}
+                      {(row.duLieuThayDoi ?? "—").slice(0, 90)}
+                      <div className="collapse" data-open={openId === row.maNhatKy}>
+                        <div>
+                          <pre className="adMono" style={{ whiteSpace: "pre-wrap", fontSize: 11.5, background: "#f4f2ff", borderRadius: 8, padding: 10, marginTop: 6 }}>{prettyAudit(row.duLieuThayDoi)}</pre>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className={mgmt.pager}>
-            <span>
+          <div className="adPager">
+            <span className="adMono">
               Trang {data.page + 1}/{Math.max(data.totalPages, 1)} — {data.totalElements} vết
             </span>
             {page > 0 && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page - 1)}>
+              <button className="adBtn" type="button" onClick={() => setPage(page - 1)}>
                 Trước
               </button>
             )}
             {page + 1 < data.totalPages && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page + 1)}>
+              <button className="adBtn" type="button" onClick={() => setPage(page + 1)}>
                 Sau
               </button>
             )}
           </div>
-        </>
+      </div>
       )}
-    </MgmtShell>
+    </AdminShell>
   );
+}
+
+function prettyAudit(raw: string | null): string {
+  if (!raw) return "—";
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2).slice(0, 2000);
+  } catch {
+    return raw.slice(0, 2000);
+  }
 }

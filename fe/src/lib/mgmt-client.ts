@@ -47,8 +47,34 @@ export async function beWrite(
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown,
 ): Promise<Response> {
-  const csrf = await fetch("/api/auth/csrf", { cache: "no-store" }).then((r) => r.json());
-  const token = (csrf as Envelope<{ headerName: string; token: string }>).result;
+  // Validate CSRF trước khi ghi: hết phiên/toàn cục lỗi đều chặn write sớm
+  // với 401/502 trung thực, không gửi request biến dạng (parity với whWrite).
+  let token: { headerName: string; token: string };
+  try {
+    const csrfRaw = await fetch("/api/auth/csrf", { cache: "no-store" });
+    if (!csrfRaw.ok) {
+      return Response.json(
+        { success: false, code: 401, message: "Phiên đăng nhập đã hết hiệu lực. Đăng nhập lại trước khi thay đổi dữ liệu.", result: null },
+        { status: 401 },
+      );
+    }
+    const csrf = (await csrfRaw.json()) as {
+      success?: boolean;
+      result?: { headerName?: unknown; token?: unknown };
+    };
+    if (!csrf || csrf.success !== true || typeof csrf.result?.headerName !== "string" || typeof csrf.result?.token !== "string") {
+      return Response.json(
+        { success: false, code: 502, message: "Không lấy được mã CSRF. Thử lại.", result: null },
+        { status: 502 },
+      );
+    }
+    token = { headerName: csrf.result.headerName, token: csrf.result.token };
+  } catch {
+    return Response.json(
+      { success: false, code: 502, message: "Không kết nối được máy chủ xác thực.", result: null },
+      { status: 502 },
+    );
+  }
   const headers: Record<string, string> = { [token.headerName]: token.token };
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { SiteFooter } from "@/components/stitch-search/site-footer";
-import { SiteHeader } from "@/components/stitch-search/site-header";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import styles from "@/components/account/account.module.css";
 
 export const metadata = {
@@ -13,8 +12,7 @@ export const metadata = {
 // notice instead of a dead-end form.
 export default function RegisterPage() {
   return (
-    <div>
-      <SiteHeader />
+    <StorefrontShell active="/tai-khoan">
       <main className={styles.layout}>
         <p className={styles.kicker}>Tài khoản</p>
         <h1>Tạo tài khoản</h1>
@@ -31,7 +29,6 @@ export default function RegisterPage() {
           </section>
         </div>
       </main>
-      <SiteFooter />
-    </div>
+    </StorefrontShell>
   );
 }

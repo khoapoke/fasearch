@@ -58,7 +58,15 @@ export function safeAccountReturnHref(raw: string | null): string {
   const allowed =
     canonical === "/" ||
     canonical === "/tai-khoan" ||
-    canonical.startsWith("/tai-khoan/");
+    canonical.startsWith("/tai-khoan/") ||
+    canonical === "/tim-kiem-ai" ||
+    canonical === "/gio-hang" ||
+    canonical === "/thanh-toan" ||
+    canonical === "/don-hang" ||
+    canonical.startsWith("/don-hang/") ||
+    canonical === "/kenh-ban/pos" ||
+    canonical === "/kenh-ban/don-hang" ||
+    canonical.startsWith("/kenh-ban/don-hang/");
   if (!allowed) return fallback;
   return raw;
 }

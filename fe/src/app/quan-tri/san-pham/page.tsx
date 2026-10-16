@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MgmtShell } from "@/components/mgmt/mgmt-shell";
-import account from "@/components/account/account.module.css";
-import mgmt from "@/components/mgmt/mgmt.module.css";
+import { MerchantShell } from "@/components/merchant/merchant-shell";
 import {
   beFetch,
   beWrite,
@@ -97,135 +95,116 @@ export default function ProductsPage() {
   }
 
   return (
-    <MgmtShell
-      title="Quản lý sản phẩm"
-      lede="Danh sách, lọc thật, tạo/sửa/ẩn/xóa mềm sản phẩm (FR09–12). Giá nhập quản trị thấy, catalog công khai không."
-      need={["ADMIN", "STAFF"]}
+    <MerchantShell
+      active="products"
+      topActions={
+        <button className="mpTopBtn primary" type="button" onClick={() => setShowCreate((v) => !v)}>
+          + {showCreate ? "Đóng form tạo" : "Tạo sản phẩm"}
+        </button>
+      }
     >
-      <form
-        className={mgmt.toolbar}
-        onSubmit={(e) => {
-          e.preventDefault();
-          setPage(0);
-          reload();
-        }}
-      >
-        <label>
-          Tìm theo tên
-          <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={100} />
-        </label>
-        <label>
-          Danh mục
-          <select value={maDanhMuc} onChange={(e) => setMaDanhMuc(e.target.value)}>
-            <option value="">Tất cả</option>
+      <div className="mpCard">
+        <h2>Quản lý sản phẩm</h2>
+        <p className="mpMuted">Danh sách, lọc thật, tạo/sửa/ẩn/xóa mềm. Giá nhập quản trị thấy, catalog công khai không.</p>
+        <form
+          style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            setPage(0);
+            reload();
+          }}
+        >
+          <div className="mpSearch" style={{ maxWidth: 300 }}>
+            <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={100} placeholder="Tìm theo tên…" aria-label="Tìm theo tên" />
+          </div>
+          <select value={maDanhMuc} onChange={(e) => setMaDanhMuc(e.target.value)} aria-label="Danh mục" style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "9px 12px", fontSize: 13 }}>
+            <option value="">Tất cả cấp bậc</option>
             {categories.map((c) => (
               <option key={c.maDanhMuc} value={c.maDanhMuc}>
                 {c.tenDanhMuc}
               </option>
             ))}
           </select>
-        </label>
-        <button className={account.primary} type="submit">
-          Lọc
-        </button>
-        <button type="button" className={account.secondary} onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? "Đóng form tạo" : "Tạo sản phẩm"}
-        </button>
-      </form>
-      {notice && (
-        <p className={account.muted} role="alert">
-          Lỗi: {notice}
-        </p>
-      )}
-      {showCreate && (
-        <CreateForm categories={categories} onDone={() => { setShowCreate(false); reload(); }} />
-      )}
-      {!data && <p className={account.muted}>Đang tải…</p>}
-      {data && data.data.length === 0 && <p className={account.muted}>Không có sản phẩm nào.</p>}
-      {data && data.data.length > 0 && (
-        <>
-          <div className={mgmt.tableWrap}>
-            <table className={mgmt.table}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Tên / Danh mục</th>
-                  <th>Giá bán / Giá nhập</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.data.map((row) => (
-                  <tr key={row.maSp}>
-                    <td>{row.maSp}</td>
-                    <td>
-                      <b>{row.tenSp}</b>
-                      <br />
-                      {row.tenDanhMuc ?? "—"}
-                      {row.coHinhAnh ? " · có ảnh" : ""}
-                    </td>
-                    <td>
-                      {vnd(row.giaBan)}
-                      <br />
-                      Nhập: {row.giaNhap === null ? "chưa có" : vnd(row.giaNhap)}
-                    </td>
-                    <td>
-                      <span
-                        className={
-                          row.daXoa
-                            ? mgmt.badge + " " + mgmt.badgeMuted
-                            : row.trangThai === "DANG_BAN"
-                              ? mgmt.badge
-                              : mgmt.badge + " " + mgmt.badgeWarn
-                        }
-                      >
-                        {row.daXoa ? "Đã xóa" : trangThaiSanPham(row.trangThai)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={mgmt.rowActions}>
-                        <Link className={mgmt.linkButton} href={`/quan-tri/san-pham/${row.maSp}`}>
-                          Chi tiết
-                        </Link>
-                        {!row.daXoa && (
-                          <>
-                            <button className={mgmt.linkButton} onClick={() => toggleHide(row)}>
-                              {row.trangThai === "DANG_BAN" ? "Tạm ẩn" : "Hiện lại"}
-                            </button>
-                            <button
-                              className={mgmt.linkButton + " " + mgmt.danger}
-                              onClick={() => softDelete(row)}
-                            >
-                              Xóa
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+          <button className="mpTopBtn primary" type="submit">Lọc</button>
+        </form>
+        {notice ? <p className="mpMuted" role="alert" style={{ color: "#ba1a1a", marginTop: 8 }}>Lỗi: {notice}</p> : null}
+      </div>
+
+      {showCreate && <CreateForm categories={categories} onDone={() => { setShowCreate(false); reload(); }} />}
+
+      <div className="mpCard">
+        {!data ? (
+          <p className="mpMuted" role="status">Đang tải…</p>
+        ) : data.data.length === 0 ? (
+          <p className="mpMuted">Không có sản phẩm nào.</p>
+        ) : (
+          <>
+            <div className="mpTableWrap">
+              <table className="mpTable">
+                <thead>
+                  <tr>
+                    <th>Ảnh</th>
+                    <th>Tên / Danh mục</th>
+                    <th>Giá bán / Giá nhập</th>
+                    <th>Trạng thái</th>
+                    <th style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={mgmt.pager}>
-            <span>
+                </thead>
+                <tbody>
+                  {data.data.map((row) => (
+                    <tr key={row.maSp}>
+                      <td>
+                        {row.coHinhAnh ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className="mpThumb" src={`/api/be/v1/san-pham/${row.maSp}/hinh-anh`} alt="" loading="lazy" />
+                        ) : (
+                          <span className="mpThumb" aria-label="Chưa có ảnh" />
+                        )}
+                      </td>
+                      <td>
+                        <b>{row.tenSp}</b>
+                        <p className="mpMuted">{row.tenDanhMuc ?? "—"}{row.coHinhAnh ? " · có ảnh" : ""}</p>
+                      </td>
+                      <td>
+                        {vnd(row.giaBan)}
+                        <p className="mpMuted">Nhập: {row.giaNhap === null ? "chưa có" : vnd(row.giaNhap)}</p>
+                      </td>
+                      <td>
+                        <span className={"mpPill" + (row.daXoa ? "" : row.trangThai === "DANG_BAN" ? " mpPillLive" : " mpPillWarn")}>
+                          {row.daXoa ? "Đã xóa" : trangThaiSanPham(row.trangThai)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="mpRowBtns" style={{ justifyContent: "flex-end" }}>
+                          <Link className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} href={`/quan-tri/san-pham/${row.maSp}`}>
+                            Chi tiết
+                          </Link>
+                          {!row.daXoa && (
+                            <>
+                              <button className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => toggleHide(row)}>
+                                {row.trangThai === "DANG_BAN" ? "Tạm ẩn" : "Hiện lại"}
+                              </button>
+                              <button className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => softDelete(row)}>
+                                Xóa
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mpMuted" style={{ marginTop: 10 }}>
               Trang {data.page + 1}/{Math.max(data.totalPages, 1)} — {data.totalElements} sản phẩm
-            </span>
-            {page > 0 && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page - 1)}>
-                Trước
-              </button>
-            )}
-            {page + 1 < data.totalPages && (
-              <button className={mgmt.linkButton} onClick={() => setPage(page + 1)}>
-                Sau
-              </button>
-            )}
-          </div>
-        </>
-      )}
-    </MgmtShell>
+              {page > 0 ? <button className="mpTopBtn" style={{ marginLeft: 8 }} onClick={() => setPage(page - 1)}>Trước</button> : null}
+              {page + 1 < data.totalPages ? <button className="mpTopBtn" style={{ marginLeft: 8 }} onClick={() => setPage(page + 1)}>Sau</button> : null}
+            </p>
+          </>
+        )}
+      </div>
+    </MerchantShell>
   );
 }
 
@@ -263,61 +242,53 @@ function CreateForm({
   }
 
   return (
-    <section className={account.card} aria-label="Tạo sản phẩm">
-      <p className={account.greeting}>Tạo sản phẩm mới (FR10 — bắt buộc giá nhập)</p>
+    <section className="mpCard" aria-label="Tạo sản phẩm">
+      <h2>Tạo sản phẩm mới (bắt buộc giá nhập)</h2>
       <form
-        className={mgmt.formGrid}
         onSubmit={(e) => {
           e.preventDefault();
           submit(new FormData(e.currentTarget));
         }}
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}
       >
-        <label className={mgmt.fullRow}>
+        <label style={{ gridColumn: "1/-1" }}>
           Tên sản phẩm*
-          <input name="tenSp" required maxLength={255} />
+          <input name="tenSp" required maxLength={255} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
         </label>
         <label>
           Danh mục*
-          <select name="maDanhMuc" required defaultValue="">
-            <option value="" disabled>
-              Chọn danh mục
-            </option>
+          <select name="maDanhMuc" required defaultValue="" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }}>
+            <option value="" disabled>Chọn danh mục</option>
             {categories.map((c) => (
-              <option key={c.maDanhMuc} value={c.maDanhMuc}>
-                {c.tenDanhMuc}
-              </option>
+              <option key={c.maDanhMuc} value={c.maDanhMuc}>{c.tenDanhMuc}</option>
             ))}
           </select>
         </label>
         <label>
           Giá bán (VND)*
-          <input name="giaBan" required inputMode="decimal" />
+          <input name="giaBan" required inputMode="decimal" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
         </label>
         <label>
           Giá nhập (VND)*
-          <input name="giaNhap" required inputMode="decimal" />
+          <input name="giaNhap" required inputMode="decimal" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
         </label>
         <label>
           Chất liệu
-          <input name="chatLieu" maxLength={100} />
+          <input name="chatLieu" maxLength={100} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
         </label>
         <label>
           Kiểu dáng
-          <input name="kieuDang" maxLength={100} />
+          <input name="kieuDang" maxLength={100} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
         </label>
-        <label className={mgmt.fullRow}>
+        <label style={{ gridColumn: "1/-1" }}>
           Mô tả
-          <textarea name="moTa" />
+          <textarea name="moTa" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
         </label>
-        <div className={mgmt.fullRow}>
-          <button className={account.primary} type="submit" disabled={saving}>
+        <div style={{ gridColumn: "1/-1" }}>
+          <button className="mpTopBtn primary" type="submit" disabled={saving}>
             {saving ? "Đang tạo…" : "Tạo sản phẩm"}
           </button>
-          {error && (
-            <p className={account.muted} role="alert">
-              Lỗi: {error}
-            </p>
-          )}
+          {error ? <p role="alert" style={{ color: "#ba1a1a", marginTop: 8 }}>Lỗi: {error}</p> : null}
         </div>
       </form>
     </section>

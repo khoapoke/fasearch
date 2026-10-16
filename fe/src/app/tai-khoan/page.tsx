@@ -1,21 +1,10 @@
-import { SiteFooter } from "@/components/stitch-search/site-footer";
-import { SiteHeader } from "@/components/stitch-search/site-header";
-import styles from "@/components/account/account.module.css";
-import { AccountHubShell } from "./hub";
+import { HubContent } from "./hub-content";
 
 export const metadata = {
-  title: "FaSearch — Tài khoản của tôi",
-  description: "Trung tâm quản lý tài khoản FaSearch.",
+  title: "Tài Khoản Của Tôi | FashionSearch AI",
+  description: "Trung tâm quản lý tài khoản FashionSearch AI.",
 };
 
 export default function AccountPage() {
-  return (
-    <div>
-      <SiteHeader />
-      <main className={styles.layout}>
-        <AccountHubShell />
-      </main>
-      <SiteFooter />
-    </div>
-  );
+  return <HubContent />;
 }

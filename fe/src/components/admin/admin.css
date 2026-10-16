@@ -1,0 +1,136 @@
+/* System admin console — navy sidebar + indigo accents (Stitch #13/#19). */
+
+.adFrame { display: grid; grid-template-columns: 264px 1fr; min-height: 100vh; background: #f4f5fb; }
+.adSide {
+  background: #16142e; color: #c9c7e8;
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.adBrand { display: flex; gap: 10px; align-items: center; padding: 2px 8px 18px; color: #fff; }
+.adBrandMark {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  background: linear-gradient(135deg, #4338ca, #6d28d9);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 800;
+}
+.adBrand b { display: block; font-size: 14.5px; }
+.adBrand small { font-size: 10px; letter-spacing: 0.14em; color: #8f8cb8; font-weight: 700; }
+.adNav a {
+  display: flex; align-items: center; gap: 11px;
+  font-size: 13.5px; font-weight: 600; color: #c9c7e8;
+  padding: 11px 12px; border-radius: 11px;
+}
+.adNav a:hover { background: rgb(255 255 255 / 0.07); color: #fff; }
+.adNav a[aria-current="page"] { background: #4338ca; color: #fff; }
+.adNav .live {
+  margin-left: auto; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  border: 1px solid #4c4a7a; border-radius: 6px; padding: 2px 7px; color: #b7b5e3;
+}
+.adFoot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }
+.adSys {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600;
+  border: 1px solid #37355c; border-radius: 11px; padding: 10px 12px; color: #b7b5e3;
+  font-family: ui-monospace, "JetBrains Mono", "IBM Plex Mono", monospace;
+}
+.adUser { display: flex; gap: 10px; align-items: center; color: #fff; }
+.adUserAvatar {
+  width: 36px; height: 36px; border-radius: 9px; background: #4338ca;
+  font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.adUser b { display: block; font-size: 13px; }
+.adUser small { font-size: 11.5px; color: #8f8cb8; display: block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.adMain { min-width: 0; padding: 20px 28px 44px; }
+.adCrumbs { font-size: 13px; color: #6b7280; display: flex; gap: 9px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.adCrumbs a:hover { color: #4338ca; }
+.adCrumbs [aria-current="page"] { color: #2a14b4; font-weight: 700; }
+.adTitleRow { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+.adTitle { font-size: clamp(21px, 2.6vw, 27px); font-weight: 800; letter-spacing: -0.02em; color: #131129; }
+.adTag {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: #4338ca;
+  background: #e6e4ff; border-radius: 7px; padding: 5px 10px; margin-top: 6px; white-space: nowrap;
+}
+.adLede { color: #565e74; font-size: 13.5px; max-width: 90ch; margin-bottom: 16px; }
+.adActions { margin-left: auto; display: flex; gap: 10px; }
+.adBtn {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  border-radius: 10px; padding: 10px 16px; cursor: pointer; text-decoration: none;
+  border: 1px solid #d5d3ec; background: #fff; color: #2a14b4;
+}
+.adBtn:hover { border-color: #4338ca; }
+.adBtnPrimary { background: #4338ca; border-color: #4338ca; color: #fff; }
+.adBtnPrimary:hover { background: #3730a3; }
+.adStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 16px 0 18px; }
+.adStat {
+  background: #fff; border: 1px solid #e5e4f5; border-radius: 14px; padding: 16px;
+  display: flex; gap: 12px; align-items: flex-start; justify-content: space-between;
+}
+.adStat p { font-size: 12.5px; color: #565e74; font-weight: 600; }
+.adStat b { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: block; margin-top: 4px; color: #131129; font-variant-numeric: tabular-nums; }
+.adStat small { font-size: 12px; font-family: ui-monospace, monospace; }
+.adStatOk { color: #047857; } .adStatBad { color: #ba1a1a; }
+.adStatIco {
+  width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #eef0ff; color: #4338ca;
+}
+.adCard { background: #fff; border: 1px solid #e5e4f5; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
+.adFilters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.adFilters input[type="search"] {
+  flex: 1; min-width: 200px; border: 1px solid #d5d3ec; border-radius: 10px; padding: 10px 14px 10px 38px;
+  font-size: 13.5px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20 3.5 3.5'/%3E%3C/svg%3E") no-repeat 12px center;
+}
+.adFilters select {
+  border: 1px solid #d5d3ec; border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; background: #fff;
+}
+.adTableWrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+table.adTable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 820px; }
+.adTable th {
+  text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  color: #6b7280; padding: 10px 12px; border-bottom: 1px solid #eceaf6;
+  font-family: ui-monospace, "JetBrains Mono", monospace;
+}
+.adTable td { padding: 13px 12px; border-bottom: 1px solid #f0eff7; vertical-align: middle; }
+.adTable tr:last-child td { border-bottom: 0; }
+.adTable tr[data-selected="true"] { background: #f4f2ff; }
+.adAvatar {
+  width: 40px; height: 40px; border-radius: 10px; font-weight: 800; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
+}
+.adWho { display: flex; gap: 11px; align-items: center; }
+.adWho b { display: block; font-size: 13.5px; color: #131129; }
+.adMono { font-family: ui-monospace, "JetBrains Mono", monospace; font-size: 12.5px; color: #3f465c; }
+.adRole {
+  display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 5px 11px; white-space: nowrap;
+  border: 1px solid #d5d3ec; background: #f4f2ff; color: #3730a3;
+}
+.adStatusLive { color: #047857; font-weight: 700; font-size: 12.5px; display: inline-flex; gap: 7px; align-items: center; }
+.adStatusLive::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+.adStatusLock { color: #ba1a1a; font-weight: 700; font-size: 12.5px; display: inline-flex; gap: 7px; align-items: center; }
+.adStatusLock::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+.adRowBtns { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.adRowBtns .adBtn { padding: 7px 11px; font-size: 12px; white-space: nowrap; }
+.adPager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 12px; font-size: 13px; }
+.adPager a, .adPager span.pg {
+  min-width: 34px; height: 34px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #d5d3ec; background: #fff; font-weight: 700; padding: 0 8px;
+}
+.adPager a[aria-current="page"] { background: #4338ca; border-color: #4338ca; color: #fff; }
+.adNote {
+  border: 1px solid #d5d3ec; background: #f7f6ff; color: #3f465c; font-size: 12.5px;
+  border-radius: 12px; padding: 12px 16px; margin-top: 14px; font-family: ui-monospace, monospace;
+}
+.adPreviewBar {
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12.5px;
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 16px;
+}
+.adState { padding: 30px; text-align: center; color: #565e74; font-size: 14px; }
+
+@media (max-width: 1024px) {
+  .adFrame { grid-template-columns: 1fr; }
+  .adSide { position: static; height: auto; }
+  .adStats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .adMain { padding: 14px 14px 32px; }
+  .adStats { grid-template-columns: 1fr; }
+}

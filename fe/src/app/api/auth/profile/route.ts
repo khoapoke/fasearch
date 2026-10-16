@@ -7,6 +7,12 @@ export async function GET(request: NextRequest) {
   return forwardSessionRequest(request, "/api/v1/auth/profile", "GET");
 }
 
+export async function POST(request: NextRequest) {
+  const body = await request.text();
+  return forwardSessionRequest(request, "/api/v1/auth/profile", "POST",
+    body, request.headers.get("content-type") ?? "application/json");
+}
+
 export async function PATCH(request: NextRequest) {
   const body = await request.text();
   return forwardSessionRequest(request, "/api/v1/auth/profile", "PATCH",

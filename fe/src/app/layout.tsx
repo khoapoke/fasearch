@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import "@/components/ui/motion.css";
 
 // Source typeface (Stitch export uses Google Fonts Be Vietnam Pro).
 // next/font self-hosts it at build time, so a font CDN failure cannot break

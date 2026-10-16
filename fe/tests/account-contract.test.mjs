@@ -26,6 +26,8 @@ describe("safeAccountReturnHref", () => {
 
   it("keeps only real slice routes", () => {
     assert.equal(safeAccountReturnHref("/tai-khoan/thong-tin"), "/tai-khoan/thong-tin");
+    assert.equal(safeAccountReturnHref("/tim-kiem-ai"), "/tim-kiem-ai");
+    assert.equal(safeAccountReturnHref("/tim-kiem-ai?x=1"), "/tim-kiem-ai?x=1");
     assert.equal(safeAccountReturnHref("/"), "/");
     assert.equal(safeAccountReturnHref("/catalog"), "/tai-khoan");
     assert.equal(safeAccountReturnHref("/search/text"), "/tai-khoan");

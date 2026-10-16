@@ -1,5 +1,4 @@
-import { SiteFooter } from "@/components/stitch-search/site-footer";
-import { SiteHeader } from "@/components/stitch-search/site-header";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { safeAccountReturnHref } from "@/lib/account-contract";
 import styles from "@/components/account/account.module.css";
 import { LoginForm } from "./login-form";
@@ -19,8 +18,7 @@ export default async function LoginPage({
     typeof params.next === "string" ? params.next : null,
   );
   return (
-    <div>
-      <SiteHeader />
+    <StorefrontShell active="/tai-khoan">
       <main className={styles.layout}>
         <p className={styles.kicker}>Tài khoản</p>
         <h1>Đăng nhập</h1>
@@ -33,7 +31,6 @@ export default async function LoginPage({
           </section>
         </div>
       </main>
-      <SiteFooter />
-    </div>
+    </StorefrontShell>
   );
 }

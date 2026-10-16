@@ -1,0 +1,74 @@
+// Run: node --test tests/commerce.test.mjs (from fe/)
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import {
+  buildOrderQuery, buildStaffOrderQuery, commerceErrorMessage, formatVndContract,
+  isCustomerCancellable, newOperationKey, nextOnlineState, orderStatusLabel,
+  paymentMethodLabel, paymentStatusLabel, validateCancelReason, validateCashTender,
+  validateQuantity, validateReceiver,
+} from "../src/lib/commerce.ts";
+
+describe("operation keys", () => {
+  it("unique per payload", () => {
+    const a = newOperationKey();
+    const b = newOperationKey();
+    assert.ok(a && b && a !== b);
+  });
+});
+
+describe("status labels", () => {
+  it("covers online sequence + POS draft", () => {
+    assert.equal(orderStatusLabel("MOI_TAO"), "Mới tạo");
+    assert.equal(orderStatusLabel("DA_GIAO_VAN_CHUYEN"), "Đã giao vận chuyển");
+    assert.equal(orderStatusLabel("TAM_LUU"), "Tạm lưu (POS)");
+    assert.equal(paymentStatusLabel("CHUA_THANH_TOAN"), "Chưa thanh toán");
+    assert.equal(paymentMethodLabel("TIEN_MAT"), "Tiền mặt (POS)");
+  });
+  it("next state follows approved sequence", () => {
+    assert.equal(nextOnlineState("MOI_TAO"), "DA_XAC_NHAN");
+    assert.equal(nextOnlineState("HOAN_THANH"), null);
+    assert.equal(nextOnlineState("DA_HUY"), null);
+  });
+  it("customer cancel only MOI_TAO + allowed action", () => {
+    assert.equal(isCustomerCancellable({ trangThai: "MOI_TAO", hanhDongChoPhep: ["HUY"] }), true);
+    assert.equal(isCustomerCancellable({ trangThai: "DA_XAC_NHAN", hanhDongChoPhep: ["HUY"] }), false);
+    assert.equal(isCustomerCancellable({ trangThai: "MOI_TAO", hanhDongChoPhep: [] }), false);
+  });
+});
+
+describe("validation", () => {
+  it("quantity 1..999 integer", () => {
+    assert.equal(validateQuantity(3), 3);
+    assert.throws(() => validateQuantity(0), /1–999/);
+    assert.throws(() => validateQuantity(1000), /1–999/);
+    assert.throws(() => validateQuantity(1.5), /1–999/);
+  });
+  it("receiver requires name/phone/address", () => {
+    assert.throws(() => validateReceiver("", "0901234567", "HCM"), /người nhận/);
+    assert.throws(() => validateReceiver("A", "123", "HCM"), /9–11/);
+    assert.throws(() => validateReceiver("A", "0901234567", ""), /địa chỉ/);
+  });
+  it("cancel reason required", () => {
+    assert.equal(validateCancelReason(" đổi ý "), "đổi ý");
+    assert.throws(() => validateCancelReason("  "), /lý do/);
+  });
+  it("cash tender must cover due, integer dong", () => {
+    assert.equal(validateCashTender("200000", 150000), 200000);
+    assert.equal(validateCashTender("150.000", 150000), 150000);
+    assert.throws(() => validateCashTender("100000", 150000), /chưa đủ/);
+    assert.throws(() => validateCashTender("0", 10), /dương/);
+    assert.throws(() => validateCashTender("abc", 10), /dương/);
+  });
+});
+
+describe("paging + errors", () => {
+  it("bounds page/size", () => {
+    assert.ok(buildOrderQuery({ page: -1, size: 500 }).includes("size=100"));
+    assert.ok(buildStaffOrderQuery({ page: 0, size: 20, sdt: "090" }).includes("sdt=090"));
+  });
+  it("409 asks refresh, 404 honest", () => {
+    assert.match(commerceErrorMessage(409, "x"), /Tải lại/);
+    assert.match(commerceErrorMessage(404, "x"), /Không tìm thấy/);
+    assert.equal(formatVndContract(150000), "150.000₫");
+  });
+});

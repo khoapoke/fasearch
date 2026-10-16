@@ -1,0 +1,116 @@
+/* Home sections (Stitch #28). */
+
+.hmHero {
+  max-width: 1280px; margin: 0 auto; padding: 34px 20px 8px;
+  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 34px; align-items: center;
+}
+.hmKicker {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 700; color: var(--brand);
+  background: var(--surface-tint); border-radius: 999px; padding: 6px 13px;
+}
+.hmTitle { font-size: clamp(30px, 4.4vw, 52px); font-weight: 800; line-height: 1.12; letter-spacing: -0.025em; margin: 14px 0 12px; }
+.hmTitle .hl { color: var(--accent); }
+.hmSub { color: var(--ink-soft); font-size: 14.5px; line-height: 1.7; max-width: 52ch; }
+.hmCtas { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.hmCta {
+  display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700;
+  border-radius: 12px; padding: 13px 22px; text-decoration: none; border: 1px solid transparent; cursor: pointer;
+}
+.hmCtaPrimary { background: var(--accent); color: #fff; }
+.hmCtaPrimary:hover { background: var(--accent-deep); }
+.hmCtaGhost { border-color: var(--line); color: var(--ink); background: #fff; }
+.hmCtaGhost:hover { border-color: var(--accent); color: var(--brand); }
+.hmAiMini {
+  margin-top: 18px; border: 1px solid var(--line-soft); border-radius: 14px; background: #fff;
+  padding: 13px 15px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-card); max-width: 480px;
+}
+.hmAiMini small { display: block; font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+.hmAiMini b { font-size: 12.5px; display: block; margin: 2px 0 8px; }
+.hmAiBtn { background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; border-radius: 9px; padding: 8px 14px; text-decoration: none; white-space: nowrap; }
+.hmHeroMedia { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 4 / 4.6; background: linear-gradient(160deg, #ece7e1, #d8d2c9); box-shadow: var(--shadow-card); }
+.hmHeroMedia img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.hmDetect {
+  position: absolute; left: 14px; right: 14px; bottom: 14px;
+  background: rgb(17 24 39 / 0.82); color: #fff; border-radius: 13px; padding: 11px 14px;
+  display: flex; align-items: center; gap: 10px; font-size: 12px; backdrop-filter: blur(6px);
+}
+.hmDetect b { display: block; font-size: 11px; letter-spacing: 0.06em; }
+.hmDetect span { color: #cbd5e1; }
+.hmDetect .ok { margin-left: auto; color: #4ade80; font-weight: 800; white-space: nowrap; }
+
+.hmCats { max-width: 1280px; margin: 0 auto; padding: 30px 20px 6px; }
+.hmSecHead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; }
+.hmSecHead h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; }
+.hmSecHead h2 .dot { color: var(--accent); }
+.hmSecHead a { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+.hmSecHead a:hover { color: var(--brand); }
+.hmCatRow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; }
+.hmCat { text-align: center; font-size: 12.5px; font-weight: 600; }
+.hmCat span.img { display: block; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #f1ede8; margin-bottom: 8px; border: 1px solid var(--line-soft); }
+.hmCat img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hmCat:hover span.img { box-shadow: 0 0 0 2px var(--accent); }
+
+.hmAiBand { max-width: 1280px; margin: 26px auto 0; padding: 0 20px; }
+.hmAiCard {
+  border: 1px solid var(--line-soft); border-radius: 18px; background: #fff; box-shadow: var(--shadow-card);
+  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 26px; padding: 28px;
+}
+.hmAiCard h2 { font-size: clamp(19px, 2.4vw, 26px); font-weight: 800; letter-spacing: -0.02em; }
+.hmAiCard h2 .hl { color: var(--accent); }
+.hmAiCard > div > p { color: var(--ink-soft); font-size: 13.5px; margin-top: 8px; line-height: 1.7; }
+.hmAiStats { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.hmAiStats div { background: var(--surface-subtle); border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px 16px; text-align: center; }
+.hmAiStats b { display: block; font-size: 16px; color: var(--brand); }
+.hmAiStats small { font-size: 11px; color: var(--ink-soft); }
+.hmTags { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.hmTags span { font-size: 11.5px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; color: var(--ink-soft); }
+.hmDrop {
+  border: 1.5px dashed #f0b49a; border-radius: 16px; background: #fff8f4;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 30px 20px; text-align: center;
+}
+.hmDropIco { width: 52px; height: 52px; border-radius: 50%; background: var(--surface-tint); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
+.hmDrop b { font-size: 14px; }
+.hmDrop p { font-size: 12.5px; color: var(--ink-soft); }
+.hmDropRow { display: flex; gap: 10px; }
+
+.hmBest { max-width: 1280px; margin: 0 auto; padding: 30px 20px 6px; }
+.hmBest h2 { font-size: clamp(19px, 2.4vw, 25px); font-weight: 800; letter-spacing: -0.02em; }
+.hmTabs { display: flex; gap: 8px; margin: 14px 0 18px; flex-wrap: wrap; }
+.hmTabs a { font-size: 12.5px; font-weight: 700; border-radius: 999px; padding: 8px 15px; background: var(--surface-subtle); border: 1px solid var(--line-soft); }
+.hmTabs a[aria-current="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.hmMore { display: flex; justify-content: center; margin: 22px 0 6px; }
+.hmMore a {
+  display: inline-flex; gap: 9px; align-items: center; font-size: 13.5px; font-weight: 700;
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 24px; background: #fff;
+}
+.hmMore a:hover { border-color: var(--accent); color: var(--brand); }
+
+.hmCollections { max-width: 1280px; margin: 0 auto; padding: 26px 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.hmCol { position: relative; border-radius: 18px; overflow: hidden; min-height: 300px; display: flex; align-items: flex-end; background: #23272f; }
+.hmCol img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hmCol::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgb(10 12 18 / 0.72)); }
+.hmCol div { position: relative; z-index: 1; padding: 24px; color: #fff; }
+.hmCol small { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; background: var(--accent); border-radius: 6px; padding: 4px 9px; margin-bottom: 9px; }
+.hmCol h3 { font-size: 21px; font-weight: 800; }
+.hmCol p { font-size: 13px; color: #e2e8f0; margin: 6px 0 12px; max-width: 40ch; }
+.hmCol a { display: inline-flex; gap: 8px; align-items: center; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 700; border-radius: 10px; padding: 9px 16px; }
+
+.hmTrust { max-width: 1280px; margin: 0 auto; padding: 22px 20px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.hmTrust div { border: 1px solid var(--line-soft); border-radius: 14px; background: #fff; padding: 16px; display: flex; gap: 12px; }
+.hmTrustIco { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-tint); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.hmTrust b { display: block; font-size: 13px; }
+.hmTrust small { font-size: 12px; color: var(--ink-soft); }
+
+@media (max-width: 1024px) {
+  .hmHero { grid-template-columns: 1fr; }
+  .hmCatRow { grid-template-columns: repeat(4, 1fr); }
+  .hmAiCard { grid-template-columns: 1fr; }
+  .hmTrust { grid-template-columns: repeat(2, 1fr); }
+  .hmCollections { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .hmCatRow { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .hmTrust { grid-template-columns: 1fr; }
+}

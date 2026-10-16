@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SiteFooter } from "@/components/stitch-search/site-footer";
-import { SiteHeader } from "@/components/stitch-search/site-header";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import account from "@/components/account/account.module.css";
 import mgmt from "@/components/mgmt/mgmt.module.css";
 import { beFetch, unwrap, vnd } from "@/lib/mgmt-client";
@@ -24,37 +23,39 @@ type PublicDetail = {
 export default function CatalogDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const [data, setData] = useState<PublicDetail | null>(null);
-  const [missing, setMissing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const viewKey = `${id}|${reloadKey}`;
+  const [settled, setSettled] = useState<{ key: string; data?: PublicDetail; missing?: boolean; error?: string }>({ key: "" });
+  const data = settled.key === viewKey ? settled.data : undefined;
+  const missing = settled.key === viewKey ? settled.missing : false;
+  const error = settled.key === viewKey ? settled.error : undefined;
 
   useEffect(() => {
     let live = true;
     beFetch(`v1/catalog/san-pham/${id}`)
       .then((r) => {
         if (r.status === 404) {
-          if (live) setMissing(true);
+          if (live) setSettled({ key: viewKey, missing: true });
           return null;
         }
         return unwrap<PublicDetail>(r);
       })
       .then((result) => {
-        if (live && result) setData(result);
+        if (live && result) setSettled({ key: viewKey, data: result });
       })
       .catch((e: Error) => {
-        if (live) setError(e.message);
+        if (live) setSettled({ key: viewKey, error: e.message });
       });
     return () => {
       live = false;
     };
-  }, [id]);
+  }, [id, reloadKey, viewKey]);
 
   return (
-    <div>
-      <SiteHeader />
+    <StorefrontShell active="/nam">
       <main className={account.layout}>
         <p className={account.crumbs}>
-          <Link href="/catalog">Catalog</Link> / <span>Chi tiết</span>
+          <Link href="/catalog">Catalog</Link> / <span>Chi tiết</span> / <Link href={`/san-pham/${id}`}>Giao diện mới</Link>
         </p>
         {!data && !missing && !error && <p className={account.muted}>Đang tải…</p>}
         {missing && (
@@ -65,7 +66,15 @@ export default function CatalogDetailPage() {
             </p>
           </section>
         )}
-        {error && <p className={account.muted}>{error}</p>}
+        {error && (
+          <section className={account.card} aria-label="Lỗi tải">
+            <p className={account.greeting}>Không tải được sản phẩm</p>
+            <p className={account.muted}>{error} Hãy kiểm tra kết nối rồi thử lại.</p>
+            <button className={account.primary} type="button" onClick={() => setReloadKey((k) => k + 1)}>
+              Thử lại
+            </button>
+          </section>
+        )}
         {data && (
           <>
             <h1>{data.tenSp}</h1>
@@ -109,7 +118,6 @@ export default function CatalogDetailPage() {
           </>
         )}
       </main>
-      <SiteFooter />
-    </div>
+    </StorefrontShell>
   );
 }

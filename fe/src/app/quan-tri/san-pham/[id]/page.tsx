@@ -2,10 +2,11 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MgmtShell } from "@/components/mgmt/mgmt-shell";
-import account from "@/components/account/account.module.css";
-import mgmt from "@/components/mgmt/mgmt.module.css";
+import Link from "next/link";
+import { MerchantShell } from "@/components/merchant/merchant-shell";
 import { beFetch, beWrite, unwrap, vnd } from "@/lib/mgmt-client";
+
+const field: React.CSSProperties = { width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 };
 
 type Product = {
   maSp: number;
@@ -141,37 +142,41 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <MgmtShell
-      title={`Sản phẩm #${id}`}
-      lede="Sửa thông tin/giá (đổi giá ghi audit), ảnh thật, ma trận màu×cỡ, mã vạch CODE-128 và tem in."
-      need={["ADMIN", "STAFF"]}
-    >
+    <MerchantShell active="products">
+      <div className="mpCard">
+        <nav className="pgCrumbs" aria-label="Đường dẫn">
+          <Link href="/quan-tri/san-pham">Sản phẩm</Link><span aria-hidden="true">›</span>
+          <span aria-current="page">Sản phẩm #{id}</span>
+        </nav>
+        <h2>Sản phẩm #{id}</h2>
+        <p className="mpMuted">Sửa thông tin/giá (đổi giá ghi audit), ảnh thật, ma trận màu×cỡ, mã vạch CODE-128 và tem in.</p>
       {notice && (
-        <p className={account.muted} role="alert">
+        <p className="mpMuted" role="alert" style={{ color: "#ba1a1a" }}>
           {notice}
         </p>
       )}
-      {!product && <p className={account.muted}>Đang tải…</p>}
+      </div>
+      {!product && <p className="mpMuted" role="status">Đang tải…</p>}
       {product && (
         <>
-          <section className={account.card} aria-label="Thông tin sản phẩm">
-            <p className={account.greeting}>{product.tenSp}</p>
-            <p className={account.muted}>
+          <div className="mpCard" aria-label="Thông tin sản phẩm">
+            <h2>{product.tenSp}</h2>
+            <p className="mpMuted">
               {product.tenDanhMuc ?? "—"} · Bán {vnd(product.giaBan)} · Nhập{" "}
               {product.giaNhap === null ? "chưa có" : vnd(product.giaNhap)}
             </p>
             {product.coHinhAnh ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                className={mgmt.detailImg}
+                style={{ width: 220, borderRadius: 12, display: "block", margin: "10px 0" }}
                 src={`/api/be/v1/san-pham/${id}/hinh-anh?nonce=${imgNonce}`}
                 alt={product.tenSp}
               />
             ) : (
-              <p className={account.muted}>Chưa có ảnh.</p>
+              <p className="mpMuted">Chưa có ảnh.</p>
             )}
             <form
-              className={mgmt.formGrid}
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}
               onSubmit={(e) => {
                 e.preventDefault();
                 saveEdit(new FormData(e.currentTarget));
@@ -179,11 +184,11 @@ export default function ProductDetailPage() {
             >
               <label>
                 Tên
-                <input name="tenSp" defaultValue={product.tenSp} maxLength={255} />
+                <input name="tenSp" defaultValue={product.tenSp} maxLength={255} style={field} />
               </label>
               <label>
                 Giá bán (VND)
-                <input name="giaBan" defaultValue={String(product.giaBan)} inputMode="decimal" />
+                <input name="giaBan" defaultValue={String(product.giaBan)} inputMode="decimal" style={field} />
               </label>
               <label>
                 Giá nhập (VND)
@@ -192,27 +197,28 @@ export default function ProductDetailPage() {
                   defaultValue={product.giaNhap === null ? "" : String(product.giaNhap)}
                   inputMode="decimal"
                   placeholder="Để trống = giữ nguyên"
+                  style={field}
                 />
               </label>
               <label>
                 Chất liệu
-                <input name="chatLieu" defaultValue={product.chatLieu ?? ""} maxLength={100} />
+                <input name="chatLieu" defaultValue={product.chatLieu ?? ""} maxLength={100} style={field} />
               </label>
               <label>
                 Kiểu dáng
-                <input name="kieuDang" defaultValue={product.kieuDang ?? ""} maxLength={100} />
+                <input name="kieuDang" defaultValue={product.kieuDang ?? ""} maxLength={100} style={field} />
               </label>
-              <label className={mgmt.fullRow}>
+              <label style={{ gridColumn: "1/-1" }}>
                 Mô tả
-                <textarea name="moTa" defaultValue={product.moTa ?? ""} />
+                <textarea name="moTa" defaultValue={product.moTa ?? ""} style={field} />
               </label>
-              <div className={mgmt.fullRow}>
-                <button className={account.primary} type="submit">
+              <div style={{ gridColumn: "1/-1" }}>
+                <button className="mpTopBtn primary" type="submit">
                   Lưu thay đổi
                 </button>
               </div>
             </form>
-            <label>
+            <label style={{ display: "block", marginTop: 10 }}>
               Đổi ảnh (JPEG/PNG ≤5MB)
               <input
                 type="file"
@@ -220,33 +226,27 @@ export default function ProductDetailPage() {
                 onChange={(e) => upload(e.target.files?.[0])}
               />
             </label>
-          </section>
+          </div>
 
-          <section className={account.card} aria-label="Biến thể và mã vạch">
-            <p className={account.greeting}>Biến thể ({variants.length})</p>
+          <div className="mpCard" aria-label="Biến thể và mã vạch">
+            <h2>Biến thể ({variants.length})</h2>
             <form
-              className={mgmt.toolbar}
+              style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "10px 0" }}
               onSubmit={(e) => {
                 e.preventDefault();
                 addMatrix(new FormData(e.currentTarget));
               }}
             >
-              <label>
-                Màu (phân cách dấu phẩy)
-                <input name="mauSac" placeholder="Đỏ, Xanh" maxLength={500} />
-              </label>
-              <label>
-                Cỡ (phân cách dấu phẩy)
-                <input name="kichCo" placeholder="M, L" maxLength={500} />
-              </label>
-              <button className={account.secondary} type="submit">
+              <input name="mauSac" placeholder="Màu (phân cách dấu phẩy)" maxLength={500} aria-label="Màu" style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }} />
+              <input name="kichCo" placeholder="Cỡ (phân cách dấu phẩy)" maxLength={500} aria-label="Cỡ" style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }} />
+              <button className="mpTopBtn" type="submit">
                 Sinh ma trận
               </button>
-              <a className={mgmt.linkButton} href={`/api/be/v1/san-pham/${id}/bien-the/export`}>
+              <a className="mpTopBtn" href={`/api/be/v1/san-pham/${id}/bien-the/export`}>
                 Xuất CSV
               </a>
               <button
-                className={mgmt.linkButton}
+                className="mpTopBtn"
                 type="button"
                 onClick={() => window.print()}
               >
@@ -254,16 +254,16 @@ export default function ProductDetailPage() {
               </button>
             </form>
             {variants.length === 0 && (
-              <p className={account.muted}>Chưa có biến thể nào.</p>
+              <p className="mpMuted">Chưa có biến thể nào.</p>
             )}
-            <div className={mgmt.tableWrap + " " + mgmt.noPrint}>
-              <table className={mgmt.table}>
+            <div className="mpTableWrap">
+              <table className="mpTable">
                 <thead>
                   <tr>
                     <th>SKU</th>
                     <th>Màu / Cỡ</th>
                     <th>Mã vạch</th>
-                    <th>Thao tác</th>
+                    <th style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -273,9 +273,9 @@ export default function ProductDetailPage() {
                       <td>
                         {v.mauSac} / {v.kichCo}
                       </td>
-                      <td>{v.maVach}</td>
-                      <td>
-                        <button className={mgmt.linkButton} onClick={() => removeVariant(v)}>
+                      <td style={{ fontFamily: "monospace" }}>{v.maVach}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <button className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => removeVariant(v)}>
                           Xóa
                         </button>
                       </td>
@@ -285,28 +285,29 @@ export default function ProductDetailPage() {
               </table>
             </div>
             {variants.length > 0 && (
-              <div className={mgmt.labels + " " + mgmt.printArea}>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 14 }}>
                 {variants.map((v) => (
-                  <div key={v.maSku} className={mgmt.label}>
+                  <div key={v.maSku} style={{ border: "1px dashed var(--line)", borderRadius: 10, padding: 12, textAlign: "center", width: 220 }}>
                     <div>
                       <b>{product.tenSp}</b>
                     </div>
-                    <div>
+                    <div className="mpMuted">
                       {v.mauSac} — {v.kichCo}
                     </div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/be/v1/bien-the/${v.maSku}/ma-vach.png`}
                       alt={`Mã vạch ${v.maVach}`}
+                      style={{ width: 180, marginTop: 6 }}
                     />
-                    <div>{v.maVach}</div>
+                    <div className="mpMuted" style={{ fontFamily: "monospace" }}>{v.maVach}</div>
                   </div>
                 ))}
               </div>
             )}
-          </section>
+          </div>
         </>
       )}
-    </MgmtShell>
+    </MerchantShell>
   );
 }

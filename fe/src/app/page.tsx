@@ -1,44 +1,15 @@
-import Link from "next/link";
-import { SiteFooter } from "@/components/stitch-search/site-footer";
-import { SiteHeader } from "@/components/stitch-search/site-header";
-import styles from "@/components/account/account.module.css";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import { HomeSections } from "./home-sections";
 
 export const metadata = {
-  title: "FaSearch — Tài khoản",
-  description: "Đăng nhập và quản lý hồ sơ khách hàng FaSearch.",
+  title: "FashionSearch AI — Thời Trang Công Nghệ & Tinh Giản Tiên Phong",
+  description: "Tìm mọi outfit bằng AI. Thời trang công nghệ mới, tinh giản tiên phong.",
 };
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div>
-      <SiteHeader />
-      <main className={styles.layout} id="top">
-        <p className={styles.kicker}>FaSearch</p>
-        <h1>Tài khoản của bạn</h1>
-        <p className={styles.lede}>
-          Đăng nhập để xem và sửa hồ sơ khách hàng, đổi mật khẩu và quản lý phiên
-          đăng nhập của bạn.
-        </p>
-        <div className={styles.grid} style={{ gridTemplateColumns: "1fr" }}>
-          <section className={styles.card} aria-label="Bắt đầu">
-            <div className={styles.actions}>
-              <Link className={styles.primary} href="/catalog">
-                Xem catalog
-              </Link>
-              <Link className={styles.secondary} href="/dang-nhap">
-                Đăng nhập
-              </Link>
-              <Link className={styles.secondary} href="/tai-khoan" id="tai-khoan">
-                Trung tâm tài khoản
-              </Link>
-              <Link className={styles.secondary} href="/quan-tri/san-pham">
-                Quản trị
-              </Link>
-            </div>
-          </section>
-        </div>
-      </main>
-      <SiteFooter />
-    </div>
+    <StorefrontShell active="/">
+      <HomeSections />
+    </StorefrontShell>
   );
 }
