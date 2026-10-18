@@ -158,11 +158,29 @@ export async function posQuote(id: number, phienBan: number): Promise<PosQuote> 
   return unwrap<PosQuote>(r);
 }
 
+/**
+ * Chuẩn hóa kết quả thu tiền POS: BE có thể trả phẳng
+ * `{...order, maHoaDon, tienThua}` hoặc lồng `{donHang: {...order},
+ * maHoaDon, tienThua}`. Không đoán field khác; thiếu order/items thật thì ném
+ * lỗi định dạng để caller hiện trạng thái trung thực thay vì crash render.
+ */
+export function normalizePosReceipt(raw: unknown): PosReceipt {
+  const root = (raw ?? {}) as Record<string, unknown>;
+  const order = (root.donHang ?? root) as Record<string, unknown>;
+  if (!order || typeof order !== 'object' || !Array.isArray(order.items)) {
+    throw new Error('Máy chủ trả về biên lai thiếu dòng hàng. Thử tải lại biên lai.');
+  }
+  const receipt = { ...order } as Record<string, unknown>;
+  if (receipt.maHoaDon === undefined || receipt.maHoaDon === null) receipt.maHoaDon = root.maHoaDon ?? '';
+  if (receipt.tienThua === undefined || receipt.tienThua === null) receipt.tienThua = root.tienThua ?? 0;
+  return receipt as unknown as PosReceipt;
+}
+
 export async function posPay(id: number, body: {
   khoaTam: string; phienBan: number; tongThanhToanDuKien: number; tienKhachDua: number;
 }): Promise<PosReceipt> {
   const r = await beWrite(`v1/pos/don-hang/${encodeURIComponent(String(id))}/thanh-toan`, "POST", body);
-  return unwrap<PosReceipt>(r);
+  return normalizePosReceipt(await unwrap<unknown>(r));
 }
 
 export async function posCancel(id: number, body: { khoaTam: string; phienBan: number; lyDo: string }): Promise<PosDraft> {

@@ -432,7 +432,7 @@ export default function PosPage() {
         <div className="mpCard" aria-label="Hóa đơn POS">
           <h3>Hóa đơn #{String(receipt.maHoaDon)} <span className="mpPill mpPillLive">Đã thu tiền mặt</span></h3>
           <p className="mpMuted">Đơn #{receipt.maDonHang} · kho {receipt.maKho} · {formatVndContract(receipt.tongThanhToan)} · thối {formatVndContract(receipt.tienThua)}</p>
-          {receipt.items.map((l) => (
+          {(receipt.items ?? []).map((l) => (
             <div key={l.maSku} className="pvRow" style={{ display: "flex", gap: 10 }}>
               <div style={{ flex: 1 }}><b>{l.tenSpSnapshot}</b><p className="mpMuted">SKU {l.maSku} · SL {l.soLuong}</p></div>
               <b>{formatVndContract(l.tongDong)}</b>
