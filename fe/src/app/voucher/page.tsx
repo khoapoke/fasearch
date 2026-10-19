@@ -1,91 +1,121 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
-import { PREVIEW_VOUCHERS } from "@/lib/preview-data";
+import { readOwnIdentity } from "@/components/account/account-session";
+import { fetchPublishedOffers } from "@/lib/benefits-client";
+import {
+  benefitErrorMessage, canonicalVoucherCode, discountKindLabel, type VoucherOffer,
+} from "@/lib/benefits";
 import "@/components/storefront/preview.css";
 import "./voucher.css";
 
-function copyCode(code: string, done: (c: string) => void) {
-  const t = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      done(code);
-    } catch {
-      done("");
-    }
-  };
-  void t();
+type State =
+  | { kind: "checking" }
+  | { kind: "loading" }
+  | { kind: "ready"; offers: VoucherOffer[] }
+  | { kind: "error"; message: string; status: number };
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("vi-VN");
 }
 
 export default function VouchersPage() {
+  const router = useRouter();
+  const [state, setState] = useState<State>({ kind: "checking" });
   const [code, setCode] = useState("");
-  const [applied, setApplied] = useState<string | null>(null);
-  const [copied, setCopied] = useState("");
   const [msg, setMsg] = useState("");
+  const [issue, setIssue] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
+    setState({ kind: "loading" });
+    setMsg("");
+    try {
+      const me = await readOwnIdentity().catch(() => null);
+      if (!me) {
+        router.replace("/dang-nhap?next=/voucher");
+        return;
+      }
+      const offers = await fetchPublishedOffers();
+      setState({ kind: "ready", offers });
+    } catch (e) {
+      const st = (e as { status?: number })?.status ?? 0;
+      setState({ kind: "error", message: benefitErrorMessage(st, null, e instanceof Error ? e.message : "Không tải được ưu đãi."), status: st });
+      setTimeout(() => errorRef.current?.focus(), 0);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => load());
+  }, [load]);
 
   function apply(vcode: string) {
-    setApplied(vcode);
-    setMsg(`Đã lưu mã “${vcode}” cho lần đặt hàng preview tiếp theo. Mã minh họa — chưa trừ tiền thật.`);
+    try {
+      const c = canonicalVoucherCode(vcode);
+      setIssue("");
+      setMsg(`Đã lưu mã “${c}” — nhập mã này ở bước thanh toán, máy chủ quyết định mức giảm thật.`);
+    } catch (e) {
+      setIssue(e instanceof Error ? e.message : "Mã chưa hợp lệ.");
+      setMsg("");
+    }
   }
 
   return (
     <AccountCenterShell active="/voucher" kicker="FASHION AI PROFILE HUB" title="Voucher & Ưu Đãi Cá Nhân">
-      <p className="sfPreviewBar" role="note" style={{ borderRadius: 12, marginBottom: 14 }}>
-        <span>Bản xem trước — voucher minh họa, máy chủ chưa có API voucher (xem CONTRACT_GAPS).</span>
-      </p>
       <section className="vcHero" aria-label="Ưu đãi dành cho bạn">
         <div>
           <p className="hmKicker">✦ ƯU ĐÃI DÀNH CHO BẠN</p>
           <h2>Voucher &amp; Ưu Đãi Cá Nhân</h2>
-          <p>Bản xem trước — các mã là minh họa, chưa trừ tiền thật. Sao chép mã để dùng ở bản preview giỏ hàng.</p>
+          <p>Ưu đãi thật do cửa hàng phát hành. Sao chép mã rồi áp dụng ở bước thanh toán — mức giảm cuối cùng do máy chủ tính.</p>
         </div>
       </section>
-      <section className="sfSideCard" aria-label="Áp mã voucher">
-        <form
-          className="pvCoupon"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!code.trim()) {
-              setMsg("Vui lòng nhập mã.");
-              return;
-            }
-            apply(code.trim().toUpperCase());
-          }}
-        >
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Nhập mã voucher…" aria-label="Mã voucher" />
-          <button className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }} type="submit">Áp dụng mã</button>
-        </form>
-        {msg ? <p className="mpMuted" role="status">{msg}</p> : null}
-      </section>
-      <div className="vcGrid">
-        {PREVIEW_VOUCHERS.map((v) => (
-          <div className="vcCard" key={v.code}>
-            <p className="vcExp">{v.expiry}</p>
-            <b>{v.title}</b>
-            <small>{v.detail}</small>
-            <p className="vcCodeRow">
-              <span className="pvVoucherCode">{v.code}</span>
-              <button className="hmCta hmCtaGhost" style={{ padding: "8px 14px", fontSize: 12.5 }} type="button" onClick={() => copyCode(v.code, setCopied)}>
-                {copied === v.code ? "Đã chép ✓" : "Sao chép mã"}
-              </button>
-            </p>
-            <button
-              className={applied === v.code ? "hmCta hmCtaGhost" : "hmCta hmCtaPrimary"}
-              style={{ padding: "9px 16px", fontSize: 13, width: "100%", justifyContent: "center" }}
-              type="button"
-              onClick={() => apply(v.code)}
+      {state.kind === "checking" || state.kind === "loading" ? (
+        <p className="pgState" role="status"><strong>Đang tải ưu đãi…</strong></p>
+      ) : null}
+      {state.kind === "error" ? (
+        <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert">
+          <p className="sfIdentitySub">{state.message} {state.status === 401 ? <Link href="/dang-nhap?next=/voucher">Đăng nhập →</Link> : null}</p>
+          <button className="hmCta hmCtaGhost" type="button" onClick={load}>Thử lại</button>
+        </div>
+      ) : null}
+      {state.kind === "ready" ? (
+        <>
+          <section className="sfSideCard" aria-label="Áp mã voucher">
+            <form
+              className="pvCoupon"
+              onSubmit={(e) => {
+                e.preventDefault();
+                apply(code);
+              }}
             >
-              {applied === v.code ? "Đã lưu ✓" : "Lưu mã"}
-            </button>
-          </div>
-        ))}
-      </div>
-      <section className="sfSideCard" aria-label="Lịch sử voucher" style={{ marginTop: 14 }}>
-        <b>Lịch sử voucher đã qua (minh họa)</b>
-        <p className="sfIdentitySub" style={{ marginTop: 6 }}>FLASH80K · đã hết hạn 01/10/2026 — WELCOME50 · đã dùng cho đơn minh họa.</p>
-      </section>
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Nhập mã voucher…" aria-label="Mã voucher" />
+              <button className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }} type="submit">Lưu mã</button>
+            </form>
+            {issue ? <p className="mpMuted" role="alert">{issue}</p> : null}
+            {msg ? <p className="mpMuted" role="status">{msg}</p> : null}
+          </section>
+          {state.offers.length === 0 ? (
+            <p className="pgState"><strong>Chưa có ưu đãi nào đang chạy</strong>Quay lại sau — danh sách do cửa hàng phát hành.</p>
+          ) : (
+            <div className="vcGrid">
+              {state.offers.map((v, i) => (
+                <div className="vcCard" key={v.maKm ?? i}>
+                  <p className="vcExp">Hiệu lực đến {fmtDate(v.ngayKetThuc)}</p>
+                  <b>{v.tenCtkm}</b>
+                  <small>{v.loaiGiam === "PHAN_TRAM" ? `Giảm ${v.giaTriGiam}%` : `Giảm ${Number(v.giaTriGiam).toLocaleString("vi-VN")}₫`} {discountKindLabel(v.loaiGiam)}</small>
+                  {typeof v.conLai === "number" ? <small>Còn {v.conLai} lượt.</small> : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : null}
       <p className="sfIdentitySub"><Link href="/sale">Săn thêm deal ở trang Sale →</Link></p>
     </AccountCenterShell>
   );

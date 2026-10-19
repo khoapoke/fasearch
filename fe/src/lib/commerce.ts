@@ -13,6 +13,7 @@ export type CartItem = {
   tongDong: number;
   coTheMua: boolean;
   lyDoKhongTheMua: string | null;
+  tienGiamGia?: number | null;
 };
 
 export type Cart = {
@@ -32,6 +33,15 @@ export type Quote = {
   tongThanhToan: number;
   coTheDat: boolean;
   canhBao: string[];
+  // Ưu đãi (optional — quotes cũ không có vẫn render; server authoritative).
+  voucherCode?: string | null;
+  diemSuDung?: number | null;
+  giamVoucher?: number | null;
+  giamDiem?: number | null;
+  diemDuocPhep?: number | null;
+  maChinhSach?: number | null;
+  phienBanChinhSach?: number | null;
+  quoteId?: string | null;
 };
 
 export type Warehouse = { maKho: number; tenKho: string; laMacDinh: boolean };
@@ -45,6 +55,7 @@ export type OrderLine = {
   soLuong: number;
   donGia: number;
   tongDong: number;
+  tienGiamGia?: number | null;
 };
 
 export type OrderHistory = { trangThai: string; thoiGian: string; nguoiThucHien?: string | null };
@@ -69,6 +80,11 @@ export type OrderDetail = {
   maHoaDon?: number | string | null;
   lichSu: OrderHistory[];
   hanhDongChoPhep: string[];
+  // Snapshot frozen ưu đãi (optional — receipts cũ thiếu vẫn render, không bịa).
+  maVoucher?: number | null;
+  diemSuDung?: number | null;
+  giamVoucher?: number | null;
+  giamDiem?: number | null;
 };
 
 export type PosDraft = {
@@ -86,6 +102,15 @@ export type PosQuote = {
   giamGia: number;
   phiVanChuyen: number;
   tongThanhToan: number;
+  // Ưu đãi (optional — server authoritative).
+  voucherCode?: string | null;
+  diemSuDung?: number | null;
+  giamVoucher?: number | null;
+  giamDiem?: number | null;
+  diemDuocPhep?: number | null;
+  maChinhSach?: number | null;
+  phienBanChinhSach?: number | null;
+  quoteId?: string | null;
 };
 
 export type PosReceipt = OrderDetail & { maHoaDon: number | string; tienThua: number };

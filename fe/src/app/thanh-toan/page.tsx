@@ -12,6 +12,9 @@ import {
   commerceErrorMessage, formatVndContract, newOperationKey, validateReceiver,
   type Cart, type Quote, type Warehouse,
 } from "@/lib/commerce";
+import {
+  appliedBenefitsChanged, benefitErrorMessage, canonicalVoucherCode, validatePointsInput,
+} from "@/lib/benefits";
 import "@/components/storefront/preview.css";
 
 export default function CheckoutPage() {
@@ -29,6 +32,11 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [opKey, setOpKey] = useState(() => newOperationKey());
+  const [voucher, setVoucher] = useState("");
+  const [pointsRaw, setPointsRaw] = useState("");
+  const [benefitIssue, setBenefitIssue] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<string | null>(null);
+  const [appliedPoints, setAppliedPoints] = useState(0);
   const busyRef = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -73,16 +81,27 @@ export default function CheckoutPage() {
     void Promise.resolve().then(() => load());
   }, [load]);
 
-  async function refreshQuote(maKhoV: number | null, cartV: Cart | null) {
+  async function refreshQuote(maKhoV: number | null, cartV: Cart | null, benefits?: { voucherCode?: string | null; diemSuDung?: number | null }) {
     if (maKhoV === null || !cartV) return;
     setQuoting(true);
     setError("");
+    setBenefitIssue("");
     try {
-      const q = await quoteCart(maKhoV, cartV.phienBan);
+      const q = await quoteCart(maKhoV, cartV.phienBan, benefits);
       setQuote(q);
+      setAppliedVoucher(benefits?.voucherCode ?? null);
+      setAppliedPoints(benefits?.diemSuDung ?? 0);
+      if (benefits && (benefits.voucherCode || (benefits.diemSuDung ?? 0) > 0) && !q.giamVoucher && !q.giamDiem) {
+        setBenefitIssue("Máy chủ không áp dụng ưu đãi nào cho giỏ này (mã không khớp, hết hạn/tắt, hoặc điểm chưa đủ điều kiện). Tổng dưới đây là giá gốc.");
+      }
     } catch (e) {
       const status = (e as { status?: number })?.status ?? 0;
-      setError(commerceErrorMessage(status, e instanceof Error ? e.message : "Lấy báo giá thất bại."));
+      const msg = e instanceof Error ? e.message : "Lấy báo giá thất bại.";
+      if (benefits && (status === 400 || status === 404)) {
+        setBenefitIssue(benefitErrorMessage(status, null, msg) + " Mã/điểm đã nhập được giữ nguyên.");
+      } else {
+        setError(commerceErrorMessage(status, msg));
+      }
       setTimeout(() => errorRef.current?.focus(), 0);
       if (status === 409) {
         try {
@@ -112,6 +131,14 @@ export default function CheckoutPage() {
       errorRef.current?.focus();
       return;
     }
+    const voucherNow = voucher.trim() ? voucher.trim().toUpperCase() : null;
+    const pointsNow = pointsRaw.trim() ? Number(pointsRaw) : 0;
+    // Dirty-guard TRƯỚC khi khóa busy (R3-F1): return ở đây chưa khóa nên submit sau vẫn bấm được.
+    if (appliedBenefitsChanged(voucherNow, pointsNow, appliedVoucher, appliedPoints)) {
+      setError("Ưu đãi đã thay đổi sau báo giá — bấm “Áp dụng & tính lại” rồi mới đặt (không tự tính lại âm thầm).");
+      errorRef.current?.focus();
+      return;
+    }
     busyRef.current = true;
     setSubmitting(true);
     setError("");
@@ -125,6 +152,10 @@ export default function CheckoutPage() {
         sdtNhan: phone.trim(),
         diaChiGiao: address.trim(),
         ...(note.trim() ? { ghiChu: note.trim() } : {}),
+        ...(appliedVoucher ? { voucherCode: appliedVoucher } : {}),
+        ...(quote.maChinhSach !== undefined && quote.maChinhSach !== null ? { maChinhSach: quote.maChinhSach } : {}),
+        ...(quote.phienBanChinhSach !== undefined && quote.phienBanChinhSach !== null ? { phienBanChinhSach: quote.phienBanChinhSach } : {}),
+        ...(appliedPoints > 0 ? { diemSuDung: appliedPoints } : {}),
       });
       // Thành công: điều hướng tới đơn thật. Giỏ server đã tiêu thụ phần đã mua.
       router.replace(`/don-hang/${order.maDonHang}${replay ? "?replay=1" : ""}`);
@@ -204,6 +235,10 @@ export default function CheckoutPage() {
                         const v = Number(e.target.value);
                         setMaKho(v);
                         setQuote(null);
+                        setAppliedVoucher(null);
+                        setAppliedPoints(0);
+                        setVoucher("");
+                        setPointsRaw("");
                         if (cart) refreshQuote(v, cart);
                       }}
                     >
@@ -245,7 +280,18 @@ export default function CheckoutPage() {
                 {quote ? (
                   <>
                     <div className="pvLine"><span>Tạm tính</span><span>{formatVndContract(quote.tongTienHang)}</span></div>
-                    <div className="pvLine"><span>Giảm giá</span><span>{formatVndContract(quote.giamGia)} (0)</span></div>
+                    {(quote.giamVoucher ?? 0) > 0 || (quote.giamDiem ?? 0) > 0 ? (
+                      <>
+                        {(quote.giamVoucher ?? 0) > 0 ? (
+                          <div className="pvLine"><span>Voucher {appliedVoucher ?? ""}</span><span>−{formatVndContract(quote.giamVoucher)}</span></div>
+                        ) : null}
+                        {(quote.giamDiem ?? 0) > 0 ? (
+                          <div className="pvLine"><span>Điểm đã dùng ({appliedPoints})</span><span>−{formatVndContract(quote.giamDiem)}</span></div>
+                        ) : null}
+                      </>
+                    ) : (quote.giamGia ?? 0) > 0 ? (
+                      <div className="pvLine"><span>Giảm giá</span><span>−{formatVndContract(quote.giamGia)}</span></div>
+                    ) : null}
                     <div className="pvLine"><span>Phí pilot cố định</span><span>{formatVndContract(quote.phiVanChuyen)}</span></div>
                     <div className="pvLine total"><span>Tổng thanh toán</span><span>{formatVndContract(quote.tongThanhToan)}</span></div>
                     {!quote.coTheDat ? <p role="note" style={{ color: "#b42318", fontSize: 12.5 }}>Giỏ chưa thể đặt — kiểm tra khả dụng.</p> : null}
@@ -253,6 +299,54 @@ export default function CheckoutPage() {
                 ) : (
                   <p className="mpMuted">Chưa có báo giá — chọn kho và tải lại.</p>
                 )}
+                <section className="pvCard" aria-label="Voucher và điểm" style={{ marginTop: 12 }}>
+                  <h2>Voucher &amp; điểm (tùy chọn)</h2>
+                  <p className="sub">Một mã voucher rồi mới tới điểm. Máy chủ tính giảm thật.</p>
+                  <div className="pvField">
+                    <label htmlFor="co-voucher">Mã voucher</label>
+                    <input id="co-voucher" value={voucher} onChange={(e) => setVoucher(e.target.value)} placeholder="VD WELCOME2026" autoComplete="off" />
+                  </div>
+                  <div className="pvField">
+                    <label htmlFor="co-points">Điểm sử dụng (số nguyên)</label>
+                    <input id="co-points" value={pointsRaw} onChange={(e) => setPointsRaw(e.target.value)} placeholder="0" inputMode="numeric" />
+                  </div>
+                  {benefitIssue ? <p className="mpMuted" role="status">{benefitIssue}</p> : null}
+                  <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      className="hmCta hmCtaGhost"
+                      style={{ padding: "9px 16px", fontSize: 13 }}
+                      type="button"
+                      disabled={quoting}
+                      onClick={() => {
+                        try {
+                          const code = voucher.trim() ? canonicalVoucherCode(voucher) : null;
+                          const pts = validatePointsInput(pointsRaw, Number.MAX_SAFE_INTEGER);
+                          setVoucher(code ?? "");
+                          refreshQuote(maKho, cart, { voucherCode: code, diemSuDung: pts > 0 ? pts : null });
+                        } catch (e) {
+                          setBenefitIssue(e instanceof Error ? e.message : "Ưu đãi chưa hợp lệ.");
+                        }
+                      }}
+                    >
+                      {quoting ? "Đang tính…" : "Áp dụng & tính lại"}
+                    </button>
+                    <button
+                      className="hmCta hmCtaGhost"
+                      style={{ padding: "9px 16px", fontSize: 13 }}
+                      type="button"
+                      disabled={quoting || (!voucher && !pointsRaw)}
+                      onClick={() => {
+                        setVoucher("");
+                        setPointsRaw("");
+                        setAppliedVoucher(null);
+                        setAppliedPoints(0);
+                        refreshQuote(maKho, cart);
+                      }}
+                    >
+                      Bỏ ưu đãi
+                    </button>
+                  </p>
+                </section>
                 <button
                   className="hmCta hmCtaPrimary"
                   style={{ width: "100%", justifyContent: "center", marginTop: 12 }}

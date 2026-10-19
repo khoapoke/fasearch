@@ -66,7 +66,9 @@ export function safeAccountReturnHref(raw: string | null): string {
     canonical.startsWith("/don-hang/") ||
     canonical === "/kenh-ban/pos" ||
     canonical === "/kenh-ban/don-hang" ||
-    canonical.startsWith("/kenh-ban/don-hang/");
+    canonical.startsWith("/kenh-ban/don-hang/") ||
+    canonical === "/quan-tri" ||
+    canonical.startsWith("/quan-tri/");
   if (!allowed) return fallback;
   return raw;
 }

@@ -39,14 +39,23 @@ export async function fetchWarehouses(): Promise<Warehouse[]> {
   return unwrap<Warehouse[]>(r);
 }
 
-export async function quoteCart(maKho: number, phienBan: number): Promise<Quote> {
-  const r = await beWrite("v1/gio-hang/quote", "POST", { maKho, phienBan });
+export type QuoteBenefitsInput = { voucherCode?: string | null; diemSuDung?: number | null; maChinhSach?: number | null; phienBanChinhSach?: number | null };
+
+export async function quoteCart(maKho: number, phienBan: number, benefits?: QuoteBenefitsInput): Promise<Quote> {
+  const r = await beWrite("v1/gio-hang/quote", "POST", {
+    maKho,
+    phienBan,
+    ...(benefits?.voucherCode ? { voucherCode: benefits.voucherCode } : {}),
+    ...(benefits?.diemSuDung !== undefined && benefits.diemSuDung !== null ? { diemSuDung: benefits.diemSuDung } : {}),
+  });
   return unwrap<Quote>(r);
 }
 
 export async function createOnlineOrder(body: {
   khoaTam: string; maKho: number; phienBanGio: number; tongThanhToanDuKien: number;
   nguoiNhan: string; sdtNhan: string; diaChiGiao: string; ghiChu?: string;
+  voucherCode?: string | null; diemSuDung?: number | null;
+  maChinhSach?: number | null; phienBanChinhSach?: number | null;
 }): Promise<{ order: OrderDetail; replay: boolean; status: number }> {
   const r = await beWrite("v1/don-hang", "POST", body);
   const order = await unwrap<OrderDetail>(r);
@@ -119,13 +128,30 @@ export async function posSearchProducts(params: { q: string; maKho: number; page
 }
 
 export type PosCustomer = {
-  maKh: number; hoTen: string; sdt: string; hang?: string | null; diem?: number | null;
+  maKh: number; hoTen: string; sdt: string;
+  diemTichLuy?: number | null; diemGiuCho?: number | null;
+  tongChiTieu?: number | null; tenHang?: string | null;
+};
+
+type RawPosCustomer = {
+  maKh?: number | null; id?: number | null; hoTen: string; sdt: string;
+  diemTichLuy?: number | null; diemGiuCho?: number | null;
+  tongChiTieu?: number | null; tenHang?: string | null;
 };
 
 export async function posFindCustomer(sdt: string): Promise<PosCustomer | null> {
   const r = await beFetch(`v1/pos/khach-hang?sdt=${encodeURIComponent(sdt)}`);
   if (r.status === 404) return null;
-  return unwrap<PosCustomer>(r);
+  const raw = await unwrap<RawPosCustomer | RawPosCustomer[]>(r);
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  if (!first) return null;
+  const maKh = first.maKh ?? first.id ?? null;
+  if (maKh === null || maKh === undefined) return null;
+  return {
+    maKh, hoTen: first.hoTen, sdt: first.sdt,
+    diemTichLuy: first.diemTichLuy ?? null, diemGiuCho: first.diemGiuCho ?? null,
+    tongChiTieu: first.tongChiTieu ?? null, tenHang: first.tenHang ?? null,
+  };
 }
 
 export async function posCreateDraft(body: { khoaTam: string; maKho: number; maKh?: number | null }): Promise<PosDraft> {
@@ -153,8 +179,12 @@ export async function posSetCustomer(id: number, body: { phienBan: number; maKh?
   return unwrap<PosDraft>(r);
 }
 
-export async function posQuote(id: number, phienBan: number): Promise<PosQuote> {
-  const r = await beWrite(`v1/pos/don-hang/${encodeURIComponent(String(id))}/quote`, "POST", { phienBan });
+export async function posQuote(id: number, phienBan: number, benefits?: QuoteBenefitsInput): Promise<PosQuote> {
+  const r = await beWrite(`v1/pos/don-hang/${encodeURIComponent(String(id))}/quote`, "POST", {
+    phienBan,
+    ...(benefits?.voucherCode ? { voucherCode: benefits.voucherCode } : {}),
+    ...(benefits?.diemSuDung !== undefined && benefits.diemSuDung !== null ? { diemSuDung: benefits.diemSuDung } : {}),
+  });
   return unwrap<PosQuote>(r);
 }
 
@@ -178,6 +208,8 @@ export function normalizePosReceipt(raw: unknown): PosReceipt {
 
 export async function posPay(id: number, body: {
   khoaTam: string; phienBan: number; tongThanhToanDuKien: number; tienKhachDua: number;
+  voucherCode?: string | null; diemSuDung?: number | null;
+  maChinhSach?: number | null; phienBanChinhSach?: number | null;
 }): Promise<PosReceipt> {
   const r = await beWrite(`v1/pos/don-hang/${encodeURIComponent(String(id))}/thanh-toan`, "POST", body);
   return normalizePosReceipt(await unwrap<unknown>(r));

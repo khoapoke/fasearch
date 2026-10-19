@@ -10,6 +10,12 @@ const ACTIONS = [
     cta: "Sửa thông tin",
   },
   {
+    href: "/tai-khoan/diem-thuong",
+    title: "Điểm thưởng & Hạng",
+    body: "Xem điểm khả dụng/đang giữ, chi tiêu tích lũy, hạng và lịch sử tích/đổi điểm.",
+    cta: "Xem điểm",
+  },
+  {
     href: "/tai-khoan/bao-mat",
     title: "Bảo mật",
     body: "Đổi mật khẩu bằng mật khẩu hiện tại. Mọi phiên khác hết hiệu lực.",

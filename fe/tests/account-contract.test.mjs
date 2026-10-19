@@ -32,6 +32,8 @@ describe("safeAccountReturnHref", () => {
     assert.equal(safeAccountReturnHref("/catalog"), "/tai-khoan");
     assert.equal(safeAccountReturnHref("/search/text"), "/tai-khoan");
     assert.equal(safeAccountReturnHref("/dang-ky"), "/tai-khoan");
+    assert.equal(safeAccountReturnHref("/quan-tri/khuyen-mai"), "/quan-tri/khuyen-mai");
+    assert.equal(safeAccountReturnHref("/quan-tri"), "/quan-tri");
   });
 });
 

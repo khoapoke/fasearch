@@ -11,6 +11,17 @@ import {
 } from "@/lib/commerce";
 import "@/components/storefront/preview.css";
 
+function OrderDiscountLines({ order }: { order: OrderDetail }) {
+  // giamGia equals voucher+points summed per line here; show it only when no split lines exist.
+  const hasSplit = (order.giamVoucher ?? 0) > 0 || (order.giamDiem ?? 0) > 0
+    || (order.maVoucher ?? 0) > 0 || (order.diemSuDung ?? 0) > 0;
+  if (hasSplit) return null;
+  if (!((order.giamGia ?? 0) > 0)) return null;
+  return (
+    <div className="pvLine"><span>Giảm giá</span><span>−{formatVndContract(order.giamGia)}</span></div>
+  );
+}
+
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState<string>("");
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -120,13 +131,19 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="pvRow" key={l.maSku}>
               <div style={{ flex: 1 }}>
                 <b className="name">{l.tenSpSnapshot}</b>
-                <small>SKU {l.maSku} · SP {l.maSp} · {[l.mauSacSnapshot, l.kichCoSnapshot].filter(Boolean).join(" · ")} · SL: {l.soLuong}</small>
+                <small>SKU {l.maSku} · SP {l.maSp} · {[l.mauSacSnapshot, l.kichCoSnapshot].filter(Boolean).join(" · ")} · SL: {l.soLuong}{(l.tienGiamGia ?? 0) > 0 ? ` · giảm ${formatVndContract(l.tienGiamGia)}` : ""}</small>
               </div>
               <b>{formatVndContract(l.tongDong)}</b>
             </div>
           ))}
           <div className="pvLine"><span>Tạm tính</span><span>{formatVndContract(order.tongTienHang)}</span></div>
-          <div className="pvLine"><span>Giảm giá</span><span>{formatVndContract(order.giamGia)}</span></div>
+          <OrderDiscountLines order={order} />
+          {(order.giamVoucher ?? 0) > 0 || (order.maVoucher ?? 0) > 0 ? (
+            <div className="pvLine"><span>Voucher #{order.maVoucher ?? ""} (đã chốt)</span><span>−{formatVndContract(order.giamVoucher ?? 0)}</span></div>
+          ) : null}
+          {(order.giamDiem ?? 0) > 0 || (order.diemSuDung ?? 0) > 0 ? (
+            <div className="pvLine"><span>Điểm đã dùng ({order.diemSuDung ?? 0}) (đã chốt)</span><span>−{formatVndContract(order.giamDiem ?? 0)}</span></div>
+          ) : null}
           <div className="pvLine"><span>Phí vận chuyển</span><span>{formatVndContract(order.phiVanChuyen)}</span></div>
           <div className="pvLine total"><span>Tổng thanh toán</span><span>{formatVndContract(order.tongThanhToan)}</span></div>
           <h3 style={{ marginTop: 12 }}>Lịch sử thật</h3>

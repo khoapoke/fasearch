@@ -6,10 +6,13 @@ import { Icon, type UiIcon } from "@/components/ui/icon";
 import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
 import "./admin.css";
 
-export type AdminNavKey = "accounts" | "rbac" | "audit" | "backup";
+export type AdminNavKey = "accounts" | "rbac" | "audit" | "backup" | "campaigns" | "loyalty" | "reports";
 
 const NAV: Array<{ key: AdminNavKey; href: string; label: string; icon: UiIcon; live?: boolean }> = [
   { key: "accounts", href: "/quan-tri/tai-khoan", label: "Quản lý tài khoản", icon: "user" },
+  { key: "campaigns", href: "/quan-tri/khuyen-mai", label: "Khuyến mãi & Voucher", icon: "ticket", live: true },
+  { key: "loyalty", href: "/quan-tri/chinh-sach-diem", label: "Chính sách điểm", icon: "spark", live: true },
+  { key: "reports", href: "/quan-tri/bao-cao", label: "Báo cáo", icon: "chart", live: true },
   { key: "rbac", href: "/he-thong/phan-quyen", label: "Phân quyền", icon: "shield" },
   { key: "audit", href: "/quan-tri/nhat-ky", label: "Nhật ký hệ thống", icon: "receipt", live: true },
   { key: "backup", href: "/he-thong/sao-luu", label: "Sao lưu & Phục hồi", icon: "box" },
