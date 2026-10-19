@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import {
-  createLoyaltyPolicy, fetchLoyaltyPolicy, openLegacyBalance, policyId, updateLoyaltyPolicy,
-  updateTierThreshold, type LoyaltyPolicyAdmin,
+  createLoyaltyPolicy, fetchLoyaltyPolicy, fetchTierList, openLegacyBalance, policyId, updateLoyaltyPolicy,
+  updateTierThreshold, type LoyaltyPolicyAdmin, type TierInfo,
 } from "@/lib/benefits-client";
 import { benefitErrorMessage, type PolicyState } from "@/lib/benefits";
 
@@ -17,7 +17,9 @@ export default function LoyaltyPolicyPage() {
   const [giaTriDiem, setGiaTriDiem] = useState("");
   const [trangThai, setTrangThai] = useState<PolicyState>("TAT");
   const [maKh, setMaKh] = useState("");
+  const [tiers, setTiers] = useState<TierInfo[]>([]);
   const [maHang, setMaHang] = useState("");
+  const [tiersIssue, setTiersIssue] = useState("");
   const [nguong, setNguong] = useState("");
   const [issue, setIssue] = useState("");
   const [notice, setNotice] = useState("");
@@ -47,6 +49,16 @@ export default function LoyaltyPolicyPage() {
       setTimeout(() => errorRef.current?.focus(), 0);
     } finally {
       setLoading(false);
+    }
+    try {
+      const hangs = await fetchTierList();
+      setTiers(hangs);
+      setTiersIssue("");
+    } catch (e) {
+      // Danh sách hạng là discovery bắt buộc (Q2) — lỗi thì chặn đặt ngưỡng mù.
+      setTiers([]);
+      const st = (e as { status?: number })?.status ?? 0;
+      setTiersIssue(benefitErrorMessage(st, null, e instanceof Error ? e.message : "Không tải được danh sách hạng."));
     }
   }, []);
 
@@ -138,8 +150,12 @@ export default function LoyaltyPolicyPage() {
     if (busy) return;
     const id = Number(maHang);
     const n = Number(nguong);
+    if (tiers.length > 0 && !tiers.some((t) => t.maHang === id)) {
+      setIssue("Chọn hạng trong danh sách máy chủ — không đặt ngưỡng cho mã hạng ngoài danh sách.");
+      return;
+    }
     if (!Number.isInteger(id) || id <= 0) {
-      setIssue("Nhập mã hạng (số nguyên dương).");
+      setIssue("Chọn hạng trong danh sách trước khi đặt ngưỡng.");
       return;
     }
     if (!Number.isInteger(n) || n < 0) {
@@ -215,12 +231,20 @@ export default function LoyaltyPolicyPage() {
             </div>
           </section>
           <section className="adCard" aria-label="Ngưỡng hạng">
-            <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>Ngưỡng hạng (mã hạng + ngưỡng doanh số tích lũy VNĐ)</h2>
-            <p className="adNote">PUT đặt <b>nguongDoanhSo</b> (tiền tệ tích lũy, theo OpenAPI BE). Không có endpoint liệt kê hạng — nhập mã hạng đã biết; hỏi BE nếu hạng hiển thị không khớp kỳ vọng.</p>
+            <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>Ngưỡng hạng (chọn hạng + ngưỡng doanh số tích lũy VNĐ)</h2>
+            <p className="adNote">PUT đặt <b>nguongDoanhSo</b> (tiền tệ tích lũy, theo OpenAPI BE v2). Danh sách hạng tải trực tiếp từ máy chủ — không nhập mã mù.</p>
+            {tiersIssue ? <p className="adNote" role="alert">{tiersIssue} Không thể đặt ngưỡng khi chưa thấy danh sách hạng.</p> : null}
             <div className="adFilters">
-              <input value={maHang} onChange={(e) => setMaHang(e.target.value)} placeholder="Mã hạng" aria-label="Mã hạng" inputMode="numeric" style={{ width: 110 }} />
-              <input value={nguong} onChange={(e) => setNguong(e.target.value)} placeholder="Ngưỡng (số nguyên ≥ 0)" aria-label="Ngưỡng" inputMode="numeric" style={{ width: 200 }} />
-              <button className="adBtn" type="button" disabled={busy} onClick={submitTier}>Đặt ngưỡng</button>
+              <select value={maHang} onChange={(e) => setMaHang(e.target.value)} aria-label="Hạng" style={{ maxWidth: 320 }}>
+                <option value="">— Chọn hạng —</option>
+                {tiers.map((t) => (
+                  <option key={t.maHang} value={t.maHang}>
+                    #{t.maHang} {t.tenHang} · hiện tại: {t.nguongDoanhSo === null || t.nguongDoanhSo === undefined ? "chưa cấu hình" : `${Number(t.nguongDoanhSo).toLocaleString("vi-VN")}₫`}
+                  </option>
+                ))}
+              </select>
+              <input value={nguong} onChange={(e) => setNguong(e.target.value)} placeholder="Ngưỡng mới (số nguyên ≥ 0)" aria-label="Ngưỡng" inputMode="numeric" style={{ width: 200 }} />
+              <button className="adBtn" type="button" disabled={busy || tiers.length === 0} onClick={submitTier}>Đặt ngưỡng</button>
             </div>
           </section>
         </>

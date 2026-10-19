@@ -123,14 +123,25 @@ describe("benefits adapters hit contract paths with envelope", () => {
     fixtures.set("GET /api/be/v1/thanh-vien/chinh-sach", jsonResponse(404, { success: false, code: 404, message: "none", result: null }));
     assert.deepEqual(await fetchLoyaltyPolicy(), []);
   });
-  it("tier PUT sends {nguongDoanhSo} (cumulative-money per OpenAPI HangUpdateRequest)", async () => {
-    const { updateTierThreshold } = await import("../src/lib/benefits-client.ts");
+  it("tier PUT sends {nguongDoanhSo} (cumulative-money per OpenAPI HangUpdateRequest)", async () => {    const { updateTierThreshold } = await import("../src/lib/benefits-client.ts");
     fixtures.set("PUT /api/be/v1/thanh-vien/chinh-sach/hang/2", jsonResponse(200, envelope({ maHang: 2 })));
     await updateTierThreshold(2, 5000000);
     const put = calls.find((x) => x.method === "PUT" && x.url.includes("/hang/2"));
     assert.ok(put);
     assert.match(put.body, /"nguongDoanhSo":5000000/);
     assert.doesNotMatch(put.body, /"nguong"[^D]/);
+  });
+
+  it("tier list GET v1/thanh-vien/chinh-sach/hang (BE v2 discovery, no blind IDs)", async () => {
+    const { fetchTierList } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("GET /api/be/v1/thanh-vien/chinh-sach/hang", jsonResponse(200, envelope([
+      { maHang: 1, tenHang: "Đồng", nguongDiem: 0, nguongDoanhSo: null, quyenLoi: "Không có đặc quyền" },
+      { maHang: 2, tenHang: "Bạc", nguongDiem: 1000, nguongDoanhSo: null, quyenLoi: "Giảm 5%" },
+    ])));
+    const tiers = await fetchTierList();
+    assert.equal(tiers.length, 2);
+    assert.equal(tiers[0].tenHang, "Đồng");
+    assert.equal(tiers[1].maHang, 2);
   });
 });
 

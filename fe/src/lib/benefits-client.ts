@@ -162,6 +162,18 @@ export async function updateTierThreshold(maHang: number | string, nguongDoanhSo
   return unwrap<unknown>(r);
 }
 
+export type TierInfo = {
+  maHang: number; tenHang: string; nguongDiem?: number | null;
+  nguongDoanhSo?: number | null; quyenLoi?: string | null;
+};
+
+// Danh sách hạng ADMIN (BE v2 discovery — thay nhập mã hạng mù, Q2 đã trả lời).
+// Lỗi 401/403/mạng ném trung thực để caller hiện trạng thái, không đoán danh sách.
+export async function fetchTierList(): Promise<TierInfo[]> {
+  const r = await beFetch("v1/thanh-vien/chinh-sach/hang");
+  return unwrap<TierInfo[]>(r);
+}
+
 export async function openLegacyBalance(maKh: number | string): Promise<unknown> {
   const r = await beWrite("v1/quan-tri/thanh-vien/mo-dau", "POST", { maKh });
   return unwrap<unknown>(r);
