@@ -124,6 +124,29 @@ describe("discountLines (nhãn giảm theo snapshot máy chủ)", () => {
     assert.match(out[0].label, /chưa xác định phân bổ/);
     assert.equal(out[0].amount, 33000);
   });
+  it("đơn legacy không có giảm (giamGia=0) → không dòng 0đ", async () => {
+    const f = await lines();
+    assert.deepEqual(f({ phanBoGiamXacDinh: false, giamGia: 0, giamVoucher: null, giamDiem: null, diemSuDung: 0 }), []);
+  });
+  it("phản hồi cũ chưa có cờ → đúng một dòng 'Giảm giá'", async () => {
+    const f = await lines();
+    const out = f({ giamGia: 15000, giamVoucher: null, giamDiem: null, diemSuDung: 0, maVoucher: null });
+    assert.equal(out.length, 1);
+    assert.equal(out[0].label, "Giảm giá");
+    assert.equal(out[0].amount, 15000);
+  });
+  it("bố cục trang chi tiết đơn: một nguồn dòng giảm duy nhất", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, join } = await import("node:path");
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+    const detail = readFileSync(join(root, "src/app/don-hang/[id]/page.tsx"), "utf8");
+    const pos = readFileSync(join(root, "src/app/kenh-ban/pos/page.tsx"), "utf8");
+    for (const [name, src] of [["chi tiết đơn", detail], ["biên lai POS", pos]]) {
+      assert.match(src, /discountLines\(/, `${name}: phải render qua discountLines()`);
+      assert.doesNotMatch(src, /function OrderDiscountLines/, `${name}: không được có nguồn dòng giảm thứ hai`);
+    }
+  });
   it("đơn không giảm → không có dòng nào", async () => {
     const f = await lines();
     assert.deepEqual(f({ giamGia: 0 }), []);

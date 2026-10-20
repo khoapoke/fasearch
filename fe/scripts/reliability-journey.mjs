@@ -152,6 +152,61 @@ async function withBrowser(port, profile, fn) {
   }
 }
 
+
+// ---------- Chuẩn bị tồn kho (admin, BE cô lập) ----------
+// Lần chạy trước đã tiêu hết tồn kho của kho cửa hàng (maKho 1) nên báo giá báo
+// "Chỉ còn 0 sản phẩm khả dụng" và không đặt được đơn. Nhập thêm hàng qua chính
+// API phiếu nhập của staff (POST /kho/phieu/nhap + xac-nhan) để kịch bản có hàng
+// mua được — dữ liệu chỉ nằm trong DB cô lập của task.
+async function ensureStock(base, port) {
+  await withBrowser(port, "/tmp/relia-stock", async (p) => {
+    await p.goto(`${base}/`);
+    const login = await p.login("admin");
+    if (login.status !== 200) {
+      record("R0 admin đăng nhập để nhập kho", false, `HTTP ${login.status}`);
+      return;
+    }
+    const csrf = await p.csrf();
+    const auth = { "content-type": "application/json", [csrf.headerName]: csrf.token };
+    // Danh sách tồn kho yêu cầu maSku; quét từng SKU và mọi kho.
+    const need = new Map();
+    const seen = [];
+    for (const maSku of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const res = await p.fetchJson(`/api/be/v1/kho/ton?maSku=${maSku}&size=50`);
+      for (const r of (res.body?.result?.data ?? [])) {
+        seen.push(`sku${r.maSku}/kho${r.maKho}: thuc=${r.soLuongThuc} giu=${r.soLuongGiuCho} kha=${r.soLuongKhaDung}`);
+        if ((r.soLuongKhaDung ?? 0) < 5) {
+          if (!need.has(r.maKho)) need.set(r.maKho, new Set());
+          need.get(r.maKho).add(r.maSku);
+        }
+      }
+    }
+    const short = [...need.keys()];
+    if (short.length === 0) {
+      record("R0 tồn kho đủ cho kịch bản", true, seen.slice(0, 4).join(", "));
+      return;
+    }
+    let ok = true;
+    const notes = [];
+    for (const [maKho, skus] of need) {
+      const body = {
+        maKhoDich: maKho,
+        items: [...skus].map((maSku) => ({ maSku, soLuong: 20 })),
+        khoaTam: `relia-nhap-${Date.now()}-${maKho}`,
+        nhaCungCap: "Reliability Harness",
+      };
+      const slip = await p.fetchJson("/api/be/v1/kho/phieu/nhap", { method: "POST", headers: auth, body: JSON.stringify(body) });
+      const maPhieu = slip.body?.result?.maPhieu;
+      if (!maPhieu) { ok = false; notes.push(`kho${maKho}: phiếu HTTP ${slip.status}`); continue; }
+      const confirm = await p.fetchJson(`/api/be/v1/kho/phieu/${maPhieu}/xac-nhan`, { method: "POST", headers: auth, body: "{}" });
+      notes.push(`kho${maKho}: phiếu #${maPhieu} xác nhận HTTP ${confirm.status}`);
+      if (confirm.status !== 200) ok = false;
+    }
+    record("R0 nhập tồn kho cho kịch bản (kho cửa hàng hết hàng)", ok,
+      notes.join(" | ") + " || trước: " + seen.slice(0, 4).join(", "));
+  });
+}
+
 // ---------- R3: ma trận bảo mật ----------
 async function r3(base, port) {
   await withBrowser(port, "/tmp/relia-r3-a", async (a) => {
@@ -253,62 +308,51 @@ async function r4(base, port) {
       return;
     }
     record("R4 giỏ có hàng để thử đặt đơn", true, `SKU ${items[0].maSku} × ${items[0].soLuong}`);
-    const phienBan = cart.body?.result?.phienBan;
     const maKho = 1;
+    const pv = cart.body?.result?.phienBan;
 
-    // báo giá (kèm voucher để kiểm tra phân bổ giảm đã chốt)
+    // 1) Báo giá: ưu tiên voucher; nếu voucher không áp dụng (ngoài phạm vi chiến dịch)
+    //    thì dùng điểm để vẫn có phân bổ giảm đã chốt để kiểm tra DATA-3.
     let quote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
-      method: "POST", headers: auth,
-      body: JSON.stringify({ maKho, phienBan, voucherCode: VOUCHER_CODE }),
+      method: "POST", headers: auth, body: JSON.stringify({ maKho, phienBan: pv }),
     });
-    record("R4 báo giá 200", quote.status === 200, `HTTP ${quote.status}`);
-    const q = quote.body?.result ?? {};
-    // FE gửi kèm mốc chính sách lấy từ báo giá — thiếu thì BE từ chối 400.
+    let q = quote.body?.result ?? {};
+    let usedVoucher = false;
+    let usedPoints = 0;
+    if ((q.giamVoucher ?? 0) <= 0) {
+      const voucherQuote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
+        method: "POST", headers: auth, body: JSON.stringify({ maKho, phienBan: pv, voucherCode: VOUCHER_CODE }),
+      });
+      if (voucherQuote.status === 200 && (voucherQuote.body?.result?.giamVoucher ?? 0) > 0) {
+        quote = voucherQuote; q = voucherQuote.body.result; usedVoucher = true;
+      }
+    }
+    if (!usedVoucher && (q.diemDuocPhep ?? 0) > 0) {
+      usedPoints = Math.min(3, q.diemDuocPhep);
+      const pointQuote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
+        method: "POST", headers: auth, body: JSON.stringify({ maKho, phienBan: pv, diemSuDung: usedPoints }),
+      });
+      if (pointQuote.status === 200) { quote = pointQuote; q = pointQuote.body.result; }
+      else usedPoints = 0;
+    }
+    record("R4 báo giá 200", quote.status === 200, `HTTP ${quote.status} (voucher: ${usedVoucher}, điểm: ${usedPoints})`);
+    const camps = await p.fetchJson("/api/be/v1/khuyen-mai/dang-mo");
+    const cartNow = await p.fetchJson("/api/be/v1/gio-hang");
     record("R4 báo giá có phân bổ giảm", (q.giamVoucher ?? 0) > 0 || (q.giamDiem ?? 0) > 0,
-      `voucher ${q.giamVoucher} / diem ${q.giamDiem}`);
+      `voucher ${q.giamVoucher} / diem ${q.giamDiem} (điểm dùng ${usedPoints})`);
+    // FE gửi kèm mốc chính sách lấy từ báo giá — thiếu thì BE từ chối 400.
+    const phienBanGio = q.phienBanGio;
+    const tong = q.tongThanhToan;
+    const policy = { maChinhSach: q.maChinhSach, phienBanChinhSach: q.phienBanChinhSach };
 
-    // giá sai → 409, không tạo đơn
-    // Báo giá cũ: giá đúng nhưng phiên giỏ đã cũ -> BE phải yêu cầu tải lại (409).
-    // Báo giá cũ: giỏ đã đổi sau lúc báo giá -> báo giá lại bằng phiên cũ phải 409.
-    const cur = await p.fetchJson("/api/be/v1/gio-hang");
-    const pvNow = cur.body?.result?.phienBan ?? 0;
-    const bump = await p.fetchJson("/api/be/v1/gio-hang/items/1", {
-      method: "PUT", headers: auth, body: JSON.stringify({ soLuong: 1, phienBan: pvNow }),
-    });
-    const staleQuote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
-      method: "POST", headers: auth,
-      body: JSON.stringify({ maKho, phienBan: pvNow, voucherCode: VOUCHER_CODE }),
-    });
-    record("R4 báo giá cũ (giỏ đã đổi) → 409 yêu cầu tải lại", staleQuote.status === 409,
-      `HTTP ${staleQuote.status} (bump giỏ HTTP ${bump.status})`);
-
-    // đặt đơn hợp lệ, rồi replay cùng khoaTam
-    // Probe stale-quote vừa đổi phiên giỏ -> báo giá lại trước khi đặt đơn.
-    quote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
-      method: "POST", headers: auth,
-      body: JSON.stringify({ maKho, phienBan: (await p.fetchJson("/api/be/v1/gio-hang")).body?.result?.phienBan, voucherCode: VOUCHER_CODE }),
-    });
-    const q2 = quote.body?.result ?? {};
-    const tong = q2.tongThanhToan;
-    const phienBanGio = q2.phienBanGio;
-    const policy = {
-      ...(q2.maChinhSach != null ? { maChinhSach: q2.maChinhSach } : {}),
-      ...(q2.phienBanChinhSach != null ? { phienBanChinhSach: q2.phienBanChinhSach } : {}),
-    };
-    // Tổng báo giá sai (không phải số máy chủ chấp nhận) -> 400 là phân loại đúng.
-    const wrongTotal = await p.fetchJson("/api/be/v1/don-hang", {
-      method: "POST", headers: auth,
-      body: JSON.stringify({
-        maKho, phienBanGio, tongThanhToanDuKien: (tong ?? 0) + 1, ...policy,
-        nguoiNhan: "Reliability Test", sdtNhan: "09020261020", diaChiGiao: "1 Test St",
-      }),
-    });
-    record("R4 tổng không hợp lệ → 400 (không tạo đơn)", wrongTotal.status === 400, `HTTP ${wrongTotal.status}`);
+    // 2) Đặt đơn hợp lệ rồi replay cùng khoaTam (idempotent).
     const key = `reliab-${Date.now()}`;
     const body = {
       maKho, phienBanGio, tongThanhToanDuKien: tong, ...policy,
       nguoiNhan: "Reliability Test", sdtNhan: "09020261020", diaChiGiao: "1 Test St",
-      voucherCode: VOUCHER_CODE, khoaTam: key,
+      ...(usedVoucher ? { voucherCode: VOUCHER_CODE } : {}),
+      ...(usedPoints > 0 ? { diemSuDung: usedPoints } : {}),
+      khoaTam: key,
     };
     const first = await p.fetchJson("/api/be/v1/don-hang", { method: "POST", headers: auth, body: JSON.stringify(body) });
     record("R4 tạo đơn 201", first.status === 201, `HTTP ${first.status}`);
@@ -318,14 +362,14 @@ async function r4(base, port) {
       replay.body?.result?.maDonHang === maDon,
       `#${first.body?.result?.maDonHang} vs #${replay.body?.result?.maDonHang}`);
 
-    // snapshot đã chốt
+    // 3) Snapshot đã chốt.
     const before = await p.fetchJson(`/api/be/v1/don-hang/${maDon}`);
     const b = before.body?.result ?? {};
     record("R4 chi tiết đơn có snapshot giảm",
       typeof b.tongThanhToan === "number",
       `tong=${b.tongThanhToan} voucher=${b.giamVoucher} diem=${b.giamDiem} diemSuDung=${b.diemSuDung}`);
 
-    // hủy → so sánh breakdown (DATA-3 vết kiểm)
+    // 4) Hủy → so sánh breakdown (DATA-3 vết kiểm).
     const cancel = await p.fetchJson(`/api/be/v1/don-hang/${maDon}/huy`, {
       method: "POST", headers: auth,
       body: JSON.stringify({ khoaTam: `${key}-cancel`, phienBan: b.phienBan, lyDo: "Kiem chu doi tin dung" }),
@@ -333,8 +377,7 @@ async function r4(base, port) {
     record("R4 hủy đơn 200", cancel.status === 200, `HTTP ${cancel.status}`);
     const after = await p.fetchJson(`/api/be/v1/don-hang/${maDon}`);
     const a = after.body?.result ?? {};
-    const sameTotal = a.tongThanhToan === b.tongThanhToan;
-    record("R4 tổng tiền giữ nguyên sau hủy", sameTotal, `${b.tongThanhToan} -> ${a.tongThanhToan}`);
+    record("R4 tổng tiền giữ nguyên sau hủy", a.tongThanhToan === b.tongThanhToan, `${b.tongThanhToan} -> ${a.tongThanhToan}`);
     const voucherDropped = (b.giamVoucher ?? 0) > 0 && (a.giamVoucher ?? 0) === 0;
     const pointsAbsorbed = (a.giamDiem ?? 0) > (b.giamDiem ?? 0);
     if (voucherDropped && pointsAbsorbed) {
@@ -345,6 +388,31 @@ async function r4(base, port) {
       record("R4 breakdown hủy giữ đúng phân bổ đã chốt", true,
         `giamVoucher ${b.giamVoucher}->${a.giamVoucher}, giamDiem ${b.giamDiem}->${a.giamDiem}`);
     }
+
+    // 5) Tổng sai (không phải số máy chủ chấp nhận) -> 400 là phân loại đúng.
+    //    Dùng version giỏ hiện hành để lỗi là về TỔNG, không về phiên giỏ.
+    const freshCart = await p.fetchJson("/api/be/v1/gio-hang");
+    const wrongTotal = await p.fetchJson("/api/be/v1/don-hang", {
+      method: "POST", headers: auth,
+      body: JSON.stringify({
+        maKho, phienBanGio: freshCart.body?.result?.phienBan ?? 0,
+        tongThanhToanDuKien: (tong ?? 0) + 1, ...policy,
+        nguoiNhan: "Reliability Test", sdtNhan: "09020261020", diaChiGiao: "1 Test St",
+      }),
+    });
+    record("R4 tổng không hợp lệ → 400 (không tạo đơn)", wrongTotal.status === 400, `HTTP ${wrongTotal.status}`);
+
+    // 6) Báo giá cũ: bump giỏ rồi báo giá bằng phiên cũ -> BE phải yêu cầu tải lại (409).
+    const cur = await p.fetchJson("/api/be/v1/gio-hang");
+    const pvNow = cur.body?.result?.phienBan ?? 0;
+    const bump = await p.fetchJson("/api/be/v1/gio-hang/items/1", {
+      method: "PUT", headers: auth, body: JSON.stringify({ soLuong: 1, phienBan: pvNow }),
+    });
+    const staleQuote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
+      method: "POST", headers: auth, body: JSON.stringify({ maKho, phienBan: pvNow }),
+    });
+    record("R4 báo giá cũ (giỏ đã đổi) → 409 yêu cầu tải lại", staleQuote.status === 409,
+      `HTTP ${staleQuote.status} (bump giỏ HTTP ${bump.status})`);
   });
 }
 
@@ -362,6 +430,23 @@ async function r5(base, port) {
       return { status: res.status };
     })()`);
     record("R5 hub đọc được đơn qua proxy", orders?.status === 200, `HTTP ${orders?.status}`);
+    // Đơn legacy đã hủy: khối tiền phải có đúng MỘT dòng giảm và không có dòng 0đ.
+    await p.goto(`${base}/don-hang/51`);
+    await sleep(1500);
+    const legacyOrderMoneyBlock = await p.eval(`(() => {
+      const t = document.body.innerText;
+      const generic = t.includes('Giảm giá');
+      const unallocated = t.includes('Tổng giảm (chưa xác định phân bổ)');
+      const zero = /−0₫|−0đ/.test(t);
+      // đếm DÒNG giảm (−15.000), không đếm chuỗi "15.000" nằm trong "135.000"
+      const occurrences = (t.match(/−15\.000/g) || []).length;
+      return { generic, unallocated, zero, occurrences, text: t.slice(0, 260) };
+    })()`);
+    record("R5 đơn legacy: đúng một dòng giảm, không dòng 0đ",
+      !(legacyOrderMoneyBlock.generic && legacyOrderMoneyBlock.unallocated)
+      && !legacyOrderMoneyBlock.zero
+      && legacyOrderMoneyBlock.occurrences <= 1,
+      JSON.stringify(legacyOrderMoneyBlock).slice(0, 200));
     const focusRing = await p.eval(`(() => {
       const el = document.querySelector('a, button');
       if (!el) return null;
@@ -520,9 +605,9 @@ await mkdir(outDir, { recursive: true });
 const port = Number(process.env.CDP_PORT || 9311);
 try {
   if (scenario === "r3" || scenario === "all") await r3(base, port);
-  if (scenario === "r4" || scenario === "all") await r4(base, port + 10);
+  if (scenario === "r4" || scenario === "all") { await ensureStock(base, port + 5); await r4(base, port + 10); }
   if (scenario === "r5" || scenario === "all") await r5(base, port + 20);
-  if (scenario === "r5b" || scenario === "all") await r5b(base, port + 30);
+  if (scenario === "r5b" || scenario === "all") { await ensureStock(base, port + 25); await r5b(base, port + 30); }
   if (scenario === "r5c" || scenario === "all") await r5c(base, port + 40);
   if (scenario === "r5d" || scenario === "all") await r5d(base, port + 50);
   if (scenario === "r5e" || scenario === "all") await r5e(base, port + 60);

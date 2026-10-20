@@ -11,17 +11,6 @@ import {
 } from "@/lib/commerce";
 import "@/components/storefront/preview.css";
 
-function OrderDiscountLines({ order }: { order: OrderDetail }) {
-  // giamGia equals voucher+points summed per line here; show it only when no split lines exist.
-  const hasSplit = (order.giamVoucher ?? 0) > 0 || (order.giamDiem ?? 0) > 0
-    || (order.maVoucher ?? 0) > 0 || (order.diemSuDung ?? 0) > 0;
-  if (hasSplit) return null;
-  if (!((order.giamGia ?? 0) > 0)) return null;
-  return (
-    <div className="pvLine"><span>Giảm giá</span><span>−{formatVndContract(order.giamGia)}</span></div>
-  );
-}
-
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState<string>("");
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -143,7 +132,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           ))}
           <div className="pvLine"><span>Tạm tính</span><span>{formatVndContract(order.tongTienHang)}</span></div>
-          <OrderDiscountLines order={order} />
           {discountLines(order).map((line) => (
             <div className="pvLine" key={line.label}>
               <span>{line.label}</span>

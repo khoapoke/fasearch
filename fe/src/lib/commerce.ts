@@ -216,8 +216,11 @@ export function discountLines(order: {
   diemSuDung?: number | null;
   maVoucher?: number | null;
 }): DiscountLine[] {
+  const tong = order.giamGia ?? 0;
   if (order.phanBoGiamXacDinh === false) {
-    return [{ label: "Tổng giảm (chưa xác định phân bổ)", amount: order.giamGia ?? null }];
+    // Đơn legacy đã hủy: không còn bản ghi dùng voucher nên không suy được phần nào
+    // là voucher, phần nào là điểm — chỉ hiện tổng giảm, và không hiện dòng 0đ.
+    return tong > 0 ? [{ label: "Tổng giảm (chưa xác định phân bổ)", amount: tong }] : [];
   }
   const lines: DiscountLine[] = [];
   if ((order.giamVoucher ?? 0) > 0 || (order.maVoucher ?? 0) > 0) {
@@ -226,7 +229,9 @@ export function discountLines(order: {
   if ((order.giamDiem ?? 0) > 0 || (order.diemSuDung ?? 0) > 0) {
     lines.push({ label: `Điểm đã dùng (${order.diemSuDung ?? 0}) (đã chốt)`, amount: order.giamDiem ?? null });
   }
-  return lines;
+  if (lines.length > 0) return lines;
+  // Không có thông tin phân bổ (phản hồi cũ chưa có cờ): hiện đúng một dòng tổng giảm.
+  return tong > 0 ? [{ label: "Giảm giá", amount: tong }] : [];
 }
 
 export function voucherChosenLabel(maVoucher: number | null | undefined, suffix = ""): string {
