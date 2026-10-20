@@ -7,7 +7,7 @@ import { cancelOwnOrder, fetchOwnOrder } from "@/lib/commerce-client";
 import {
   commerceErrorMessage, formatVndContract, isCustomerCancellable, newOperationKey,
   orderStatusLabel, paymentMethodLabel, paymentStatusLabel, validateCancelReason,
-  type OrderDetail,
+  voucherChosenLabel, type OrderDetail,
 } from "@/lib/commerce";
 import "@/components/storefront/preview.css";
 
@@ -145,7 +145,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           <div className="pvLine"><span>Tạm tính</span><span>{formatVndContract(order.tongTienHang)}</span></div>
           <OrderDiscountLines order={order} />
           {(order.giamVoucher ?? 0) > 0 || (order.maVoucher ?? 0) > 0 ? (
-            <div className="pvLine"><span>Voucher #{order.maVoucher ?? ""} (đã chốt)</span><span>−{formatVndContract(order.giamVoucher ?? 0)}</span></div>
+            <div className="pvLine"><span>{voucherChosenLabel(order.maVoucher, " (đã chốt)")}</span><span>−{formatVndContract(order.giamVoucher ?? 0)}</span></div>
           ) : null}
           {(order.giamDiem ?? 0) > 0 || (order.diemSuDung ?? 0) > 0 ? (
             <div className="pvLine"><span>Điểm đã dùng ({order.diemSuDung ?? 0}) (đã chốt)</span><span>−{formatVndContract(order.giamDiem ?? 0)}</span></div>

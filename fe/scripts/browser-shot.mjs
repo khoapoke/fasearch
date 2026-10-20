@@ -15,11 +15,8 @@ const CHROME = process.env.CHROME_BIN
   || "/home/dolakhoa/.cache/ms-playwright/chromium-1246/chrome-linux64/chrome";
 const PORT = Number(process.env.CDP_PORT || 9223);
 
-const ACCOUNTS = {
-  customer: { user: "emiluix-cust", pass: "Cst-20261020" },
-  staff: { user: "emiluix-staff", pass: "Stf-20261020" },
-  admin: { user: "emiluix-admin", pass: "Adm-20261020" },
-};
+// Thông tin đăng nhập fixture nằm ở tệp KHÔNG theo dõi git (xem fixture-config.mjs).
+const ACCOUNTS = loadFixtureConfig().accounts;
 
 async function launch() {
   const proc = spawn(CHROME, [

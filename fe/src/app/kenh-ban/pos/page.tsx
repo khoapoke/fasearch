@@ -10,7 +10,8 @@ import {
 } from "@/lib/commerce-client";
 import {
   commerceErrorMessage, formatVndContract, newOperationKey, validateCancelReason,
-  validateCashTender, validateQuantity, type PosDraft, type PosQuote, type PosReceipt, type Warehouse,
+  validateCashTender, validateQuantity, voucherChosenLabel,
+  type PosDraft, type PosQuote, type PosReceipt, type Warehouse,
 } from "@/lib/commerce";
 import {
   benefitErrorMessage, canonicalVoucherCode, validatePointsInput,
@@ -528,7 +529,7 @@ export default function PosPage() {
           <h3>Hóa đơn #{String(receipt.maHoaDon)} <span className="mpPill mpPillLive">Đã thu tiền mặt</span></h3>
           <p className="mpMuted">Đơn #{receipt.maDonHang} · kho {receipt.maKho} · {formatVndContract(receipt.tongThanhToan)} · thối {formatVndContract(receipt.tienThua)}</p>
           {(receipt.giamVoucher ?? 0) > 0 || (receipt.maVoucher ?? 0) > 0 ? (
-            <p className="mpMuted">Voucher #{receipt.maVoucher ?? ""}: −{formatVndContract(receipt.giamVoucher ?? 0)}</p>
+            <p className="mpMuted">{voucherChosenLabel(receipt.maVoucher)}: −{formatVndContract(receipt.giamVoucher ?? 0)}</p>
           ) : null}
           {(receipt.giamDiem ?? 0) > 0 || (receipt.diemSuDung ?? 0) > 0 ? (
             <p className="mpMuted">Điểm đã dùng ({receipt.diemSuDung ?? 0}): −{formatVndContract(receipt.giamDiem ?? 0)}</p>

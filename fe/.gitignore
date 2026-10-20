@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# fixture đăng nhập cục bộ (chứa mật khẩu dev) — không commit
+/.local/
+
 # vercel
 .vercel
 

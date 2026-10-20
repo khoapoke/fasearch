@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildOrderQuery, buildStaffOrderQuery, commerceErrorMessage, formatVndContract,
+  voucherChosenLabel,
   isCustomerCancellable, newOperationKey, nextOnlineState, orderStatusLabel,
   paymentMethodLabel, paymentStatusLabel, validateCancelReason, validateCashTender,
   validateQuantity, validateReceiver,
@@ -70,5 +71,14 @@ describe("paging + errors", () => {
     assert.match(commerceErrorMessage(409, "x"), /Tải lại/);
     assert.match(commerceErrorMessage(404, "x"), /Không tìm thấy/);
     assert.equal(formatVndContract(150000), "150.000₫");
+  });
+});
+
+describe("voucherChosenLabel (R5: mã voucher bị nhả sau khi hủy)", () => {
+  it("có mã thì hiện #id, không có mã thì không in # rỗng", () => {
+    assert.equal(voucherChosenLabel(5), "Voucher #5");
+    assert.equal(voucherChosenLabel(5, " (đã chốt)"), "Voucher #5 (đã chốt)");
+    assert.equal(voucherChosenLabel(null), "Voucher");
+    assert.equal(voucherChosenLabel(undefined, " (đã chốt)"), "Voucher (đã chốt)");
   });
 });

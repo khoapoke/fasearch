@@ -195,6 +195,15 @@ export function formatVndContract(value: number | null | undefined): string {
   return `${value.toLocaleString("vi-VN")}₫`;
 }
 
+/**
+ * Nhãn voucher đã chốt. Mã voucher có thể vắng sau khi BE nhả usage (đơn đã
+ * hủy) trong khi số tiền giảm vẫn nằm trong snapshot — không in "#" rỗng.
+ */
+export function voucherChosenLabel(maVoucher: number | null | undefined, suffix = ""): string {
+  const id = maVoucher ?? null;
+  return id !== null && id !== 0 ? `Voucher #${id}${suffix}` : `Voucher${suffix}`;
+}
+
 /** Lỗi HTTP → câu VI trung thực, giữ input/filters ở caller. */
 export function commerceErrorMessage(status: number, fallback: string): string {
   if (status === 400) return fallback || "Yêu cầu chưa hợp lệ. Kiểm tra lại thông tin rồi thử tiếp.";
