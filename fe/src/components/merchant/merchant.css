@@ -137,3 +137,13 @@ table.mpTable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-w
   .mpMain { padding: 14px 14px 32px; }
   .mpStats { grid-template-columns: 1fr; }
 }
+/* Màn hình hẹp: dải thông báo kênh bán xuống dòng thay vì tràn ngang (VIS-6). */
+@media (max-width: 460px) {
+  .mpBanner div {
+    white-space: normal;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding: 8px 14px;
+  }
+  .mpBanner span { min-width: 0; }
+}

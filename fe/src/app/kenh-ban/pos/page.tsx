@@ -427,7 +427,7 @@ export default function PosPage() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Quét barcode hoặc gõ SKU/tên… (Enter)"
             aria-label="Tìm hàng POS"
-            style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px" }}
+            style={{ flex: 1, minWidth: 0, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px" }}
           />
           <button className="mpTopBtn" type="submit" disabled={searching}>{searching ? "Đang tìm…" : "Tìm"}</button>
         </form>
