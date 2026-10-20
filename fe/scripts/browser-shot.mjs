@@ -160,6 +160,26 @@ async function runSteps(session, steps) {
       await sleep(step.after ?? 700);
       continue;
     }
+    if (step.tab) {
+      // Điều hướng bằng bàn phím: Tab thật (Input.dispatchKeyEvent) rồi đọc
+      // phần tử đang có focus để kiểm tra thứ tự tab và nhãn truy cập.
+      const seen = [];
+      for (let i = 0; i < (step.tab ?? 0); i += 1) {
+        await session.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+        await session.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
+        await sleep(60);
+        const label = await safeEval(session, `(() => {
+          const el = document.activeElement;
+          if (!el || el === document.body) return 'body';
+          const text = (el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.textContent || el.value || el.tagName).trim();
+          const visible = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+          return el.tagName + ':' + text.slice(0, 24) + (visible ? '' : ' [ẩn]');
+        })()`);
+        seen.push(label);
+      }
+      log.push(`tab ${step.tab} -> ${JSON.stringify(seen)}`);
+      continue;
+    }
     if (step.eval) {
       const value = await safeEval(session, step.eval);
       log.push(`eval -> ${JSON.stringify(value)}`);
