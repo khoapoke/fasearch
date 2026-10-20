@@ -199,9 +199,9 @@ export function NamListing() {
   return BoundListing(hook, {
     shell: "/nam",
     crumbs: [{ href: "/", label: "Trang chủ" }, { label: "Áo thun nam & Polo" }],
-    title: "Áo Thun Nam & Polo Công Nghệ",
-    sub: "Bộ sưu tập tập trung phục vụ cơ bản ứng dụng công nghệ dệt may tiên tiến: sợi Compact dẻo dai, sợi Café khử mùi sinh học và kỹ thuật Quick-Dry thoáng mát cả ngày.",
-    tags: ["#CottonCompact", "#ChốngNhăn", "#Oversize", "#CoGiãn4Chiều", "#ThấmHútTốiĐa"],
+    title: "Danh mục nam",
+    sub: "Sản phẩm đang bán, giá và biến thể lấy trực tiếp từ máy chủ.",
+    tags: [],
     photoFolder: "fashionsearch_ai_danh_s_ch_s_n_ph_m",
   });
 }
@@ -222,9 +222,9 @@ export function NuListing() {
       </div>
     ),
     crumbs: [{ href: "/", label: "Trang chủ" }, { label: "Thời trang Nữ" }],
-    title: "Danh Mục Nữ | Thời Trang Nữ Cao Cấp & Công Nghệ",
-    sub: "BST nữ cao cấp ứng dụng cùng nền tảng công nghệ sợi: mềm mại, thoáng mát và giữ phom cả ngày dài.",
-    tags: ["#NữCaoCấp", "#GiữPhom", "#MềmMại", "#ThoángMát"],
+    title: "Danh mục nữ",
+    sub: "Sản phẩm đang bán, giá và biến thể lấy trực tiếp từ máy chủ.",
+    tags: [],
     photoFolder: "fashionsearch_ai_danh_m_c_n",
   });
   return inner;
@@ -236,9 +236,9 @@ export function HangMoiListing() {
     shell: "/hang-moi",
     lead: <ArrivalAlert />,
     crumbs: [{ href: "/", label: "Trang chủ" }, { label: "Hàng Mới" }],
-    title: "Hàng Mới Về",
-    sub: "Những sản phẩm đang bán trên kệ, hiển thị theo thứ tự của máy chủ (máy chủ chưa hỗ trợ sắp xếp theo ngày về).",
-    tags: ["#HàngMới", "#VừaLênKệ"],
+    title: "Hàng mới về",
+    sub: "Sản phẩm đang bán trên kệ, hiển thị theo thứ tự của máy chủ (máy chủ chưa hỗ trợ sắp xếp theo ngày về).",
+    tags: [],
     photoFolder: "fashionsearch_ai_h_ng_m_i",
     aiCta: false,
   });
@@ -251,9 +251,9 @@ export function SaleListing() {
     lead: <SaleFlash />,
     previewNote: "Trang Sale chạy dữ liệu catalog thật; huy hiệu % giảm giá chưa hiển thị vì máy chủ chưa có giá khuyến mãi.",
     crumbs: [{ href: "/", label: "Trang chủ" }, { label: "Sale" }],
-    title: "Sale Giảm Sốc | Flash Sale & Clearance Deals",
-    sub: "Săn deal cuối mùa với giá tốt nhất. Giá hiển thị là giá bán hiện tại từ máy chủ.",
-    tags: ["#FlashSale", "#Clearance"],
+    title: "Trang ưu đãi",
+    sub: "Giá hiển thị là giá bán hiện tại từ máy chủ. Mã giảm giá nhập ở bước thanh toán.",
+    tags: [],
     photoFolder: "fashionsearch_ai_sale_gi_m_s_c",
   });
 }
@@ -300,8 +300,8 @@ function CollectionHero({ cats }: { cats: Array<{ id: number; name: string }> })
       <div className="hmCol" style={{ maxWidth: 1240, margin: "18px auto 0" }}>
         {hero ? <StitchImage src={hero.src} alt={hero.alt || "Bộ sưu tập độc quyền"} eager /> : null}
         <div>
-          <small>AI CURATED COLLECTION</small>
-          <h3>Bộ Sưu Tập Độc Quyền FashionSearch AI</h3>
+          <small>Lookbook</small>
+          <h3>Bộ sưu tập</h3>
           <p>Ảnh lookbook minh họa. Chọn danh mục bên dưới để xem sản phẩm thật.</p>
           <Link href="/nam">Khám phá toàn bộ →</Link>
         </div>
@@ -318,19 +318,19 @@ function CollectionHero({ cats }: { cats: Array<{ id: number; name: string }> })
         <div className="hmCol">
           <StitchImage src={photos[1]?.src} alt={photos[1]?.alt || "Urban Minimalist"} />
           <div>
-            <small>LOOKBOOK</small>
+            <small>Lookbook</small>
             <h3>Urban Minimalist</h3>
-            <p>Tinh giản, trung tính — mặc đẹp mỗi ngày.</p>
-            <Link href="/nam">Khám phá →</Link>
+            <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
+            <Link href="/nam">Xem sản phẩm →</Link>
           </div>
         </div>
         <div className="hmCol">
           <StitchImage src={photos[2]?.src} alt={photos[2]?.alt || "Pro Active"} />
           <div>
-            <small>PERFORMANCE</small>
+            <small>Lookbook</small>
             <h3>Pro Active Training</h3>
-            <p>Thoáng mát, co giãn cho mọi buổi tập.</p>
-            <Link href="/nam">Xem sưu tập →</Link>
+            <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
+            <Link href="/nam">Xem sản phẩm →</Link>
           </div>
         </div>
       </div>
@@ -381,9 +381,9 @@ function SaleFlash() {
   return (
     <div className="hmAiCard" style={{ padding: 22, marginTop: 14 }}>
       <div>
-        <h2 style={{ fontSize: 19 }}>Sale Giảm Sốc Hôm Nay <span className="mpPill mpPillWarn">Minh họa</span></h2>
-        <p>Khung giờ minh họa theo bố cục thiết kế — máy chủ chưa có lịch khuyến
-        mãi hay giá giảm. Giá hiển thị là giá bán hiện tại từ máy chủ.</p>
+        <h2 style={{ fontSize: 19 }}>Khung khuyến mãi <span className="mpPill mpPillWarn">Minh họa</span></h2>
+        <p>Khung giờ theo bố cục thiết kế — máy chủ chưa có lịch khuyến mãi hay giá
+        giảm. Giá hiển thị là giá bán hiện tại từ máy chủ.</p>
       </div>
     </div>
   );

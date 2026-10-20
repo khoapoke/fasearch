@@ -38,7 +38,6 @@ export function StorefrontShell({
             <span className="sfBrandMark" aria-hidden="true">FS</span>
             <span>
               FashionSearch <span className="sfBrandAi">AI</span>
-              <small>FASHION DRIVEN INTELLIGENCE</small>
             </span>
           </Link>
           <nav className="sfNav" aria-label="Điều hướng chính">

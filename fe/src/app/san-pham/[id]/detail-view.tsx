@@ -294,7 +294,7 @@ export function DetailView({ id }: { id: string }) {
               <b aria-live="polite">{qty}</b>
               <button type="button" aria-label="Tăng số lượng" onClick={() => setQty((q) => Math.min(99, q + 1))}>+</button>
             </span>
-            <span className="pdStock">Đang bán · giao nhanh nội thành khi đặt trước 16h</span>
+            <span className="pdStock">Đang bán · số lượng theo kho phục vụ</span>
           </div>
           <div className="pdBuyRow">
             <button
@@ -338,7 +338,7 @@ export function DetailView({ id }: { id: string }) {
           <div className="pdLife">
             <StitchImage src={photos[6]?.src} alt={photos[6]?.alt || "Ảnh minh họa phối đồ"} />
             <div>
-              <small>ẢNH MINH HỌA</small>
+              <small>Ảnh minh họa</small>
               <b>Dễ phối đồ cho mọi hoàn cảnh</b>
               <p>Ảnh minh họa từ bộ sưu tập, không phải ảnh thật sản phẩm.</p>
             </div>

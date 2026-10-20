@@ -117,11 +117,11 @@ export function HomeSections() {
         <div className="hmAiCard">
           <div>
             <h2>Bắt gặp outfit đẹp?<br /><span className="hl">Thả ảnh vào đây để tìm đồ tương tự.</span></h2>
-            <p>Công nghệ AI nhận diện phom dáng, chất liệu và màu sắc từ ảnh chụp đường phố, tạp chí hay mạng xã hội.</p>
+            <p>AI tìm ảnh gần giống trong bộ dữ liệu đã duyệt. Kết quả là ảnh tập dữ liệu, chưa phải mã sản phẩm bán được.</p>
             <div className="hmAiStats">
               <div><b>Tìm bằng ảnh</b><small>Chụp là tìm</small></div>
-              <div><b>Gợi ý phối đồ</b><small>Theo dáng &amp; màu</small></div>
-              <div><b>So sánh tương tự</b><small>Trong catalog thật</small></div>
+              <div><b>Tìm ảnh gần giống</b><small>Theo độ tương đồng ảnh</small></div>
+              <div><b>Kết quả từ tập dữ liệu</b><small>Chưa phải mã sản phẩm</small></div>
             </div>
             <div className="hmTags">
               <span>#Outfit-Hè-Quốc-Dân</span>
@@ -168,29 +168,29 @@ export function HomeSections() {
         <div className="hmCol">
           <StitchImage src={stitchImages(HOME)[8]?.src} alt="BST Activewear" />
           <div>
-            <small>PERFORMANCE TECH</small>
-            <h3>Activewear &amp; Gym Collection</h3>
-            <p>Chất liệu Quick-Dry siêu thoáng, co giãn 4 chiều cho buổi tập bùng nổ.</p>
-            <Link href="/bo-suu-tap">Khám Phá Dòng Active →</Link>
+            <small>Lookbook</small>
+            <h3>Activewear</h3>
+            <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
+            <Link href="/bo-suu-tap">Xem sản phẩm →</Link>
           </div>
         </div>
         <div className="hmCol">
           <StitchImage src={stitchImages(HOME)[10]?.src} alt="BST Clean Fit" />
           <div>
-            <small>URBAN MINIMALISM</small>
-            <h3>Everyday Clean Fit</h3>
-            <p>Phom dáng tinh giản, màu trung tính — mặc đẹp mỗi ngày.</p>
-            <Link href="/bo-suu-tap">Xem Lookbook Clean Fit →</Link>
+            <small>Lookbook</small>
+            <h3>Clean Fit</h3>
+            <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
+            <Link href="/bo-suu-tap">Xem sản phẩm →</Link>
           </div>
         </div>
       </section>
 
-      <section className="hmTrust" aria-label="Cam kết">
+      <section className="hmTrust" aria-label="Điều hệ thống thực thi">
         {[
-          { icon: "refresh", t: "Đổi trả 7 ngày miễn phí", d: "Đổi size/mẫu trong 7 ngày kể từ ngày nhận hàng." },
-          { icon: "shield", t: "Tự hào Sản xuất tại VN", d: "Xưởng may đạt chuẩn, kiểm soát từng đường kim." },
-          { icon: "phone", t: "Dịch vụ tư vấn 24/7", d: "Hotline 1900 6868, hỗ trợ chọn size mỗi ngày." },
-          { icon: "truck" as UiIcon, t: "Giao hàng tốc 24h", d: "Nội thành TP.HCM & Hà Nội nhận trong 24 giờ." },
+          { icon: "check" as UiIcon, t: "Thanh toán khi nhận hàng", d: "Đơn COD, máy chủ ghi nhận khi khách nhận." },
+          { icon: "box" as UiIcon, t: "Tồn kho theo kho phục vụ", d: "Số lượng hiển thị theo kho đang phục vụ đơn." },
+          { icon: "truck" as UiIcon, t: "Phí vận chuyển do máy chủ tính", d: "Hiển thị ở bước thanh toán." },
+          { icon: "ticket" as UiIcon, t: "Voucher tại trang ưu đãi", d: "Nhập mã giảm giá khi thanh toán." },
         ].map((b) => (
           <div key={b.t}>
             <span className="hmTrustIco"><Icon name={b.icon as UiIcon} size={20} /></span>

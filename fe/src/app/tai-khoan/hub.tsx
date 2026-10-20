@@ -47,7 +47,6 @@ export function AccountHubShell() {
   return (
     <AccountShell
       active="hub"
-      kicker="Tài khoản của tôi"
       title="Trung tâm tài khoản"
       lede="Mọi thứ thuộc về tài khoản của bạn — thông tin cá nhân và bảo mật."
       crumb="Tổng quan"

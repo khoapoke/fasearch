@@ -110,7 +110,7 @@ export function MerchantShell({
               </Link>
             ))}
           </nav>
-          <p className="mpSection">HỆ THỐNG</p>
+          <p className="mpSection">Hệ thống</p>
           <nav className="mpNav" aria-label="Hệ thống">
             <Link href="/tai-khoan">
               <Icon name="gear" size={19} /> Cài đặt cửa hàng

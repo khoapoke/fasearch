@@ -35,7 +35,7 @@ export function AccountShell({
   children,
 }: {
   active: AccountNavKey;
-  kicker: string;
+  kicker?: string;
   title: string;
   lede: string;
   crumb: string;
@@ -92,7 +92,7 @@ export function AccountShell({
         <span aria-hidden="true">›</span>
         <span aria-current="page">{crumb}</span>
       </nav>
-      <p className={styles.kicker}>{kicker}</p>
+      {kicker ? <p className={styles.kicker}>{kicker}</p> : null}
       <h1 className={styles.title}>{title}</h1>
       <p className={styles.lede}>{lede}</p>
       <div className={styles.grid}>
@@ -142,10 +142,6 @@ export function AccountShell({
               {busy ? "Đang đăng xuất…" : "Đăng xuất tài khoản"}
             </button>
           </nav>
-          <section className={styles.card} aria-label="Hỗ trợ">
-            <p className={styles.greeting}>Cần hỗ trợ?</p>
-            <p className={styles.muted}>Hotline 1900 2727, từ 8:30 đến 22:00 mỗi ngày.</p>
-          </section>
         </aside>
         <div className={styles.main}>
           <nav className={`${styles.card} ${styles.tabs}`} aria-label="Tab tài khoản">

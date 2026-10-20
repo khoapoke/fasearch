@@ -318,7 +318,7 @@ export function ListingPage({
             <Icon name="camera" size={30} />
             <div style={{ flex: 1 }}>
               <strong>Chưa tìm thấy mẫu áo ưng ý?</strong>
-              <p style={{ fontSize: 13 }}>Tải ảnh mẫu bạn chụp từ đường phố hoặc tạp chí — AI quét chất liệu, phom dáng và tìm sản phẩm tương tự trong catalog.</p>
+              <p style={{ fontSize: 13 }}>Tải ảnh mẫu bạn chụp — AI tìm ảnh gần giống trong bộ dữ liệu đã duyệt (kết quả là ảnh tập dữ liệu, chưa phải mã sản phẩm bán được).</p>
             </div>
             <Link href="/tim-kiem-ai" className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }}>Tải ảnh lên ngay</Link>
           </div>
