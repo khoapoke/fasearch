@@ -21,6 +21,8 @@ const CHROME = process.env.CHROME_BIN
 
 // Thông tin đăng nhập fixture nằm ở tệp KHÔNG theo dõi git (xem fixture-config.mjs).
 let ACCOUNTS = loadFixtureConfig().accounts;
+// Mã voucher đang chạy trên BE cô lập của task.
+const VOUCHER_CODE = process.env.RELIABILITY_VOUCHER || "EXDEMO01";
 
 const results = [];
 function record(name, ok, detail) {
@@ -215,21 +217,30 @@ async function r4(base, port) {
     const phienBan = cart.body?.result?.phienBan;
     const maKho = 1;
 
-    // báo giá
+    // báo giá (kèm voucher để kiểm tra phân bổ giảm đã chốt)
     const quote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
       method: "POST", headers: auth,
-      body: JSON.stringify({ maKho, phienBan }),
+      body: JSON.stringify({ maKho, phienBan, voucherCode: VOUCHER_CODE }),
     });
     record("R4 báo giá 200", quote.status === 200, `HTTP ${quote.status}`);
-    const tong = quote.body?.result?.tongThanhToan;
-    const phienBanGio = quote.body?.result?.phienBanGio;
+    const q = quote.body?.result ?? {};
+    const tong = q.tongThanhToan;
+    const phienBanGio = q.phienBanGio;
+    // FE gửi kèm mốc chính sách lấy từ báo giá — thiếu thì BE từ chối 400.
+    const policy = {
+      ...(q.maChinhSach != null ? { maChinhSach: q.maChinhSach } : {}),
+      ...(q.phienBanChinhSach != null ? { phienBanChinhSach: q.phienBanChinhSach } : {}),
+    };
+    record("R4 báo giá có phân bổ giảm", (q.giamVoucher ?? 0) > 0 || (q.giamDiem ?? 0) > 0,
+      `voucher ${q.giamVoucher} / diem ${q.giamDiem}`);
 
     // giá sai → 409, không tạo đơn
     const stale = await p.fetchJson("/api/be/v1/don-hang", {
       method: "POST", headers: auth,
       body: JSON.stringify({
-        maKho, phienBanGio, tongThanhToanDuKien: (tong ?? 0) + 1,
+        maKho, phienBanGio, tongThanhToanDuKien: (tong ?? 0) + 1, ...policy,
         nguoiNhan: "Reliability Test", sdtNhan: "09020261020", diaChiGiao: "1 Test St",
+        voucherCode: VOUCHER_CODE,
       }),
     });
     record("R4 giá sai → 409 yêu cầu tải lại", stale.status === 409, `HTTP ${stale.status}`);
@@ -237,9 +248,9 @@ async function r4(base, port) {
     // đặt đơn hợp lệ, rồi replay cùng khoaTam
     const key = `reliab-${Date.now()}`;
     const body = {
-      maKho, phienBanGio, tongThanhToanDuKien: tong,
+      maKho, phienBanGio, tongThanhToanDuKien: tong, ...policy,
       nguoiNhan: "Reliability Test", sdtNhan: "09020261020", diaChiGiao: "1 Test St",
-      khoaTam: key,
+      voucherCode: VOUCHER_CODE, khoaTam: key,
     };
     const first = await p.fetchJson("/api/be/v1/don-hang", { method: "POST", headers: auth, body: JSON.stringify(body) });
     record("R4 tạo đơn 201", first.status === 201, `HTTP ${first.status}`);
