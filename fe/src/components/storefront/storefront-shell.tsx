@@ -1,39 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { CartCount, HeaderAccount } from "./storefront-client";
 import "./storefront.css";
 
-function NewsletterForm() {
-  const [msg, setMsg] = useState("");
-  return (
-    <form
-      className="sfNewsForm"
-      aria-label="Đăng ký nhận tin"
-      onSubmit={(e) => {
-        e.preventDefault();
-        setMsg("Đã ghi nhận email trên trình duyệt này. Đăng ký nhận tin qua website chưa mở — theo dõi ưu đãi ở trang Voucher.");
-      }}
-    >
-      <input type="email" required placeholder="Nhập email của bạn…" aria-label="Email" />
-      <button className="sfBtn" type="submit">Đăng Ký</button>
-      {msg ? (
-        <p className="mpMuted" role="status" style={{ flexBasis: "100%", fontSize: 12.5 }}>{msg}</p>
-      ) : null}
-    </form>
-  );
-}
-
 const NAV = [
-  { href: "/hang-moi", label: "Hàng Mới" },
+  { href: "/hang-moi", label: "Hàng mới" },
   { href: "/nam", label: "Nam" },
   { href: "/nu", label: "Nữ" },
-  { href: "/bo-suu-tap", label: "Bộ Sưu Tập" },
-  { href: "/lich-su-ai", label: "Tìm Bằng AI", ai: true },
-  { href: "/tim-kiem-ai", label: "Tìm Chữ AI", ai: true },
-  { href: "/sale", label: "Sale Giảm Sốc" },
+  { href: "/bo-suu-tap", label: "Bộ sưu tập" },
+  { href: "/tim-kiem-ai", label: "Tìm bằng AI", ai: true },
+  { href: "/sale", label: "Sale" },
 ];
 
 export function StorefrontShell({
@@ -51,10 +29,7 @@ export function StorefrontShell({
         <div className="sfPromoInner">
           <p className="sfPromoMsgs">
             <span>Miễn phí vận chuyển đơn từ 200K</span>
-            <span>Đổi trả 7 ngày tận nơi</span>
-            <span>Bảo hành trọn đời cúc chỉ</span>
           </p>
-          <p className="sfPromoHotline">Hotline: 1900 6868</p>
         </div>
       </div>
       <header className="sfHeader">
@@ -80,7 +55,7 @@ export function StorefrontShell({
           </nav>
           <form className="sfSearch" role="search" action="/nam" method="get">
             <input name="q" type="search" placeholder="Áo thun nam" aria-label="Tìm sản phẩm" />
-            <Link className="sfIconBtn" href="/lich-su-ai" aria-label="Tìm bằng ảnh">
+            <Link className="sfIconBtn" href="/tim-kiem-ai" aria-label="Tìm bằng ảnh">
               <Icon name="camera" size={19} />
             </Link>
             <button className="sfSearchBtn" type="submit" aria-label="Tìm kiếm">
@@ -116,10 +91,10 @@ export function StorefrontShell({
       <footer className="sfFooter">
         <div className="sfNews">
           <div>
-            <h2>Đăng ký nhận thông tin &amp; ưu đãi mới</h2>
-            <p>BST mới và mẹo phối đồ mỗi tuần. Voucher xem ở trang ưu đãi (bản xem trước).</p>
+            <h2>Ưu đãi mới</h2>
+            <p>Voucher đang mở xem ở trang ưu đãi.</p>
           </div>
-          <NewsletterForm />
+          <Link className="sfBtn" href="/voucher">Xem ưu đãi</Link>
         </div>
         <div className="sfCols">
           <div>
@@ -132,29 +107,25 @@ export function StorefrontShell({
             <p>Trải nghiệm mua sắm thời trang nam công nghệ cao: tìm đúng đồ, mặc chuẩn size, giao nhanh 24h.</p>
           </div>
           <nav aria-label="Chính sách khách hàng">
-            <h3>Chính sách khách hàng</h3>
-            <Link href="/don-hang">Kiểm tra đơn hàng</Link>
-            <Link href="/thanh-toan">Hướng dẫn thanh toán</Link>
-            <Link href="/don-hang">Chính sách đổi trả 7 ngày</Link>
-            <Link href="/voucher">Ưu đãi &amp; voucher (xem trước)</Link>
+            <h3>Khách hàng</h3>
+            <Link href="/don-hang">Tra cứu đơn hàng</Link>
+            <Link href="/voucher">Ưu đãi &amp; voucher</Link>
+            <Link href="/tai-khoan/dia-chi">Sổ địa chỉ nhận hàng</Link>
           </nav>
           <nav aria-label="Hỗ trợ">
             <h3>Hỗ trợ &amp; hướng dẫn</h3>
-            <Link href="/lich-su-ai">Hướng dẫn tìm bằng ảnh</Link>
-            <Link href="/tai-khoan/dia-chi">Sổ địa chỉ nhận hàng</Link>
-            <Link href="/tai-khoan">Câu hỏi thường gặp</Link>
+            <Link href="/tim-kiem-ai">Tìm kiếm bằng AI</Link>
+            <Link href="/lich-su-ai">Lịch sử tìm kiếm AI</Link>
+            <Link href="/tai-khoan">Tài khoản của tôi</Link>
           </nav>
           <div>
             <h3>Về chúng tôi</h3>
-            <Link href="/bo-suu-tap">Về FashionSearch AI</Link>
             <Link href="/bo-suu-tap">Bộ sưu tập</Link>
-            <p className="sfHotline">1900 6868 (8:30 – 22:00)</p>
-            <p>cskh@fashionsearch.ai</p>
           </div>
         </div>
         <div className="sfBottom">
-          <p>© 2024 FashionSearch AI. Inspired by minimal utility &amp; modern tech.</p>
-          <p>Điều khoản dịch vụ · Quyền riêng tư · Sitemap</p>
+          <p>© {new Date().getFullYear()} FashionSearch AI.</p>
+          <p>Điều khoản dịch vụ · Quyền riêng tư</p>
         </div>
       </footer>
     </div>
