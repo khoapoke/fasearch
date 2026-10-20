@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function SecurityPage() {
   return (
-    <AccountCenterShell active="/tai-khoan/bao-mat" kicker="FASHION AI PROFILE HUB" title="Cài Đặt Tài Khoản & Bảo Mật">
+    <AccountCenterShell active="/tai-khoan/bao-mat" title="Bảo mật tài khoản">
       <section className="sfSideCard" aria-label="Form đổi mật khẩu">
         <PasswordForm />
       </section>

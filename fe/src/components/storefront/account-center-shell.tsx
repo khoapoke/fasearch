@@ -12,14 +12,14 @@ import {
 } from "@/components/account/account-session";
 
 const NAV: Array<{ href: string; label: string; icon: UiIcon }> = [
-  { href: "/tai-khoan", label: "Đơn hàng của tôi", icon: "bag" },
+  { href: "/don-hang", label: "Đơn hàng", icon: "bag" },
   { href: "/yeu-thich", label: "Sản phẩm yêu thích", icon: "heart" },
-  { href: "/lich-su-ai", label: "Lịch sử tìm kiếm AI & Ảnh", icon: "camera" },
-  { href: "/tai-khoan/dia-chi", label: "Sổ địa chỉ nhận hàng", icon: "pin" },
-  { href: "/voucher", label: "Voucher & Ưu đãi của tôi", icon: "ticket" },
-  { href: "/tai-khoan/diem-thuong", label: "Điểm thưởng & Hạng", icon: "spark" },
+  { href: "/lich-su-ai", label: "Lịch sử tìm kiếm AI", icon: "camera" },
+  { href: "/tai-khoan/dia-chi", label: "Sổ địa chỉ", icon: "pin" },
+  { href: "/voucher", label: "Voucher & ưu đãi", icon: "ticket" },
+  { href: "/tai-khoan/diem-thuong", label: "Điểm thưởng & hạng", icon: "spark" },
   { href: "/tai-khoan/thong-tin", label: "Thông tin cá nhân", icon: "user" },
-  { href: "/tai-khoan/bao-mat", label: "Cài đặt tài khoản & Bảo mật", icon: "shield" },
+  { href: "/tai-khoan/bao-mat", label: "Bảo mật", icon: "shield" },
 ];
 
 function initials(name: string): string {
@@ -35,7 +35,7 @@ export function AccountCenterShell({
   children,
 }: {
   active: string;
-  kicker: string;
+  kicker?: string;
   title: string;
   children: React.ReactNode;
 }) {
@@ -76,20 +76,8 @@ export function AccountCenterShell({
           <span aria-hidden="true">›</span>
           <span aria-current="page">{title}</span>
         </nav>
-        <p className="hmKicker" style={{ marginBottom: 8 }}>{kicker}</p>
+        {kicker ? <p className="hmKicker" style={{ marginBottom: 8 }}>{kicker}</p> : null}
         <h1 className="pgTitle">{title}</h1>
-        <nav className="pvTabs" aria-label="Khu vực tài khoản" style={{ marginTop: 12 }}>
-          {[
-            { href: "/tai-khoan/thong-tin", label: "Thông tin cá nhân" },
-            { href: "/don-hang", label: "Đơn hàng của tôi" },
-            { href: "/yeu-thich", label: "Sản phẩm yêu thích" },
-            { href: "/lich-su-ai", label: "Lịch sử tìm kiếm AI & Ảnh" },
-          ].map((t) => (
-            <Link key={t.href} href={t.href} aria-current={active === t.href ? "page" : undefined} style={active === t.href ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" } : undefined}>
-              {t.label}
-            </Link>
-          ))}
-        </nav>
         <div className="sfAccountGrid" style={{ marginTop: 16 }}>
           <aside aria-label="Tài khoản của tôi">
             <div className="sfSideCard">
@@ -131,10 +119,6 @@ export function AccountCenterShell({
                 {busy ? "Đang đăng xuất…" : "Đăng xuất tài khoản"}
               </button>
             </nav>
-            <div className="sfSideCard">
-              <p className="sfIdentityName">Cần hỗ trợ đơn hàng?</p>
-              <p className="sfIdentitySub">Hotline 1900 6868 (8:30 – 22:00). Zalo OA FashionSearch.</p>
-            </div>
           </aside>
           <div>{children}</div>
         </div>

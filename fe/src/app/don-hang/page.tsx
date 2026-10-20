@@ -58,7 +58,7 @@ export default function OrdersPage() {
   }, [tab, page, load]);
 
   return (
-    <AccountCenterShell active="/tai-khoan" kicker="FASHION AI PROFILE HUB" title="Đơn Hàng Của Tôi">
+    <AccountCenterShell active="/tai-khoan" title="Đơn hàng">
       <p className="sfPreviewBar" role="note" style={{ borderRadius: 12, marginBottom: 14 }}>
         <span>Đơn thật từ máy chủ — chỉ đơn của bạn. Hủy chỉ khi còn Mới tạo và được cho phép.</span>
       </p>

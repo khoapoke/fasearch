@@ -67,7 +67,7 @@ export default function VouchersPage() {
   }
 
   return (
-    <AccountCenterShell active="/voucher" kicker="FASHION AI PROFILE HUB" title="Voucher & Ưu Đãi Cá Nhân">
+    <AccountCenterShell active="/voucher" title="Voucher & ưu đãi">
       <section className="vcHero" aria-label="Ưu đãi dành cho bạn">
         <div>
           <p className="hmKicker">✦ ƯU ĐÃI DÀNH CHO BẠN</p>

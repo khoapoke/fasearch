@@ -48,7 +48,7 @@ export default function LoyaltyPage() {
   }, [load]);
 
   return (
-    <AccountCenterShell active="/tai-khoan/diem-thuong" kicker="FASHION AI PROFILE HUB" title="Điểm Thưởng & Hạng Thành Viên">
+    <AccountCenterShell active="/tai-khoan/diem-thuong" title="Điểm thưởng & hạng">
       {state.kind === "checking" || state.kind === "loading" ? (
         <p className="pgState" role="status"><strong>Đang tải điểm thưởng…</strong></p>
       ) : null}

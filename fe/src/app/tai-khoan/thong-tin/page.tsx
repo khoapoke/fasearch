@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function ProfilePage() {
   return (
-    <AccountCenterShell active="/tai-khoan/thong-tin" kicker="FASHION AI PROFILE HUB" title="Thông Tin Tài Khoản Cá Nhân">
+    <AccountCenterShell active="/tai-khoan/thong-tin" title="Thông tin cá nhân">
       <section className="sfSideCard" aria-label="Ảnh đại diện">
         <b>Ảnh đại diện</b>
         <p className="sfIdentitySub" style={{ marginTop: 6 }}>

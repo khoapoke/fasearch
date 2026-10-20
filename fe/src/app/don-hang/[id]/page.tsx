@@ -101,7 +101,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <AccountCenterShell active="/tai-khoan" kicker="FASHION AI PROFILE HUB" title={id ? `Đơn #${id}` : "Chi tiết đơn"}>
+    <AccountCenterShell active="/tai-khoan" title={id ? `Đơn #${id}` : "Chi tiết đơn"}>
       <p><Link href="/don-hang">← Về danh sách đơn</Link></p>
       {loading ? <p className="pgState" role="status"><strong>Đang tải đơn thật…</strong></p> : null}
       {error ? (

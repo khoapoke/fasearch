@@ -29,7 +29,7 @@ export default function AddressesPage() {
   }
 
   return (
-    <AccountCenterShell active="/tai-khoan/dia-chi" kicker="FASHION AI PROFILE HUB" title="Sổ Địa Chỉ Nhận Hàng">
+    <AccountCenterShell active="/tai-khoan/dia-chi" title="Sổ địa chỉ nhận hàng">
       <p className="sfPreviewBar" role="note" style={{ borderRadius: 12, marginBottom: 14 }}>
         <span>Bản xem trước — địa chỉ lưu trên trình duyệt, máy chủ chưa có API sổ địa chỉ.</span>
       </p>
