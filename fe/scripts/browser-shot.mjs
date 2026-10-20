@@ -226,6 +226,13 @@ async function runSteps(session, steps) {
 }
 
 async function shoot(session, spec, outDir) {
+  // Mô phỏng media feature (ví dụ prefers-reduced-motion: reduce) để kiểm
+  // chuyển động bị tắt nhưng phản hồi opacity vẫn còn.
+  if (spec.media) {
+    await session.send("Emulation.setEmulatedMedia", {
+      features: [{ name: spec.media.name, value: spec.media.value }],
+    });
+  }
   // zoom: mô phỏng phóng to bằng cách thu nhỏ khung nhìn + deviceScaleFactor.
   const scale = spec.zoom ?? 1;
   await session.send("Emulation.setDeviceMetricsOverride", {
@@ -308,6 +315,8 @@ await session.send("Network.enable");
 const results = [];
 for (const spec of specs) {
   session.events.length = 0;
+  // Đặt lại media feature: emulation của spec trước không được lọt sang spec sau.
+  await session.send("Emulation.setEmulatedMedia", { features: [] });
   if (spec.role && spec.role !== "guest") {
     const cookies = await login(base, spec.role);
     await session.send("Network.clearBrowserCookies");
