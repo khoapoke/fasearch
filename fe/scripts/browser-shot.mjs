@@ -263,11 +263,26 @@ async function shoot(session, spec, outDir) {
       .filter((el) => el.getBoundingClientRect().right > de.clientWidth + 2)
       .slice(0, 5)
       .map((el) => el.tagName + '.' + (el.className || '').toString().split(' ')[0]);
+    // Nút bấm quá nhỏ (ngưỡng 24px, tương ứng WCAG 2.2 target size). Chỉ tính
+    // nút thật; link chữ trong nội dung và ô nhập không phải "tiny control".
+    const tiny = [...document.querySelectorAll('button, [role=button]')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        const visible = !!(r.width || r.height);
+        return visible && (r.width < 24 || r.height < 24);
+      })
+      .slice(0, 6)
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return el.tagName + '.' + (el.className || '').toString().split(' ')[0]
+          + ' ' + Math.round(r.width) + 'x' + Math.round(r.height);
+      });
     return {
       title: document.title,
       overflowPx: overflow,
       h1: document.querySelector('h1')?.textContent?.trim() ?? null,
       wide,
+      tiny,
     };
   })()`);
 
@@ -336,6 +351,6 @@ for (const spec of specs) {
   }
 }
 await writeFile(`${outDir}/report.json`, JSON.stringify(results, null, 2));
-console.log(JSON.stringify(results.map((r) => ({ name: r.name, overflowPx: r.overflowPx, errors: (r.errors ?? []).length, wide: r.wide?.length ?? 0, steps: r.stepLog })), null, 1));
+console.log(JSON.stringify(results.map((r) => ({ name: r.name, overflowPx: r.overflowPx, errors: (r.errors ?? []).length, wide: r.wide?.length ?? 0, tiny: r.tiny?.length ?? 0, steps: r.stepLog })), null, 1));
 proc.kill();
 process.exit(0);
