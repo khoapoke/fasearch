@@ -66,7 +66,7 @@ export function MerchantShell({
       <div className="mpBanner">
         <div>
           <Icon name="spark" size={14} />
-          <span>Kênh bán{warehouse ? ` · kho ${warehouse}` : ""} — danh mục và sản phẩm đồng bộ từ máy chủ</span>
+          <span>Kênh bán{warehouse ? ` · ${warehouse}` : ""} — danh mục và sản phẩm đồng bộ từ máy chủ</span>
           <Link href="/kenh-ban">Về dashboard</Link>
         </div>
       </div>
@@ -139,7 +139,7 @@ export function MerchantShell({
               <input name="q" placeholder="Tìm nhanh tên áo quần…" aria-label="Tìm nhanh" />
             </form>
             <Link className="mpTopBtn" href="/kenh-ban/nhap-kho">
-              <Icon name="box" size={17} /> Kho Tổng Tân Bình – TP.HCM
+              <Icon name="box" size={17} /> {warehouse ?? "Kho phục vụ"}
             </Link>
             {topActions}
           </div>

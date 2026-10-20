@@ -75,15 +75,14 @@ export function AdminShell({
           ))}
         </nav>
         <div className="adFoot">
-          <p className="adSys">RBAC: ADMIN · STAFF · CUSTOMER</p>
-          <p className="adSys" style={{ border: 0, padding: "0 12px" }}>Cài đặt hạ tầng · Hỗ trợ kỹ thuật</p>
+          <p className="adSys">Phân quyền: ADMIN · STAFF · CUSTOMER</p>
           <div className="adUser">
             <span className="adUserAvatar" aria-hidden="true">
-              {me ? me.username.slice(0, 2).toUpperCase() : "SA"}
+              {me ? me.username.slice(0, 2).toUpperCase() : "?"}
             </span>
             <div>
-              <b>{me ? me.username : "Super Admin"}</b>
-              <small>{me ? me.email : "admin@fashionsearch.ai"}</small>
+              <b>{me ? me.username : "Chưa đăng nhập"}</b>
+              <small>{me ? me.email : "Phiên không hợp lệ"}</small>
             </div>
           </div>
         </div>

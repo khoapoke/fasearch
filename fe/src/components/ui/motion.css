@@ -83,3 +83,17 @@
 
 /* P7 — hover gating: hover lift chỉ chạy trên con trỏ chuột (xem listing.css
    cho .pCard và khối @media hover ở P1 cho buttons). */
+
+/* Chuyển vùng nội dung (tab báo cáo): mờ dần + trượt nhẹ, không chặn thao tác. */
+.fade-swap {
+  animation: fade-swap 180ms var(--ease-out) both;
+}
+@keyframes fade-swap {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* Lưới kết quả AI: mờ dàn theo nhịp ngắn (tổng <= 240ms). */
+.stagger-item {
+  animation: fade-swap 200ms var(--ease-out) both;
+  animation-delay: calc(var(--stagger-index, 0) * 30ms);
+}

@@ -100,7 +100,7 @@
   font-weight: 650;
   font-size: 0.92rem;
   border-bottom: 2px solid transparent;
-  transition: color 160ms ease-out, background-color 160ms ease-out;
+  transition: color 160ms var(--ease-out), background-color 160ms var(--ease-out);
 }
 
 .tabs a:hover {
@@ -152,7 +152,7 @@
   font-weight: 600;
   font-size: 0.92rem;
   cursor: pointer;
-  transition: background-color 160ms ease-out;
+  transition: background-color 160ms var(--ease-out);
 }
 
 .logoutLink:hover:not(:disabled) {

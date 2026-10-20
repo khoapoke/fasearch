@@ -314,8 +314,13 @@ export function AiTextSearchView() {
                   {state.hits.length} kết quả AI cho {state.label} — giữ đúng thứ tự máy chủ.
                 </p>
                 <div className={mgmt.cards}>
-                  {state.hits.map((h) => (
-                    <article key={h.sourceId} className={mgmt.card} aria-label={`Kết quả AI ${h.sourceId}`}>
+                  {state.hits.map((h, i) => (
+                    <article
+                      key={h.sourceId}
+                      className={`${mgmt.card} stagger-item`}
+                      style={{ "--stagger-index": Math.min(i, 7) } as React.CSSProperties}
+                      aria-label={`Kết quả AI ${h.sourceId}`}
+                    >
                       <AiThumb src={h.imageUrl} alt={`Ảnh AI: ${h.fileName}`} />
                       <div className={mgmt.cardBody}>
                         <span className={mgmt.cardTitle}>Mã AI: {h.sourceId}</span>

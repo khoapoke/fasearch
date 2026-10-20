@@ -134,9 +134,13 @@ export default function ReportsPage() {
           <button className="adBtn" type="button" onClick={load}>Thử lại (giữ lọc)</button>
         </div>
       ) : null}
-      {ready?.doanhThu ? <DoanhThuView data={ready.doanhThu} /> : null}
-      {ready?.sanPham ? <SanPhamView data={ready.sanPham} /> : null}
-      {ready?.xnt ? <XntView data={ready.xnt} /> : null}
+      {ready ? (
+        <div key={tab} className="fade-swap">
+          {ready.doanhThu ? <DoanhThuView data={ready.doanhThu} /> : null}
+          {ready.sanPham ? <SanPhamView data={ready.sanPham} /> : null}
+          {ready.xnt ? <XntView data={ready.xnt} /> : null}
+        </div>
+      ) : null}
     </AdminShell>
   );
 }

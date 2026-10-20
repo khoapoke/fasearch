@@ -94,4 +94,17 @@ img {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+
+  /* Giảm chuyển động = bỏ di chuyển, không phải bỏ phản hồi: màu và opacity
+     vẫn chuyển để người dùng biết trạng thái đã đổi. */
+  .bkOverlay,
+  .bkModal,
+  .rise-in,
+  .flash-in,
+  .fade-swap,
+  .stagger-item {
+    animation: none !important;
+    transform: none !important;
+    transition: opacity 120ms linear !important;
+  }
 }
