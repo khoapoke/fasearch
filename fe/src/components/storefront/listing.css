@@ -159,6 +159,7 @@
   gap: 18px;
 }
 .pCard {
+  position: relative;
   border: 1px solid var(--line-soft);
   border-radius: 14px;
   overflow: hidden;

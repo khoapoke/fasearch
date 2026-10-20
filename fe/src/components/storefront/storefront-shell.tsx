@@ -28,7 +28,7 @@ export function StorefrontShell({
       <div className="sfPromo">
         <div className="sfPromoInner">
           <p className="sfPromoMsgs">
-            <span>Phí vận chuyển cố định do máy chủ tính, hiển thị ở bước thanh toán</span>
+            <span>Phí vận chuyển tính ở bước thanh toán</span>
           </p>
         </div>
       </div>
@@ -104,7 +104,7 @@ export function StorefrontShell({
                 FashionSearch <span className="sfBrandAi">AI</span>
               </span>
             </h3>
-            <p>Trải nghiệm mua sắm thời trang nam công nghệ cao: tìm đúng đồ, mặc chuẩn size, giao nhanh 24h.</p>
+            <p>Danh mục, tồn kho và giá đều lấy từ máy chủ.</p>
           </div>
           <nav aria-label="Chính sách khách hàng">
             <h3>Khách hàng</h3>

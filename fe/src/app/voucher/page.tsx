@@ -70,7 +70,6 @@ export default function VouchersPage() {
     <AccountCenterShell active="/voucher" title="Voucher & ưu đãi">
       <section className="vcHero" aria-label="Ưu đãi dành cho bạn">
         <div>
-          <p className="hmKicker">✦ ƯU ĐÃI DÀNH CHO BẠN</p>
           <h2>Voucher &amp; Ưu Đãi Cá Nhân</h2>
           <p>Ưu đãi thật do cửa hàng phát hành. Sao chép mã rồi áp dụng ở bước thanh toán — mức giảm cuối cùng do máy chủ tính.</p>
         </div>

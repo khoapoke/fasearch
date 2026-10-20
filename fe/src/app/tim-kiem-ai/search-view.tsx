@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import { Icon } from "@/components/ui/icon";
 import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
 import { beFetch, beWrite } from "@/lib/mgmt-client";
 import { parseAiResults, validateLimit, validateQuery, type AiHit } from "@/lib/ai-search";
@@ -263,9 +264,22 @@ export function AiTextSearchView() {
                 </label>
               ) : null}
               {mode !== "text" ? (
-                <label>
-                  Ảnh JPEG/PNG ≤{Math.round(AI_MAX_BYTES / 1024 / 1024)}MiB
-                  <input ref={inputRef} type="file" accept="image/jpeg,image/png" onChange={(e) => onFile(e.target.files)} aria-label="Ảnh tìm kiếm" />
+                <label className={account.field}>
+                  <span>Ảnh JPEG/PNG ≤{Math.round(AI_MAX_BYTES / 1024 / 1024)}MiB</span>
+                  {/* Input gốc ẩn đi để không lộ nút "Choose File" tiếng Anh;
+                      nhãn bấm được thay thế, tên truy cập vẫn là tiếng Việt. */}
+                  <span className={mgmt.filePick}>
+                    <Icon name="camera" size={16} />
+                    {file ? file.name : "Chọn ảnh"}
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      onChange={(e) => onFile(e.target.files)}
+                      aria-label="Ảnh tìm kiếm"
+                      className={mgmt.fileInput}
+                    />
+                  </span>
                 </label>
               ) : null}
               <label>
@@ -324,7 +338,7 @@ export function AiTextSearchView() {
                       <AiThumb src={h.imageUrl} alt={`Ảnh AI: ${h.fileName}`} />
                       <div className={mgmt.cardBody}>
                         <span className={mgmt.cardTitle}>Mã AI: {h.sourceId}</span>
-                        <span className={mgmt.cardPrice}>Điểm tương đồng: {h.score}</span>
+                        <span className={mgmt.cardPrice}>Điểm tương đồng: {h.score.toFixed(3)}</span>
                         <span className={mgmt.cardMeta}>Tệp: {h.fileName}</span>
                         <span className={mgmt.cardMeta}>Danh mục AI: {h.catalog ?? "—"}</span>
                         <span className={mgmt.cardMeta}>Nguồn: {h.nguonDuLieu ?? "tập dữ liệu AI"} · bản {h.phienBanDuLieu ?? "—"}</span>

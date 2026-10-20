@@ -414,6 +414,12 @@
   .sfAccountGrid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  .sfPromoMsgs {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
+  }
   .sfBar { gap: 10px; padding: 10px 14px; }
   .sfBrand span:last-child { display: none; }
   .sfSearch { padding-left: 10px; }

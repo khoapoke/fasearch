@@ -53,7 +53,7 @@ export function HubContent() {
   const latest = state.kind === "ready" ? state.orders[0] ?? null : null;
 
   return (
-    <AccountCenterShell active="/tai-khoan" kicker="Tài khoản" title="Tài khoản của tôi">
+    <AccountCenterShell active="/tai-khoan" title="Tài khoản của tôi">
       <section className="sfSideCard" aria-label="Đơn hàng gần đây">
         <div style={{ display: "flex", alignItems: "baseline" }}>
           <b>Đơn hàng gần đây</b>

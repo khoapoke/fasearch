@@ -8,13 +8,13 @@ import "./admin.css";
 
 export type AdminNavKey = "accounts" | "rbac" | "audit" | "backup" | "campaigns" | "loyalty" | "reports";
 
-const NAV: Array<{ key: AdminNavKey; href: string; label: string; icon: UiIcon; live?: boolean }> = [
+const NAV: Array<{ key: AdminNavKey; href: string; label: string; icon: UiIcon }> = [
   { key: "accounts", href: "/quan-tri/tai-khoan", label: "Quản lý tài khoản", icon: "user" },
-  { key: "campaigns", href: "/quan-tri/khuyen-mai", label: "Khuyến mãi & Voucher", icon: "ticket", live: true },
-  { key: "loyalty", href: "/quan-tri/chinh-sach-diem", label: "Chính sách điểm", icon: "spark", live: true },
-  { key: "reports", href: "/quan-tri/bao-cao", label: "Báo cáo", icon: "chart", live: true },
+  { key: "campaigns", href: "/quan-tri/khuyen-mai", label: "Khuyến mãi & Voucher", icon: "ticket" },
+  { key: "loyalty", href: "/quan-tri/chinh-sach-diem", label: "Chính sách điểm", icon: "spark" },
+  { key: "reports", href: "/quan-tri/bao-cao", label: "Báo cáo", icon: "chart" },
   { key: "rbac", href: "/he-thong/phan-quyen", label: "Phân quyền", icon: "shield" },
-  { key: "audit", href: "/quan-tri/nhat-ky", label: "Nhật ký hệ thống", icon: "receipt", live: true },
+  { key: "audit", href: "/quan-tri/nhat-ky", label: "Nhật ký hệ thống", icon: "receipt" },
   { key: "backup", href: "/he-thong/sao-luu", label: "Sao lưu & Phục hồi", icon: "box" },
 ];
 
@@ -70,7 +70,6 @@ export function AdminShell({
             >
               <Icon name={item.icon} size={19} />
               {item.label}
-              {item.live ? <span className="live">LIVE</span> : null}
             </Link>
           ))}
         </nav>

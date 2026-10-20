@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import "@/components/ui/switch.css";
 
 // Tùy chọn thông báo lưu trên trình duyệt (máy chủ chưa có API preferences).
 // Ghi nhãn minh họa rõ ràng, không giả đồng bộ tài khoản.

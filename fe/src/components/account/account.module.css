@@ -285,6 +285,12 @@
   cursor: pointer;
 }
 
+.primary {
+  transition: transform 160ms var(--ease-out);
+}
+.primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
 .primary:hover {
   background: var(--brand);
   border-color: var(--brand);
