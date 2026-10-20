@@ -23,6 +23,8 @@ const CHROME = process.env.CHROME_BIN
 let ACCOUNTS = loadFixtureConfig().accounts;
 // Mã voucher đang chạy trên BE cô lập của task.
 const VOUCHER_CODE = process.env.RELIABILITY_VOUCHER || "EXDEMO01";
+// Mã voucher đang dùng cho kịch bản; R0 có thể tạo mã mới khi mã cố định đã hết lượt.
+let VOUCHER = VOUCHER_CODE;
 
 const results = [];
 function record(name, ok, detail) {
@@ -158,17 +160,18 @@ async function withBrowser(port, profile, fn) {
 // "Chỉ còn 0 sản phẩm khả dụng" và không đặt được đơn. Nhập thêm hàng qua chính
 // API phiếu nhập của staff (POST /kho/phieu/nhap + xac-nhan) để kịch bản có hàng
 // mua được — dữ liệu chỉ nằm trong DB cô lập của task.
-async function ensureStock(base, port) {
+async function ensureFixtures(base, port) {
   await withBrowser(port, "/tmp/relia-stock", async (p) => {
     await p.goto(`${base}/`);
     const login = await p.login("admin");
     if (login.status !== 200) {
-      record("R0 admin đăng nhập để nhập kho", false, `HTTP ${login.status}`);
+      record("R0 admin đăng nhập để chuẩn bị fixture", false, `HTTP ${login.status}`);
       return;
     }
     const csrf = await p.csrf();
     const auth = { "content-type": "application/json", [csrf.headerName]: csrf.token };
-    // Danh sách tồn kho yêu cầu maSku; quét từng SKU và mọi kho.
+
+    // 1) Tồn kho: danh sách tồn kho yêu cầu maSku; quét từng SKU và mọi kho.
     const need = new Map();
     const seen = [];
     for (const maSku of [1, 2, 3, 4, 5, 6, 7, 8]) {
@@ -181,29 +184,49 @@ async function ensureStock(base, port) {
         }
       }
     }
-    const short = [...need.keys()];
-    if (short.length === 0) {
+    if (need.size === 0) {
       record("R0 tồn kho đủ cho kịch bản", true, seen.slice(0, 4).join(", "));
-      return;
+    } else {
+      let ok = true;
+      const notes = [];
+      for (const [maKho, skus] of need) {
+        const body = {
+          maKhoDich: maKho,
+          items: [...skus].map((maSku) => ({ maSku, soLuong: 20 })),
+          khoaTam: `relia-nhap-${Date.now()}-${maKho}`,
+          nhaCungCap: "Reliability Harness",
+        };
+        const slip = await p.fetchJson("/api/be/v1/kho/phieu/nhap", { method: "POST", headers: auth, body: JSON.stringify(body) });
+        const maPhieu = slip.body?.result?.maPhieu;
+        if (!maPhieu) { ok = false; notes.push(`kho${maKho}: phiếu HTTP ${slip.status}`); continue; }
+        const confirm = await p.fetchJson(`/api/be/v1/kho/phieu/${maPhieu}/xac-nhan`, { method: "POST", headers: auth, body: "{}" });
+        notes.push(`kho${maKho}: phiếu #${maPhieu} xác nhận HTTP ${confirm.status}`);
+        if (confirm.status !== 200) ok = false;
+      }
+      record("R0 nhập tồn kho cho kịch bản (kho cửa hàng hết hàng)", ok,
+        notes.join(" | ") + " || trước: " + seen.slice(0, 4).join(", "));
     }
-    let ok = true;
-    const notes = [];
-    for (const [maKho, skus] of need) {
-      const body = {
-        maKhoDich: maKho,
-        items: [...skus].map((maSku) => ({ maSku, soLuong: 20 })),
-        khoaTam: `relia-nhap-${Date.now()}-${maKho}`,
-        nhaCungCap: "Reliability Harness",
-      };
-      const slip = await p.fetchJson("/api/be/v1/kho/phieu/nhap", { method: "POST", headers: auth, body: JSON.stringify(body) });
-      const maPhieu = slip.body?.result?.maPhieu;
-      if (!maPhieu) { ok = false; notes.push(`kho${maKho}: phiếu HTTP ${slip.status}`); continue; }
-      const confirm = await p.fetchJson(`/api/be/v1/kho/phieu/${maPhieu}/xac-nhan`, { method: "POST", headers: auth, body: "{}" });
-      notes.push(`kho${maKho}: phiếu #${maPhieu} xác nhận HTTP ${confirm.status}`);
-      if (confirm.status !== 200) ok = false;
+
+    // 2) Mã voucher: mã cố định có thể đã hết lượt dùng -> tạo mã mới cho chiến dịch
+    //    tiền mặt đang chạy (đúng API quản trị của BE, chỉ trong DB cô lập của task).
+    const camps = await p.fetchJson("/api/be/v1/khuyen-mai?page=0&size=50");
+    const list = camps.body?.result?.data ?? [];
+    const soTien = list
+      .filter((c) => c.loaiGiam === "SO_TIEN" && !/NGUNG|PAUSE|HET/i.test(String(c.trangThai)))
+      .sort((a, b) => (b.tenCtkm?.includes("EX SO_TIEN") ? 1 : 0) - (a.tenCtkm?.includes("EX SO_TIEN") ? 1 : 0) || b.maKm - a.maKm);
+    let voucherOk = false;
+    const vNotes = [];
+    for (const c of soTien.slice(0, 3)) {
+      const maCode = `RELIA${String(Date.now()).slice(-8)}`;
+      const r = await p.fetchJson(`/api/be/v1/khuyen-mai/${c.maKm}/codes`, {
+        method: "POST", headers: auth, body: JSON.stringify({ maCode, soLuongPhatHanh: 20 }),
+      });
+      const got = r.body?.result?.maCode;
+      vNotes.push(`km${c.maKm}: HTTP ${r.status}${got ? ` mã ${got}` : ""}`);
+      if ((r.status === 200 || r.status === 201) && got) { VOUCHER = got; voucherOk = true; break; }
     }
-    record("R0 nhập tồn kho cho kịch bản (kho cửa hàng hết hàng)", ok,
-      notes.join(" | ") + " || trước: " + seen.slice(0, 4).join(", "));
+    record("R0 chuẩn bị mã voucher khả dụng cho kịch bản", voucherOk,
+      `${VOUCHER} (${vNotes.join("; ") || "không có chiến dịch tiền mặt đang chạy"})`);
   });
 }
 
@@ -320,11 +343,14 @@ async function r4(base, port) {
     let usedVoucher = false;
     let usedPoints = 0;
     if ((q.giamVoucher ?? 0) <= 0) {
-      const voucherQuote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
-        method: "POST", headers: auth, body: JSON.stringify({ maKho, phienBan: pv, voucherCode: VOUCHER_CODE }),
-      });
-      if (voucherQuote.status === 200 && (voucherQuote.body?.result?.giamVoucher ?? 0) > 0) {
-        quote = voucherQuote; q = voucherQuote.body.result; usedVoucher = true;
+      for (const code of [VOUCHER, VOUCHER_CODE].filter((v, i, a) => a.indexOf(v) === i)) {
+        const voucherQuote = await p.fetchJson("/api/be/v1/gio-hang/quote", {
+          method: "POST", headers: auth, body: JSON.stringify({ maKho, phienBan: pv, voucherCode: code }),
+        });
+        if (voucherQuote.status === 200 && (voucherQuote.body?.result?.giamVoucher ?? 0) > 0) {
+          quote = voucherQuote; q = voucherQuote.body.result; usedVoucher = true;
+          break;
+        }
       }
     }
     if (!usedVoucher && (q.diemDuocPhep ?? 0) > 0) {
@@ -348,7 +374,7 @@ async function r4(base, port) {
     const body = {
       maKho, phienBanGio, tongThanhToanDuKien: tong, ...policy,
       nguoiNhan: "Reliability Test", sdtNhan: "09020261020", diaChiGiao: "1 Test St",
-      ...(usedVoucher ? { voucherCode: VOUCHER_CODE } : {}),
+      ...(usedVoucher ? { voucherCode: VOUCHER } : {}),
       ...(usedPoints > 0 ? { diemSuDung: usedPoints } : {}),
       khoaTam: key,
     };
@@ -428,23 +454,47 @@ async function r5(base, port) {
       return { status: res.status };
     })()`);
     record("R5 hub đọc được đơn qua proxy", orders?.status === 200, `HTTP ${orders?.status}`);
-    // Đơn legacy đã hủy: khối tiền phải có đúng MỘT dòng giảm và không có dòng 0đ.
-    await p.goto(`${base}/don-hang/51`);
-    await sleep(1500);
-    const legacyOrderMoneyBlock = await p.eval(`(() => {
-      const t = document.body.innerText;
-      const generic = t.includes('Giảm giá');
-      const unallocated = t.includes('Tổng giảm (chưa xác định phân bổ)');
-      const zero = /−0₫|−0đ/.test(t);
-      // đếm DÒNG giảm (−15.000), không đếm chuỗi "15.000" nằm trong "135.000"
-      const occurrences = (t.match(/−15\.000/g) || []).length;
-      return { generic, unallocated, zero, occurrences, text: t.slice(0, 260) };
-    })()`);
-    record("R5 đơn legacy: đúng một dòng giảm, không dòng 0đ",
-      !(legacyOrderMoneyBlock.generic && legacyOrderMoneyBlock.unallocated)
-      && !legacyOrderMoneyBlock.zero
-      && legacyOrderMoneyBlock.occurrences <= 1,
-      JSON.stringify(legacyOrderMoneyBlock).slice(0, 200));
+    // Đơn legacy đã hủy: khối tiền phải có đúng MỘT dòng giảm (hoặc không dòng nào khi
+    // không giảm), không dòng 0đ, và các dòng phải cộng đúng bằng "Tổng thanh toán".
+    for (const [maDon, expectedDiscountRows] of [[51, 1], [49, 0]]) {
+      await p.goto(`${base}/don-hang/${maDon}`);
+      await sleep(1500);
+      const money = await p.eval(`(() => {
+        const rows = [...document.querySelectorAll('.pvLine')].map((el) => ({
+          label: (el.children[0]?.textContent || '').trim(),
+          amount: (el.children[1]?.textContent || '').trim(),
+        }));
+        const toNum = (s) => {
+          const digits = String(s).replace(/[^0-9]/g, '');
+          return digits ? Number(digits) : 0;
+        };
+        const isDiscount = (l) => /Giảm giá|Tổng giảm|Voucher|Điểm/.test(l);
+        const discountRows = rows.filter((r) => isDiscount(r.label));
+        const sub = rows.find((r) => r.label === 'Tạm tính');
+        const fee = rows.find((r) => r.label === 'Phí vận chuyển');
+        const total = rows.find((r) => r.label === 'Tổng thanh toán');
+        const unknown = discountRows.filter((r) => r.amount === '—').length;
+        const sum = discountRows.reduce((s, r) => s + toNum(r.amount), 0);
+        const expected = toNum(sub?.amount ?? '0') - sum + toNum(fee?.amount ?? '0');
+        return {
+          discountRows: discountRows.map((r) => r.label + ' ' + r.amount),
+          count: discountRows.length,
+          zero: discountRows.some((r) => toNum(r.amount) === 0),
+          unknown,
+          sub: toNum(sub?.amount ?? '0'),
+          sum,
+          total: toNum(total?.amount ?? '0'),
+          expected,
+          reconciles: unknown > 0 ? null : expected === toNum(total?.amount ?? '0'),
+        };
+      })()`);
+      const ok = money.count === expectedDiscountRows
+        && !money.zero
+        && (money.reconciles === null || money.reconciles === true)
+        && !money.discountRows.some((l) => l.startsWith('Giảm giá '));
+      record(`R5 đơn legacy #${maDon}: ${expectedDiscountRows} dòng giảm, không dòng 0đ, tổng khớp`,
+        ok, JSON.stringify(money).slice(0, 220));
+    }
     const focusRing = await p.eval(`(() => {
       const el = document.querySelector('a, button');
       if (!el) return null;
@@ -478,10 +528,29 @@ async function r5b(base, port) {
     record("R5b thêm SKU thật vào giỏ POS", added === true, String(added));
     await p.eval(`(() => { const el = document.querySelector('#pos-voucher'); if (!el) return false;
       const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-      s.call(el, "${VOUCHER_CODE}"); el.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+      s.call(el, "${VOUCHER}"); el.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
     await p.clickByText("Lấy báo giá hiện tại"); await sleep(2500);
-    const quoted = await p.eval(`document.body.innerText.includes('135.000') || document.body.innerText.includes('120.000')`);
-    record("R5b báo giá POS có phí/thanh toán thật", quoted === true, String(quoted));
+    const posQuote = await p.eval(`(() => {
+      const rows = [...document.querySelectorAll('.pvLine')].map((el) => ({
+        label: (el.children[0]?.textContent || '').trim(),
+        amount: (el.children[1]?.textContent || '').trim(),
+      }));
+      const toNum = (s) => { const d = String(s).replace(/[^0-9]/g, ''); return d ? Number(d) : 0; };
+      const discounts = rows.filter((r) => /Voucher|Điểm|Giảm giá/.test(r.label));
+      const sub = rows.find((r) => r.label === 'Tạm tính');
+      const total = rows.find((r) => r.label === 'Phải thu');
+      const sum = discounts.reduce((acc, r) => acc + toNum(r.amount), 0);
+      return {
+        rows: rows.map((r) => r.label + ' ' + r.amount),
+        sub: toNum(sub?.amount ?? '0'),
+        sum,
+        total: toNum(total?.amount ?? '0'),
+        hasVoucher: rows.some((r) => r.label.startsWith('Voucher')),
+      };
+    })()`);
+    record("R5b báo giá POS: dòng giảm khớp 'Phải thu'",
+      posQuote.total > 0 && posQuote.sub - posQuote.sum === posQuote.total,
+      JSON.stringify(posQuote).slice(0, 220));
     await p.eval(`(() => { const el = [...document.querySelectorAll('input')].find(i => (i.placeholder || '').includes('VD 200000'));
       if (!el) return false; const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
       s.call(el, '200000'); el.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
@@ -603,9 +672,9 @@ await mkdir(outDir, { recursive: true });
 const port = Number(process.env.CDP_PORT || 9311);
 try {
   if (scenario === "r3" || scenario === "all") await r3(base, port);
-  if (scenario === "r4" || scenario === "all") { await ensureStock(base, port + 5); await r4(base, port + 10); }
+  if (scenario === "r4" || scenario === "all") { await ensureFixtures(base, port + 5); await r4(base, port + 10); }
   if (scenario === "r5" || scenario === "all") await r5(base, port + 20);
-  if (scenario === "r5b" || scenario === "all") { await ensureStock(base, port + 25); await r5b(base, port + 30); }
+  if (scenario === "r5b" || scenario === "all") { await ensureFixtures(base, port + 25); await r5b(base, port + 30); }
   if (scenario === "r5c" || scenario === "all") await r5c(base, port + 40);
   if (scenario === "r5d" || scenario === "all") await r5d(base, port + 50);
   if (scenario === "r5e" || scenario === "all") await r5e(base, port + 60);
