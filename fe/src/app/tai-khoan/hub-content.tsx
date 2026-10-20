@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
-import { fetchOwnOrders } from "@/lib/commerce-client";
+import { fetchOwnOrders, withSessionRetry } from "@/lib/commerce-client";
 import { orderStatusLabel } from "@/lib/commerce";
 import { useFavs } from "@/components/storefront/storefront-client";
 import "@/components/storefront/listing.css";
@@ -30,7 +30,7 @@ export function HubContent() {
 
   useEffect(() => {
     let active = true;
-    fetchOwnOrders("page=0&size=3")
+    withSessionRetry(() => fetchOwnOrders("page=0&size=3"))
       .then((pg) => {
         if (active) setState({ kind: "ready", orders: pg.data as OwnOrder[] });
       })

@@ -224,3 +224,18 @@ export async function fetchReceipt(id: string | number): Promise<PosReceipt | Or
   const r = await beFetch(`v1/hoa-don/${encodeURIComponent(String(id))}`);
   return unwrap<PosReceipt | OrderDetail>(r);
 }
+
+/**
+ * Gọi lại một lần khi API trả 401 ngay sau khi đăng nhập: phiên có thể chưa
+ * được ghi lúc request đầu tiên (BE đang sửa phần lưu session). Chỉ retry
+ * đúng một lần, giữ nguyên mọi lỗi khác.
+ */
+export async function withSessionRetry<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (e) {
+    if ((e as { status?: number })?.status !== 401) throw e;
+    await new Promise((r) => setTimeout(r, 300));
+    return call();
+  }
+}

@@ -82,3 +82,26 @@ describe("voucherChosenLabel (R5: mã voucher bị nhả sau khi hủy)", () => 
     assert.equal(voucherChosenLabel(undefined, " (đã chốt)"), "Voucher (đã chốt)");
   });
 });
+
+describe("withSessionRetry (phiên chưa ghi xong ngay sau đăng nhập)", () => {
+  it("retry đúng một lần khi 401 rồi trả kết quả", async () => {
+    const { withSessionRetry } = await import("../src/lib/commerce-client.ts");
+    let calls = 0;
+    const value = await withSessionRetry(async () => {
+      calls += 1;
+      if (calls === 1) throw Object.assign(new Error("401"), { status: 401 });
+      return "ok";
+    });
+    assert.equal(value, "ok");
+    assert.equal(calls, 2);
+  });
+  it("không retry lỗi khác 401", async () => {
+    const { withSessionRetry } = await import("../src/lib/commerce-client.ts");
+    let calls = 0;
+    await assert.rejects(withSessionRetry(async () => {
+      calls += 1;
+      throw Object.assign(new Error("403"), { status: 403 });
+    }), /403/);
+    assert.equal(calls, 1);
+  });
+});
