@@ -5,17 +5,39 @@ import { useEffect, useState } from "react";
 import { MerchantShell } from "@/components/merchant/merchant-shell";
 import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
 import { beFetch, unwrap, type Page } from "@/lib/mgmt-client";
-import { PREVIEW_ORDERS, orderStatusLabel } from "@/lib/preview-data";
+import { fetchStaffOrders } from "@/lib/commerce-client";
+import { orderStatusLabel } from "@/lib/commerce";
+import { fetchRevenue } from "@/lib/reports-client";
 import { formatVnd } from "@/components/storefront/product-card";
 
-const HOURS = ["08h", "10h", "12h", "14h", "16h", "18h", "20h", "22h"];
-const HOURLY = [12, 28, 45, 38, 62, 84, 71, 40];
-
 type Counts = { cats: number | null; prods: number | null; error: string };
+type AiStatus = { ready: boolean; eligibleImageCount?: number; datasetVersion?: string };
+type StaffOrder = {
+  maDonHang: number;
+  trangThai: string;
+  tongThanhToan: number;
+  trangThaiThanhToan?: string;
+  sdtNhan?: string | null;
+  ngayDat?: string;
+};
 
+function todayRange(): string {
+  const now = new Date();
+  const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return `tuNgay=${day}&denNgay=${day}`;
+}
+
+// Dashboard chỉ dùng số liệu thật từ API: catalog, đơn hàng, báo cáo doanh thu
+// (ADMIN) và trạng thái tìm kiếm AI. Không vẽ biểu đồ/số liệu minh họa.
 export default function MerchantDashboard() {
   const [me, setMe] = useState<AccountIdentity | null>(null);
   const [counts, setCounts] = useState<Counts>({ cats: null, prods: null, error: "" });
+  const [orders, setOrders] = useState<StaffOrder[]>([]);
+  const [ordersTotal, setOrdersTotal] = useState<number | null>(null);
+  const [ordersError, setOrdersError] = useState("");
+  const [revenueToday, setRevenueToday] = useState<number | null>(null);
+  const [revenueNote, setRevenueNote] = useState("");
+  const [ai, setAi] = useState<AiStatus | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -32,29 +54,62 @@ export default function MerchantDashboard() {
       .catch((e: Error) => {
         if (live) setCounts({ cats: null, prods: null, error: e.message || "Không tải được số liệu máy chủ." });
       });
+    fetchStaffOrders("page=0&size=5")
+      .then((pg) => {
+        if (!live) return;
+        setOrders(pg.data as StaffOrder[]);
+        setOrdersTotal(pg.totalElements);
+        setOrdersError("");
+      })
+      .catch((e) => {
+        if (!live) return;
+        const status = (e as { status?: number })?.status ?? 0;
+        setOrdersError(
+          status === 403
+            ? "Tài khoản này không có quyền xem đơn hàng (cần STAFF/ADMIN)."
+            : "Không tải được danh sách đơn hàng.",
+        );
+      });
+    beFetch("v1/ai/status")
+      .then(async (r) => {
+        if (!r.ok || !live) return;
+        const payload = (await r.json()) as { result?: AiStatus };
+        if (payload?.result && live) setAi(payload.result);
+      })
+      .catch(() => {});
+    fetchRevenue(todayRange())
+      .then((r) => {
+        if (!live) return;
+        const total = r.rows.reduce((sum, row) => sum + (row.tongThu ?? 0), 0);
+        setRevenueToday(total);
+        setRevenueNote(r.ghiChuBaoPhu ?? "");
+      })
+      .catch((e) => {
+        if (!live) return;
+        const status = (e as { status?: number })?.status ?? 0;
+        if (status !== 403) setRevenueNote("Không tải được báo cáo doanh thu.");
+      });
     return () => {
       live = false;
     };
   }, []);
 
   const greeting =
-    me?.role === "ADMIN" ? "Chào Quản Trị" : me?.role === "STAFF" ? "Chào Nhân Viên" : "Chào Bạn";
+    me?.role === "ADMIN" ? "Chào quản trị" : me?.role === "STAFF" ? "Chào nhân viên" : "Chào bạn";
 
   return (
     <MerchantShell
       active="dashboard"
-      previewNote="Dashboard kênh bán: hai thẻ đếm lấy từ catalog công khai; doanh thu, đơn hàng và biểu đồ là minh họa (máy chủ chưa có API thống kê)."
+      previewNote="Số liệu dưới đây lấy thẳng từ máy chủ: catalog, đơn hàng, báo cáo doanh thu (ADMIN) và trạng thái tìm kiếm AI."
     >
-      <h1 style={{ fontSize: 22, fontWeight: 800 }}>{greeting} 👋</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800 }}>{greeting}</h1>
       <p className="mpMuted">
-        {me ? `Phiên ${me.role} · ` : "Chưa đăng nhập · "}
-        Hôm nay · 7 ngày qua · Tháng này — dữ liệu minh họa trừ hai thẻ đếm máy chủ.
-        Số liệu vận hành chi tiết cần STAFF/ADMIN.
+        {me ? `Phiên ${me.role}` : "Chưa đăng nhập"} · số liệu theo ngày hôm nay.
       </p>
 
       <div className="mpStats" style={{ marginTop: 14 }}>
         <div className="mpStat">
-          <p>Danh mục (máy chủ)</p>
+          <p>Danh mục</p>
           {counts.error ? (
             <b role="alert" style={{ fontSize: 15, color: "#ba1a1a" }}>Lỗi tải</b>
           ) : (
@@ -63,7 +118,7 @@ export default function MerchantDashboard() {
           <small>GET /catalog/danh-muc</small>
         </div>
         <div className="mpStat">
-          <p>Sản phẩm (máy chủ)</p>
+          <p>Sản phẩm</p>
           {counts.error ? (
             <b role="alert" style={{ fontSize: 15, color: "#ba1a1a" }}>Lỗi tải</b>
           ) : (
@@ -71,56 +126,71 @@ export default function MerchantDashboard() {
           )}
           <small>GET /catalog/san-pham</small>
         </div>
-        <div className="mpStat"><p>Doanh thu hôm nay (minh họa)</p><b>48,2tr</b><small>+12,4% hôm qua</small></div>
-        <div className="mpStat"><p>Đơn hàng (minh họa)</p><b>132</b><small>Hoả tốc: 18</small></div>
-      </div>
-      {counts.error ? (
-        <p className="mpPreviewBar" role="alert">Không tải được số liệu máy chủ: {counts.error} Các thẻ minh họa bên dưới không bị ảnh hưởng.</p>
-      ) : null}
-      {counts.cats === 0 || counts.prods === 0 ? (
-        <p className="mpPreviewBar" role="status">Catalog máy chủ đang trống — hai thẻ đếm hiện 0 là số liệu thật, không phải lỗi.</p>
-      ) : null}
-
-      <div className="mpCard">
-        <h2>Doanh thu theo giờ trong ngày <span className="mpPill mpPillWarn">Minh họa</span></h2>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", height: 150, marginTop: 14 }} role="img" aria-label="Biểu đồ doanh thu minh họa">
-          {HOURLY.map((v, i) => (
-            <div key={HOURS[i]} style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ height: `${v}%`, minHeight: 8, borderRadius: 7, background: "linear-gradient(180deg, var(--accent), var(--brand))" }} />
-              <small className="mpMuted">{HOURS[i]}</small>
-            </div>
-          ))}
+        <div className="mpStat">
+          <p>Đơn hàng</p>
+          <b>{ordersTotal ?? "…"}</b>
+          <small>GET /quan-tri/don-hang</small>
+        </div>
+        <div className="mpStat">
+          <p>Doanh thu hôm nay</p>
+          <b>{revenueToday === null ? (me?.role === "ADMIN" ? "…" : "—") : formatVnd(revenueToday)}</b>
+          <small>{me?.role === "ADMIN" ? "GET /bao-cao/doanh-thu" : "Cần quyền ADMIN"}</small>
         </div>
       </div>
+      {counts.error ? (
+        <p className="mpPreviewBar" role="alert">Không tải được số liệu danh mục/sản phẩm: {counts.error}</p>
+      ) : null}
+      {me?.role === "ADMIN" && revenueNote ? (
+        <p className="mpPreviewBar" role="note">{revenueNote}</p>
+      ) : null}
 
       <div className="mpCard">
         <div style={{ display: "flex", alignItems: "baseline" }}>
-          <h2>Đơn hàng gần đây <span className="mpPill mpPillWarn">Minh họa</span></h2>
+          <h2>Đơn hàng gần đây</h2>
           <Link href="/kenh-ban/don-hang" style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--brand)" }}>Quản lý đơn hàng →</Link>
         </div>
-        <div className="mpTableWrap">
-          <table className="mpTable">
-            <thead>
-              <tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr>
-            </thead>
-            <tbody>
-              {PREVIEW_ORDERS.map((o) => (
-                <tr key={o.id}>
-                  <td><b>#{o.id}</b></td>
-                  <td>Khách lẻ #{o.id.slice(-4)}</td>
-                  <td><b>{formatVnd(o.total)}</b></td>
-                  <td><span className="mpPill">COD</span></td>
-                  <td><span className="mpPill mpPillLive">{orderStatusLabel(o.status)}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {ordersError ? (
+          <p className="mpMuted" role="alert" style={{ marginTop: 10 }}>{ordersError}</p>
+        ) : null}
+        {!ordersError && orders.length === 0 ? (
+          <p className="mpMuted" style={{ marginTop: 10 }}>Chưa có đơn hàng nào trên hệ thống.</p>
+        ) : null}
+        {orders.length > 0 ? (
+          <div className="mpTableWrap">
+            <table className="mpTable">
+              <thead>
+                <tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.maDonHang}>
+                    <td><b>#{o.maDonHang}</b></td>
+                    <td>{o.sdtNhan ? o.sdtNhan : "—"}</td>
+                    <td><b>{formatVnd(o.tongThanhToan)}</b></td>
+                    <td><span className="mpPill">{o.trangThaiThanhToan === "DA_THANH_TOAN" ? "Đã thu" : "Chưa thu"}</span></td>
+                    <td><span className="mpPill mpPillLive">{orderStatusLabel(o.trangThai)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </div>
 
       <div className="mpCard">
-        <h2>Hiệu quả AI Search trong ngày <span className="mpPill mpPillWarn">Minh họa</span></h2>
-        <p className="mpMuted">Tỉ lệ khớp mẫu 98,2% · thời gian quét 0,45s — số liệu minh họa từ bản thiết kế, không phải đo lường thật.</p>
+        <h2>Tìm kiếm AI</h2>
+        {ai ? (
+          <p className="mpMuted">
+            {ai.ready ? "Sẵn sàng" : "Chưa sẵn sàng"}
+            {ai.eligibleImageCount ? ` · ${ai.eligibleImageCount.toLocaleString("vi-VN")} ảnh trong bộ dữ liệu` : ""}
+            {ai.datasetVersion ? ` · phiên bản dữ liệu ${ai.datasetVersion}` : ""}
+          </p>
+        ) : (
+          <p className="mpMuted" role="status">Đang kiểm tra trạng thái tìm kiếm AI…</p>
+        )}
+        <p className="mpMuted" style={{ marginTop: 6 }}>
+          Kết quả tìm kiếm AI là ảnh trong bộ dữ liệu, chưa phải mã sản phẩm bán được.
+        </p>
       </div>
     </MerchantShell>
   );

@@ -58,7 +58,7 @@ export function AdminShell({
           </span>
           <span>
             <b>FashionSearch AI</b>
-            <small>● ADMIN CONSOLE</small>
+            <small>Quản trị</small>
           </span>
         </Link>
         <nav className="adNav" aria-label="Quản trị hệ thống">

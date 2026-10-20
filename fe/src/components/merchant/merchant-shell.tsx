@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon, type UiIcon } from "@/components/ui/icon";
 import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
+import { fetchWarehouses } from "@/lib/commerce-client";
 import "./merchant.css";
 
 export type MerchantNavKey =
@@ -42,11 +43,18 @@ export function MerchantShell({
   children: React.ReactNode;
 }) {
   const [me, setMe] = useState<AccountIdentity | null>(null);
+  const [warehouse, setWarehouse] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     readOwnIdentity()
       .then((identity) => {
         if (live) setMe(identity);
+      })
+      .catch(() => {});
+    // Tên kho lấy từ máy chủ, không ghi cứng trong vỏ giao diện.
+    fetchWarehouses()
+      .then((list) => {
+        if (live) setWarehouse((list.find((w) => w.laMacDinh) ?? list[0])?.tenKho ?? null);
       })
       .catch(() => {});
     return () => {
@@ -58,7 +66,7 @@ export function MerchantShell({
       <div className="mpBanner">
         <div>
           <Icon name="spark" size={14} />
-          <span>Kênh bán · kho Tân Bình TP.HCM — danh mục và sản phẩm đồng bộ từ máy chủ</span>
+          <span>Kênh bán{warehouse ? ` · kho ${warehouse}` : ""} — danh mục và sản phẩm đồng bộ từ máy chủ</span>
           <Link href="/kenh-ban">Về dashboard</Link>
         </div>
       </div>
@@ -70,7 +78,7 @@ export function MerchantShell({
             </span>
             <span>
               <b>FashionSearch AI</b>
-              <small>MERCHANT PORTAL</small>
+              <small>Kênh bán</small>
             </span>
           </Link>
           <Link className="mpCta" href="/quan-tri/san-pham">
