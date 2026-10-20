@@ -224,6 +224,7 @@ export default function ProductDetailPage() {
                 type="file"
                 accept="image/jpeg,image/png"
                 onChange={(e) => upload(e.target.files?.[0])}
+                style={{ maxWidth: "100%", width: "100%" }}
               />
             </label>
           </div>

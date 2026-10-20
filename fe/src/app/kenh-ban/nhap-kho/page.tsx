@@ -276,10 +276,10 @@ export default function ReceiptPage() {
           </label>
         </div>
         {rows.map((r, i) => (
-          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <input value={r.ref} onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))} placeholder="maSku hoặc mã vạch" aria-label={`Dòng ${i + 1} SKU/mã vạch`} style={{ flex: 2, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px" }} />
-            <input value={r.qty} onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} placeholder="SL" aria-label={`Dòng ${i + 1} số lượng`} inputMode="numeric" style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px" }} />
-            <input value={r.price} onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} placeholder="Đơn giá (tùy chọn)" aria-label={`Dòng ${i + 1} đơn giá`} inputMode="decimal" style={{ flex: 1, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px" }} />
+          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <input value={r.ref} onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))} placeholder="maSku hoặc mã vạch" aria-label={`Dòng ${i + 1} SKU/mã vạch`} style={{ flex: "2 1 160px", minWidth: 0, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px" }} />
+            <input value={r.qty} onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} placeholder="SL" aria-label={`Dòng ${i + 1} số lượng`} inputMode="numeric" style={{ flex: "1 1 80px", minWidth: 0, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px" }} />
+            <input value={r.price} onChange={(e) => setRows((prev) => prev.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} placeholder="Đơn giá (tùy chọn)" aria-label={`Dòng ${i + 1} đơn giá`} inputMode="decimal" style={{ flex: "1 1 80px", minWidth: 0, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px" }} />
             <button className="mpTopBtn" type="button" aria-label={`Xóa dòng ${i + 1}`} onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}>✕</button>
           </div>
         ))}
