@@ -436,3 +436,11 @@
   .sfAvatar { width: 28px; height: 28px; }
   .sfIconBtn { width: 34px; height: 34px; }
 }
+
+/* Người dùng giảm độ trong suốt: bề mặt đục, không làm mờ nội dung phía sau. */
+@media (prefers-reduced-transparency: reduce) {
+  .sfHeader {
+    backdrop-filter: none;
+    background: var(--surface);
+  }
+}
