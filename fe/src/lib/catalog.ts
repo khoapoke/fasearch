@@ -72,5 +72,38 @@ export function facetsQueryString(query: Pick<CatalogQuery, "q" | "maDanhMuc" | 
   return params.toString();
 }
 
+function foldFacet(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u0110\u0111]/g, "d")
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Server facets có thể trả cùng một màu dưới nhiều dạng viết ("DEN" và "Đen").
+ * Gộp theo khoá không dấu, giữ đại diện dễ đọc (bản viết thường) và luôn là giá
+ * trị server trả về nên vẫn lọc được; thứ tự giữ nguyên của server.
+ */
+export function dedupeFacetValues(values: string[]): string[] {
+  const groups = new Map<string, string>();
+  for (const raw of values) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const key = foldFacet(trimmed);
+    const current = groups.get(key);
+    if (current === undefined) {
+      groups.set(key, trimmed);
+      continue;
+    }
+    const currentShouty = current === current.toUpperCase();
+    const candidateShouty = trimmed === trimmed.toUpperCase();
+    if (currentShouty && !candidateShouty) groups.set(key, trimmed);
+  }
+  return [...groups.values()];
+}
+
 export type { Page };
 export { unwrap };

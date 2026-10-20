@@ -65,47 +65,40 @@ export function HomeSections() {
     <>
       <section className="hmHero">
         <div>
-          <span className="hmKicker">✦ Công Nghệ Tìm Kiếm Đa Phương Thức</span>
+          <span className="hmKicker">Tìm kiếm AI theo ảnh</span>
           <h1 className="hmTitle">
-            THỜI TRANG CÔNG NGHỆ <span className="hl">MỚI</span> • TÌM MỌI <span className="hl">OUTFIT BẰNG AI</span>
+            Tìm món đồ bạn thích, <span className="hl">bằng ảnh</span> hoặc bằng chữ
           </h1>
           <p className="hmSub">
-            Chụp ảnh hoặc tải lên bất kỳ outfit nào để nhận gợi ý phối đồ. AI thời trang
-            phân tích phom dáng, chất liệu và phối màu trong tích tắc.
+            Tải ảnh outfit bạn thích để AI gợi ý món đồ tương tự trong danh mục thật,
+            hoặc tìm bằng từ khóa. Kết quả tìm kiếm AI là ảnh trong bộ dữ liệu, chưa
+            phải mã sản phẩm bán được.
           </p>
           <div className="hmCtas">
-            <Link className="hmCta hmCtaPrimary" href="/nam">
-              Khám Phá Ngay <Icon name="arrowRight" size={17} />
+            <Link className="hmCta hmCtaPrimary" href="/tim-kiem-ai">
+              Tìm bằng AI <Icon name="arrowRight" size={17} />
             </Link>
-            <Link className="hmCta hmCtaGhost" href="/lich-su-ai">
-              Thử Tìm Bằng Ảnh
+            <Link className="hmCta hmCtaGhost" href="/nam">
+              Khám phá danh mục
             </Link>
           </div>
           <div className="hmAiMini">
             <Icon name="spark" size={22} />
             <div style={{ flex: 1 }}>
-              <small>TÌM KIẾM AI GỢI Ý PHONG CÁCH</small>
+              <small>Tìm kiếm AI gợi ý phong cách</small>
               <b>Áo thun oversize phối quần short kaki cho dịp cuối tuần</b>
-              <Link className="hmAiBtn" href="/lich-su-ai">Tìm Kiếm →</Link>
+              <Link className="hmAiBtn" href="/tim-kiem-ai">Tìm kiếm →</Link>
             </div>
           </div>
         </div>
         <div className="hmHeroMedia">
           <StitchImage src={hero?.src} alt={hero?.alt || "Người mẫu thời trang"} eager />
-          <p className="hmDetect">
-            <Icon name="camera" size={20} />
-            <span>
-              <b>AI OBJECT DETECTION: 2 ITEMS</b>
-              <span>Áo Cotton Compact 220gsm · Quần Short 7 inch</span>
-            </span>
-            <span className="ok">Preview</span>
-          </p>
         </div>
       </section>
 
       <section className="hmCats" aria-label="Danh mục nổi bật">
         <div className="hmSecHead">
-          <h2>DANH MỤC NỔI BẬT <span className="dot">•</span></h2>
+          <h2>Danh mục nổi bật</h2>
           <Link href="/nam">Được nhiều tìm kiếm nhất trong tuần này →</Link>
         </div>
         <div className="hmCatRow">

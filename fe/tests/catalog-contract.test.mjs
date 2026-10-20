@@ -91,3 +91,18 @@ describe("probeCatalogCaps", () => {
     }
   });
 });
+
+describe("dedupeFacetValues", () => {
+  it("gộp màu trùng khác dấu/chữ hoa, giữ giá trị có dấu", async () => {
+    const { dedupeFacetValues } = await import("../src/lib/catalog.ts");
+    assert.deepEqual(dedupeFacetValues(["DEN", "Đen", "Trắng", "TRANG"]), ["Đen", "Trắng"]);
+  });
+  it("bỏ giá trị rỗng, giữ thứ tự server", async () => {
+    const { dedupeFacetValues } = await import("../src/lib/catalog.ts");
+    assert.deepEqual(dedupeFacetValues(["", "  ", "Xanh", "Đỏ"]), ["Xanh", "Đỏ"]);
+  });
+  it("không gộp màu khác nhau", async () => {
+    const { dedupeFacetValues } = await import("../src/lib/catalog.ts");
+    assert.deepEqual(dedupeFacetValues(["Be", "Kem"]), ["Be", "Kem"]);
+  });
+});

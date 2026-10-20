@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { ProductCard, type CardProduct } from "@/components/storefront/product-card";
 import { stitchImages } from "@/lib/stitch-assets";
+import { dedupeFacetValues } from "@/lib/catalog";
 import "@/components/storefront/listing.css";
 
 export type ListingProduct = {
@@ -209,8 +210,8 @@ export function ListingPage({
               </div>
               <h3>Màu sắc</h3>
               <div className="pgSizes" role="group" aria-label="Màu sắc từ máy chủ">
-                {serverMauSac.length === 0 ? <span className="mpMuted">Không có lựa chọn nào.</span> : null}
-                {serverMauSac.map((v) => (
+                {dedupeFacetValues(serverMauSac).length === 0 ? <span className="mpMuted">Không có lựa chọn nào.</span> : null}
+                {dedupeFacetValues(serverMauSac).map((v) => (
                   <button key={v} type="button" className="pgSize" style={{ minWidth: 0 }} aria-pressed={activeMauSac === v} onClick={() => onFilter?.({ mauSac: activeMauSac === v ? "" : v })}>
                     {v}
                   </button>
@@ -262,7 +263,7 @@ export function ListingPage({
               {!catName && !price && !size && !color ? <span className="mpMuted">Chưa lọc — đang hiện toàn bộ.</span> : null}
             </div>
             <label className="pgSort">
-              SẮP XẾP:
+              Sắp xếp:
               {mode === "server" ? (
                 <select value={activeSapXep || "id-asc"} onChange={(e) => onFilter?.({ sapXep: e.target.value })} aria-label="Sắp xếp toàn shop">
                   <option value="id-asc">Thứ tự mặc định</option>
