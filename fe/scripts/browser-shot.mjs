@@ -272,7 +272,6 @@ async function shoot(session, spec, outDir) {
       .map((e) => e.params.exceptionDetails?.exception?.description ?? e.params.exceptionDetails?.text ?? "exception"))
     .slice(0, 6);
 
-  let shot;
   if (spec.fullPage) {
     const { cssContentSize } = await session.send("Page.getLayoutMetrics");
     const height = Math.min(Math.ceil(cssContentSize.height), 6000);
