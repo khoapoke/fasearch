@@ -269,7 +269,7 @@ export function BoSuuTapListing() {
         sub="Danh sách thật từ máy chủ theo bộ lọc bạn chọn."
         totalLabel={`${hook.total} sản phẩm`}
         products={hook.items}
-        tags={["#Activewear", "#CleanFit", "#ThuĐông"]}
+        tags={[]}
         loading={hook.loading}
         error={hook.error}
         paging={{ page: hook.page, totalPages: hook.totalPages, total: hook.total, size: hook.size, onPage: hook.setPage }}
@@ -316,19 +316,19 @@ function CollectionHero({ cats }: { cats: Array<{ id: number; name: string }> })
       </div>
       <div className="hmCollections" aria-label="Bộ sưu tập đặc sắc">
         <div className="hmCol">
-          <StitchImage src={photos[1]?.src} alt={photos[1]?.alt || "Urban Minimalist"} />
+          <StitchImage src={photos[1]?.src} alt={photos[1]?.alt || "Ảnh minh họa phong cách tối giản"} />
           <div>
             <small>Lookbook</small>
-            <h3>Urban Minimalist</h3>
+            <h3>Phong cách tối giản</h3>
             <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
             <Link href="/nam">Xem sản phẩm →</Link>
           </div>
         </div>
         <div className="hmCol">
-          <StitchImage src={photos[2]?.src} alt={photos[2]?.alt || "Pro Active"} />
+          <StitchImage src={photos[2]?.src} alt={photos[2]?.alt || "Ảnh minh họa đồ tập luyện"} />
           <div>
             <small>Lookbook</small>
-            <h3>Pro Active Training</h3>
+            <h3>Đồ tập luyện</h3>
             <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
             <Link href="/nam">Xem sản phẩm →</Link>
           </div>

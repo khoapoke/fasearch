@@ -124,9 +124,8 @@ export function HomeSections() {
               <div><b>Kết quả từ tập dữ liệu</b><small>Chưa phải mã sản phẩm</small></div>
             </div>
             <div className="hmTags">
-              <span>#Outfit-Hè-Quốc-Dân</span>
-              <span>#Gym-Activewear</span>
-              <span>#Mẫu-Mới-Chống-Nhăn</span>
+              <span>Tìm theo ảnh</span>
+              <span>Kết quả là ảnh tập dữ liệu</span>
             </div>
           </div>
           <div className="hmDrop">
@@ -166,19 +165,19 @@ export function HomeSections() {
 
       <section className="hmCollections" aria-label="Bộ sưu tập">
         <div className="hmCol">
-          <StitchImage src={stitchImages(HOME)[8]?.src} alt="BST Activewear" />
+          <StitchImage src={stitchImages(HOME)[8]?.src} alt="Ảnh minh họa đồ thể thao" />
           <div>
             <small>Lookbook</small>
-            <h3>Activewear</h3>
+            <h3>Đồ thể thao</h3>
             <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
             <Link href="/bo-suu-tap">Xem sản phẩm →</Link>
           </div>
         </div>
         <div className="hmCol">
-          <StitchImage src={stitchImages(HOME)[10]?.src} alt="BST Clean Fit" />
+          <StitchImage src={stitchImages(HOME)[10]?.src} alt="Ảnh minh họa phong cách tối giản" />
           <div>
             <small>Lookbook</small>
-            <h3>Clean Fit</h3>
+            <h3>Phong cách tối giản</h3>
             <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
             <Link href="/bo-suu-tap">Xem sản phẩm →</Link>
           </div>
