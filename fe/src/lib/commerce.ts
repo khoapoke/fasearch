@@ -83,6 +83,8 @@ export type OrderDetail = {
   // Snapshot frozen ưu đãi (optional — receipts cũ thiếu vẫn render, không bịa).
   maVoucher?: number | null;
   diemSuDung?: number | null;
+  /** false = đơn legacy đã hủy, không còn bản ghi dùng voucher → không suy phân bổ. */
+  phanBoGiamXacDinh?: boolean | null;
   giamVoucher?: number | null;
   giamDiem?: number | null;
 };
@@ -199,6 +201,34 @@ export function formatVndContract(value: number | null | undefined): string {
  * Nhãn voucher đã chốt. Mã voucher có thể vắng sau khi BE nhả usage (đơn đã
  * hủy) trong khi số tiền giảm vẫn nằm trong snapshot — không in "#" rỗng.
  */
+export type DiscountLine = { label: string; amount: number | null };
+
+/**
+ * Các dòng giảm hiển thị từ dữ liệu máy chủ. Đơn legacy đã hủy
+ * (phanBoGiamXacDinh = false) không còn bản ghi dùng voucher nên không suy được
+ * phần nào là voucher, phần nào là điểm — chỉ hiện tổng giảm, không gán nhãn sai.
+ */
+export function discountLines(order: {
+  phanBoGiamXacDinh?: boolean | null;
+  giamGia?: number | null;
+  giamVoucher?: number | null;
+  giamDiem?: number | null;
+  diemSuDung?: number | null;
+  maVoucher?: number | null;
+}): DiscountLine[] {
+  if (order.phanBoGiamXacDinh === false) {
+    return [{ label: "Tổng giảm (chưa xác định phân bổ)", amount: order.giamGia ?? null }];
+  }
+  const lines: DiscountLine[] = [];
+  if ((order.giamVoucher ?? 0) > 0 || (order.maVoucher ?? 0) > 0) {
+    lines.push({ label: voucherChosenLabel(order.maVoucher, " (đã chốt)"), amount: order.giamVoucher ?? null });
+  }
+  if ((order.giamDiem ?? 0) > 0 || (order.diemSuDung ?? 0) > 0) {
+    lines.push({ label: `Điểm đã dùng (${order.diemSuDung ?? 0}) (đã chốt)`, amount: order.giamDiem ?? null });
+  }
+  return lines;
+}
+
 export function voucherChosenLabel(maVoucher: number | null | undefined, suffix = ""): string {
   const id = maVoucher ?? null;
   return id !== null && id !== 0 ? `Voucher #${id}${suffix}` : `Voucher${suffix}`;

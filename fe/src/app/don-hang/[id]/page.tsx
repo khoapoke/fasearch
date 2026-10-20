@@ -7,7 +7,7 @@ import { cancelOwnOrder, fetchOwnOrder } from "@/lib/commerce-client";
 import {
   commerceErrorMessage, formatVndContract, isCustomerCancellable, newOperationKey,
   orderStatusLabel, paymentMethodLabel, paymentStatusLabel, validateCancelReason,
-  voucherChosenLabel, type OrderDetail,
+  discountLines, type OrderDetail,
 } from "@/lib/commerce";
 import "@/components/storefront/preview.css";
 
@@ -144,12 +144,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           ))}
           <div className="pvLine"><span>Tạm tính</span><span>{formatVndContract(order.tongTienHang)}</span></div>
           <OrderDiscountLines order={order} />
-          {(order.giamVoucher ?? 0) > 0 || (order.maVoucher ?? 0) > 0 ? (
-            <div className="pvLine"><span>{voucherChosenLabel(order.maVoucher, " (đã chốt)")}</span><span>−{formatVndContract(order.giamVoucher ?? 0)}</span></div>
-          ) : null}
-          {(order.giamDiem ?? 0) > 0 || (order.diemSuDung ?? 0) > 0 ? (
-            <div className="pvLine"><span>Điểm đã dùng ({order.diemSuDung ?? 0}) (đã chốt)</span><span>−{formatVndContract(order.giamDiem ?? 0)}</span></div>
-          ) : null}
+          {discountLines(order).map((line) => (
+            <div className="pvLine" key={line.label}>
+              <span>{line.label}</span>
+              <span>{line.amount === null ? "—" : `−${formatVndContract(line.amount)}`}</span>
+            </div>
+          ))}
           <div className="pvLine"><span>Phí vận chuyển</span><span>{formatVndContract(order.phiVanChuyen)}</span></div>
           <div className="pvLine total"><span>Tổng thanh toán</span><span>{formatVndContract(order.tongThanhToan)}</span></div>
           <h3 style={{ marginTop: 12 }}>Lịch sử thật</h3>

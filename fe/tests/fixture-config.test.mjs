@@ -70,7 +70,7 @@ describe("fixture config loader (FP-1)", () => {
   });
 
   it("không mã theo dõi nào chứa mật khẩu fixture dạng chữ", () => {
-    const secret = /\b(Adm|Stf|Cst)-\d{8}\b/;
+    const secret = /\b(Adm|Stf|Cst)-\d{8}\b|\bDemo-[A-Za-z]+-\d{4}\b/;
     const scanDirs = [join(REPO_ROOT, ".agent"), join(FE_ROOT, "src"), join(FE_ROOT, "scripts"), join(FE_ROOT, "tests")];
     const hits = [];
     const walk = (dir) => {

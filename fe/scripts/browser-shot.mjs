@@ -10,6 +10,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
+import { loadFixtureConfig } from "./fixture-config.mjs";
 
 const CHROME = process.env.CHROME_BIN
   || "/home/dolakhoa/.cache/ms-playwright/chromium-1246/chrome-linux64/chrome";

@@ -105,3 +105,27 @@ describe("withSessionRetry (phiên chưa ghi xong ngay sau đăng nhập)", () =
     assert.equal(calls, 1);
   });
 });
+
+describe("discountLines (nhãn giảm theo snapshot máy chủ)", () => {
+  const lines = async () => (await import("../src/lib/commerce.ts")).discountLines;
+  it("đơn có snapshot → tách dòng voucher và điểm", async () => {
+    const f = await lines();
+    const out = f({ giamGia: 33000, giamVoucher: 30000, giamDiem: 3000, diemSuDung: 3, maVoucher: 5 });
+    assert.equal(out.length, 2);
+    assert.match(out[0].label, /Voucher #5/);
+    assert.equal(out[0].amount, 30000);
+    assert.match(out[1].label, /Điểm đã dùng \(3\)/);
+    assert.equal(out[1].amount, 3000);
+  });
+  it("đơn legacy (phanBoGiamXacDinh=false) → chỉ tổng giảm, không gán nhãn voucher/điểm", async () => {
+    const f = await lines();
+    const out = f({ phanBoGiamXacDinh: false, giamGia: 33000, giamVoucher: null, giamDiem: null, diemSuDung: 3 });
+    assert.equal(out.length, 1);
+    assert.match(out[0].label, /chưa xác định phân bổ/);
+    assert.equal(out[0].amount, 33000);
+  });
+  it("đơn không giảm → không có dòng nào", async () => {
+    const f = await lines();
+    assert.deepEqual(f({ giamGia: 0 }), []);
+  });
+});

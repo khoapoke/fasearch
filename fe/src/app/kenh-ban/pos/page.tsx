@@ -10,7 +10,7 @@ import {
 } from "@/lib/commerce-client";
 import {
   commerceErrorMessage, formatVndContract, newOperationKey, validateCancelReason,
-  validateCashTender, validateQuantity, voucherChosenLabel,
+  validateCashTender, validateQuantity, discountLines,
   type PosDraft, type PosQuote, type PosReceipt, type Warehouse,
 } from "@/lib/commerce";
 import {
@@ -528,12 +528,11 @@ export default function PosPage() {
         <div className="mpCard" aria-label="Hóa đơn POS">
           <h3>Hóa đơn #{String(receipt.maHoaDon)} <span className="mpPill mpPillLive">Đã thu tiền mặt</span></h3>
           <p className="mpMuted">Đơn #{receipt.maDonHang} · kho {receipt.maKho} · {formatVndContract(receipt.tongThanhToan)} · thối {formatVndContract(receipt.tienThua)}</p>
-          {(receipt.giamVoucher ?? 0) > 0 || (receipt.maVoucher ?? 0) > 0 ? (
-            <p className="mpMuted">{voucherChosenLabel(receipt.maVoucher)}: −{formatVndContract(receipt.giamVoucher ?? 0)}</p>
-          ) : null}
-          {(receipt.giamDiem ?? 0) > 0 || (receipt.diemSuDung ?? 0) > 0 ? (
-            <p className="mpMuted">Điểm đã dùng ({receipt.diemSuDung ?? 0}): −{formatVndContract(receipt.giamDiem ?? 0)}</p>
-          ) : null}
+          {discountLines(receipt).map((line) => (
+            <p className="mpMuted" key={line.label}>
+              {line.label}: {line.amount === null ? "—" : `−${formatVndContract(line.amount)}`}
+            </p>
+          ))}
           {(receipt.items ?? []).map((l) => (
             <div key={l.maSku} className="pvRow" style={{ display: "flex", gap: 10 }}>
               <div style={{ flex: 1 }}><b>{l.tenSpSnapshot}</b><p className="mpMuted">SKU {l.maSku} · SL {l.soLuong}{(l.tienGiamGia ?? 0) > 0 ? ` · giảm ${formatVndContract(l.tienGiamGia)}` : ""}</p></div>
