@@ -29,11 +29,6 @@
   margin-right: 8px;
   opacity: 0.7;
 }
-.sfPromoHotline {
-  white-space: nowrap;
-  font-weight: 700;
-}
-
 .sfHeader {
   position: sticky;
   top: 0;
@@ -242,21 +237,6 @@
   color: var(--ink-soft);
   margin-top: 4px;
 }
-.sfNewsForm {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  max-width: 420px;
-  min-width: 260px;
-}
-.sfNewsForm input {
-  flex: 1;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 13.5px;
-  min-width: 0;
-}
 .sfBtn {
   border: 0;
   cursor: pointer;
@@ -300,11 +280,6 @@
 }
 .sfCols a:hover {
   color: var(--brand);
-}
-.sfHotline {
-  font-size: 19px !important;
-  font-weight: 800;
-  color: var(--accent) !important;
 }
 .sfBottom {
   max-width: 1280px;
@@ -437,7 +412,6 @@
   }
   .sfCols { grid-template-columns: 1fr 1fr; }
   .sfAccountGrid { grid-template-columns: 1fr; }
-  .sfPromoHotline { display: none; }
 }
 @media (max-width: 640px) {
   .sfBar { gap: 10px; padding: 10px 14px; }
