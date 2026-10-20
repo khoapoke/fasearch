@@ -206,10 +206,12 @@ async function runSteps(session, steps) {
 }
 
 async function shoot(session, spec, outDir) {
+  // zoom: mô phỏng phóng to bằng cách thu nhỏ khung nhìn + deviceScaleFactor.
+  const scale = spec.zoom ?? 1;
   await session.send("Emulation.setDeviceMetricsOverride", {
-    width: spec.width ?? 1280,
-    height: spec.height ?? 900,
-    deviceScaleFactor: 1,
+    width: Math.round((spec.width ?? 1280) / scale),
+    height: Math.round((spec.height ?? 900) / scale),
+    deviceScaleFactor: scale,
     mobile: (spec.width ?? 1280) < 700,
   });
   const loaded = new Promise((resolve) => {

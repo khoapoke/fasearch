@@ -426,3 +426,13 @@
   .sfAccountLink span { display: none; }
   .sfCols { grid-template-columns: 1fr; }
 }
+
+/* Màn hình hẹp nhất (320px): thu gọn thanh công cụ để không tràn ngang. */
+@media (max-width: 380px) {
+  .sfBar { gap: 6px; padding: 8px 10px; }
+  .sfSearch { flex: 1; min-width: 0; }
+  .sfSearch input { min-width: 0; }
+  .sfAccountLink { padding: 4px; }
+  .sfAvatar { width: 28px; height: 28px; }
+  .sfIconBtn { width: 34px; height: 34px; }
+}
