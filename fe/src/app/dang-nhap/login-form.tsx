@@ -32,12 +32,17 @@ export function LoginForm({ next, passwordChanged }: {
     };
   }, [next, router]);
 
+  // Đưa tiêu điểm về thông báo lỗi sau khi React đã gắn node vào DOM: gọi
+  // focus() ngay sau setError sẽ là no-op vì node lỗi còn chưa tồn tại.
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyRef.current) return;
     if (!username.trim() || !password) {
       setError("Nhập tên đăng nhập và mật khẩu.");
-      errorRef.current?.focus();
       return;
     }
     busyRef.current = true;
@@ -60,7 +65,6 @@ export function LoginForm({ next, passwordChanged }: {
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Đăng nhập không hoàn tất.");
       setPassword("");
-      errorRef.current?.focus();
     } finally {
       busyRef.current = false;
       setBusy(false);

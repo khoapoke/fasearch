@@ -38,6 +38,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     params.then((p) => setId(p.id));
   }, [params]);
 
+  // Tiêu điểm về thông báo lỗi sau khi React đã gắn node: gọi focus() ngay sau
+  // setError sẽ là no-op vì node lỗi còn chưa tồn tại.
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -49,7 +55,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       const st = (e as { status?: number })?.status ?? 0;
       setStatus(st);
       setError(commerceErrorMessage(st, e instanceof Error ? e.message : "Không tải được đơn."));
-      setTimeout(() => errorRef.current?.focus(), 0);
+
     } finally {
       setLoading(false);
     }
@@ -67,7 +73,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       r = validateCancelReason(reason);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lý do hủy chưa hợp lệ.");
-      errorRef.current?.focus();
+
       return;
     }
     busyRef.current = true;
@@ -93,7 +99,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       } else {
         setError(commerceErrorMessage(st, e instanceof Error ? e.message : "Hủy thất bại."));
       }
-      errorRef.current?.focus();
+
     } finally {
       busyRef.current = false;
       setCancelling(false);

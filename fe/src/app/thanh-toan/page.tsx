@@ -71,7 +71,6 @@ export default function CheckoutPage() {
     } catch (e) {
       const status = (e as { status?: number })?.status ?? 0;
       setError(commerceErrorMessage(status, e instanceof Error ? e.message : "Không tải được thanh toán."));
-      setTimeout(() => errorRef.current?.focus(), 0);
     } finally {
       setLoading(false);
     }
@@ -80,6 +79,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     void Promise.resolve().then(() => load());
   }, [load]);
+
+  // Đưa tiêu điểm về thông báo lỗi sau khi React đã gắn node vào DOM: gọi
+  // focus() ngay sau setError sẽ là no-op vì node lỗi còn chưa tồn tại.
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   async function refreshQuote(maKhoV: number | null, cartV: Cart | null, benefits?: { voucherCode?: string | null; diemSuDung?: number | null }) {
     if (maKhoV === null || !cartV) return;
@@ -102,7 +107,6 @@ export default function CheckoutPage() {
       } else {
         setError(commerceErrorMessage(status, msg));
       }
-      setTimeout(() => errorRef.current?.focus(), 0);
       if (status === 409) {
         try {
           const fresh = await fetchCart();
@@ -123,12 +127,10 @@ export default function CheckoutPage() {
       validateReceiver(name, phone, address);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Thông tin nhận hàng chưa hợp lệ.");
-      errorRef.current?.focus();
       return;
     }
     if (!cart || maKho === null || !quote) {
       setError("Cần giỏ, kho và báo giá máy chủ trước khi đặt. Tải lại báo giá.");
-      errorRef.current?.focus();
       return;
     }
     const voucherNow = voucher.trim() ? voucher.trim().toUpperCase() : null;
@@ -136,7 +138,6 @@ export default function CheckoutPage() {
     // Dirty-guard TRƯỚC khi khóa busy (R3-F1): return ở đây chưa khóa nên submit sau vẫn bấm được.
     if (appliedBenefitsChanged(voucherNow, pointsNow, appliedVoucher, appliedPoints)) {
       setError("Ưu đãi đã thay đổi sau báo giá — bấm “Áp dụng & tính lại” rồi mới đặt (không tự tính lại âm thầm).");
-      errorRef.current?.focus();
       return;
     }
     busyRef.current = true;
@@ -176,7 +177,6 @@ export default function CheckoutPage() {
       } else {
         setError(`${commerceErrorMessage(status, msg)} Giỏ và thông tin đã nhập được giữ nguyên — không mất hàng.`);
       }
-      errorRef.current?.focus();
     } finally {
       busyRef.current = false;
       setSubmitting(false);

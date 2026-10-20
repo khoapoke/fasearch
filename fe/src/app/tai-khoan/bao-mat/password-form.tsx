@@ -42,6 +42,12 @@ export function PasswordForm() {
     };
   }, [router]);
 
+  // Tiêu điểm về thông báo lỗi sau khi React đã gắn node: gọi focus() ngay sau
+  // setError sẽ là no-op vì node lỗi còn chưa tồn tại.
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busyRef.current) return;
@@ -50,7 +56,7 @@ export function PasswordForm() {
     setConfirmIssue(next !== confirm ? "Mật khẩu nhập lại chưa khớp." : "");
     setCurrentIssue(current ? "" : "Nhập mật khẩu hiện tại.");
     if (nextFound || next !== confirm || !current) {
-      errorRef.current?.focus();
+
       return;
     }
     busyRef.current = true;
@@ -80,7 +86,7 @@ export function PasswordForm() {
         } else {
           setNextIssue("Mật khẩu mới chưa đạt yêu cầu: 15–64 ký tự, tối đa 72 byte UTF-8.");
         }
-        errorRef.current?.focus();
+
         return;
       }
       if (!response.ok) throw new Error("Đổi mật khẩu chưa thành công. Hãy thử lại.");
@@ -91,7 +97,7 @@ export function PasswordForm() {
       router.replace("/dang-nhap?password=changed");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Đổi mật khẩu không hoàn tất.");
-      errorRef.current?.focus();
+
     } finally {
       busyRef.current = false;
       setBusy(false);

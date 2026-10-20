@@ -84,6 +84,12 @@ export function AiTextSearchView() {
     };
   }, []);
 
+  // Tiêu điểm về khối lỗi sau khi React đã gắn node: gọi focus() ngay sau
+  // setState sẽ là no-op vì node lỗi còn chưa tồn tại.
+  useEffect(() => {
+    if (state.kind === "error") errorRef.current?.focus();
+  }, [state]);
+
   // Object URL cleanup: revoke khi file đổi/unmount.
   useEffect(() => {
     return () => {
@@ -98,7 +104,7 @@ export function AiTextSearchView() {
       validateImageFile(f);
     } catch (e) {
       setState({ kind: "error", message: e instanceof Error ? e.message : "Ảnh chưa hợp lệ.", status: 400 });
-      errorRef.current?.focus();
+
       return;
     }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -138,7 +144,7 @@ export function AiTextSearchView() {
       n = validateLimit(limit);
     } catch (e) {
       setState({ kind: "error", message: e instanceof Error ? e.message : "Số kết quả chưa hợp lệ.", status: 400 });
-      errorRef.current?.focus();
+
       return;
     }
     let label = "";
@@ -174,7 +180,7 @@ export function AiTextSearchView() {
       }
     } catch (e) {
       setState({ kind: "error", message: e instanceof Error ? e.message : "Yêu cầu chưa hợp lệ.", status: 400 });
-      errorRef.current?.focus();
+
       return;
     }
     const my = ++reqId.current;
@@ -192,7 +198,7 @@ export function AiTextSearchView() {
             : "Tài khoản của bạn không có quyền tìm bằng AI (cần CUSTOMER/STAFF/ADMIN).",
           status: response.status,
         });
-        errorRef.current?.focus();
+
         return;
       }
       if (!response.ok) {
@@ -204,7 +210,7 @@ export function AiTextSearchView() {
           /* non-JSON */
         }
         setState({ kind: "error", message: statusMessage(response.status, fallback), status: response.status });
-        errorRef.current?.focus();
+
         return;
       }
       const hits = parseAiResults(await response.json());
@@ -212,7 +218,7 @@ export function AiTextSearchView() {
     } catch {
       if (reqId.current !== my) return;
       setState({ kind: "error", message: "Không kết nối được máy chủ. Giữ nguyên đầu vào rồi thử lại.", status: 0 });
-      errorRef.current?.focus();
+
     } finally {
       busyRef.current = false;
     }

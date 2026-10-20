@@ -52,6 +52,12 @@ export function ProfileEditor() {
     };
   }, [router]);
 
+  // Tiêu điểm về thông báo lỗi sau khi React đã gắn node: gọi focus() ngay sau
+  // setError sẽ là no-op vì node lỗi còn chưa tồn tại.
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
   function set(field: keyof ProfileDraft, value: string) {
     setDraft((prev) => ({ ...prev, [field]: value }));
   }
@@ -71,7 +77,7 @@ export function ProfileEditor() {
     if (!ten) {
       setIssue("Tên khách hàng không được để trống.");
       setSaved(false);
-      errorRef.current?.focus();
+
       return;
     }
     const sdt = (draft as ProfileDraft & { sdt?: string }).sdt?.trim() ?? "";
@@ -80,7 +86,7 @@ export function ProfileEditor() {
       if (digits.length < 9 || digits.length > 11) {
         setIssue("Số điện thoại 9–11 chữ số để tạo hồ sơ.");
         setSaved(false);
-        errorRef.current?.focus();
+
         return;
       }
     }
@@ -89,7 +95,7 @@ export function ProfileEditor() {
       if (emailIssue) {
         setIssue(emailIssue);
         setSaved(false);
-        errorRef.current?.focus();
+
         return;
       }
     }
@@ -127,12 +133,12 @@ export function ProfileEditor() {
       }
       if (response.status === 403) {
         setError("Tài khoản của bạn không có quyền sửa hồ sơ này. Đăng nhập đúng tài khoản rồi thử lại — bản nháp được giữ lại.");
-        errorRef.current?.focus();
+
         return;
       }
       if (response.status === 409) {
         setIssue("Email đã được sử dụng cho tài khoản khác.");
-        errorRef.current?.focus();
+
         return;
       }
       if (response.status === 502) throw new Error("Không thể kết nối hệ thống. Bản nháp được giữ lại.");
@@ -147,7 +153,7 @@ export function ProfileEditor() {
       setSaved(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Lưu không hoàn tất. Bản nháp được giữ lại.");
-      errorRef.current?.focus();
+
     } finally {
       busyRef.current = false;
       setBusy(false);
