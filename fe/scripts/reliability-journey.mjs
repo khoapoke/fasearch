@@ -336,8 +336,6 @@ async function r4(base, port) {
       else usedPoints = 0;
     }
     record("R4 báo giá 200", quote.status === 200, `HTTP ${quote.status} (voucher: ${usedVoucher}, điểm: ${usedPoints})`);
-    const camps = await p.fetchJson("/api/be/v1/khuyen-mai/dang-mo");
-    const cartNow = await p.fetchJson("/api/be/v1/gio-hang");
     record("R4 báo giá có phân bổ giảm", (q.giamVoucher ?? 0) > 0 || (q.giamDiem ?? 0) > 0,
       `voucher ${q.giamVoucher} / diem ${q.giamDiem} (điểm dùng ${usedPoints})`);
     // FE gửi kèm mốc chính sách lấy từ báo giá — thiếu thì BE từ chối 400.
