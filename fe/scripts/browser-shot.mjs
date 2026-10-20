@@ -103,7 +103,7 @@ async function login(base, role) {
       [header]: token,
       ...(csrfCookies.length ? { cookie: csrfCookies.join("; ") } : {}),
     },
-    body: JSON.stringify({ username: account.user, password: account.pass }),
+    body: JSON.stringify({ username: account.username, password: account.password }),
   });
   if (!res.ok) throw new Error(`đăng nhập ${role} thất bại: HTTP ${res.status}`);
   const setCookie = res.headers.getSetCookie?.() ?? [];
