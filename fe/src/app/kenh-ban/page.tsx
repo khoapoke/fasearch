@@ -9,13 +9,14 @@ import { fetchStaffOrders } from "@/lib/commerce-client";
 import { orderStatusLabel } from "@/lib/commerce";
 import { fetchRevenue } from "@/lib/reports-client";
 import { formatVnd } from "@/components/storefront/product-card";
+import { formatVndContract } from "@/lib/commerce";
 
 type Counts = { cats: number | null; prods: number | null; error: string };
 type AiStatus = { ready: boolean; eligibleImageCount?: number; datasetVersion?: string };
 type StaffOrder = {
   maDonHang: number;
   trangThai: string;
-  tongThanhToan: number;
+  tongThanhToan: number | null;
   trangThaiThanhToan?: string;
   sdtNhan?: string | null;
   ngayDat?: string;
@@ -166,7 +167,7 @@ export default function MerchantDashboard() {
                   <tr key={o.maDonHang}>
                     <td><b>#{o.maDonHang}</b></td>
                     <td>{o.sdtNhan ? o.sdtNhan : "—"}</td>
-                    <td><b>{formatVnd(o.tongThanhToan)}</b></td>
+                    <td><b>{formatVndContract(o.tongThanhToan)}</b></td>
                     <td><span className="mpPill">{o.trangThaiThanhToan === "DA_THANH_TOAN" ? "Đã thu" : "Chưa thu"}</span></td>
                     <td><span className="mpPill mpPillLive">{orderStatusLabel(o.trangThai)}</span></td>
                   </tr>

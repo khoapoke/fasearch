@@ -112,6 +112,99 @@ async function login(base, role) {
   return setCookie.map((raw) => raw.split(";")[0]);
 }
 
+// Điều hướng trong trang làm mất execution context: bước sau báo "không
+// chạy được" thay vì làm hỏng cả chuỗi bước.
+async function safeEval(session, expression) {
+  try {
+    return await session.eval(expression);
+  } catch {
+    return null;
+  }
+}
+
+async function runSteps(session, steps) {
+  const log = [];
+  for (const step of steps ?? []) {
+    if (step.wait) {
+      await sleep(step.wait);
+      log.push(`wait ${step.wait}ms`);
+      continue;
+    }
+    if (step.fill) {
+      const ok = await safeEval(session, `(() => {
+        const el = document.querySelector(${JSON.stringify(step.fill)});
+        if (!el) return false;
+        const proto = el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+        setter.call(el, ${JSON.stringify(step.value ?? "")});
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      })()`);
+      log.push(`fill ${step.fill} -> ${ok}`);
+      continue;
+    }
+    if (step.click) {
+      const res = await safeEval(session, `(() => {
+        const sel = ${JSON.stringify(step.click)};
+        const all = [...document.querySelectorAll('button, a, [role=button]')];
+        const norm = (n) => (n.textContent || '').trim().toLowerCase();
+        let el = all.find((n) => norm(n) === sel.toLowerCase());
+        if (!el) el = all.find((n) => norm(n).includes(sel.toLowerCase()));
+        if (!el) return { ok: false, why: 'không tìm thấy phần tử' };
+        el.scrollIntoView({ block: 'center' });
+        el.click();
+        return { ok: true, tag: el.tagName, text: (el.textContent || '').trim().slice(0, 40) };
+      })()`);
+      log.push(`click ${step.click} -> ${JSON.stringify(res)}`);
+      await sleep(step.after ?? 700);
+      continue;
+    }
+    if (step.eval) {
+      const value = await safeEval(session, step.eval);
+      log.push(`eval -> ${JSON.stringify(value)}`);
+      continue;
+    }
+    if (step.select) {
+      const ok = await safeEval(session, `(() => {
+        const el = document.querySelector(${JSON.stringify(step.select)});
+        if (!el) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+        setter.call(el, ${JSON.stringify(step.value ?? "")});
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`);
+      log.push(`select ${step.select}=${step.value} -> ${ok}`);
+      await sleep(step.after ?? 700);
+      continue;
+    }
+    if (step.file) {
+      const { root } = await session.send("DOM.getDocument", { depth: 1 });
+      const { nodeId } = await session.send("DOM.querySelector", {
+        nodeId: root.nodeId, selector: step.file,
+      });
+      if (!nodeId) {
+        log.push(`file ${step.file} -> không tìm thấy input`);
+      } else {
+        await session.send("DOM.setFileInputFiles", { files: [step.filePath], nodeId });
+        log.push(`file ${step.file} -> ${step.filePath}`);
+        await sleep(step.after ?? 800);
+      }
+      continue;
+    }
+    if (step.expect) {
+      const found = await safeEval(session, `(() => {
+        const text = document.body.innerText || '';
+        const needle = ${JSON.stringify(step.expect)};
+        return text.toLowerCase().includes(needle.toLowerCase());
+      })()`);
+      log.push(`expect ${step.expect} -> ${found}`);
+      continue;
+    }
+  }
+  return log;
+}
+
 async function shoot(session, spec, outDir) {
   await session.send("Emulation.setDeviceMetricsOverride", {
     width: spec.width ?? 1280,
@@ -131,6 +224,8 @@ async function shoot(session, spec, outDir) {
   await session.send("Page.navigate", { url: spec.url });
   await loaded;
   await sleep(spec.settleMs ?? 1200);
+  const stepLog = await runSteps(session, spec.steps);
+  if (spec.steps?.length) await sleep(spec.afterStepsMs ?? 900);
 
   const metrics = await session.eval(`(() => {
     const de = document.documentElement;
@@ -150,6 +245,9 @@ async function shoot(session, spec, outDir) {
   const errors = session.events
     .filter((e) => e.method === "Runtime.consoleAPICalled" && e.params.type === "error")
     .map((e) => e.params.args.map((a) => a.value ?? a.description ?? "").join(" "))
+    .concat(session.events
+      .filter((e) => e.method === "Runtime.exceptionThrown")
+      .map((e) => e.params.exceptionDetails?.exception?.description ?? e.params.exceptionDetails?.text ?? "exception"))
     .slice(0, 6);
 
   let shot;
@@ -169,7 +267,7 @@ async function shoot(session, spec, outDir) {
       width: spec.width ?? 1280, height: spec.height ?? 900, deviceScaleFactor: 1, mobile: false,
     });
   }
-  return { name, ...metrics, errors };
+  return { name, stepLog, ...metrics, errors };
 }
 
 const [base, outDir, specFile] = process.argv.slice(2);
@@ -208,6 +306,6 @@ for (const spec of specs) {
   }
 }
 await writeFile(`${outDir}/report.json`, JSON.stringify(results, null, 2));
-console.log(JSON.stringify(results.map((r) => ({ name: r.name, overflowPx: r.overflowPx, errors: (r.errors ?? []).length, wide: r.wide?.length ?? 0 })), null, 1));
+console.log(JSON.stringify(results.map((r) => ({ name: r.name, overflowPx: r.overflowPx, errors: (r.errors ?? []).length, wide: r.wide?.length ?? 0, steps: r.stepLog })), null, 1));
 proc.kill();
 process.exit(0);
