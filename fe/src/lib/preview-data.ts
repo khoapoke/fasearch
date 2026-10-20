@@ -14,13 +14,6 @@ export type PreviewOrder = {
   lines: PreviewOrderItem[];
 };
 
-export type PreviewVoucher = {
-  code: string;
-  title: string;
-  detail: string;
-  expiry: string;
-};
-
 export type PreviewAddress = {
   id: string;
   name: string;
@@ -56,12 +49,6 @@ export const PREVIEW_ORDERS: PreviewOrder[] = [
     id: "FS-89501", date: "24/09/2026", status: "done", items: 1, total: 249000,
     lines: [{ name: "Áo Thun Cotton Compact 220gsm", meta: "Màu Đen · Size L", qty: 1, price: 249000 }],
   },
-];
-
-export const PREVIEW_VOUCHERS: PreviewVoucher[] = [
-  { code: "CHAOMOI10", title: "Giảm 10% đơn đầu tiên", detail: "Áp dụng đơn từ 300K", expiry: "HSD 31/12/2026" },
-  { code: "FREESHIP20", title: "Miễn phí vận chuyển", detail: "Áp dụng đơn từ 200K", expiry: "HSD 30/11/2026" },
-  { code: "NAMMOI15", title: "Ưu đãi BST mới", detail: "Áp dụng BST Thu Đông", expiry: "HSD 15/12/2026" },
 ];
 
 export const PREVIEW_ADDRESSES: PreviewAddress[] = [

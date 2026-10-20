@@ -28,7 +28,7 @@ export function StorefrontShell({
       <div className="sfPromo">
         <div className="sfPromoInner">
           <p className="sfPromoMsgs">
-            <span>Miễn phí vận chuyển đơn từ 200K</span>
+            <span>Phí vận chuyển cố định do máy chủ tính, hiển thị ở bước thanh toán</span>
           </p>
         </div>
       </div>

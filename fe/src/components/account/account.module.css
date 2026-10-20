@@ -362,3 +362,71 @@
     padding-top: 20px;
   }
 }
+
+/* Focused auth shell (Wave2): quiet brand wayfinding, centered narrow
+   column, no storefront chrome competing with the form. */
+.authWrap {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-subtle);
+}
+.authBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 880px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 24px 0;
+}
+.authBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.authBrandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+.authHome {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.authHome:hover {
+  color: var(--brand);
+}
+.authMain {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 24px 64px;
+}
+.authCard {
+  width: 100%;
+  max-width: 440px;
+}
+.authCard h1 {
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.authLede {
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}

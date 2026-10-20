@@ -310,9 +310,9 @@ export function DetailView({ id }: { id: string }) {
           </div>
           {addError ? <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{addError}</p> : null}
           <div className="pdPerks">
-            <div><b>Đổi trả 7 ngày</b>Miễn phí đổi size</div>
-            <div><b>Kiểm tra COD</b>Thu tiền khi nhận</div>
-            <div><b>Freeship 200K</b>Đơn từ 200.000đ</div>
+            <div><b>Thanh toán COD</b>Thu tiền khi nhận hàng</div>
+            <div><b>Tồn kho thật</b>Số lượng theo kho đang phục vụ</div>
+            <div><b>Phí vận chuyển</b>Hiển thị ở bước thanh toán</div>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import { AuthShell } from "@/components/account/auth-shell";
 import styles from "@/components/account/account.module.css";
 
 export const metadata = {
@@ -12,12 +12,10 @@ export const metadata = {
 // notice instead of a dead-end form.
 export default function RegisterPage() {
   return (
-    <StorefrontShell active="/tai-khoan">
-      <main className={styles.layout}>
-        <p className={styles.kicker}>Tài khoản</p>
+    <AuthShell>
+      <div className={styles.authCard}>
         <h1>Tạo tài khoản</h1>
-        <div className={styles.grid} style={{ gridTemplateColumns: "1fr" }}>
-          <section className={styles.card} aria-label="Chưa hỗ trợ đăng ký">
+        <section className={styles.card} aria-label="Chưa hỗ trợ đăng ký">
             <p className={styles.alert} role="status">
               Chưa mở đăng ký công khai trong giai đoạn này. Tài khoản do quản trị
               viên tạo.
@@ -27,8 +25,7 @@ export default function RegisterPage() {
               <Link href="/dang-nhap">đăng nhập</Link>.
             </p>
           </section>
-        </div>
-      </main>
-    </StorefrontShell>
+      </div>
+    </AuthShell>
   );
 }

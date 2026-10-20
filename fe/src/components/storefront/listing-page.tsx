@@ -165,7 +165,7 @@ export function ListingPage({
           <span key={t} className="pgChip" style={{ padding: "6px 13px" }}>{t}</span>
         ))}
         {aiCta ? (
-          <Link href="/lich-su-ai" className="pgChip" style={{ borderColor: "#f0b49a", color: "#aa3000" }}>
+          <Link href="/tim-kiem-ai" className="pgChip" style={{ borderColor: "#f0b49a", color: "#aa3000" }}>
             <Icon name="camera" size={15} /> Tìm mẫu bằng ảnh chụp
           </Link>
         ) : null}
@@ -319,7 +319,7 @@ export function ListingPage({
               <strong>Chưa tìm thấy mẫu áo ưng ý?</strong>
               <p style={{ fontSize: 13 }}>Tải ảnh mẫu bạn chụp từ đường phố hoặc tạp chí — AI quét chất liệu, phom dáng và tìm sản phẩm tương tự trong catalog.</p>
             </div>
-            <Link href="/lich-su-ai" className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }}>Tải ảnh lên ngay</Link>
+            <Link href="/tim-kiem-ai" className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }}>Tải ảnh lên ngay</Link>
           </div>
         </div>
       </div>
