@@ -21,6 +21,6 @@ model:
 # ==========================================
 app:
   upload_dir: "storage/uploads"
-  raw_data_dir: "dataset/test"
+  raw_data_dir: "dataset"
   max_search_limit: 5  # Giới hạn số lượng kết quả tối đa mỗi lần tìm
   vector_size: 512

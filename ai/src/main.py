@@ -43,12 +43,18 @@ app.add_middleware(
 # 4. Gắn các API Endpoints vào ứng dụng
 app.include_router(search_router, prefix="/api", tags=["Search API"])
 
-# 5. Phục vụ thư mục tĩnh (Giải quyết lỗi trình duyệt không hiện ảnh ở Qdrant Dashboard)
-# Từ giờ, frontend có thể hiển thị ảnh bằng link: http://localhost:8000/uploads/ten_file_anh.jpg
+# 5. Phục vụ thư mục tĩnh (Static files)
+# - /uploads: Phục vụ ảnh tạm thời do client tải lên để tìm kiếm so sánh
+# - /dataset: Phục vụ ảnh mẫu trong kho dữ liệu thời trang của hệ thống
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_DIR = os.path.join(BASE_DIR, "storage", "uploads")
+DATASET_DIR = os.path.join(BASE_DIR, "dataset")
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(DATASET_DIR, exist_ok=True)
+
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/dataset", StaticFiles(directory=DATASET_DIR), name="dataset")
 
 @app.get("/", tags=["Trang chủ"])
 async def root():
