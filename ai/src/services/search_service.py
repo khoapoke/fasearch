@@ -43,7 +43,8 @@ def search_by_image(image_path: str, limit: int = 5):
     client = get_qdrant_client()
 
     try:
-        image = Image.open(image_path).convert("RGB")
+        with Image.open(image_path) as img:
+            image = img.convert("RGB")
     except Exception as e:
         raise ValueError(f"Không thể đọc ảnh: {e}")
 
