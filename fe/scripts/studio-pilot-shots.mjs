@@ -90,6 +90,13 @@ class Page {
   async setColorScheme(scheme) {
     await this.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] });
   }
+  async setFile(selector, path) {
+    const { root } = await this.send("DOM.getDocument", { depth: 1 });
+    const { nodeId } = await this.send("DOM.querySelector", { nodeId: root.nodeId, selector });
+    if (!nodeId) return false;
+    await this.send("DOM.setFileInputFiles", { files: [path], nodeId });
+    return true;
+  }
   async shot(file) {
     const r = await this.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
     await writeFile(file, Buffer.from(r.data, "base64"));
@@ -187,6 +194,24 @@ async function setInput(page, selector, value) {
   return (await page.eval(`(document.querySelector(${JSON.stringify(selector)})?.value ?? null)`)) === value;
 }
 
+const SAMPLE_IMAGE = process.env.RELIABILITY_AI_IMAGE || "/tmp/studio-ai-sample.png";
+
+/** Chờ kết quả AI hiện ra (kết quả, rỗng, hoặc lỗi). */
+async function waitForAiResults(page, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    const st = await page.eval(`(() => ({
+      cards: document.querySelectorAll(".stStudioCard").length,
+      done: document.body.innerText.includes("kết quả AI cho"),
+      empty: document.body.innerText.includes("Không có kết quả AI"),
+      error: document.body.innerText.includes("Không tìm được lúc này") || document.body.innerText.includes("Hết phiên"),
+      provenance: document.querySelectorAll(".stStudioProvenance").length,
+    }))()`);
+    if (st.cards > 0 || st.done || st.empty || st.error) return st;
+    await sleep(1500);
+  }
+  return { cards: 0, done: false, empty: false, error: false, provenance: 0, timeout: true };
+}
+
 const [base, outDir] = process.argv.slice(2);
 if (!base || !outDir) {
   console.error("dùng: node scripts/studio-pilot-shots.mjs <baseUrl> <outDir>");
@@ -247,6 +272,33 @@ if (runPart("ai")) await withBrowser(9311, "/tmp/studio-pilot-cust", async (p) =
     JSON.stringify(aiResult));
   record("Pilot AI: kết quả có nhãn nguồn (provenance)", aiResult.cards === 0 || aiResult.provenance > 0,
     `provenance ${aiResult.provenance}`);
+
+  // Chế độ ẢNH: gửi file thật (multipart) qua cùng form.
+  await p.eval(`(() => { const btn = [...document.querySelectorAll(".stStudioMode")].find((b) => b.textContent.trim() === "Ảnh");
+    if (btn) btn.click(); return !!btn; })()`);
+  await sleep(400);
+  const fileSet = await p.setFile('form[aria-label="Tìm bằng AI"] input[type="file"]', SAMPLE_IMAGE);
+  await sleep(600);
+  await p.eval(`(() => { const btn = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Tìm");
+    if (!btn) return false; btn.click(); return true; })()`);
+  const imageResult = await waitForAiResults(p);
+  record("Pilot AI: chế độ Ảnh gửi file thật và trả kết quả thật",
+    fileSet && imageResult.cards > 0 && !imageResult.error, JSON.stringify(imageResult));
+  const fileName = await p.eval(`(document.querySelector(".stStudioNote")?.textContent || "").trim().slice(0, 80)`);
+  record("Pilot AI: tên file được giữ lại trong giao diện", fileName.includes(".png") || fileName.length > 0, fileName);
+
+  // Chế độ KẾT HỢP: file + từ khóa.
+  await p.eval(`(() => { const btn = [...document.querySelectorAll(".stStudioMode")].find((b) => b.textContent.trim() === "Kết hợp");
+    if (btn) btn.click(); return !!btn; })()`);
+  await sleep(400);
+  const qOk = await setInput(p, 'form[aria-label="Tìm bằng AI"] input[name="q"]', "ao thun");
+  const fileSet2 = await p.setFile('form[aria-label="Tìm bằng AI"] input[type="file"]', SAMPLE_IMAGE);
+  await sleep(600);
+  await p.eval(`(() => { const btn = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Tìm");
+    if (!btn) return false; btn.click(); return true; })()`);
+  const composedResult = await waitForAiResults(p);
+  record("Pilot AI: chế độ KẾT HỢP (ảnh + từ khóa) trả kết quả thật",
+    qOk && fileSet2 && composedResult.cards > 0 && !composedResult.error, JSON.stringify(composedResult));
 
   // Theme: chọn "Tối" → data-theme=dark, nhớ qua reload; "Theo thiết bị" theo OS
   const themeSwitch = await p.eval(`(async () => {
