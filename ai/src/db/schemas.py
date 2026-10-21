@@ -1,7 +1,9 @@
+from typing import Generic, TypeVar, Optional, List, Any
 from pydantic import BaseModel
-from typing import List, Optional
 
-# Cấu trúc của một kết quả ảnh trả về
+T = TypeVar("T")
+
+# 1. Cấu trúc một kết quả tìm kiếm thời trang
 class SearchResultItem(BaseModel):
     id: str
     score: float
@@ -9,16 +11,20 @@ class SearchResultItem(BaseModel):
     file_name: str
     catalog: Optional[str] = None
 
-# Cấu trúc dữ liệu frontend gửi lên khi tìm bằng chữ
+# 2. Cấu trúc trường data cho kết quả tìm kiếm
+class SearchData(BaseModel):
+    total: int
+    results: List[SearchResultItem]
+
+# 3. Dữ liệu Frontend gửi lên khi tìm kiếm bằng chữ
 class SearchTextRequest(BaseModel):
     query: str
     limit: int = 5
 
-# Cấu trúc mảng kết quả API trả về cho frontend
-class SearchResponse(BaseModel):
-    results: List[SearchResultItem]
-
-
-if __name__=="__main__":
-
-    pass
+# 4. Cấu trúc phản hồi chuẩn doanh nghiệp (API Response Envelope)
+class ApiResponse(BaseModel, Generic[T]):
+    success: bool
+    status_code: int
+    message: str
+    data: Optional[T] = None
+    errors: Optional[Any] = None
