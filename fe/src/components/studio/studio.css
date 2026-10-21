@@ -253,7 +253,7 @@ body:has(.studio) {
 
 .stThemeSelect {
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--st-ink);
   background: var(--st-surface);
   border: 1px solid var(--st-control-border);
@@ -804,10 +804,46 @@ body:has(.studio) {
   }
 }
 
-/* Mật độ riêng cho bề mặt vận hành (DESIGN §3): chữ nhỏ hơn khách, control gọn hơn. */
+/* Mật độ riêng cho bề mặt vận hành (DESIGN §3): chữ 14–15px, control ≥40px,
+   chữ trong ô nhập ≥16px trên sàn chạm — gọn hơn bề mặt khách nhưng vẫn đọc được. */
+body:has(.studio.studio-ops) {
+  font-size: 15px;
+}
+
 .studio.studio-ops {
   font-size: 15px;
   line-height: 1.5;
+}
+
+.studio.studio-ops .mpTopBtn,
+.studio.studio-ops .mpNav a,
+.studio.studio-ops .stThemeSelect,
+.studio.studio-ops .stPosBtn {
+  font-size: 14px;
+}
+
+.studio.studio-ops .mpTopBtn,
+.studio.studio-ops .stPosBtn {
+  min-height: 40px;
+}
+
+.studio.studio-ops .mpNav a {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.studio.studio-ops .mpSearch input {
+  font-size: 14px;
+  min-height: 40px;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .studio.studio-ops .mpSearch input,
+  .studio.studio-ops .stPosInput,
+  .studio.studio-ops .stThemeSelect {
+    font-size: 16px;
+  }
 }
 
 .studio.studio-ops .stPosTitle {

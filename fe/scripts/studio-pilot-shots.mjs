@@ -545,6 +545,29 @@ await withBrowser(9312, "/tmp/studio-pilot-staff", async (p) => {
     (ops.selectHeight ?? 0) >= 44 && (ops.selectFont ?? 0) >= 16, JSON.stringify(ops));
   await p.shot(join(shotsDir, "pos-390.png"));
 
+  // Mật độ vận hành (DESIGN §3): chữ 14–15px, control ≥40px, chữ trong ô nhập ≥16px khi chạm.
+  await p.setViewport(1280, 900);
+  await p.goto(`${base}/kenh-ban/pos`);
+  await sleep(1600);
+  const density = await p.eval(`(() => {
+    const small = [...document.querySelectorAll("button, input, select, textarea")].filter((el) => {
+      if (el.offsetParent === null) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return false;
+      const cs = getComputedStyle(el);
+      const font = parseFloat(cs.fontSize) || 0;
+      return r.height < 40 || (el.tagName !== "A" && font > 0 && font < 14);
+    }).map((el) => ({ tag: el.tagName, h: Math.round(el.getBoundingClientRect().height),
+      font: getComputedStyle(el).fontSize, text: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 20) }));
+    const body = getComputedStyle(document.body);
+    const editable = [...document.querySelectorAll("input, select, textarea")].filter((el) => el.offsetParent !== null)
+      .map((el) => parseFloat(getComputedStyle(el).fontSize) || 0);
+    return { bodyFont: body.fontSize, smallCount: small.length, small: small.slice(0, 5),
+      minEditableFont: editable.length ? Math.min(...editable) : null };
+  })()`);
+  record("Pilot POS: mật độ vận hành đạt (chữ 14–15px, control ≥40px)",
+    density.bodyFont === "15px" && density.smallCount === 0, JSON.stringify(density));
+
   await p.setViewport(640, 900);
   await p.goto(`${base}/kenh-ban/pos`);
   await sleep(1600);
