@@ -56,6 +56,25 @@ export function loadFixtureConfig() {
   return { path, accounts };
 }
 
+/**
+ * Lấy đúng một alias; nếu thiếu thì nêu rõ phải bổ sung gì.
+ * Dùng cho các vai trò cần DANH TÍNH RIÊNG (ví dụ customerA/customerB là hai khách
+ * thật khác nhau) — không có giá trị mặc định, không in mật khẩu.
+ */
+export function requireAccount(config, alias) {
+  const acc = config?.accounts?.[alias];
+  if (!acc || typeof acc.username !== "string" || typeof acc.password !== "string") {
+    throw new Error(
+      `Thiếu alias fixture "${alias}" trong ${config?.path ?? fixtureConfigPath()}.\n`
+      + `  Cần tài khoản riêng cho alias này: { "accounts": { "${alias}": { "username": "...", "password": "..." } } }\n`
+      + `  Chạy: node scripts/provision-fixture-config.mjs`
+      + ` (đọc runtime/reliability-credentials.env; tệp đích KHÔNG theo dõi git)\n`
+      + `  Không có giá trị mặc định và không in mật khẩu ra log.`,
+    );
+  }
+  return acc;
+}
+
 /** Tóm tắt an toàn để log: chỉ tên đăng nhập, không có mật khẩu. */
 export function describeFixtureConfig(config) {
   const roles = Object.keys(config.accounts).sort().join(", ");

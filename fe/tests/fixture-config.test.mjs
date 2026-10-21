@@ -13,7 +13,8 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FE_ROOT = resolve(HERE, "..");
 const REPO_ROOT = resolve(FE_ROOT, "..");
-const { loadFixtureConfig, fixtureConfigPath, FIXTURE_CONFIG_ENV } = await import("../scripts/fixture-config.mjs");
+const { loadFixtureConfig, fixtureConfigPath, requireAccount, FIXTURE_CONFIG_ENV } = await import("../scripts/fixture-config.mjs");
+const provision = await import("../scripts/provision-fixture-config.mjs");
 
 function withConfig(config, fn) {
   const dir = mkdtempSync(join(tmpdir(), "fixture-config-"));
@@ -83,5 +84,43 @@ describe("fixture config loader (FP-1)", () => {
     };
     for (const dir of scanDirs) walk(dir);
     assert.deepEqual(hits, [], `còn mật khẩu fixture trong: ${hits.join(", ")}`);
+  });
+});
+
+describe("alias fixture rời nhau (customerA / customerB)", () => {
+  it("thiếu alias -> lỗi nêu đúng alias + lệnh nạp, không kèm bí mật", () => {
+    const config = { path: "/tmp/fix.json", accounts: { customer: { username: "u", password: "s3cret-zzz" } } };
+    assert.throws(
+      () => requireAccount(config, "customerB"),
+      (err) => {
+        assert.match(err.message, /customerB/, "phải nêu tên alias thiếu");
+        assert.match(err.message, /provision-fixture-config\.mjs/, "phải nêu cách nạp");
+        assert.ok(!err.message.includes("s3cret-zzz"),
+          "không được kèm mật khẩu trong thông báo lỗi");
+        return true;
+      },
+    );
+  });
+
+  it("có alias -> trả đúng tài khoản", () => {
+    const config = { path: "/tmp/fix.json", accounts: { customerB: { username: "u2", password: "p2" } } };
+    assert.deepEqual(requireAccount(config, "customerB"), { username: "u2", password: "p2" });
+  });
+
+  it("tệp credential: parse TEN=MAT_KHAU và suy ra alias từ hậu tố tên", () => {
+    const records = provision.parseCredentialsEnv("# ghi chú\n\nshop-custA=mat-khau-a\nshop-custB=mat-khau-b\nshop-staff=mat-khau-s\n");
+    assert.equal(records.size, 3, "bỏ qua dòng trống và dòng chú thích");
+    assert.equal(provision.aliasForAccount("shop-custA"), "customerA");
+    assert.equal(provision.aliasForAccount("shop-custB"), "customerB");
+    assert.equal(provision.aliasForAccount("shop-staff"), "staffAlt");
+    assert.equal(provision.aliasForAccount("khong-alias"), null);
+    const accounts = provision.collectAliases(records);
+    assert.deepEqual(Object.keys(accounts).sort(), ["customerA", "customerB", "staffAlt"]);
+    assert.equal(accounts.customerA.username, "shop-custA");
+  });
+
+  it("tệp credential và tệp fixture KHÔNG được theo dõi git", () => {
+    const gitignore = readFileSync(join(FE_ROOT, ".gitignore"), "utf8");
+    assert.match(gitignore, /\/?\.local\//, ".gitignore phải bỏ qua fe/.local/");
   });
 });

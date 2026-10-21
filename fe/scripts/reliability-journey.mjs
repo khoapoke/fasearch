@@ -14,13 +14,13 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
-import { loadFixtureConfig } from "./fixture-config.mjs";
+import { loadFixtureConfig, requireAccount } from "./fixture-config.mjs";
 
 const CHROME = process.env.CHROME_BIN
   || "/home/dolakhoa/.cache/ms-playwright/chromium-1246/chrome-linux64/chrome";
 
 // Thông tin đăng nhập fixture nằm ở tệp KHÔNG theo dõi git (xem fixture-config.mjs).
-let ACCOUNTS = loadFixtureConfig().accounts;
+const FIXTURES = loadFixtureConfig();
 // Mã voucher đang chạy trên BE cô lập của task.
 const VOUCHER_CODE = process.env.RELIABILITY_VOUCHER || "EXDEMO01";
 // Mã voucher đang dùng cho kịch bản; R0 có thể tạo mã mới khi mã cố định đã hết lượt.
@@ -102,7 +102,8 @@ class Page {
     return r.body?.result ?? null;
   }
   async login(role) {
-    const acc = ACCOUNTS[role];
+    // requireAccount: thiếu alias thì báo đúng cần bổ sung gì, không đụng undefined.
+    const acc = requireAccount(FIXTURES, role);
     const c = await this.csrf();
     if (!c) throw new Error("không lấy được CSRF");
     const r = await this.fetchJson("/api/auth/login", {
@@ -231,16 +232,28 @@ async function ensureFixtures(base, port) {
 }
 
 // ---------- R3: ma trận bảo mật ----------
+// BA danh tính THẬT, mỗi danh tính một context Chrome riêng:
+//   customerA = reliability-custA, customerB = reliability-custB (alias riêng trong
+//   tệp fixture không theo dõi git), customer = emiluix-cust (chủ của đơn #61).
+// Trước đây cả hai context đều đăng nhập "customer" -> cùng một danh tính, nên mọi
+// kết luận về "khách A không đọc được của khách B" là sai.
 async function r3(base, port) {
+  const orderIds = (res) => (res?.body?.result?.data ?? []).map((o) => o.maDonHang).filter((v) => v != null);
+  let idA = null;
+  let idB = null;
+  let idsA = [];
+
+  // --- Khách A: CSRF + 0 hiệu ứng + danh sách đơn của riêng mình ---
   await withBrowser(port, "/tmp/relia-r3-a", async (a) => {
     await a.goto(`${base}/`);
-    const la = await a.login("customer");
-    record("R3 customerA đăng nhập", la.status === 200, `HTTP ${la.status}`);
+    const la = await a.login("customerA");
+    record("R3 customerA đăng nhập (tài khoản riêng)", la.status === 200, `HTTP ${la.status}`);
     const meA = await a.fetchJson("/api/auth/me");
-    record("R3 /api/auth/me theo phiên", meA.status === 200, `HTTP ${meA.status}`);
-    const csrfA = await a.csrf();
+    idA = meA.body?.result?.id ?? null;
+    record("R3 customerA /api/auth/me theo phiên", meA.status === 200 && idA != null,
+      `HTTP ${meA.status} (id ${idA})`);
 
-    // CSRF thiếu → 403 và 0 hiệu ứng
+    // CSRF thiếu → 403 và 0 hiệu ứng (đo trước/sau qua FE 3108 → BE 18096)
     const before = await a.fetchJson("/api/be/v1/don-hang?page=0&size=1");
     const noCsrf = await a.fetchJson("/api/be/v1/don-hang", {
       method: "POST",
@@ -251,16 +264,30 @@ async function r3(base, port) {
     record("R3 POST thiếu CSRF bị chặn", noCsrf.status === 403, `HTTP ${noCsrf.status}`);
     const sameCount = JSON.stringify(before.body?.result?.totalElements)
       === JSON.stringify(after.body?.result?.totalElements);
-    record("R3 POST thiếu CSRF không tạo đơn", sameCount,
+    record("R3 POST thiếu CSRF không tạo đơn (0 hiệu ứng)", sameCount,
       `total trước ${before.body?.result?.totalElements} / sau ${after.body?.result?.totalElements}`);
-    void csrfA;
+
+    const ordersA = await a.fetchJson("/api/be/v1/don-hang?page=0&size=50");
+    idsA = orderIds(ordersA);
+    record("R3 customerA đọc được danh sách đơn của mình", ordersA.status === 200,
+      `HTTP ${ordersA.status} (${idsA.length} đơn)`);
+    record("R3 danh sách customerA không chứa đơn của khách khác (#61)", !idsA.includes(61),
+      `đơn thấy: ${idsA.join(",") || "không có"}`);
   });
 
+  // --- Khách B: danh tính KHÁC, không đọc được hồ sơ/đơn của người khác ---
   await withBrowser(port + 1, "/tmp/relia-r3-b", async (b) => {
     await b.goto(`${base}/`);
-    const lb = await b.login("customer");
-    record("R3 customerB đăng nhập (phiên riêng)", lb.status === 200, `HTTP ${lb.status}`);
-    // Xem tài khoản của khách khác → 401/404, không rò dữ liệu
+    const lb = await b.login("customerB");
+    record("R3 customerB đăng nhập (tài khoản riêng)", lb.status === 200, `HTTP ${lb.status}`);
+    const meB = await b.fetchJson("/api/auth/me");
+    idB = meB.body?.result?.id ?? null;
+    record("R3 customerB /api/auth/me theo phiên", meB.status === 200 && idB != null,
+      `HTTP ${meB.status} (id ${idB})`);
+    record("R3 customerA và customerB là HAI danh tính khác nhau",
+      idA != null && idB != null && idA !== idB, `idA=${idA} idB=${idB}`);
+
+    // Hồ sơ khách khác → 401/403/404, không rò số dư/hạng
     const other = await b.fetchJson("/api/be/v1/thanh-vien/khach-hang/1");
     const bodyText = JSON.stringify(other.body ?? "");
     const leaked = /"soDu"|"tongChiTieu"|"khaDung"/.test(bodyText);
@@ -268,14 +295,44 @@ async function r3(base, port) {
       other.status === 401 || other.status === 403 || other.status === 404,
       `HTTP ${other.status}`);
     record("R3 không rò số dư/hạng của người khác", !leaked);
-    // Đơn hàng của người khác
-    const orders = await b.fetchJson("/api/be/v1/don-hang?page=0&size=3");
-    record("R3 khách chỉ thấy đơn của mình",
-      orders.status === 200 || orders.status === 401,
-      `HTTP ${orders.status}`);
+
+    // Đơn #61 thuộc emiluix-cust → khách B (ngoại) không được đọc
+    const foreign = await b.fetchJson("/api/be/v1/don-hang/61");
+    record("R3 khách ngoại không đọc được đơn của khách khác (#61)",
+      foreign.status === 401 || foreign.status === 403 || foreign.status === 404,
+      `HTTP ${foreign.status}`);
+    const leakedOrder = /tongThanhToan|giamVoucher|giamGia|soDu|diemTichLuy/.test(JSON.stringify(foreign.body ?? ""));
+    record("R3 phản hồi đơn của người khác không rò dữ liệu tài chính", !leakedOrder);
+
+    const ordersB = await b.fetchJson("/api/be/v1/don-hang?page=0&size=50");
+    const idsB = orderIds(ordersB);
+    record("R3 customerB đọc được danh sách đơn của mình", ordersB.status === 200,
+      `HTTP ${ordersB.status} (${idsB.length} đơn)`);
+    record("R3 danh sách customerB không chứa đơn của khách khác (#61)", !idsB.includes(61),
+      `đơn thấy: ${idsB.join(",") || "không có"}`);
+    const shared = idsA.filter((id) => idsB.includes(id));
+    record("R3 danh sách đơn của A và B không giao nhau", shared.length === 0,
+      `A ${idsA.length} đơn / B ${idsB.length} đơn / trùng: ${shared.join(",") || "không có"}`);
   });
 
-  await withBrowser(port + 2, "/tmp/relia-r3-staff", async (s) => {
+  // --- Chủ của đơn #61 (emiluix-cust): được đọc chính đơn của mình ---
+  await withBrowser(port + 2, "/tmp/relia-r3-owner", async (o) => {
+    await o.goto(`${base}/`);
+    const lo = await o.login("customer");
+    record("R3 chủ đơn (emiluix-cust) đăng nhập", lo.status === 200, `HTTP ${lo.status}`);
+    const meO = await o.fetchJson("/api/auth/me");
+    const idO = meO.body?.result?.id ?? null;
+    record("R3 chủ đơn là danh tính thứ ba, khác A và B",
+      idO != null && idO !== idA && idO !== idB, `id chủ=${idO} idA=${idA} idB=${idB}`);
+    const own = await o.fetchJson("/api/be/v1/don-hang/61");
+    record("R3 chủ đơn đọc được đơn của chính mình (#61)", own.status === 200, `HTTP ${own.status}`);
+    const ordersO = await o.fetchJson("/api/be/v1/don-hang?page=0&size=50");
+    const idsO = orderIds(ordersO);
+    record("R3 danh sách chủ đơn có #61", idsO.includes(61), `đơn thấy: ${idsO.join(",")}`);
+  });
+
+  // --- Staff: đọc danh sách đơn, bị chặn báo cáo ADMIN ---
+  await withBrowser(port + 3, "/tmp/relia-r3-staff", async (s) => {
     await s.goto(`${base}/`);
     const ls = await s.login("staff");
     record("R3 staff đăng nhập", ls.status === 200, `HTTP ${ls.status}`);
@@ -285,7 +342,8 @@ async function r3(base, port) {
     record("R3 staff bị chặn báo cáo ADMIN (403 kỳ vọng)", report.status === 403, `HTTP ${report.status}`);
   });
 
-  await withBrowser(port + 3, "/tmp/relia-r3-admin", async (ad) => {
+  // --- Admin: đọc được báo cáo ---
+  await withBrowser(port + 4, "/tmp/relia-r3-admin", async (ad) => {
     await ad.goto(`${base}/`);
     const la = await ad.login("admin");
     record("R3 admin đăng nhập", la.status === 200, `HTTP ${la.status}`);
