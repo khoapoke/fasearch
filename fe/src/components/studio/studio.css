@@ -271,7 +271,16 @@ body:has(.studio) {
   }
 
   .stThemeLabel {
-    font-size: 14px;
+    font-size: 16px;
+  }
+
+  /* Nhãn của mọi control do pilot thêm vào cũng 16px khi chạm. */
+  .stFiltersToggle,
+  .stOpsNavToggle,
+  .stStudioMode,
+  .stPosBtn,
+  .stStudioBtn {
+    font-size: 16px;
   }
 }
 
@@ -858,4 +867,29 @@ body:has(.studio.studio-ops) {
 .stFlex1 {
   flex: 1;
   min-width: 0;
+}
+
+/* Sàn chạm (đặt CUỐI để thắng mọi quy tắc mật độ trước đó): nhãn control của pilot
+   ≥16px và chiều cao ≥44px theo DESIGN §3. */
+@media (max-width: 900px), (pointer: coarse) {
+  .studio .stFiltersToggle,
+  .studio .stOpsNavToggle,
+  .studio .stStudioMode,
+  .studio .stPosBtn,
+  .studio .stStudioBtn,
+  .studio.studio-ops .stPosBtn,
+  .studio.studio-ops .mpTopBtn,
+  .studio.studio-ops .stThemeSelect {
+    font-size: 16px;
+  }
+
+  .studio .stFiltersToggle,
+  .studio .stOpsNavToggle,
+  .studio .stStudioMode,
+  .studio .stPosBtn,
+  .studio .stStudioBtn,
+  .studio.studio-ops .stPosBtn,
+  .studio.studio-ops .mpTopBtn {
+    min-height: 44px;
+  }
 }

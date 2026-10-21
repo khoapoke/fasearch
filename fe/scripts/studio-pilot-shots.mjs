@@ -422,14 +422,16 @@ if (runPart("ai")) await withBrowser(9311, "/tmp/studio-pilot-cust", async (p) =
     if (getComputedStyle(panel).display === "none") toggle.click();
     await new Promise((r) => setTimeout(r, 300));
     const opened = getComputedStyle(panel).display !== "none";
+    const focusInside = panel.contains(document.activeElement);
     toggle.focus();
     toggle.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await new Promise((r) => setTimeout(r, 300));
     return { ok: true, opened, closed: getComputedStyle(panel).display === "none",
-      focusOnToggle: document.activeElement === toggle };
+      focusInside, focusOnToggle: document.activeElement === toggle };
   })()`);
-  record("Pilot catalog @390px: Escape đóng bộ lọc và trả tiêu điểm về nút",
-    escaped.ok && escaped.opened && escaped.closed && escaped.focusOnToggle, JSON.stringify(escaped));
+  record("Pilot catalog @390px: mở bộ lọc đưa tiêu điểm vào panel, Escape đóng và trả tiêu điểm về nút",
+    escaped.ok && escaped.opened && escaped.closed && escaped.focusOnToggle && escaped.focusInside,
+    JSON.stringify(escaped));
   await p.shot(join(shotsDir, "nam-390-filters.png"));
 
   // Lọc thật: chọn size → URL đổi (semantics URL giữ nguyên)
@@ -595,6 +597,14 @@ await withBrowser(9312, "/tmp/studio-pilot-staff", async (p) => {
     ops.toggleVisible && ops.navBefore === "none" && ops.navAfter !== "none", JSON.stringify(ops));
   record("Pilot POS @390px: control giao diện đủ 44px và chữ 16px (sàn chạm)",
     (ops.selectHeight ?? 0) >= 44 && (ops.selectFont ?? 0) >= 16, JSON.stringify(ops));
+  const touchType = await p.eval(`(() => {
+    const sel = [...document.querySelectorAll(".stThemeSelect, .stOpsNavToggle, .stPosBtn, .stStudioBtn")];
+    return sel.map((el) => ({ cls: (el.className || "").toString().slice(0, 24),
+      font: parseFloat(getComputedStyle(el).fontSize) || 0,
+      h: Math.round(el.getBoundingClientRect().height) }));
+  })()`);
+  record("Sàn chạm: nhãn control pilot ≥16px và cao ≥44px",
+    touchType.length > 0 && touchType.every((c) => c.font >= 16 && c.h >= 44), JSON.stringify(touchType));
   await p.shot(join(shotsDir, "pos-390.png"));
 
   // Mật độ vận hành (DESIGN §3): chữ 14–15px, control ≥40px, chữ trong ô nhập ≥16px khi chạm.

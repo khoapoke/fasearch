@@ -105,6 +105,16 @@ export function ListingPage({
   const [price, setPrice] = useState(activePrice);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterToggleRef = useRef<HTMLButtonElement>(null);
+  const filterPanelRef = useRef<HTMLElement>(null);
+
+  /** Mở bộ lọc: đưa tiêu điểm vào panel (người dùng bàn phím không bị mất chỗ). */
+  function openFilters() {
+    setFiltersOpen(true);
+    window.requestAnimationFrame(() => {
+      const first = filterPanelRef.current?.querySelector<HTMLElement>("input, button, select");
+      first?.focus();
+    });
+  }
   const photos = useMemo(() => stitchImages(photoFolder), [photoFolder]);
 
   const filtered = useMemo(() => {
@@ -196,7 +206,7 @@ export function ListingPage({
             className="stFiltersToggle"
             aria-expanded={filtersOpen}
             aria-controls="studio-listing-filters"
-            onClick={() => setFiltersOpen((v) => !v)}
+            onClick={() => (filtersOpen ? setFiltersOpen(false) : openFilters())}
             onKeyDown={(e) => {
               if (e.key === "Escape" && filtersOpen) {
                 e.stopPropagation();
@@ -210,6 +220,7 @@ export function ListingPage({
           </button>
         ) : null}
         <aside
+          ref={themed ? filterPanelRef : undefined}
           id={themed ? "studio-listing-filters" : undefined}
           className={themed ? "pgSide stFiltersPanel" : "pgSide"}
           data-open={themed ? String(filtersOpen) : undefined}
