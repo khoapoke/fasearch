@@ -245,13 +245,18 @@
 }
 
 .label {
-  border: 1px dashed var(--ink-soft);
+  border: 1px dashed #999999;
   border-radius: 8px;
   padding: 10px;
   text-align: center;
   background: var(--surface);
   width: 80mm;
   max-width: 100%;
+}
+
+/* Bề mặt pilot: viền đứt đi theo theme (ngoài pilot giữ đúng giá trị gốc #999999). */
+:global(.studio) .label {
+  border-color: var(--st-ink-soft);
 }
 
 .label img {
