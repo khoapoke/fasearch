@@ -11,14 +11,12 @@ import {
   AI_MAX_BYTES, checkImageDimensions, describeAiStatus, isPurchasable,
   validateComposed, validateImageFile, type AiMode, type AiStatus,
 } from "@/lib/ai-full";
-import account from "@/components/account/account.module.css";
-import mgmt from "@/components/mgmt/mgmt.module.css";
 
 function AiThumb({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <span className={mgmt.noImg}>Chưa có ảnh AI</span>;
+  if (!src || failed) return <span className="stStudioCardMedia">Chưa có ảnh AI</span>;
   return (
-    <span className={mgmt.cardImg}>
+    <span className="stStudioCardMedia">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />
     </span>
@@ -225,159 +223,192 @@ export function AiTextSearchView() {
   }
 
   return (
-    <StorefrontShell active="/tim-kiem-ai" previewNote="Tìm AI thật qua BE → Python → Qdrant; kết quả thuộc tập dữ liệu AI, chưa phải danh mục giao dịch. Ảnh 16 fixtures cũ là minh họa tổng hợp — đã dán nhãn provenance.">
-      <main className={account.layout}>
-        <p className={account.kicker}>FaSearch AI</p>
-        <h1>Tìm kiếm AI (chữ / ảnh / kết hợp)</h1>
-        <p className={account.lede}>
-          Chữ giữ nguyên, <b>không tự dịch</b>; mức liên quan tiếng Việt <b>chưa được đánh giá</b>.
-          Điểm là tương đồng thô, không phải % chính xác. Mua hàng chỉ khi có liên kết catalog thật.
-        </p>
-        <p className={account.muted} role="status">{describeAiStatus(aiStatus)}</p>
+    <StorefrontShell
+      active="/tim-kiem-ai"
+      themed
+      previewNote="Tìm AI thật qua BE → Python → Qdrant; kết quả thuộc tập dữ liệu AI, chưa phải danh mục giao dịch. Ảnh 16 fixtures cũ là minh họa tổng hợp — đã dán nhãn provenance."
+    >
+      <main className="stStudio">
+        <header className="stStudioHead">
+          <p className="stStudioKicker">FaSearch AI</p>
+          <h1 className="stStudioTitle">Tìm kiếm AI — chữ, ảnh hoặc kết hợp</h1>
+          <p className="stStudioLede">
+            Chữ giữ nguyên, <b>không tự dịch</b>; mức liên quan tiếng Việt <b>chưa được đánh giá</b>.
+            Điểm là tương đồng thô, không phải % chính xác. Mua hàng chỉ khi có liên kết catalog thật.
+          </p>
+          <p className="stStudioNote" role="status">{describeAiStatus(aiStatus)}</p>
+        </header>
         {checking ? (
-          <p className={account.muted}>Đang kiểm tra phiên đăng nhập…</p>
+          <p className="stStudioNote">Đang kiểm tra phiên đăng nhập…</p>
         ) : !me ? (
-          <section className={account.card} aria-label="Cần đăng nhập">
-            <p className={account.greeting}>Cần đăng nhập để tìm bằng AI</p>
-            <p className={account.muted}>AI chỉ mở cho CUSTOMER/STAFF/ADMIN đã đăng nhập.</p>
+          <section className="stStudioState" aria-label="Cần đăng nhập">
+            <p className="stStudioTitle" style={{ fontSize: 18 }}>Cần đăng nhập để tìm bằng AI</p>
+            <p className="stStudioNote">AI chỉ mở cho CUSTOMER/STAFF/ADMIN đã đăng nhập.</p>
             <p>
-              <Link className={account.primary} href="/dang-nhap?next=/tim-kiem-ai">
+              <Link className="stStudioBtn" href="/dang-nhap?next=/tim-kiem-ai">
                 Đăng nhập →
               </Link>
             </p>
           </section>
         ) : (
           <>
-            <div className="pvTabs" role="group" aria-label="Chế độ tìm">
-              {(["text", "image", "composed"] as AiMode[]).map((m) => (
-                <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); setState({ kind: "idle" }); }}>
-                  {m === "text" ? "Chữ" : m === "image" ? "Ảnh" : "Kết hợp"}
-                </button>
-              ))}
-            </div>
-            <form method="post" className={mgmt.toolbar} aria-label="Tìm bằng AI" onSubmit={run}>
-              {mode !== "image" ? (
-                <label style={{ flex: 2, minWidth: 220 }}>
-                  Từ khóa {mode === "composed" ? "(bắt buộc kèm ảnh)" : ""}
-                  <input
-                    name="q"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="black shirt"
-                    maxLength={200}
-                    autoComplete="off"
-                  />
-                </label>
-              ) : null}
-              {mode !== "text" ? (
-                <label className={account.field}>
-                  <span>Ảnh JPEG/PNG ≤{Math.round(AI_MAX_BYTES / 1024 / 1024)}MiB</span>
-                  {/* Input gốc ẩn đi để không lộ nút "Choose File" tiếng Anh;
-                      nhãn bấm được thay thế, tên truy cập vẫn là tiếng Việt. */}
-                  <span className={mgmt.filePick}>
-                    <Icon name="camera" size={16} />
-                    {file ? file.name : "Chọn ảnh"}
+            <section className="stStudioPanel" aria-label="Tìm bằng AI">
+              <div className="stStudioModes" role="group" aria-label="Chế độ tìm">
+                {(["text", "image", "composed"] as AiMode[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className="stStudioMode"
+                    aria-pressed={mode === m}
+                    onClick={() => { setMode(m); setState({ kind: "idle" }); }}
+                  >
+                    {m === "text" ? "Chữ" : m === "image" ? "Ảnh" : "Kết hợp"}
+                  </button>
+                ))}
+              </div>
+              <form method="post" className="stStudioForm" aria-label="Tìm bằng AI" onSubmit={run}>
+                <div className="stStudioFields">
+                  {mode !== "image" ? (
+                    <label className="stStudioField">
+                      <span>Từ khóa {mode === "composed" ? "(bắt buộc kèm ảnh)" : ""}</span>
+                      <input
+                        name="q"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="black shirt"
+                        maxLength={200}
+                        autoComplete="off"
+                      />
+                    </label>
+                  ) : null}
+                  {mode !== "text" ? (
+                    <label className="stStudioField">
+                      <span>Ảnh JPEG/PNG ≤{Math.round(AI_MAX_BYTES / 1024 / 1024)}MiB</span>
+                      {/* Input gốc ẩn đi để không lộ nút "Choose File" tiếng Anh;
+                          nhãn bấm được thay thế, tên truy cập vẫn là tiếng Việt. */}
+                      <span className="stFilePick">
+                        <Icon name="camera" size={16} />
+                        {file ? file.name : "Chọn ảnh"}
+                        <input
+                          ref={inputRef}
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={(e) => onFile(e.target.files)}
+                          aria-label="Ảnh tìm kiếm"
+                          className="stFileInput"
+                        />
+                      </span>
+                    </label>
+                  ) : null}
+                  <label className="stStudioField">
+                    <span>Số kết quả (1–5)</span>
                     <input
-                      ref={inputRef}
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      onChange={(e) => onFile(e.target.files)}
-                      aria-label="Ảnh tìm kiếm"
-                      className={mgmt.fileInput}
+                      name="limit"
+                      value={limit}
+                      onChange={(e) => setLimit(e.target.value)}
+                      inputMode="numeric"
+                      maxLength={1}
                     />
-                  </span>
-                </label>
+                  </label>
+                </div>
+                <div className="stStudioActions">
+                  <button className="stStudioBtn" type="submit" disabled={state.kind === "loading"}>
+                    {state.kind === "loading" ? "Đang tìm…" : "Tìm"}
+                  </button>
+                  {(file || query) ? (
+                    <button className="stStudioBtn stStudioBtnGhost" type="button" onClick={reset}>
+                      Xóa/Hủy
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+              {previewUrl ? (
+                <p className="stStudioNote">
+                  Xem trước:{" "}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- object URL preview, không qua Image optimizer */}
+                  <img
+                    src={previewUrl}
+                    alt={`Xem trước ${file?.name ?? ""}`}
+                    style={{ maxHeight: 120, borderRadius: 8, verticalAlign: "middle" }}
+                  />{" "}
+                  {file?.name} · {(file ? (file.size / 1024).toFixed(0) : 0)}KB
+                </p>
               ) : null}
-              <label>
-                Số kết quả (1–5)
-                <input name="limit" value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="numeric" maxLength={1} style={{ width: 72 }} />
-              </label>
-              <button className={account.primary} type="submit" disabled={state.kind === "loading"}>
-                {state.kind === "loading" ? "Đang tìm…" : "Tìm"}
-              </button>
-              {(file || query) ? (
-                <button className={account.primary} type="button" onClick={reset} style={{ background: "#fff", color: "var(--ink)", border: "1px solid var(--line)" }}>
-                  Xóa/Hủy
-                </button>
-              ) : null}
-            </form>
-            {previewUrl ? (
-              <p className={account.muted}>
-                Xem trước:{" "}
-                {/* eslint-disable-next-line @next/next/no-img-element -- object URL preview, không qua Image optimizer */}
-                <img src={previewUrl} alt={`Xem trước ${file?.name ?? ""}`} style={{ maxHeight: 120, borderRadius: 8, verticalAlign: "middle" }} />{" "}
-                {file?.name} · {(file ? (file.size / 1024).toFixed(0) : 0)}KB
-              </p>
-            ) : null}
-            {state.kind === "loading" && <p className={account.muted} role="status">Đang tìm trong tập dữ liệu AI… (giao dịch vẫn chạy độc lập)</p>}
+            </section>
+            {state.kind === "loading" && (
+              <p className="stStudioNote" role="status">Đang tìm trong tập dữ liệu AI… (giao dịch vẫn chạy độc lập)</p>
+            )}
             {state.kind === "error" && (
-              <section ref={errorRef} tabIndex={-1} className={account.card} aria-label="Lỗi tìm kiếm">
-                <p className={account.greeting}>{state.status === 401 ? "Hết phiên đăng nhập" : "Không tìm được lúc này"}</p>
-                <p className={account.muted}>{state.message}</p>
-                <p style={{ display: "flex", gap: 8 }}>
+              <section ref={errorRef} tabIndex={-1} className="stStudioState stStudioError" aria-label="Lỗi tìm kiếm">
+                <p className="stStudioTitle" style={{ fontSize: 18 }}>
+                  {state.status === 401 ? "Hết phiên đăng nhập" : "Không tìm được lúc này"}
+                </p>
+                <p className="stStudioNote">{state.message}</p>
+                <p className="stStudioActions">
                   {state.status === 401 ? (
-                    <Link className={account.primary} href="/dang-nhap?next=/tim-kiem-ai">Đăng nhập lại →</Link>
+                    <Link className="stStudioBtn" href="/dang-nhap?next=/tim-kiem-ai">Đăng nhập lại →</Link>
                   ) : (
-                    <button className={account.primary} type="button" onClick={() => run()}>Thử lại (giữ đầu vào)</button>
+                    <button className="stStudioBtn" type="button" onClick={() => run()}>Thử lại (giữ đầu vào)</button>
                   )}
                 </p>
               </section>
             )}
             {state.kind === "done" && state.hits.length === 0 && (
-              <p className={account.muted} role="status">
+              <p className="stStudioState" role="status">
                 Không có kết quả AI nào cho {state.label} — đây là tập rỗng hợp lệ, khác với index chưa build (503).
               </p>
             )}
             {state.kind === "done" && state.hits.length > 0 && (
               <>
-                <p className={account.muted} role="status">
+                <p className="stStudioNote" role="status">
                   {state.hits.length} kết quả AI cho {state.label} — giữ đúng thứ tự máy chủ.
                 </p>
-                <div className={mgmt.cards}>
+                <div className="stStudioGrid">
                   {state.hits.map((h, i) => (
                     <article
                       key={h.sourceId}
-                      className={`${mgmt.card} stagger-item`}
+                      className="stStudioCard stagger-item"
                       style={{ "--stagger-index": Math.min(i, 7) } as React.CSSProperties}
                       aria-label={`Kết quả AI ${h.sourceId}`}
                     >
                       <AiThumb src={h.imageUrl} alt={`Ảnh AI: ${h.fileName}`} />
-                      <div className={mgmt.cardBody}>
-                        <span className={mgmt.cardTitle}>Mã AI: {h.sourceId}</span>
-                        <span className={mgmt.cardPrice}>Điểm tương đồng: {h.score.toFixed(3)}</span>
-                        <span className={mgmt.cardMeta}>Tệp: {h.fileName}</span>
-                        <span className={mgmt.cardMeta}>Danh mục AI: {h.catalog ?? "—"}</span>
-                        <span className={mgmt.cardMeta}>Nguồn: {h.nguonDuLieu ?? "tập dữ liệu AI"} · bản {h.phienBanDuLieu ?? "—"}</span>
+                      <div className="stStudioCardBody">
+                        <span className="stStudioCardTitle">Mã AI: {h.sourceId}</span>
+                        <span className="stStudioCardMeta">Điểm tương đồng: {h.score.toFixed(3)}</span>
+                        <span className="stStudioCardMeta">Tệp: {h.fileName}</span>
+                        <span className="stStudioCardMeta">Danh mục AI: {h.catalog ?? "—"}</span>
                         {isPurchasable({ maSpLienKet: h.maSpLienKet } as never) ? (
-                          <Link className={account.primary} href={`/san-pham/${h.maSpLienKet}`}>Xem catalog liên kết →</Link>
+                          <Link className="stStudioBtn" href={`/san-pham/${h.maSpLienKet}`}>Xem catalog liên kết →</Link>
                         ) : (
-                          <span className={mgmt.cardMeta}>Chưa liên kết catalog — không mua được (không tự suy giá/kho).</span>
+                          <span className="stStudioCardMeta">Chưa liên kết catalog — không mua được (không tự suy giá/kho).</span>
                         )}
                         <button
-                          className={account.primary}
+                          className="stStudioBtn stStudioBtnGhost"
                           type="button"
                           aria-expanded={openId === h.sourceId}
                           onClick={() => setOpenId(openId === h.sourceId ? null : h.sourceId)}
-                          style={{ background: "#fff", color: "var(--ink)", border: "1px solid var(--line)", marginTop: 6 }}
                         >
                           {openId === h.sourceId ? "Thu gọn nguồn" : "Chi tiết nguồn (read-only)"}
                         </button>
                         {openId === h.sourceId ? (
-                          <span className={mgmt.cardMeta}>
+                          <span className="stStudioCardMeta">
                             Hiển thị: {h.tenHienThi ?? "—"} · thuộc tính: {typeof h.thuocTinh === "string" ? h.thuocTinh : JSON.stringify(h.thuocTinh ?? null)}
                           </span>
                         ) : null}
+                        <p className="stStudioProvenance">
+                          Nguồn: {h.nguonDuLieu ?? "tập dữ liệu AI"} · bản {h.phienBanDuLieu ?? "—"}
+                        </p>
                       </div>
                     </article>
                   ))}
                 </div>
               </>
             )}
-            <p className={account.muted} style={{ marginTop: 12 }}>
+            <p className="stStudioNote" style={{ marginTop: 12 }}>
               Kết quả thuộc tập dữ liệu AI (phân biệt với danh mục bán) — ảnh thật qua proxy xác thực,
               thiếu/hỏng hiện chữ giữ chỗ. 16 ảnh demo cũ là hình tổng hợp, không dùng để claim ảnh thật.
             </p>
-            <p className={account.muted}>
+            <p className="stStudioNote">
               Lịch sử minh họa vẫn ở <Link href="/lich-su-ai">Lịch sử tìm kiếm AI &amp; Ảnh →</Link>
             </p>
           </>

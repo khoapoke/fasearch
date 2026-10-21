@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import "@/components/ui/motion.css";
+import "@/components/studio/studio.css";
+import { themeBootScript } from "@/lib/theme";
 
 // Source typeface (Stitch export uses Google Fonts Be Vietnam Pro).
 // next/font self-hosts it at build time, so a font CDN failure cannot break
@@ -22,6 +24,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="vi" className={beVietnamPro.variable}>
+      <head>
+        {/* Theme theo lựa chọn thiết bị: chạy TRƯỚC lần vẽ đầu tiên nên không có
+            flash sai màu; React thấy cùng markup server/client nên không lệch
+            hydration (DESIGN §2). */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
+      </head>
       <body>{children}</body>
     </html>
   );

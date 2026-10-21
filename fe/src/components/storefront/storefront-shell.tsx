@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
+import { ThemeControl } from "@/components/studio/theme-control";
 import { CartCount, HeaderAccount } from "./storefront-client";
 import "./storefront.css";
 
@@ -17,19 +18,23 @@ const NAV = [
 export function StorefrontShell({
   active,
   previewNote,
+  themed = false,
   children,
 }: {
   active?: string;
   previewNote?: string;
+  /** Bề mặt pilot search-studio: áp theme + control giao diện (P1). */
+  themed?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className={themed ? "studio" : undefined}>
       <div className="sfPromo">
         <div className="sfPromoInner">
           <p className="sfPromoMsgs">
             <span>Phí vận chuyển tính ở bước thanh toán</span>
           </p>
+          {themed ? <ThemeControl /> : null}
         </div>
       </div>
       <header className="sfHeader">

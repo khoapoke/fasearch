@@ -68,6 +68,7 @@ export function ListingPage({
   lead,
   paging,
   onRetry,
+  themed = false,
 }: {
   crumbs: Array<{ href?: string; label: string }>;
   title: string;
@@ -94,12 +95,15 @@ export function ListingPage({
   lead?: React.ReactNode;
   paging?: { page: number; totalPages: number; total: number; size: number; onPage: (p: number) => void };
   onRetry?: () => void;
+  /** Bề mặt pilot search-studio: bộ lọc thu gọn trên điện thoại (P1). */
+  themed?: boolean;
 }) {
   const [sort, setSort] = useState("match");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [cat, setCat] = useState(activeCat);
   const [price, setPrice] = useState(activePrice);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const photos = useMemo(() => stitchImages(photoFolder), [photoFolder]);
 
   const filtered = useMemo(() => {
@@ -134,6 +138,17 @@ export function ListingPage({
 
   const catName = categories.find((c) => String(c.id) === cat)?.name;
 
+  const activeFilterSummary = (() => {
+    const parts: string[] = [];
+    if (catName) parts.push(catName);
+    if (price) parts.push(priceLabel(price));
+    if (activeKichCo) parts.push(`Size ${activeKichCo}`);
+    if (activeMauSac) parts.push(`Màu ${activeMauSac}`);
+    if (!activeKichCo && size) parts.push(`Size ${size}`);
+    if (!activeMauSac && color) parts.push(`Màu ${COLORS.find((c) => c.hex === color)?.label ?? ""}`);
+    return parts.length > 0 ? parts.join(" · ") : "Chưa lọc";
+  })();
+
   function apply() {
     onFilter?.({ maDanhMuc: cat, price });
   }
@@ -166,14 +181,31 @@ export function ListingPage({
           <span key={t} className="pgChip" style={{ padding: "6px 13px" }}>{t}</span>
         ))}
         {aiCta ? (
-          <Link href="/tim-kiem-ai" className="pgChip" style={{ borderColor: "#f0b49a", color: "#aa3000" }}>
+          <Link href="/tim-kiem-ai" className="pgChip" style={{ borderColor: "var(--accent-border)", color: "var(--brand-text)" }}>
             <Icon name="camera" size={15} /> Tìm mẫu bằng ảnh chụp
           </Link>
         ) : null}
       </div>
 
       <div className="pgLayout">
-        <aside className="pgSide" aria-label="Bộ lọc">
+        {themed ? (
+          <button
+            type="button"
+            className="stFiltersToggle"
+            aria-expanded={filtersOpen}
+            aria-controls="studio-listing-filters"
+            onClick={() => setFiltersOpen((v) => !v)}
+          >
+            <span>Bộ lọc</span>
+            <span className="stFiltersSummary">{activeFilterSummary}</span>
+          </button>
+        ) : null}
+        <aside
+          id={themed ? "studio-listing-filters" : undefined}
+          className={themed ? "pgSide stFiltersPanel" : "pgSide"}
+          data-open={themed ? String(filtersOpen) : undefined}
+          aria-label="Bộ lọc"
+        >
           <h3>Danh mục sản phẩm</h3>
           {categories.length === 0 ? (
             <p className="mpMuted">Đang tải danh mục…</p>

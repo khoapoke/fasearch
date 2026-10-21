@@ -33,7 +33,7 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgb(255 255 255 / 0.96);
+  background: var(--header-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line-soft);
 }
@@ -74,7 +74,7 @@
   color: var(--ink-soft);
 }
 .sfBrandAi {
-  color: var(--accent);
+  color: var(--brand-text);
 }
 .sfNav {
   display: flex;
@@ -92,18 +92,18 @@
 }
 .sfNav a:hover {
   background: var(--surface-tint);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 .sfNav a[aria-current="page"] {
   background: var(--surface-tint);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 .sfNavAi {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid #ffd9c7;
-  color: var(--brand) !important;
+  border: 1px solid var(--accent-border);
+  color: var(--brand-text) !important;
 }
 .sfSearch {
   flex: 1;
@@ -156,7 +156,7 @@
 }
 .sfIconBtn:hover {
   background: var(--surface-tint);
-  color: var(--brand);
+  color: var(--brand-text);
 }
 .sfBadge {
   position: absolute;
@@ -191,7 +191,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--ink-fill);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -214,7 +214,7 @@
 .sfFooter {
   margin-top: 56px;
   border-top: 1px solid var(--line-soft);
-  background: #fff;
+  background: var(--surface);
 }
 .sfNews {
   max-width: 1280px;
@@ -244,7 +244,7 @@
   padding: 10px 22px;
   font-size: 13.5px;
   font-weight: 700;
-  background: var(--ink);
+  background: var(--ink-fill);
   color: #fff;
   white-space: nowrap;
 }
@@ -319,7 +319,7 @@
 .sfSideCard {
   border: 1px solid var(--line-soft);
   border-radius: 14px;
-  background: #fff;
+  background: var(--surface);
   padding: 18px;
   box-shadow: var(--shadow-card);
   margin-bottom: 14px;
@@ -378,9 +378,9 @@
 
 /* Preview banner */
 .sfPreviewBar {
-  background: #fff7ed;
-  border-bottom: 1px solid #fed7aa;
-  color: #9a3412;
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-border);
+  color: var(--warn-text);
   font-size: 12.5px;
 }
 .sfPreviewBar div {

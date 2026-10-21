@@ -221,7 +221,7 @@ export function DetailView({ id }: { id: string }) {
       </nav>
       <div className="pdGrid">
         <div className="pdGallery">
-          <div className="pdMain" style={{ position: "relative" }}>
+          <div className="pdMain stDetailMedia" style={{ position: "relative" }}>
             <StitchImage src={main.src} alt={main.alt} eager className={dim ? "pdDim" : undefined} />
           </div>
           <div className="pdThumbs" role="listbox" aria-label="Ảnh sản phẩm">
@@ -236,14 +236,14 @@ export function DetailView({ id }: { id: string }) {
           </p>
         </div>
 
-        <div>
+        <div className="stDetailPanel">
           <p className="pdSku">Mã sản phẩm: #{data.maSp} · {data.tenDanhMuc ?? "FashionSearch AI"}</p>
           <h1 className="pdTitle">{data.tenSp}</h1>
           <p className="pdRate">
             <span>Hàng đang bán · giá từ máy chủ · chưa có đánh giá tổng hợp</span>
           </p>
           <p className="pdPriceRow">
-            <span className="pdPrice">{formatVnd(data.giaBan)}</span>
+            <span className="pdPrice stDetailPrice">{formatVnd(data.giaBan)}</span>
           </p>
 
           {colors.length > 0 ? (
@@ -308,7 +308,7 @@ export function DetailView({ id }: { id: string }) {
             </button>
             <Link className="hmCta hmCtaPrimary" href="/thanh-toan">MUA NGAY (COD)</Link>
           </div>
-          {addError ? <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{addError}</p> : null}
+          {addError ? <p role="alert" className="stAlert">{addError}</p> : null}
           <div className="pdPerks">
             <div><b>Thanh toán COD</b>Thu tiền khi nhận hàng</div>
             <div><b>Tồn kho thật</b>Số lượng theo kho đang phục vụ</div>

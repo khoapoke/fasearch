@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon, type UiIcon } from "@/components/ui/icon";
+import { ThemeControl } from "@/components/studio/theme-control";
 import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
 import { fetchWarehouses } from "@/lib/commerce-client";
 import "./merchant.css";
@@ -35,11 +36,14 @@ export function MerchantShell({
   active,
   previewNote,
   topActions,
+  themed = false,
   children,
 }: {
   active: MerchantNavKey;
   previewNote?: string;
   topActions?: React.ReactNode;
+  /** Bề mặt pilot search-studio: áp theme + control giao diện (P1). */
+  themed?: boolean;
   children: React.ReactNode;
 }) {
   const [me, setMe] = useState<AccountIdentity | null>(null);
@@ -62,12 +66,13 @@ export function MerchantShell({
     };
   }, []);
   return (
-    <div>
+    <div className={themed ? "studio" : undefined}>
       <div className="mpBanner">
         <div>
           <Icon name="spark" size={14} />
           <span>Kênh bán{warehouse ? ` · ${warehouse}` : ""} — danh mục và sản phẩm đồng bộ từ máy chủ</span>
           <Link href="/kenh-ban">Về dashboard</Link>
+          {themed ? <ThemeControl /> : null}
         </div>
       </div>
       <div className="mpFrame">

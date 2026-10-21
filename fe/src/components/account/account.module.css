@@ -48,7 +48,7 @@
 }
 
 .kicker {
-  color: var(--brand);
+  color: var(--brand-text);
   font-size: 0.78rem;
   font-weight: 720;
 }
@@ -255,7 +255,7 @@
   border-radius: 6px;
   padding: 10px 12px;
   color: var(--danger);
-  background: #fff5f4;
+  background: var(--notice-bg);
 }
 
 .notice {
@@ -263,7 +263,7 @@
   border-radius: 6px;
   padding: 10px 12px;
   color: var(--ok);
-  background: #f2faf8;
+  background: var(--notice-ok-bg);
 }
 
 .actions {

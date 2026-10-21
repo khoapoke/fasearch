@@ -28,6 +28,53 @@
     -apple-system, sans-serif;
   --shadow-card:
     0 10px 25px -5px rgb(17 24 39 / 0.06), 0 8px 10px -6px rgb(17 24 39 / 0.04);
+
+  /* Token ngữ nghĩa dùng chung (mọi rule cứng trước đây được đổi sang đây).
+     Giá trị = màu đang hiển thị, nên route nào không nằm trong `.studio` giữ
+     nguyên diện mạo. Palette search-studio chỉ gán đè trong `.studio`. */
+  --brand-text: var(--brand);
+  --ink-fill: var(--ink);
+  --shell-canvas: #fbf7f4;
+  --control-border: #c9c9c9;
+  --border-soft: #e2e2e2;
+  --surface-alt: #f7f7f7;
+  --chip-bg: #fafafa;
+  --chip-border: #dddddd;
+  --badge-ok-bg: #eef4ee;
+  --badge-ok-border: #cfe0cf;
+  --badge-ok-text: #1d6b1d;
+  --badge-warn-bg: #fdf3e7;
+  --badge-warn-border: #ecd3ac;
+  --badge-warn-text: #815800;
+  --badge-muted-bg: #f1f1f1;
+  --badge-muted-border: #dddddd;
+  --danger-border: #d9a5a5;
+  --danger-text: #8f1d1d;
+  --pill-ok-bg: #ecfdf5;
+  --pill-ok-border: #a7f3d0;
+  --pill-ok-text: #047857;
+  --pill-warn-bg: #fff7ed;
+  --pill-warn-border: #fed7aa;
+  --pill-warn-text: #c2410c;
+  --warn-bg: #fff7ed;
+  --warn-border: #fed7aa;
+  --warn-text: #9a3412;
+  --notice-bg: #fff5f4;
+  --notice-ok-bg: #f2faf8;
+  --tip-bg: #fff8f4;
+  --tip-border: #f3d3bf;
+  --tip-text: #7c2d12;
+  --media-bg: #f3f4f6;
+  --media-warm: #e9e4de;
+  --media-soft: #f4f4f4;
+  --placeholder-from: #efeae4;
+  --placeholder-to: #ddd6cb;
+  --thumb-bg: #f1ede8;
+  --avatar-bg: #e0e7ff;
+  --avatar-text: #3730a3;
+  --accent-border: #ffd9c7;
+  --fav-bg: rgb(255 255 255 / 0.92);
+  --header-bg: rgb(255 255 255 / 0.96);
 }
 
 * {

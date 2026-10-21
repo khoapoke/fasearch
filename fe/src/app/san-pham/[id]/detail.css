@@ -11,14 +11,14 @@
 .pdGallery { position: sticky; top: 130px; }
 .pdMain {
   border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 5;
-  background: linear-gradient(160deg, #efeae4, #ddd6cb);
+  background: linear-gradient(160deg, var(--placeholder-from), var(--placeholder-to));
 }
 .pdMain img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .pdBadges { position: absolute; }
 .pdThumbs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
 .pdThumbs button {
   border: 2px solid transparent; border-radius: 12px; overflow: hidden; cursor: pointer;
-  aspect-ratio: 1; background: #f1ede8; padding: 0;
+  aspect-ratio: 1; background: var(--thumb-bg); padding: 0;
 }
 .pdThumbs button[aria-current="true"] { border-color: var(--accent); }
 .pdThumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -35,12 +35,12 @@
 .pdColors { display: flex; gap: 10px; }
 .pdColor {
   width: 34px; height: 34px; border-radius: 50%; cursor: pointer; padding: 0;
-  border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--line);
+  border: 2px solid var(--surface); box-shadow: 0 0 0 1.5px var(--line);
 }
 .pdColor[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--accent); }
 .pdAiTip {
-  display: flex; gap: 10px; background: #fff8f4; border: 1px solid #f3d3bf; border-radius: 12px;
-  padding: 11px 13px; font-size: 12.5px; color: #7c2d12; margin: 12px 0;
+  display: flex; gap: 10px; background: var(--tip-bg); border: 1px solid var(--tip-border); border-radius: 12px;
+  padding: 11px 13px; font-size: 12.5px; color: var(--tip-text); margin: 12px 0;
 }
 .pdQtyRow { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
 .pdQty { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; }

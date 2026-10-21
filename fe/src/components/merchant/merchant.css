@@ -18,9 +18,9 @@
   text-overflow: ellipsis;
 }
 .mpBanner a { text-decoration: underline; font-weight: 700; }
-.mpFrame { display: grid; grid-template-columns: 264px 1fr; min-height: 100vh; background: #fbf7f4; }
+.mpFrame { display: grid; grid-template-columns: 264px 1fr; min-height: 100vh; background: var(--shell-canvas); }
 .mpSide {
-  background: #fff;
+  background: var(--surface);
   border-right: 1px solid var(--line-soft);
   padding: 18px 14px;
   display: flex;
@@ -67,7 +67,7 @@
 .mpNode b { color: var(--accent-deep); margin-left: auto; }
 .mpUser { display: flex; gap: 10px; align-items: center; padding: 6px 8px; }
 .mpUserAvatar {
-  width: 36px; height: 36px; border-radius: 50%; background: #e0e7ff; color: #3730a3;
+  width: 36px; height: 36px; border-radius: 50%; background: var(--avatar-bg); color: var(--avatar-text);
   font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .mpUser b { display: block; font-size: 13px; }
@@ -77,19 +77,19 @@
 .mpTopbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
 .mpSearch {
   flex: 1; min-width: 200px; display: flex; align-items: center; gap: 9px;
-  background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px;
 }
 .mpSearch input { flex: 1; border: 0; outline: none; background: transparent; font-size: 13.5px; min-width: 0; }
 .mpTopBtn {
   display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
-  border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 14px; cursor: pointer; color: var(--ink);
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 14px; cursor: pointer; color: var(--ink);
 }
-.mpTopBtn:hover { border-color: var(--accent); color: var(--brand); }
+.mpTopBtn:hover { border-color: var(--accent); color: var(--brand-text); }
 .mpTopBtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .mpTopBtn.primary:hover { background: var(--accent-deep); }
 
 .mpCard {
-  background: #fff; border: 1px solid var(--line-soft); border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px;
   padding: 20px; box-shadow: var(--shadow-card); margin-bottom: 18px;
 }
 .mpCard h2 { font-size: 16px; font-weight: 800; }
@@ -104,14 +104,14 @@ table.mpTable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-w
 .mpTable tr:last-child td { border-bottom: 0; }
 .mpThumb {
   width: 52px; height: 52px; border-radius: 10px; object-fit: cover; display: block;
-  background: linear-gradient(160deg, #f3f4f6, #e9e4de);
+  background: linear-gradient(160deg, var(--media-bg), var(--media-warm));
 }
 .mpPill {
   display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 5px 11px;
   background: var(--surface-subtle); border: 1px solid var(--line); white-space: nowrap;
 }
-.mpPillLive { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
-.mpPillWarn { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+.mpPillLive { background: var(--pill-ok-bg); border-color: var(--pill-ok-border); color: var(--pill-ok-text); }
+.mpPillWarn { background: var(--pill-warn-bg); border-color: var(--pill-warn-border); color: var(--pill-warn-text); }
 .mpRowBtns { display: flex; gap: 4px; flex-wrap: wrap; }
 .mpIconBtn {
   border: 0; background: transparent; cursor: pointer; color: var(--ink-soft);
@@ -119,11 +119,11 @@ table.mpTable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-w
 }
 .mpIconBtn:hover { background: var(--surface-subtle); color: var(--brand); }
 .mpPreviewBar {
-  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 12.5px;
+  background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); font-size: 12.5px;
   border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center;
 }
 .mpStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-.mpStat { background: #fff; border: 1px solid var(--line-soft); border-radius: 14px; padding: 16px; }
+.mpStat { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 14px; padding: 16px; }
 .mpStat p { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
 .mpStat b { font-size: 23px; font-weight: 800; letter-spacing: -0.02em; display: block; margin-top: 4px; }
 .mpStat small { font-size: 12px; color: var(--ink-soft); }

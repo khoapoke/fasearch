@@ -160,10 +160,12 @@ function BoundListing(hook: Hook, props: {
   photoFolder: string;
   aiCta?: boolean;
   lead?: React.ReactNode;
+  /** Bề mặt pilot search-studio (P1) — chỉ /nam trong giai đoạn pilot. */
+  themed?: boolean;
 }) {
   const paging = { page: hook.page, totalPages: hook.totalPages, total: hook.total, size: hook.size, onPage: hook.setPage };
   return (
-    <StorefrontShell active={props.shell} previewNote={props.previewNote}>
+    <StorefrontShell active={props.shell} previewNote={props.previewNote} themed={props.themed}>
       <ListingPage
         crumbs={props.crumbs}
         title={props.title}
@@ -189,6 +191,7 @@ function BoundListing(hook: Hook, props: {
         onFilter={(next) => hook.pushFilter(next)}
         lead={props.lead}
         onRetry={hook.retry}
+        themed={props.themed}
       />
     </StorefrontShell>
   );
@@ -203,6 +206,7 @@ export function NamListing() {
     sub: "Sản phẩm đang bán, giá và biến thể lấy trực tiếp từ máy chủ.",
     tags: [],
     photoFolder: "fashionsearch_ai_danh_s_ch_s_n_ph_m",
+    themed: true,
   });
 }
 
