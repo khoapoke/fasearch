@@ -297,3 +297,9 @@
 @media (max-width: 640px) {
   .pgGrid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }
+
+/* Chip "Tìm mằng bằng ảnh chụp": màu cũ ngoài pilot, theme search-studio trong pilot. */
+a.pgChip[href="/tim-kiem-ai"] {
+  border-color: #f0b49a;
+  color: #aa3000;
+}

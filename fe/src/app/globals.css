@@ -33,6 +33,9 @@
      Giá trị = màu đang hiển thị, nên route nào không nằm trong `.studio` giữ
      nguyên diện mạo. Palette search-studio chỉ gán đè trong `.studio`. */
   --brand-text: var(--brand);
+  --price-text: #1d6b1d;
+  --meta-text: #666666;
+  --muted-text: #888888;
   --ink-fill: var(--ink);
   --shell-canvas: #fbf7f4;
   --control-border: #c9c9c9;

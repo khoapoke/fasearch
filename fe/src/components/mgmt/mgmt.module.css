@@ -176,7 +176,7 @@
 }
 
 .noImg {
-  color: var(--ink-soft);
+  color: var(--muted-text);
   font-size: 13px;
   padding: 8px;
   text-align: center;
@@ -194,12 +194,12 @@
 }
 
 .cardPrice {
-  color: var(--ok);
+  color: var(--price-text);
   font-weight: 700;
 }
 
 .cardMeta {
-  color: var(--ink-soft);
+  color: var(--meta-text);
   font-size: 12px;
 }
 

@@ -157,11 +157,6 @@ const SURFACE_PROBE = `(() => {
 })()`;
 
 const isWhite = (rgb) => /rgba?\(\s*255,\s*255,\s*255/.test(rgb || "");
-const isDark = (rgb) => {
-  const m = /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)/.exec(rgb || "");
-  if (!m) return false;
-  return (Number(m[1]) + Number(m[2]) + Number(m[3])) / 3 < 90;
-};
 
 /**
  * Gõ thật vào ô nhập (CDP Input.insertText) để đi đúng đường sự kiện mà người
@@ -368,6 +363,21 @@ if (runPart("ai")) await withBrowser(9311, "/tmp/studio-pilot-cust", async (p) =
     phone.ok && phone.toggleVisible && phone.before === "none" && phone.after !== "none" && !!phone.summary,
     JSON.stringify(phone));
   record("Pilot catalog @390px: không tràn ngang", (phone.overflow ?? 0) <= 1, `overflow ${phone.overflow}px`);
+  const escaped = await p.eval(`(async () => {
+    const toggle = document.querySelector(".stFiltersToggle");
+    const panel = document.querySelector(".stFiltersPanel");
+    if (!toggle || !panel) return { ok: false };
+    if (getComputedStyle(panel).display === "none") toggle.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const opened = getComputedStyle(panel).display !== "none";
+    toggle.focus();
+    toggle.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    return { ok: true, opened, closed: getComputedStyle(panel).display === "none",
+      focusOnToggle: document.activeElement === toggle };
+  })()`);
+  record("Pilot catalog @390px: Escape đóng bộ lọc và trả tiêu điểm về nút",
+    escaped.ok && escaped.opened && escaped.closed && escaped.focusOnToggle, JSON.stringify(escaped));
   await p.shot(join(shotsDir, "nam-390-filters.png"));
 
   // Lọc thật: chọn size → URL đổi (semantics URL giữ nguyên)
@@ -432,7 +442,28 @@ if (runPart("ai")) await withBrowser(9311, "/tmp/studio-pilot-cust", async (p) =
     JSON.stringify(focus));
 });
 
-if (runPart("pos")) await withBrowser(9312, "/tmp/studio-pilot-staff", async (p) => {
+if (runPart("pos")) await withBrowser(9313, "/tmp/studio-pilot-guest", async (p) => {
+  await p.goto(`${base}/tim-kiem-ai`);
+  await sleep(1500);
+  const gate = await p.eval(`(() => {
+    const card = document.querySelector(".stStudioState");
+    if (!card) return { ok: false, reason: "không thấy thẻ cổng đăng nhập" };
+    const items = [...card.querySelectorAll("*")].filter((e) => (e.textContent || "").trim() && e.children.length === 0);
+    const boxes = items.map((e) => e.getBoundingClientRect());
+    let overlap = 0;
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const ov = Math.min(boxes[i].bottom, boxes[j].bottom) - Math.max(boxes[i].top, boxes[j].top);
+        if (ov > 0) overlap = Math.max(overlap, Math.round(ov));
+      }
+    }
+    return { ok: true, overlap, texts: items.length };
+  })()`);
+  record("Pilot AI (khách): thẻ cổng đăng nhập không chồng chữ với nút",
+    gate.ok && (gate.overlap ?? 0) === 0, JSON.stringify(gate));
+});
+
+await withBrowser(9312, "/tmp/studio-pilot-staff", async (p) => {
   // ---------- 5. Pilot POS (staff) ----------
   await p.goto(`${base}/dang-nhap`);
   const login = await p.login("staff");
@@ -492,7 +523,41 @@ if (runPart("pos")) await withBrowser(9312, "/tmp/studio-pilot-staff", async (p)
   const narrow = await p.eval(SURFACE_PROBE);
   record("Pilot POS @390px: fallback hẹp dùng được, không tràn ngang",
     (narrow.overflow ?? 0) <= 1, `overflow ${narrow.overflow}px`);
+  const ops = await p.eval(`(async () => {
+    const toggle = document.querySelector(".stOpsNavToggle");
+    const nav = document.querySelector(".stOpsNav");
+    const sel = document.querySelector(".stThemeSelect");
+    const cs = sel ? getComputedStyle(sel) : null;
+    const before = nav ? getComputedStyle(nav).display : null;
+    if (toggle) toggle.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const after = nav ? getComputedStyle(nav).display : null;
+    return { toggleVisible: !!toggle && getComputedStyle(toggle).display !== "none",
+      navBefore: before, navAfter: after,
+      selectHeight: cs ? Math.round(parseFloat(cs.minHeight)) : null,
+      selectFont: cs ? parseFloat(cs.fontSize) : null,
+      selectWidth: sel ? Math.round(sel.getBoundingClientRect().width) : null,
+      viewport: window.innerWidth };
+  })()`);
+  record("Pilot POS @390px: điều hướng kênh bán thu gọn thành nút mở",
+    ops.toggleVisible && ops.navBefore === "none" && ops.navAfter !== "none", JSON.stringify(ops));
+  record("Pilot POS @390px: control giao diện đủ 44px và chữ 16px (sàn chạm)",
+    (ops.selectHeight ?? 0) >= 44 && (ops.selectFont ?? 0) >= 16, JSON.stringify(ops));
   await p.shot(join(shotsDir, "pos-390.png"));
+
+  await p.setViewport(640, 900);
+  await p.goto(`${base}/kenh-ban/pos`);
+  await sleep(1600);
+  const clipped = await p.eval(`(() => {
+    const sel = document.querySelector(".stThemeSelect");
+    if (!sel) return { ok: false };
+    const r = sel.getBoundingClientRect();
+    return { ok: true, left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width),
+      viewport: window.innerWidth, fullyVisible: r.left >= 0 && r.right <= window.innerWidth,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  })()`);
+  record("Pilot POS @640px (proxy 200% zoom): control giao diện không bị cắt",
+    clipped.ok && clipped.fullyVisible && (clipped.overflow ?? 0) <= 1, JSON.stringify(clipped));
 });
 
 await writeFile(join(outDir, "studio-pilot-report.json"), JSON.stringify(results, null, 2));

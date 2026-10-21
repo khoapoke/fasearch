@@ -430,8 +430,7 @@ export default function PosPage() {
             >
               <input
                 ref={searchRef}
-                className="stPosInput"
-                style={{ flex: 1, minWidth: 0 }}
+                className="stPosInput stFlex1"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Quét barcode hoặc gõ SKU/tên… (Enter)"
@@ -441,7 +440,7 @@ export default function PosPage() {
             </form>
             {results.map((p) => (
               <div key={p.maSku} className="stPosRow">
-                <div style={{ flex: 1 }}>
+                <div className="stFlex1">
                   <b>{p.tenSp}</b>
                   <p className="stPosHint">
                     SKU {p.maSku} · SP {p.maSp} · {[p.mauSac, p.kichCo].filter(Boolean).join(" · ")} · {formatVndContract(p.donGia)}{p.soLuongKhaDung !== null && p.soLuongKhaDung !== undefined ? ` · khả dụng ${p.soLuongKhaDung}` : ""}
@@ -488,7 +487,7 @@ export default function PosPage() {
             {lines.length === 0 && !draft ? <p className="stPosHint">Thêm món để tạo nháp TAM_LUU. Nháp không giữ hàng.</p> : null}
             {(lines.length ? lines : (draft?.items ?? []).map((i) => ({ maSku: i.maSku, ten: i.tenSp ?? `SKU ${i.maSku}`, soLuong: i.soLuong }))).map((l) => (
               <div key={l.maSku} className="stPosRow">
-                <div style={{ flex: 1 }}><b>{l.ten}</b><p className="stPosHint">SKU {l.maSku} · SL {l.soLuong}</p></div>
+                <div className="stFlex1"><b>{l.ten}</b><p className="stPosHint">SKU {l.maSku} · SL {l.soLuong}</p></div>
               </div>
             ))}
             <div className="stPosRow">
@@ -578,7 +577,7 @@ export default function PosPage() {
               ))}
               {(receipt.items ?? []).map((l) => (
                 <div key={l.maSku} className="stPosRow">
-                  <div style={{ flex: 1 }}><b>{l.tenSpSnapshot}</b><p className="stPosHint">SKU {l.maSku} · SL {l.soLuong}{(l.tienGiamGia ?? 0) > 0 ? ` · giảm ${formatVndContract(l.tienGiamGia)}` : ""}</p></div>
+                  <div className="stFlex1"><b>{l.tenSpSnapshot}</b><p className="stPosHint">SKU {l.maSku} · SL {l.soLuong}{(l.tienGiamGia ?? 0) > 0 ? ` · giảm ${formatVndContract(l.tienGiamGia)}` : ""}</p></div>
                   <b>{formatVndContract(l.tongDong)}</b>
                 </div>
               ))}

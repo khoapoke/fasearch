@@ -48,6 +48,7 @@ export function MerchantShell({
 }) {
   const [me, setMe] = useState<AccountIdentity | null>(null);
   const [warehouse, setWarehouse] = useState<string | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
     let live = true;
     readOwnIdentity()
@@ -66,7 +67,7 @@ export function MerchantShell({
     };
   }, []);
   return (
-    <div className={themed ? "studio" : undefined}>
+    <div className={themed ? "studio studio-ops" : undefined}>
       <div className="mpBanner">
         <div>
           <Icon name="spark" size={14} />
@@ -76,7 +77,12 @@ export function MerchantShell({
         </div>
       </div>
       <div className="mpFrame">
-        <aside className="mpSide" aria-label="Kênh bán">
+        <aside
+          id={themed ? "studio-ops-nav" : undefined}
+          className={themed ? "mpSide stOpsNav" : "mpSide"}
+          data-open={themed ? String(navOpen) : undefined}
+          aria-label="Kênh bán"
+        >
           <Link className="mpBrand" href="/kenh-ban">
             <span className="mpBrandMark" aria-hidden="true">
               <Icon name="hanger" size={22} />
@@ -138,6 +144,17 @@ export function MerchantShell({
           </div>
         </aside>
         <div className="mpMain">
+          {themed ? (
+            <button
+              type="button"
+              className="stOpsNavToggle"
+              aria-expanded={navOpen}
+              aria-controls="studio-ops-nav"
+              onClick={() => setNavOpen((v) => !v)}
+            >
+              <Icon name="grid" size={16} /> Menu kênh bán
+            </button>
+          ) : null}
           <div className="mpTopbar">
             <form className="mpSearch" role="search" action="/nam" method="get">
               <Icon name="search" size={18} />

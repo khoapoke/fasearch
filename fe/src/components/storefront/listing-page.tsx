@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { ProductCard, type CardProduct } from "@/components/storefront/product-card";
 import { stitchImages } from "@/lib/stitch-assets";
@@ -104,6 +104,7 @@ export function ListingPage({
   const [cat, setCat] = useState(activeCat);
   const [price, setPrice] = useState(activePrice);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterToggleRef = useRef<HTMLButtonElement>(null);
   const photos = useMemo(() => stitchImages(photoFolder), [photoFolder]);
 
   const filtered = useMemo(() => {
@@ -181,7 +182,7 @@ export function ListingPage({
           <span key={t} className="pgChip" style={{ padding: "6px 13px" }}>{t}</span>
         ))}
         {aiCta ? (
-          <Link href="/tim-kiem-ai" className="pgChip" style={{ borderColor: "var(--accent-border)", color: "var(--brand-text)" }}>
+          <Link href="/tim-kiem-ai" className="pgChip">
             <Icon name="camera" size={15} /> Tìm mẫu bằng ảnh chụp
           </Link>
         ) : null}
@@ -191,10 +192,18 @@ export function ListingPage({
         {themed ? (
           <button
             type="button"
+            ref={filterToggleRef}
             className="stFiltersToggle"
             aria-expanded={filtersOpen}
             aria-controls="studio-listing-filters"
             onClick={() => setFiltersOpen((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && filtersOpen) {
+                e.stopPropagation();
+                setFiltersOpen(false);
+                filterToggleRef.current?.focus();
+              }
+            }}
           >
             <span>Bộ lọc</span>
             <span className="stFiltersSummary">{activeFilterSummary}</span>

@@ -74,7 +74,7 @@
   color: var(--ink-soft);
 }
 .sfBrandAi {
-  color: var(--brand-text);
+  color: var(--accent);
 }
 .sfNav {
   display: flex;

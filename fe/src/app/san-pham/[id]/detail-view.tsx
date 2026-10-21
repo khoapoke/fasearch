@@ -132,7 +132,8 @@ export function DetailView({ id }: { id: string }) {
   const realImg = data.coHinhAnh ? `/api/be/v1/catalog/san-pham/${data.maSp}/hinh-anh` : undefined;
   const gallery = realImg
     ? [{ src: realImg, alt: `Ảnh thật: ${data.tenSp}`, real: true }]
-    : photos.slice(0, 5).map((p) => ({ src: p.src, alt: p.alt || data.tenSp, real: false }));
+    // Ảnh minh họa: alt là TÊN SẢN PHẨM, không dùng mô tả bộ dữ liệu (R04).
+    : photos.slice(0, 5).map((p) => ({ src: p.src, alt: data.tenSp, real: false }));
   const main = gallery[Math.min(photo, gallery.length - 1)];
 
   const recoCards: CardProduct[] = reco.map((p, i) => ({
