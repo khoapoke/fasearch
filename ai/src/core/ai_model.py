@@ -6,7 +6,7 @@ _model = None
 _processor = None
 _device = None
 
-MODEL_ID= settings["model"]["id"]
+MODEL_ID= settings.model.id
 
 def get_ai_model():
     """

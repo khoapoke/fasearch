@@ -9,7 +9,7 @@ from src.core.config import settings, BASE_DIR
 router = APIRouter()
 
 # Cấu hình từ configs/database.yaml và .env
-MAX_SEARCH_LIMIT = settings.get("app", {}).get("max_search_limit", 50)
+MAX_SEARCH_LIMIT = settings.app.max_search_limit
 VALID_IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp')
 
 # Tự động trỏ tới thư mục uploads theo cấu hình

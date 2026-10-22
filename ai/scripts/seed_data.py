@@ -17,11 +17,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 # Cấu hình từ configs/database.yaml
-QDRANT_HOST = settings["qdrant"]["host"]
-QDRANT_PORT = settings["qdrant"]["grpc_port"]
-COLLECTION_NAME = settings["qdrant"]["collection_name"]
-MODEL_ID = settings["model"]["id"]
-RAW_DATA_DIR_NAME = settings.get("app", {}).get("raw_data_dir", "dataset")
+QDRANT_HOST = settings.qdrant.host
+QDRANT_PORT = settings.qdrant.grpc_port
+COLLECTION_NAME = settings.qdrant.collection_name
+MODEL_ID = settings.model.id
+RAW_DATA_DIR_NAME = settings.app.raw_data_dir
+
 
 # Thư mục gốc dự án và đường dẫn dataset
 DATASET_ROOT = os.path.join(BASE_DIR, RAW_DATA_DIR_NAME)
@@ -156,3 +157,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     seed_data(subfolder=args.subfolder, batch_size=args.batch_size)
+
+
+
+    

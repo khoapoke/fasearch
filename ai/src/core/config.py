@@ -86,7 +86,7 @@ def load_settings() -> AppSettings:
             loaded = yaml.safe_load(file)
             if loaded and isinstance(loaded, dict):
                 yaml_data = loaded
-
+ 
     # Khởi tạo cấu hình từ .env
     qdrant_cfg = QdrantConfig()
     model_cfg = ModelConfig()

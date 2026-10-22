@@ -4,11 +4,10 @@ from src.core.config import settings
 
 
 # Cấu hình Database 
-QDRANT_HOST = settings["qdrant"]["host"]
-QDRANT_PORT = settings["qdrant"]["grpc_port"]
-COLLECTION_NAME = settings["qdrant"]["collection_name"]
-VECTOR_SIZE = settings["qdrant"]["vector_size"]
-
+QDRANT_HOST = settings.qdrant.host
+QDRANT_PORT = settings.qdrant.grpc_port
+COLLECTION_NAME = settings.qdrant.collection_name
+VECTOR_SIZE = settings.qdrant.vector_size
 
 
 def init_db(reset=False):
@@ -34,3 +33,5 @@ def init_db(reset=False):
 if __name__ == "__main__":
     # Đặt reset=True để dọn sạch DB khi chạy script này
     init_db(reset=True)
+
+

@@ -2,9 +2,9 @@ from qdrant_client import QdrantClient
 from src.core.config import settings
 # Biến toàn cục giữ kết nối DB
 _client = None
-HOST=settings["qdrant"]["host"]
-PORT=settings["qdrant"]["grpc_port"]
-PREFER_GRPC=settings["qdrant"]["prefer_grpc"]
+QDRANT_HOST=settings.qdrant.host
+QDRANT_PORT=settings.qdrant.grpc_port
+QDRANT_PREFER_GRPC=settings.qdrant.prefer_grpc
 
 def get_qdrant_client():
     """
@@ -19,7 +19,7 @@ def get_qdrant_client():
     print("[*] Đang thiết lập luồng kết nối gRPC tới Qdrant...")
     
     # Kết nối qua cổng 6334 để tối ưu băng thông cho hệ thống tìm kiếm thời trang đa phương thức
-    _client = QdrantClient(host=HOST, grpc_port=PORT, prefer_grpc=PREFER_GRPC)
+    _client = QdrantClient(host=QDRANT_HOST, grpc_port=QDRANT_PORT, prefer_grpc=QDRANT_PREFER_GRPC)
     
     print("[*] Kết nối cơ sở dữ liệu vector thành công!")
     return _client
