@@ -11,6 +11,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
 from src.core.config import settings, BASE_DIR
+from src.db import ImagePointPayload, CatalogCategory, PointStatus
 
 # Thiết lập logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -115,16 +116,18 @@ def seed_data(subfolder: str | None = None, batch_size: int = 32):
             web_path = f"/{rel_path}" if not rel_path.startswith("/") else rel_path
             file_name = os.path.basename(file_abs_path)
 
+            payload_data = ImagePointPayload(
+                image_path=web_path,
+                file_name=file_name,
+                catalog=CatalogCategory.FASHION_PRODUCT,
+                status=PointStatus.SEEDED
+            ).to_payload_dict()
+
             points.append(
                 PointStruct(
                     id=str(uuid.uuid4()),
                     vector=vector,
-                    payload={
-                        "image_path": web_path,
-                        "file_name": file_name,
-                        "catalog": "FASHION_PRODUCT",
-                        "status": "SEEDED"
-                    }
+                    payload=payload_data
                 )
             )
 

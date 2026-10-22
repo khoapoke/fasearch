@@ -2,7 +2,8 @@ import os
 import uuid
 import shutil
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from src.db.schemas import SearchTextRequest, SearchData, ApiResponse
+from src.schemas.common import ApiResponse
+from src.schemas.search import SearchTextRequest, SearchData
 from src.services.search_service import search_by_text, search_by_image
 from src.core.config import settings, BASE_DIR
 
