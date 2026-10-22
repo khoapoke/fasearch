@@ -7,20 +7,17 @@ import torch
 from pathlib import Path
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
-from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
 from src.core.config import settings, BASE_DIR
 from src.db import ImagePointPayload, CatalogCategory, PointStatus
+from src.repositories import get_image_repository
 
 # Thiết lập logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 # Cấu hình từ configs/database.yaml
-QDRANT_HOST = settings.qdrant.host
-QDRANT_PORT = settings.qdrant.grpc_port
-COLLECTION_NAME = settings.qdrant.collection_name
 MODEL_ID = settings.model.id
 RAW_DATA_DIR_NAME = settings.app.raw_data_dir
 
@@ -70,12 +67,12 @@ def seed_data(subfolder: str | None = None, batch_size: int = 32):
         logger.warning("Không có ảnh hợp lệ để nạp dữ liệu. Kết thúc tiến trình.")
         return
 
-    # 2. Khởi tạo Model CLIP và Qdrant Client
+    # 2. Khởi tạo Model CLIP và ImageRepository
     logger.info("Đang nạp mô hình CLIP lên thiết bị...")
     model = CLIPModel.from_pretrained(MODEL_ID).to(device)
     model.eval()
     processor = CLIPProcessor.from_pretrained(MODEL_ID)
-    client = QdrantClient(host=QDRANT_HOST, grpc_port=QDRANT_PORT, prefer_grpc=True)
+    image_repo = get_image_repository()
 
     # 3. Nạp dữ liệu theo Batch
     success_count = 0
@@ -131,7 +128,7 @@ def seed_data(subfolder: str | None = None, batch_size: int = 32):
                 )
             )
 
-        client.upsert(collection_name=COLLECTION_NAME, points=points)
+        image_repo.upsert_batch(points=points)
         success_count += len(points)
         logger.info(f"Đã nạp lô {i // batch_size + 1}: {len(points)} ảnh (Lũy kế: {success_count}/{total_images})")
 

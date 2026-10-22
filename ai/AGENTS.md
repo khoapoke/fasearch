@@ -39,7 +39,7 @@ fasearch/ai/
 ├── scripts/
 │   ├── __init__.py
 │   ├── init_qdrant.py        # Khởi tạo/Reset Qdrant collection (vector_size: 512, cosine)
-│   └── seed_data.py          # Script nạp ảnh hàng loạt từ dataset/ vào Qdrant theo batch
+│   └── seed_data.py          # Script nạp ảnh hàng loạt từ dataset/ vào Qdrant qua Repository
 ├── src/
 │   ├── __init__.py
 │   ├── main.py               # Entrypoint FastAPI, Lifespan startup, CORS, Static mounts
@@ -49,14 +49,23 @@ fasearch/ai/
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── ai_model.py       # Singleton quản lý mô hình CLIP trên VRAM (eval mode)
-│   │   ├── config.py         # Nạp cấu hình từ database.yaml
+│   │   ├── config.py         # Nạp cấu hình từ database.yaml và .env
 │   │   └── qdrant_client.py  # Singleton quản lý kết nối Qdrant qua gRPC (cổng 6334)
 │   ├── db/
 │   │   ├── __init__.py
-│   │   └── schemas.py        # Pydantic schemas (DTO) cho Request và Response
+│   │   ├── enums.py          # Enums chuẩn hóa: PointStatus, CatalogCategory
+│   │   └── models.py         # Entity ImagePointPayload lưu trong Vector Point
+│   ├── repositories/
+│   │   ├── __init__.py
+│   │   ├── base.py           # Base Repository trừu tượng hóa tương tác Qdrant
+│   │   └── image_repository.py # Repository CRUD & Vector search cho collection image_gallery
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── common.py         # ApiResponse[T] envelope chuẩn doanh nghiệp
+│   │   └── search.py         # Pydantic DTOs cho Search Request & Response
 │   └── services/
 │       ├── __init__.py
-│       └── search_service.py # Nghiệp vụ trích xuất vector, normalize L2 và query Qdrant
+│       └── search_service.py # Nghiệp vụ trích xuất vector CLIP và truy vấn qua Repository
 ├── storage/
 │   └── uploads/              # Nơi lưu tạm file do client upload lên để tìm kiếm so sánh
 ├── test/                     # Các test script đơn lẻ (kiểm tra CPU, gRPC, seed, retrieve)
@@ -101,11 +110,13 @@ fasearch/ai/
 
 ## 3. KIẾN TRÚC & LUỒNG DỮ LIỆU
 
-### 3.1. Phân tầng kiến trúc
-- **Controller / Router (`src/api/`):** Chỉ xử lý tiếp nhận HTTP, validate input DTO, gọi Service, trả response chuẩn.
-- **Service (`src/services/`):** Nơi chứa 100% logic nghiệp vụ AI và truy vấn dữ liệu. Không import trực tiếp `FastAPI` hay phụ thuộc HTTP request.
-- **Core (`src/core/`):** Quản lý cấu hình và Singleton Model/Client. Model CLIP chỉ được nạp lên VRAM 1 lần khi server khởi động (`lifespan`).
-- **Data Schemas (`src/db/schemas.py`):** Định nghĩa Type-Safe DTOs qua Pydantic.
+### 3.1. Phân tầng kiến trúc (Clean Architecture)
+- **Controller / Router (`src/api/`):** Chỉ xử lý tiếp nhận HTTP, validate input DTO qua `src/schemas/`, điều phối Service, trả response chuẩn qua `ApiResponse`.
+- **Service (`src/services/`):** Nơi chứa 100% logic nghiệp vụ AI (CLIP encoding, chuẩn hóa vector L2). Không gọi trực tiếp DB client mà tương tác thông qua tầng Repository. Không phụ thuộc HTTP request.
+- **Repository (`src/repositories/`):** Đóng gói toàn bộ thao tác giao tiếp với Qdrant (truy vấn vector, tự động lọc soft-deleted, CRUD point, batch upsert).
+- **Domain Models & Enums (`src/db/`):** Chứa thực thể dữ liệu lưu trữ của Vector Point (`ImagePointPayload`) và các Enums quy chuẩn (`PointStatus`, `CatalogCategory`).
+- **DTO Schemas (`src/schemas/`):** Định nghĩa Type-Safe DTOs qua Pydantic cho Request/Response HTTP (`ApiResponse`, `SearchTextRequest`, `SearchData`,...).
+- **Core (`src/core/`):** Quản lý cấu hình tập trung (`config.py`), Lifespan model CLIP (`ai_model.py`) và kết nối singleton (`qdrant_client.py`).
 
 ### 3.2. An toàn tải file (Upload Safety)
 - Không lưu file tạm với tên gốc trực tiếp từ client để tránh Race Condition (bị ghi đè khi upload cùng lúc).
@@ -165,9 +176,16 @@ Toàn bộ API trả về cấu trúc thống nhất:
      - `Create`: Tạo mới bản ghi / Upload & sinh vector.
      - `Read`: Tìm kiếm theo vector (Text/Image) và xem chi tiết theo ID.
      - `Update`: Cập nhật payload thông tin / cập nhật vector.
-     - `Delete`: Xóa mềm (`Soft Delete` gán status `DELETED`) hoặc Xóa cứng (`Hard Delete`).
-5. **Gói Python:**
-   - Mọi thư mục chứa code (`src/`, `src/api/`, `src/core/`, `src/db/`, `src/services/`, `scripts/`, `test/`) phải có file `__init__.py`.
+     - `Delete`: Hỗ trợ cả 2 cơ chế Xóa mềm (`Soft Delete` gán status `DELETED`) và Xóa cứng (`Hard Delete`).
+5. **Quy chuẩn Phân quyền (Auth & Roles):**
+   - **Tìm kiếm (Read / Search):** Quyền `PUBLIC` (người dùng chưa đăng nhập hoặc khách có thể tìm kiếm sản phẩm thời trang).
+   - **Thao tác Ghi / Sửa / Xóa (Create, Update, Delete - CUD):** Bắt buộc phân quyền `ADMIN` (chỉ quản trị viên hoặc luồng nội bộ được phép tạo, cập nhật hoặc xóa dữ liệu sản phẩm / vector).
+6. **Cơ chế Xóa (Soft Delete vs Hard Delete):**
+   - **Mặc định:** Sử dụng **Xóa mềm (Soft Delete)** bằng cách chuyển `status` sang `PointStatus.DELETED`.
+   - **Lọc tự động:** Khi thực hiện tìm kiếm tương đồng vector, tầng Repository tự động thêm filter loại trừ (`must_not`) tất cả các bản ghi có trạng thái `DELETED`.
+   - **Xóa cứng (Hard Delete):** Cung cấp hàm xóa dứt điểm khỏi Vector DB để phục vụ dọn dẹp hệ thống khi có yêu cầu từ Admin.
+7. **Gói Python:**
+   - Mọi thư mục chứa code (`src/`, `src/api/`, `src/core/`, `src/db/`, `src/repositories/`, `src/schemas/`, `src/services/`, `scripts/`, `test/`) phải có file `__init__.py`.
 
 ---
 
