@@ -4,17 +4,16 @@ import shutil
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from src.db.schemas import SearchTextRequest, SearchData, ApiResponse
 from src.services.search_service import search_by_text, search_by_image
-from src.core.config import settings
+from src.core.config import settings, BASE_DIR
 
 router = APIRouter()
 
-# Cấu hình từ configs/database.yaml
+# Cấu hình từ configs/database.yaml và .env
 MAX_SEARCH_LIMIT = settings.get("app", {}).get("max_search_limit", 50)
 VALID_IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp')
 
-# Tự động trỏ tới thư mục storage/uploads ở gốc dự án
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UPLOAD_DIR = os.path.join(BASE_DIR, "storage", "uploads")
+# Tự động trỏ tới thư mục uploads theo cấu hình
+UPLOAD_DIR = os.path.join(BASE_DIR, settings.app.upload_dir)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 

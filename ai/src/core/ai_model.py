@@ -19,7 +19,11 @@ def get_ai_model():
     if _model is not None:
         return _device, _model, _processor
         
-    _device = "cuda" if torch.cuda.is_available() else "cpu"
+    configured_device = settings.model.device.lower()
+    if configured_device == "auto":
+        _device = "cuda" if torch.cuda.is_available() else "cpu"
+    else:
+        _device = configured_device
     print(f"[*] Đang nạp mô hình CLIP lên thiết bị: {_device}...")
     
     model_id =MODEL_ID

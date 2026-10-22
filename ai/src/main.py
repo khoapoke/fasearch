@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from src.api.endpoints import router as search_router
 from src.core.ai_model import get_ai_model
 from src.core.qdrant_client import get_qdrant_client
+from src.core.config import settings, BASE_DIR
 
 # Cấu hình logging
 logger = logging.getLogger("uvicorn.error")
@@ -110,15 +111,14 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(search_router, prefix="/api", tags=["Search API"])
 
 # 6. Phục vụ thư mục tĩnh (Static files)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UPLOAD_DIR = os.path.join(BASE_DIR, "storage", "uploads")
-DATASET_DIR = os.path.join(BASE_DIR, "dataset")
+UPLOAD_DIR = os.path.join(BASE_DIR, settings.app.upload_dir)
+DATASET_DIR = os.path.join(BASE_DIR, settings.app.raw_data_dir)
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(DATASET_DIR, exist_ok=True)
 
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/dataset", StaticFiles(directory=DATASET_DIR), name="dataset")
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+app.mount("/dataset", StaticFiles(directory=str(DATASET_DIR)), name="dataset")
 
 
 @app.get("/", tags=["Trang chủ"])

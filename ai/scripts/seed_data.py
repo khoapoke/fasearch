@@ -4,12 +4,13 @@ import uuid
 import argparse
 import logging
 import torch
+from pathlib import Path
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
-from src.core.config import settings
+from src.core.config import settings, BASE_DIR
 
 # Thiết lập logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -22,9 +23,9 @@ COLLECTION_NAME = settings["qdrant"]["collection_name"]
 MODEL_ID = settings["model"]["id"]
 RAW_DATA_DIR_NAME = settings.get("app", {}).get("raw_data_dir", "dataset")
 
-# Thư mục gốc dự án
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Thư mục gốc dự án và đường dẫn dataset
 DATASET_ROOT = os.path.join(BASE_DIR, RAW_DATA_DIR_NAME)
+
 
 
 def scan_images(target_dir: str):

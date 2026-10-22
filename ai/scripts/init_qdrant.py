@@ -7,7 +7,7 @@ from src.core.config import settings
 QDRANT_HOST = settings["qdrant"]["host"]
 QDRANT_PORT = settings["qdrant"]["grpc_port"]
 COLLECTION_NAME = settings["qdrant"]["collection_name"]
-VECTOR_SIZE = settings["app"]["vector_size"]
+VECTOR_SIZE = settings["qdrant"]["vector_size"]
 
 
 
