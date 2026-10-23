@@ -19,7 +19,12 @@ def _format_results(results):
     return formatted
 
 
-def search_by_text(query_text: str, limit: int = 5):
+def search_by_text(
+    query_text: str,
+    limit: int = 5,
+    exclude_deleted: bool = True,
+    score_threshold: torch.Tensor | float | None = None,
+):
     """Trích xuất vector text và tìm kiếm ảnh tương đồng qua ImageRepository."""
     device, model, processor = get_ai_model()
     img_repo = get_image_repository()
@@ -31,11 +36,22 @@ def search_by_text(query_text: str, limit: int = 5):
         text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
         query_vector = text_features.cpu().numpy()[0].tolist()
 
-    results = img_repo.search_vectors(query_vector=query_vector, limit=limit, exclude_deleted=True)
+    threshold = float(score_threshold) if score_threshold is not None else None
+    results = img_repo.search_vectors(
+        query_vector=query_vector,
+        limit=limit,
+        score_threshold=threshold,
+        exclude_deleted=exclude_deleted,
+    )
     return _format_results(results)
 
 
-def search_by_image(image_path: str, limit: int = 5):
+def search_by_image(
+    image_path: str,
+    limit: int = 5,
+    exclude_deleted: bool = True,
+    score_threshold: torch.Tensor | float | None = None,
+):
     """Trích xuất vector ảnh và tìm kiếm ảnh tương đồng qua ImageRepository."""
     device, model, processor = get_ai_model()
     img_repo = get_image_repository()
@@ -53,8 +69,15 @@ def search_by_image(image_path: str, limit: int = 5):
         image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
         query_vector = image_features.cpu().numpy()[0].tolist()
 
-    results = img_repo.search_vectors(query_vector=query_vector, limit=limit, exclude_deleted=True)
+    threshold = float(score_threshold) if score_threshold is not None else None
+    results = img_repo.search_vectors(
+        query_vector=query_vector,
+        limit=limit,
+        score_threshold=threshold,
+        exclude_deleted=exclude_deleted,
+    )
     return _format_results(results)
+
 
 
 # ghi chú là chưa phát triển xong 

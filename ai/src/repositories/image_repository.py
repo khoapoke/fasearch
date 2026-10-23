@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
+    Distance,
     FieldCondition,
     Filter,
     MatchValue,
@@ -9,6 +10,7 @@ from qdrant_client.models import (
     PointStruct,
     Record,
     ScoredPoint,
+    VectorParams,
 )
 
 from src.core.config import settings
@@ -166,6 +168,97 @@ class ImageRepository(BaseRepository):
             points_selector=PointIdsList(points=[point_id]),
         )
         return True
+
+    def count_points(self, filter_status: Optional[PointStatus] = None) -> int:
+        """
+        Đếm tổng số point trong collection. Có thể lọc theo trạng thái PointStatus.
+        """
+        query_filter = None
+        if filter_status is not None:
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="status",
+                        match=MatchValue(value=filter_status.value),
+                    )
+                ]
+            )
+        res = self.client.count(
+            collection_name=self.collection_name,
+            count_filter=query_filter,
+            exact=True,
+        )
+        return res.count
+
+    def scroll_points(
+        self,
+        limit: int = 20,
+        offset: Optional[Union[str, int]] = None,
+        filter_status: Optional[PointStatus] = None,
+        with_payload: bool = True,
+    ) -> tuple[List[Record], Optional[Union[str, int]]]:
+        """
+        Phân trang duyệt danh sách Point từ Qdrant (scroll).
+        Trả về (records, next_offset).
+        """
+        query_filter = None
+        if filter_status is not None:
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="status",
+                        match=MatchValue(value=filter_status.value),
+                    )
+                ]
+            )
+        records, next_offset = self.client.scroll(
+            collection_name=self.collection_name,
+            limit=limit,
+            offset=offset,
+            scroll_filter=query_filter,
+            with_payload=with_payload,
+            with_vectors=False,
+        )
+        return records, next_offset
+
+    def get_collection_info(self) -> Dict[str, Any]:
+        """
+        Lấy thông tin tổng quan của collection: trạng thái, số lượng point, v.v.
+        """
+        try:
+            info = self.client.get_collection(collection_name=self.collection_name)
+            return {
+                "status": str(info.status),
+                "vectors_count": getattr(info, "vectors_count", None),
+                "points_count": getattr(info, "points_count", 0),
+            }
+        except Exception as e:
+            logger.warning(f"Không thể lấy collection info: {e}")
+            return {}
+
+    def reset_collection(self) -> bool:
+        """
+        Xóa sạch collection hiện tại và tạo lại collection rỗng với cấu hình chuẩn
+        (vector_size và distance được lấy từ settings.qdrant).
+        """
+        if self.client.collection_exists(self.collection_name):
+            self.client.delete_collection(collection_name=self.collection_name)
+
+        distance_choice = Distance.COSINE
+        if settings.qdrant.distance.lower() == "euclid":
+            distance_choice = Distance.EUCLID
+        elif settings.qdrant.distance.lower() == "dot":
+            distance_choice = Distance.DOT
+
+        self.client.create_collection(
+            collection_name=self.collection_name,
+            vectors_config=VectorParams(
+                size=settings.qdrant.vector_size,
+                distance=distance_choice,
+            ),
+        )
+        return True
+
 
 
 # Singleton instance cho ImageRepository

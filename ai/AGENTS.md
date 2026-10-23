@@ -33,9 +33,15 @@ Dự án là một Backend AI Service cung cấp khả năng **Tìm kiếm thờ
 ### 1.2. Cấu trúc thư mục & Module
 ```text
 fasearch/ai/
+├── admin_app/                # Ứng dụng Streamlit quản trị và kiểm thử trực quan
+│   ├── __init__.py
+│   ├── app.py                # Entrypoint Streamlit (Dashboard, Point CRUD, Playground)
+│   ├── components/           # UI Helpers: xử lý ảnh, badges trạng thái
+│   └── views/                # Các màn hình: overview, point_manager, search_tester
 ├── configs/
 │   └── database.yaml         # Cấu hình Qdrant, Model CLIP, thư mục ảnh, tham số search
 ├── dataset/                  # Thư mục chứa dataset ảnh (test, raw,...); nguồn nạp dữ liệu chính
+│   └── admin/                # Nơi lưu trữ ảnh sản phẩm mới tải lên từ Admin UI
 ├── scripts/
 │   ├── __init__.py
 │   ├── init_qdrant.py        # Khởi tạo/Reset Qdrant collection (vector_size: 512, cosine)
@@ -185,7 +191,7 @@ Toàn bộ API trả về cấu trúc thống nhất:
    - **Lọc tự động:** Khi thực hiện tìm kiếm tương đồng vector, tầng Repository tự động thêm filter loại trừ (`must_not`) tất cả các bản ghi có trạng thái `DELETED`.
    - **Xóa cứng (Hard Delete):** Cung cấp hàm xóa dứt điểm khỏi Vector DB để phục vụ dọn dẹp hệ thống khi có yêu cầu từ Admin.
 7. **Gói Python:**
-   - Mọi thư mục chứa code (`src/`, `src/api/`, `src/core/`, `src/db/`, `src/repositories/`, `src/schemas/`, `src/services/`, `scripts/`, `test/`) phải có file `__init__.py`.
+   - Mọi thư mục chứa code (`admin_app/`, `src/`, `src/api/`, `src/core/`, `src/db/`, `src/repositories/`, `src/schemas/`, `src/services/`, `scripts/`, `test/`) phải có file `__init__.py`.
 
 ---
 
@@ -221,12 +227,19 @@ python scripts/init_qdrant.py
 python scripts/seed_data.py
 ```
 
-### 5.4. Chạy Server Development
+### 5.4. Chạy Server Development (FastAPI)
 ```powershell
 python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
 ```
 - Swagger UI (Docs): `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
+
+### 5.5. Chạy Admin Console & Test Playground (Streamlit)
+```powershell
+# Khởi chạy giao diện Admin & kiểm thử trực quan
+streamlit run admin_app/app.py
+```
+- Admin Console UI: `http://localhost:8501`
 
 ---
 
