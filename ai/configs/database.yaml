@@ -1,26 +1,13 @@
 # ==========================================
-# CẤU HÌNH CƠ SỞ DỮ LIỆU VECTOR (QDRANT)
+# CẤU HÌNH BẤT BIẾN NGHIỆP VỤ & AI MODEL
+# (Các cấu hình mạng, IP, Port, Path quản lý tại file .env)
 # ==========================================
+
+# port mở trên web để xem giao diện qdrant trong db http://localhost:6333/dashboard
 qdrant:
-  host: "localhost"
-  grpc_port: 6334
-  http_port: 6333
   collection_name: "image_gallery"
   vector_size: 512
-  prefer_grpc: true
+  distance: "Cosine"
 
-# ==========================================
-# CẤU HÌNH MÔ HÌNH AI (CLIP)
-# ==========================================
 model:
   id: "openai/clip-vit-base-patch32"
-  device: "auto"  # Đặt 'auto' để code tự ưu tiên chọn cuda nếu có
-
-# ==========================================
-# CẤU HÌNH HỆ THỐNG VÀ ỨNG DỤNG
-# ==========================================
-app:
-  upload_dir: "storage/uploads"
-  raw_data_dir: "dataset/test"
-  max_search_limit: 5  # Giới hạn số lượng kết quả tối đa mỗi lần tìm
-  vector_size: 512
