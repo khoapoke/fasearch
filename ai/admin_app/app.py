@@ -8,7 +8,7 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 import torch
-
+import logging
 from src.core.config import settings
 from src.core.ai_model import get_ai_model
 from src.repositories import get_image_repository
@@ -16,13 +16,17 @@ from admin_app.views.overview import render_overview
 from admin_app.views.point_manager import render_point_manager
 from admin_app.views.search_tester import render_search_tester
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # ==========================================
 # CẤU HÌNH TRANG STREAMLIT
 # ==========================================
 st.set_page_config(
     page_title="Fashion AI Search | Admin Console",
-    page_icon="🛍️",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -84,10 +88,11 @@ with st.sidebar:
     selected_page = st.radio(
         "Chức năng quản trị:",
         options=[
-            "📊 Tổng quan & Cấu hình",
-            "🖼️ Quản trị Vector Point",
-            "🔍 Sân chơi Tìm kiếm",
+            {"choose": 1, "title": "Tổng quan"},
+            {"choose": 2, "title": "Vector Point"},
+            {"choose": 3, "title": "Thử nghiệm tìm kiếm"},
         ],
+        format_func=lambda opt: opt["title"],
         index=0,
     )
 
@@ -112,9 +117,11 @@ with st.sidebar:
 # ==========================================
 # ĐIỀU PHỐI MÀN HÌNH CHÍNH (ROUTER)
 # ==========================================
-if selected_page == "📊 Tổng quan & Cấu hình":
+choice = selected_page.get("choose", 1)
+
+if choice == 1:
     render_overview()
-elif selected_page == "🖼️ Quản trị Vector Point":
+elif choice == 2:
     render_point_manager()
-elif selected_page == "🔍 Sân chơi Tìm kiếm":
+elif choice == 3:
     render_search_tester()

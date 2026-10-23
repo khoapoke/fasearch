@@ -12,9 +12,9 @@ def render_overview():
     """
     Trang 1: Thống kê trạng thái hệ thống, GPU, Qdrant và chỉnh sửa cấu hình database.yaml.
     """
-    st.subheader("📊 Tổng quan Hệ thống & Cấu hình (Overview & Config)")
+    st.subheader("Hệ thống & Cấu hình ")
     st.caption("Giám sát trạng thái phần cứng, Vector Database và chỉnh sửa trực quan file cấu hình.")
-
+    st.caption("Truy cập đường dẫn http://localhost:6333/dashboard để xem chi tiết collection trong db")
     repo = get_image_repository()
 
     # ==========================================
@@ -84,7 +84,7 @@ def render_overview():
     # ==========================================
     # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML (CÁCH A)
     # ==========================================
-    st.subheader("⚙️ Chỉnh sửa Cấu hình (`configs/database.yaml`)")
+    st.subheader("Chỉnh sửa Cấu hình (`configs/database.yaml`)", )
     st.markdown(
         "Trực quan hóa và chỉnh sửa cấu hình hệ thống. Nội dung được validate cú pháp YAML an toàn trước khi ghi đĩa."
     )
@@ -110,7 +110,7 @@ def render_overview():
 
         col_save, col_info = st.columns([1, 4])
         with col_save:
-            submitted = st.form_submit_button("💾 Lưu cấu hình", type="primary")
+            submitted = st.form_submit_button("Lưu cấu hình", type="primary")
 
         if submitted:
             try:
@@ -134,7 +134,7 @@ def render_overview():
     # ==========================================
     # PHẦN 3: VÙNG NGUY HIỂM: RESET COLLECTION & SEEDING (DANGER ZONE)
     # ==========================================
-    st.subheader("🚨 Vùng Nguy Hiểm: Quản trị & Tái tạo Database (Danger Zone)")
+    st.subheader("🚨 Vùng nguy hiểm: Database")
     st.markdown("Xóa toàn bộ vector point cũ trong collection và tái tạo lại từ đầu, hoặc chạy nạp lại dữ liệu chuẩn.")
 
     with st.container(border=True):
@@ -142,7 +142,7 @@ def render_overview():
 
         # Cột 1: Xóa & Tạo mới Collection
         with col_d1:
-            st.markdown("##### 🗑️ Reset Database (Drop & Recreate)")
+            st.markdown("##### Reset Database (Drop & Recreate)")
             st.caption(
                 f"Xóa vĩnh viễn collection `{repo.collection_name}` trên Qdrant và tạo lại bảng rỗng với vector_size: {settings.qdrant.vector_size} (Cosine)."
             )
@@ -185,14 +185,14 @@ def render_overview():
                     index=1,
                 )
 
-            btn_seed = st.button("🚀 Bắt đầu Nạp Dữ liệu Mẫu", key="btn_run_seeder")
+            btn_seed = st.button("Bắt đầu Nạp Dữ liệu Mẫu", key="btn_run_seeder",type="primary")
             if btn_seed:
                 target_sub = None if subfolder_choice == "Toàn bộ dataset" else subfolder_choice
                 with st.spinner(f"Đang nạp ảnh từ thư mục `{subfolder_choice}` theo batch {batch_size_choice}..."):
                     try:
                         from scripts.seed_data import seed_data
                         seed_data(subfolder=target_sub, batch_size=batch_size_choice)
-                        st.success("🎉 Nạp dữ liệu hoàn tất thành công!")
+                        st.success("Nạp dữ liệu hoàn tất thành công!", icon="")
                         st.rerun()
                     except Exception as ex:
                         st.error(f"Lỗi trong quá trình nạp dữ liệu: {ex}")

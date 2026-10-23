@@ -20,12 +20,12 @@ def render_point_manager():
     """
     Trang 2: Quản trị Point trong Vector Database (Thêm, Sửa, Xóa mềm, Xóa cứng, Duyệt danh sách).
     """
-    st.subheader("🖼️ Quản trị Vector Point (Point Manager)")
+    st.subheader("Quản trị Vector Point (Point Manager)")
     st.caption("Xem danh sách, thêm ảnh mới sinh vector, chỉnh sửa metadata hoặc xóa Point.")
 
     repo = get_image_repository()
 
-    tab_browse, tab_add = st.tabs(["📋 Danh sách Point (Browse)", "➕ Thêm sản phẩm mới (Add Product)"])
+    tab_browse, tab_add = st.tabs(["Danh sách Point", "Thêm sản phẩm mới"])
 
     # =========================================================================
     # TAB 1: DUYỆT & QUẢN LÝ DANH SÁCH POINT
@@ -107,7 +107,7 @@ def render_point_manager():
                             st.caption(f"ID: `{point_id[:16]}...`")
 
                             # 3. Chức năng Chỉnh sửa & Xóa
-                            with st.expander("⚙️ Chi tiết / Sửa"):
+                            with st.expander("Chi tiết / Sửa"):
                                 st.write(f"**ID đầy đủ:** `{point_id}`")
                                 st.write(f"**Đường dẫn:** `{raw_img_path}`")
                                 st.write(f"**Ngày tạo:** {payload.get('created_at', 'N/A')}")
@@ -126,7 +126,7 @@ def render_point_manager():
                                     key=f"cat_{point_id}",
                                 )
 
-                                if st.button("💾 Cập nhật Payload", key=f"btn_update_{point_id}", type="primary"):
+                                if st.button("Cập nhật Payload", key=f"btn_update_{point_id}", type="primary"):
                                     repo.update_payload(
                                         point_id=point_id,
                                         payload={"status": new_status, "catalog": new_cat},
@@ -140,12 +140,12 @@ def render_point_manager():
                                 col_act1, col_act2 = st.columns(2)
                                 with col_act1:
                                     if curr_status != PointStatus.DELETED.value:
-                                        if st.button("🗑️ Xóa mềm", key=f"soft_del_{point_id}", help="Gán status = DELETED"):
+                                        if st.button("Xóa mềm", key=f"soft_del_{point_id}", help="Gán status = DELETED", icon=":material/delete:"):
                                             repo.soft_delete(point_id)
                                             st.toast("Đã xóa mềm bản ghi!")
                                             st.rerun()
                                 with col_act2:
-                                    if st.button("❌ Xóa cứng", key=f"hard_del_{point_id}", help="Xóa vĩnh viễn khỏi Qdrant"):
+                                    if st.button("Xóa cứng", key=f"hard_del_{point_id}", help="Xóa vĩnh viễn khỏi Qdrant", icon=":material/cancel:"):
                                         repo.hard_delete(point_id)
                                         st.toast("Đã xóa cứng vĩnh viễn!")
                                         st.rerun()
@@ -154,7 +154,7 @@ def render_point_manager():
     # TAB 2: THÊM ẢNH MỚI & TỰ ĐỘNG SINH VECTOR (UPLOAD & EMBED)
     # =========================================================================
     with tab_add:
-        st.markdown("##### ➕ Tải lên sản phẩm mới vào `dataset/admin/` & sinh vector CLIP")
+        st.markdown("##### Tải lên sản phẩm mới vào `dataset/admin/` & sinh vector CLIP")
         st.caption("Ảnh được lưu trữ an toàn trong `dataset/admin/`, tự động trích xuất vector 512 chiều và lưu vào Qdrant.")
 
         with st.form("add_product_form", clear_on_submit=True):
@@ -230,7 +230,7 @@ def render_point_manager():
                                 payload=payload_obj,
                             )
 
-                            st.success(f"🎉 Đã thêm thành công! ID: `{new_point_id}` | File: `{file_name}`")
+                            st.success(f"Đã thêm thành công! ID: `{new_point_id}` | File: `{file_name}`", icon=":material/check_circle:")
                             st.toast("Sản phẩm mới đã được nạp vào Vector Database!")
                         except Exception as ex:
                             st.error(f"Lỗi trong quá trình xử lý: {ex}")
