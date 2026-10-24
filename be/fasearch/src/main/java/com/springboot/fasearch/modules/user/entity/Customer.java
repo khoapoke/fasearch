@@ -2,8 +2,14 @@ package com.springboot.fasearch.modules.user.entity;
 
 import java.time.LocalDate;
 
+import org.hibernate.annotations.SQLRestriction;
+
+import com.springboot.fasearch.common.enums.Gender;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,12 +22,13 @@ import lombok.Setter;
 
 @Entity 
 @Table (name = "khach_hang")
+@SQLRestriction("da_xoa = false")
 @Getter 
 @Setter 
 @AllArgsConstructor 
 @NoArgsConstructor 
 @Builder 
-public class Customer {
+public class Customer { 
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ma_kh")
@@ -32,6 +39,10 @@ public class Customer {
 
     @Column(name = "ten_kh", length = 50, nullable = false)
     private String lastName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gioi_tinh", length = 10)
+    private Gender gender;
 
     @Column(name = "sdt", length = 15, unique = true)
     private String phoneNumber;
@@ -44,4 +55,9 @@ public class Customer {
 
     @Column(name = "diem_tich_luy")
     private Integer accumulatePoint;
+
+    @Column(name = "da_xoa", nullable = false)
+    @Builder.Default
+    private Boolean deleted = false;
 }
+

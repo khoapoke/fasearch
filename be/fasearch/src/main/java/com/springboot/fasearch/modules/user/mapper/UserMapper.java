@@ -12,8 +12,6 @@ import com.springboot.fasearch.modules.user.entity.Customer;
 @Mapper(componentModel = "spring")
 public interface UserMapper {
 
-    
-    
     CustomerRes toCustomerResponse(Customer customer);
 
 
