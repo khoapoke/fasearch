@@ -21,27 +21,27 @@ import lombok.Setter;
 @AllArgsConstructor 
 @NoArgsConstructor 
 @Builder 
-public class User {
+public class Customer {
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ma_kh")
-    private Long maKh;
+    private Long id;
 
     @Column(name = "ho_kh", length = 50)
-    private String hoKh;
+    private String firstName;
 
     @Column(name = "ten_kh", length = 50, nullable = false)
-    private String tenKh;
+    private String lastName;
 
     @Column(name = "sdt", length = 15, unique = true)
-    private String sdt;
+    private String phoneNumber;
 
     // @Column(name = "email", length = 100, unique = true) // Cột email từ bảng tai_khoan mang qua hoặc thêm vào bảng này
     // private String email;
 
     @Column(name = "ngay_sinh")
-    private LocalDate ngaySinh;
+    private LocalDate dob; // date of birth
 
     @Column(name = "diem_tich_luy")
-    private Integer diemTichLuy;
+    private Integer accumulatePoint;
 }

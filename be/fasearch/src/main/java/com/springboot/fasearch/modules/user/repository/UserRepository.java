@@ -3,11 +3,9 @@ package com.springboot.fasearch.modules.user.repository;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
-import com.springboot.fasearch.modules.user.entity.User;
+import com.springboot.fasearch.modules.user.entity.Customer;
 
-@Repository 
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findBySdt(String sdt);
+public interface UserRepository extends JpaRepository<Customer, Long> {
+    Optional<Customer> findByPhoneNumber(String phoneNumber);
 }
