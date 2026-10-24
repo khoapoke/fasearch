@@ -10,14 +10,14 @@ import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.mapper.UserMapper;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
-import com.springboot.fasearch.modules.user.service.interfaces.UserServiceInterface;
+import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 
 
 import lombok.RequiredArgsConstructor;
 
 @Service 
 @RequiredArgsConstructor 
-public class UserService implements UserServiceInterface {
+public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
 

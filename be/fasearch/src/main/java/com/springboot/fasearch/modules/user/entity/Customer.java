@@ -58,6 +58,6 @@ public class Customer {
 
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
-    private Boolean deleted = false;
+    private Boolean isDeleted = false;
 }
 

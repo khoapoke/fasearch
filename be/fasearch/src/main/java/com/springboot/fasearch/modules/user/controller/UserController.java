@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
-import com.springboot.fasearch.modules.user.service.interfaces.UserServiceInterface;
+import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 import com.springboot.fasearch.shared.ApiResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserServiceInterface userService;
+    private final UserService userService;
 
     @GetMapping("/customers")
     @ResponseStatus(HttpStatus.OK)
