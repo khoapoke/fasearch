@@ -22,8 +22,18 @@ public enum ErrorCode {
     CUSTOMER_NOT_FOUND(404, "Customer not found", HttpStatus.NOT_FOUND),
     USER_NOT_FOUND(404, "User not found", HttpStatus.NOT_FOUND),
     USER_ALREADY_EXISTS(400, "User already exists", HttpStatus.BAD_REQUEST),
+    USERNAME_ALREADY_EXISTS(400, "Username already exists", HttpStatus.BAD_REQUEST),
     PHONE_NUMBER_ALREADY_EXISTS(400, "Phone number already exists", HttpStatus.BAD_REQUEST),
-    EMAIL_ALREADY_EXISTS(400, "Email already exists", HttpStatus.BAD_REQUEST);
+    EMAIL_ALREADY_EXISTS(400, "Email already exists", HttpStatus.BAD_REQUEST),
+
+    // Auth & Security errors
+    INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
+    ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),
+    ACCOUNT_INACTIVE(403, "Account is not active", HttpStatus.FORBIDDEN),
+    ROLE_NOT_FOUND(404, "Role not found", HttpStatus.NOT_FOUND),
+    UNAUTHENTICATED(401, "Full authentication is required to access this resource", HttpStatus.UNAUTHORIZED),
+    ACCESS_DENIED(403, "You do not have permission to access this resource", HttpStatus.FORBIDDEN),
+    INVALID_TOKEN(401, "Token is invalid or expired", HttpStatus.UNAUTHORIZED);
 
     private final Integer code;
     private final String message;

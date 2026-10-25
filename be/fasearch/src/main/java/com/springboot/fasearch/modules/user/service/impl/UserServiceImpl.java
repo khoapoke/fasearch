@@ -24,11 +24,11 @@ public class UserServiceImpl implements UserService {
 
     @Override 
     public CustomerRes getCustomerById(Long id) {
-        // Tìm Khách hàng, nếu không có thì ném lỗi (tới lớp Exception Handler xử lý)
+
         Customer user = userRepository.findById(id).orElseThrow(()-> new AppException(ErrorCode.CUSTOMER_NOT_FOUND
         ));
         
-        // Dùng Mapper để map Entity -> DTO và trả về
+        
         return userMapper.toCustomerResponse(user);
     }
     @Override 
@@ -37,7 +37,7 @@ public class UserServiceImpl implements UserService {
         return userRepository.findAll()
         .stream()
         .map(cus->userMapper.toCustomerResponse(cus))
-        .toList();
+        .toList(); 
 
     }
 }

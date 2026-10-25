@@ -27,7 +27,7 @@ public class UserController {
     public ApiResponse<List<CustomerRes>> getCustomers(){
         
         List<CustomerRes> listCustomerRes= userService.getListCustomers();
-        return ApiResponse.success(200, "lấy danh sách khách hàng thành công", listCustomerRes); 
+        return ApiResponse.success(200, "Successfully retrieved the list of customers ", listCustomerRes); 
         
     }
 
@@ -35,7 +35,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CustomerRes> getCustomer(@PathVariable Long id) {
         CustomerRes response = userService.getCustomerById(id);
-        return ApiResponse.success(200, "Lấy chi tiết người dùng thành công", response);
+        return ApiResponse.success(200, "Successfully retrieved customer detail", response);
     }
 
 
