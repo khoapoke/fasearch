@@ -122,9 +122,9 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 
 ## 4. Cập nhật hồ sơ khách hàng (FR-12)
 
-- **Endpoint:** `PUT /api/v1/users/customers/{id}`
+- **Endpoint:** `PATCH /api/v1/users/customers/{id}` (hoặc `PUT`)
 - **Quyền hạn:** `ADMIN`, `STAFF`, `CUSTOMER`
-- **Mô tả:** Thay đổi thông tin cá nhân như Họ tên, Ngày sinh, Địa chỉ, Giới tính.
+- **Mô tả:** Cập nhật từng phần (Partial Update) thông tin cá nhân như Họ tên, Ngày sinh, Địa chỉ, Giới tính (chỉ cập nhật các trường được gửi lên, giữ nguyên các trường null).
 
 ### Request Body
 ```json
@@ -230,9 +230,9 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 ```
 
 ### 7.3. Cập nhật nhân viên (FR-16)
-- **Endpoint:** `PUT /api/v1/users/employees/{id}`
+- **Endpoint:** `PATCH /api/v1/users/employees/{id}`
 - **Quyền hạn:** `ADMIN`
-
+- **Mô tả:** cập nhật từng phần (partial part) cho nhân viên tránh việc không để field bị cập nhật thành null hết
 ### 7.4. Xóa mềm nhân viên (FR-17)
 - **Endpoint:** `DELETE /api/v1/users/employees/{id}`
 - **Quyền hạn:** `ADMIN`

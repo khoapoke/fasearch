@@ -49,8 +49,8 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | :--- | :--- | :--- | :---: | :---: |
 | FR-10 | Xem danh sách khách hàng | Hiển thị danh sách khách hàng, tìm kiếm/lọc theo Tên, SĐT, Hạng thành viên | `A` `S` | X |
 | FR-11 | Xem chi tiết khách hàng | Xem thông tin chi tiết hồ sơ khách hàng theo ID | `A` `S` `C` | X |
-| FR-12 | Thêm / Sửa khách hàng | Tạo mới hoặc chỉnh sửa hồ sơ khách hàng (Họ tên, Ngày sinh, Địa chỉ, Email) | `A` `S` | |
-| FR-13 | Xóa mềm khách hàng | Chuyển trạng thái `da_xoa = true`, không xóa vĩnh viễn khỏi CSDL | `A` | |
+| FR-12 | Thêm / Sửa khách hàng | Tạo mới hoặc chỉnh sửa hồ sơ khách hàng (Họ tên, Ngày sinh, Địa chỉ, Email) | `A` `S` | X |
+| FR-13 | Xóa mềm khách hàng | Chuyển trạng thái `da_xoa = true`, không xóa vĩnh viễn khỏi CSDL | `A` | X |
 | FR-14 | Tra cứu khách hàng tại quầy | Hiển thị thông tin KH (Họ tên, Hạng, Điểm tích lũy) khi nhập SĐT tại quầy POS | `S` | |
 | FR-15 | Xem danh sách nhân viên | Hiển thị danh sách nhân viên, tìm kiếm/lọc theo Tên, SĐT, CCCD | `A` | |
 | FR-16 | Thêm / Sửa nhân viên | Tạo mới hoặc chỉnh sửa hồ sơ nhân viên (Họ tên, CCCD, SĐT, Giới tính, Địa chỉ) | `A` | |
