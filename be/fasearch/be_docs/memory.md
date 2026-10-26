@@ -15,25 +15,40 @@
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
     - `FR-31`: Export receipt creation, warehouse transfer & damaged stock write-off (`POST /api/v1/inventory/export-receipts`, `GET /api/v1/inventory/export-receipts`, `GET /api/v1/inventory/export-receipts/{id}`).
+    - `FR-32`: Stocktaking by barcode scanning (`POST /api/v1/inventory/stocktakes`, `GET /api/v1/inventory/stocktakes`, `GET /api/v1/inventory/stocktakes/{id}`).
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready for subsequent Inventory features (`FR-32` -> `FR-34`).
+- **In-progress Task:** Ready to transition to the next business module per user request (e.g. Module 7 `order` / `cart` `FR-35` -> `FR-41`, or completing remaining inventory background actions `FR-33`, `FR-34`).
 - **Next Immediate Actions:**
-  1. Implement `FR-32`: Stocktaking by barcode scanning (`POST /api/v1/inventory/stocktakes`).
-  2. Implement `FR-33`: Automatic inventory reconciliation (`POST /api/v1/inventory/stocktakes/{id}/reconcile`).
-  3. Implement `FR-34`: Low-stock alert retrieval (`GET /api/v1/inventory/low-stock-alerts`).
+  1. Confirm next target module with user (e.g. Module 7: Order & Cart Management `FR-35`..`FR-41`).
 - **Technical Gotchas & Constraints:**
-  - Database tables: `ton_kho`, `phieu_nhap_kho`, `ct_phieu_nhap` via `V5`, `phieu_xuat_kho`, `ct_phieu_xuat` via `V6`.
-  - Export receipts use auto-generated unique code `XK-YYYYMMDD-XXX` and export types: `DAMAGED`, `TRANSFER`, `OTHER`.
-  - Stock deduction strictly validates available stock per SKU (`availableStock >= requestedQuantity`) before modifying any records; fails immediately with HTTP 400 `INSUFFICIENT_STOCK`.
-  - Auto-deduction formula: `physicalStock -= quantity`, `availableStock = physicalStock - reservedStock` inside a `@Transactional` boundary.
+  - Database tables: `ton_kho`, `phieu_nhap_kho`, `ct_phieu_nhap` via `V5`, `phieu_xuat_kho`, `ct_phieu_xuat` via `V6`, `phieu_kiem_ke`, `ct_phieu_kiem_ke` via `V7`.
+  - Stocktake records use auto-generated code `KK-YYYYMMDD-XXX` and status `PENDING_APPROVAL`.
+  - Stocktake discrepancy formula: `difference = actualCount - systemCount`, tracking total discrepancy magnitude `totalDiscrepancy += Math.abs(difference)`.
   - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 16] Implemented FR-32 (Stocktaking by Barcode Scanning) in Inventory Module (2026-10-27)
+- **Done:**
+  - Created Flyway migration `V7__create_stocktake_tables.sql` for tables `phieu_kiem_ke` and `ct_phieu_kiem_ke` with indexes on code and FKs.
+  - Created `StocktakeStatus` enum (`PENDING_APPROVAL`, `RECONCILED`, `CANCELLED`).
+  - Added new error codes to `ErrorCode`: `STOCKTAKE_NOT_FOUND` (404), `INVALID_STOCKTAKE_RECORD` (400).
+  - Created JPA entities: `Stocktake` and `StocktakeDetail` with `@SQLRestriction("da_xoa = false")`.
+  - Created DTOs: `StocktakeItemReq`, `StocktakeCreateReq`, `StocktakeDiscrepancyRes`, `StocktakeRes`, `StocktakeDetailRes`.
+  - Created Repositories: `StocktakeRepository` (with `JpaSpecificationExecutor`) and `StocktakeDetailRepository`.
+  - Updated `InventoryMapper` with MapStruct mappings for stocktakes, line records, and discrepancy items.
+  - Implemented `InventoryService` & `InventoryServiceImpl`:
+    - `POST /api/v1/inventory/stocktakes`: Auto-generates `KK-YYYYMMDD-XXX`, captures system snapshot `systemCount` from inventory physical stock, computes `difference = actualCount - systemCount`, sums absolute discrepancies, and saves in status `PENDING_APPROVAL`.
+    - `GET /api/v1/inventory/stocktakes`: Paginated specification search by `stocktakeCode` and `status`.
+    - `GET /api/v1/inventory/stocktakes/{id}`: Detailed view of stocktake with list of discrepancies.
+  - Updated `InventoryController` without `@Operation` annotations, accessible by `ADMIN` and `STAFF`.
+  - Updated `be_docs/module.md` marking FR-32 as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (129 source files, 0 errors, 0 warnings).
 
 ### [Session 15] Implemented FR-31 (Export Receipts & Warehouse Transfers) in Inventory Module (2026-10-26)
 - **Done:**
@@ -99,18 +114,4 @@
   - Updated `be_docs/api/api-product.md` with complete documentation for all FR-26 endpoints.
 - **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 
-### [Session 11] Implemented FR-22, FR-23, FR-24, FR-25 in Product Module (2026-10-26)
-- **Done:**
-  - Added new error codes: `PRODUCT_NOT_FOUND` (404), `BARCODE_ALREADY_EXISTS` (400).
-  - Created entities: `Product` (`san_pham`) and `ProductVariant` (`bien_the_sp`) with `@SQLRestriction("da_xoa = false")`.
-  - Created DTOs: `ProductRes`, `ProductDetailRes`, `VariantRes`, `ProductCreateReq`, `ProductUpdateReq`, `VariantReq`.
-  - Created `ProductRepository` (with `JpaSpecificationExecutor`), `ProductVariantRepository`, and `ProductMapper` (MapStruct).
-  - Implemented `ProductService` & `ProductServiceImpl`:
-    - `FR-22`: Dynamic multi-criteria specification search (`keyword`, `categoryId`, `minPrice`, `maxPrice`, `status`) with pagination.
-    - `FR-23`: Create product with initial variants and auto-generated barcodes (`SP%04d-%s-%s`).
-    - `FR-24`: Get product detail by ID and partial update (`PATCH /api/v1/products/{id}`).
-    - `FR-25`: Soft delete product (`da_xoa = true`, status `DISCONTINUED`).
-  - Created `ProductController` with `@ParameterObject Pageable` and `@SecurityRequirement`.
-  - Configured `SecurityConfig` to protect mutating product endpoints with `ADMIN` role.
-- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 

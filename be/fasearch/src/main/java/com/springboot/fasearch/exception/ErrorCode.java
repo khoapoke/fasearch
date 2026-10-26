@@ -42,7 +42,9 @@ public enum ErrorCode {
     INVENTORY_NOT_FOUND(404, "Inventory record not found", HttpStatus.NOT_FOUND),
     RECEIPT_NOT_FOUND(404, "Import receipt not found", HttpStatus.NOT_FOUND),
     EXPORT_RECEIPT_NOT_FOUND(404, "Export receipt not found", HttpStatus.NOT_FOUND),
+    STOCKTAKE_NOT_FOUND(404, "Stocktake record not found", HttpStatus.NOT_FOUND),
     INVALID_RECEIPT_ITEM(400, "Receipt must contain at least one valid item", HttpStatus.BAD_REQUEST),
+    INVALID_STOCKTAKE_RECORD(400, "Stocktake must contain at least one valid record", HttpStatus.BAD_REQUEST),
     INSUFFICIENT_STOCK(400, "Insufficient stock for requested SKU", HttpStatus.BAD_REQUEST),
 
     // Auth & Security errors

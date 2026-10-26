@@ -100,7 +100,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | FR-29 | Tra cứu tồn kho | Xem số lượng tồn kho khả dụng của từng mã SKU theo từng chi nhánh / kho | `A` `S` | X |
 | FR-30 | Lập phiếu nhập kho | Tạo phiếu nhập kho từ nhà cung cấp, tự động cộng số lượng tồn kho theo SKU | `A` | X |
 | FR-31 | Lập phiếu xuất / Chuyển kho | Tạo phiếu xuất hủy (hàng lỗi) hoặc phiếu chuyển kho giữa các chi nhánh | `A` | X |
-| FR-32 | Kiểm kê kho | Tạo phiếu kiểm kê, ghi nhận số lượng đếm thực tế bằng quét mã vạch | `A` `S` | |
+| FR-32 | Kiểm kê kho | Tạo phiếu kiểm kê, ghi nhận số lượng đếm thực tế bằng quét mã vạch | `A` `S` | X |
 | FR-33 | Cân bằng kho | Tự động tạo phiếu cân bằng để điều chỉnh tồn phần mềm khớp với thực tế | `SYS` | |
 | FR-34 | Cảnh báo tồn kho thấp | Gửi thông báo khi số lượng tồn kho SKU xuống bằng hoặc dưới ngưỡng tối thiểu | `SYS` | |
 

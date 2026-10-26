@@ -16,13 +16,17 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.springboot.fasearch.common.enums.ExportType;
+import com.springboot.fasearch.common.enums.StocktakeStatus;
 import com.springboot.fasearch.modules.inventory.dto.request.ExportReceiptCreateReq;
 import com.springboot.fasearch.modules.inventory.dto.request.ImportReceiptCreateReq;
+import com.springboot.fasearch.modules.inventory.dto.request.StocktakeCreateReq;
 import com.springboot.fasearch.modules.inventory.dto.response.ExportReceiptDetailRes;
 import com.springboot.fasearch.modules.inventory.dto.response.ExportReceiptRes;
 import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptDetailRes;
 import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptRes;
 import com.springboot.fasearch.modules.inventory.dto.response.StockRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeDetailRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeRes;
 import com.springboot.fasearch.modules.inventory.service.interfaces.InventoryService;
 import com.springboot.fasearch.shared.ApiResponse;
 import com.springboot.fasearch.shared.PageResponse;
@@ -114,5 +118,33 @@ public class InventoryController {
     public ApiResponse<ExportReceiptDetailRes> getExportReceiptById(@PathVariable Long id) {
         ExportReceiptDetailRes result = inventoryService.getExportReceiptById(id);
         return ApiResponse.success(200, "Lấy chi tiết phiếu xuất kho thành công", result);
+    }
+
+    @PostMapping("/stocktakes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<StocktakeDetailRes> createStocktake(@Valid @RequestBody StocktakeCreateReq req) {
+        StocktakeDetailRes result = inventoryService.createStocktake(req);
+        return ApiResponse.success(201, "Ghi nhận phiếu kiểm kê thành công", result);
+    }
+
+    @GetMapping("/stocktakes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<PageResponse<StocktakeRes>> getStocktakes(
+            @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String stocktakeCode,
+            @RequestParam(required = false) StocktakeStatus status) {
+
+        PageResponse<StocktakeRes> result = inventoryService.getStocktakes(pageable, stocktakeCode, status);
+        return ApiResponse.success(200, "Lấy danh sách phiếu kiểm kê thành công", result);
+    }
+
+    @GetMapping("/stocktakes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<StocktakeDetailRes> getStocktakeById(@PathVariable Long id) {
+        StocktakeDetailRes result = inventoryService.getStocktakeById(id);
+        return ApiResponse.success(200, "Lấy chi tiết phiếu kiểm kê thành công", result);
     }
 }

@@ -25,19 +25,28 @@ import com.springboot.fasearch.modules.inventory.dto.request.ImportReceiptItemRe
 import com.springboot.fasearch.modules.inventory.dto.response.ExportReceiptDetailRes;
 import com.springboot.fasearch.modules.inventory.dto.response.ExportReceiptRes;
 import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptDetailRes;
+import com.springboot.fasearch.common.enums.StocktakeStatus;
+import com.springboot.fasearch.modules.inventory.dto.request.StocktakeCreateReq;
+import com.springboot.fasearch.modules.inventory.dto.request.StocktakeItemReq;
 import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptRes;
 import com.springboot.fasearch.modules.inventory.dto.response.StockRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeDetailRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeRes;
 import com.springboot.fasearch.modules.inventory.entity.ExportReceipt;
 import com.springboot.fasearch.modules.inventory.entity.ExportReceiptDetail;
 import com.springboot.fasearch.modules.inventory.entity.ImportReceipt;
 import com.springboot.fasearch.modules.inventory.entity.ImportReceiptDetail;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
+import com.springboot.fasearch.modules.inventory.entity.Stocktake;
+import com.springboot.fasearch.modules.inventory.entity.StocktakeDetail;
 import com.springboot.fasearch.modules.inventory.mapper.InventoryMapper;
 import com.springboot.fasearch.modules.inventory.repository.ExportReceiptDetailRepository;
 import com.springboot.fasearch.modules.inventory.repository.ExportReceiptRepository;
 import com.springboot.fasearch.modules.inventory.repository.ImportReceiptDetailRepository;
 import com.springboot.fasearch.modules.inventory.repository.ImportReceiptRepository;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
+import com.springboot.fasearch.modules.inventory.repository.StocktakeDetailRepository;
+import com.springboot.fasearch.modules.inventory.repository.StocktakeRepository;
 import com.springboot.fasearch.modules.inventory.service.interfaces.InventoryService;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
 import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
@@ -57,6 +66,8 @@ public class InventoryServiceImpl implements InventoryService {
     private final ImportReceiptDetailRepository importReceiptDetailRepository;
     private final ExportReceiptRepository exportReceiptRepository;
     private final ExportReceiptDetailRepository exportReceiptDetailRepository;
+    private final StocktakeRepository stocktakeRepository;
+    private final StocktakeDetailRepository stocktakeDetailRepository;
     private final ProductVariantRepository productVariantRepository;
     private final InventoryMapper inventoryMapper;
 
@@ -364,5 +375,104 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.EXPORT_RECEIPT_NOT_FOUND));
 
         return inventoryMapper.toExportReceiptDetailResponse(receipt);
+    }
+
+    @Override
+    @Transactional
+    public StocktakeDetailRes createStocktake(StocktakeCreateReq req) {
+        if (req.getRecords() == null || req.getRecords().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_STOCKTAKE_RECORD);
+        }
+
+        // 1. Tự động sinh mã phiếu kiểm kê KK-YYYYMMDD-XXX
+        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String prefix = "KK-" + dateStr + "-";
+        long nextSequence = stocktakeRepository.countByStocktakeCodeStartingWith(prefix) + 1;
+        String stocktakeCode = String.format("%s%03d", prefix, nextSequence);
+
+        while (stocktakeRepository.existsByStocktakeCode(stocktakeCode)) {
+            nextSequence++;
+            stocktakeCode = String.format("%s%03d", prefix, nextSequence);
+        }
+
+        Stocktake stocktake = Stocktake.builder()
+                .stocktakeCode(stocktakeCode)
+                .note(req.getNote())
+                .totalDiscrepancy(0)
+                .status(StocktakeStatus.PENDING_APPROVAL)
+                .isDeleted(false)
+                .build();
+
+        Stocktake savedStocktake = stocktakeRepository.save(stocktake);
+
+        // 2. Ghi nhận số lượng đếm thực tế và tính toán chênh lệch
+        int totalDiscrepancy = 0;
+        List<StocktakeDetail> details = new ArrayList<>();
+
+        for (StocktakeItemReq itemReq : req.getRecords()) {
+            ProductVariant variant = productVariantRepository.findById(itemReq.getSkuId())
+                    .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND));
+
+            int systemCount = inventoryRepository.findByVariantId(variant.getId())
+                    .map(invtry->invtry.getPhysicalStock())
+                    .orElse(0);
+
+            int actualCount = itemReq.getActualCount();
+            int difference = actualCount - systemCount;
+            totalDiscrepancy += Math.abs(difference);
+
+            StocktakeDetail detail = StocktakeDetail.builder()
+                    .stocktake(savedStocktake)
+                    .variant(variant)
+                    .systemCount(systemCount)
+                    .actualCount(actualCount)
+                    .difference(difference)
+                    .isDeleted(false)
+                    .build();
+
+            details.add(stocktakeDetailRepository.save(detail));
+        }
+
+        savedStocktake.setTotalDiscrepancy(totalDiscrepancy);
+        savedStocktake.setDetails(details);
+        stocktakeRepository.save(savedStocktake);
+
+        return inventoryMapper.toStocktakeDetailResponse(savedStocktake);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<StocktakeRes> getStocktakes(Pageable pageable, String stocktakeCode, StocktakeStatus status) {
+        Specification<Stocktake> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (stocktakeCode != null && !stocktakeCode.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("stocktakeCode")), "%" + stocktakeCode.trim().toLowerCase() + "%"));
+            }
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Stocktake> page = stocktakeRepository.findAll(spec, pageable);
+        List<StocktakeRes> content = inventoryMapper.toStocktakeResponseList(page.getContent());
+
+        return PageResponse.<StocktakeRes>builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isLast(page.isLast())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StocktakeDetailRes getStocktakeById(Long id) {
+        Stocktake stocktake = stocktakeRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.STOCKTAKE_NOT_FOUND));
+
+        return inventoryMapper.toStocktakeDetailResponse(stocktake);
     }
 }

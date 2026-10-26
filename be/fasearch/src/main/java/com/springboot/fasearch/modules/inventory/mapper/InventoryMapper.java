@@ -13,11 +13,16 @@ import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptDetai
 import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptItemRes;
 import com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptRes;
 import com.springboot.fasearch.modules.inventory.dto.response.StockRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeDetailRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeDiscrepancyRes;
+import com.springboot.fasearch.modules.inventory.dto.response.StocktakeRes;
 import com.springboot.fasearch.modules.inventory.entity.ExportReceipt;
 import com.springboot.fasearch.modules.inventory.entity.ExportReceiptDetail;
 import com.springboot.fasearch.modules.inventory.entity.ImportReceipt;
 import com.springboot.fasearch.modules.inventory.entity.ImportReceiptDetail;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
+import com.springboot.fasearch.modules.inventory.entity.Stocktake;
+import com.springboot.fasearch.modules.inventory.entity.StocktakeDetail;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface InventoryMapper {
@@ -71,4 +76,23 @@ public interface InventoryMapper {
     @Mapping(target = "totalItems", expression = "java(receipt.getDetails() != null ? receipt.getDetails().size() : 0)")
     @Mapping(source = "details", target = "items")
     ExportReceiptDetailRes toExportReceiptDetailResponse(ExportReceipt receipt);
+
+    @Mapping(source = "id", target = "stocktakeId")
+    @Mapping(target = "totalItems", expression = "java(stocktake.getDetails() != null ? stocktake.getDetails().size() : 0)")
+    StocktakeRes toStocktakeResponse(Stocktake stocktake);
+
+    List<StocktakeRes> toStocktakeResponseList(List<Stocktake> stocktakes);
+
+    @Mapping(source = "variant.id", target = "skuId")
+    @Mapping(source = "variant.product.productName", target = "productName")
+    @Mapping(source = "variant.color", target = "color")
+    @Mapping(source = "variant.size", target = "size")
+    @Mapping(source = "variant.barcode", target = "barcode")
+    StocktakeDiscrepancyRes toStocktakeDiscrepancyResponse(StocktakeDetail detail);
+
+    List<StocktakeDiscrepancyRes> toStocktakeDiscrepancyResponseList(List<StocktakeDetail> details);
+
+    @Mapping(source = "id", target = "stocktakeId")
+    @Mapping(source = "details", target = "discrepancies")
+    StocktakeDetailRes toStocktakeDetailResponse(Stocktake stocktake);
 }
