@@ -1,5 +1,6 @@
 package com.springboot.fasearch.modules.user.controller;
 
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -17,7 +18,10 @@ import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 import com.springboot.fasearch.shared.ApiResponse;
 import com.springboot.fasearch.shared.PageResponse;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
+
+@SecurityRequirement(name = "BearerAuth") // tên giống ở trong OpenApiConfig 
 
 @RestController 
 @RequestMapping("/api/v1/users")
@@ -30,7 +34,7 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<CustomerRes>> getCustomers(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long tierId) {
 
