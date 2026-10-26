@@ -52,9 +52,9 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | FR-12 | Thêm / Sửa khách hàng | Tạo mới hoặc chỉnh sửa hồ sơ khách hàng (Họ tên, Ngày sinh, Địa chỉ, Email) | `A` `S` | X |
 | FR-13 | Xóa mềm khách hàng | Chuyển trạng thái `da_xoa = true`, không xóa vĩnh viễn khỏi CSDL | `A` | X |
 | FR-14 | Tra cứu khách hàng tại quầy | Hiển thị thông tin KH (Họ tên, Hạng, Điểm tích lũy) khi nhập SĐT tại quầy POS | `S` | |
-| FR-15 | Xem danh sách nhân viên | Hiển thị danh sách nhân viên, tìm kiếm/lọc theo Tên, SĐT, CCCD | `A` | |
-| FR-16 | Thêm / Sửa nhân viên | Tạo mới hoặc chỉnh sửa hồ sơ nhân viên (Họ tên, CCCD, SĐT, Giới tính, Địa chỉ) | `A` | |
-| FR-17 | Xóa mềm nhân viên | Chuyển trạng thái `da_xoa = true` cho nhân viên nghỉ việc | `A` | |
+| FR-15 | Xem danh sách nhân viên | Hiển thị danh sách nhân viên, tìm kiếm/lọc theo Tên, SĐT, CCCD | `A` | X |
+| FR-16 | Thêm / Sửa nhân viên | Tạo mới hoặc chỉnh sửa hồ sơ nhân viên (Họ tên, CCCD, SĐT, Giới tính, Địa chỉ) | `A` | X |
+| FR-17 | Xóa mềm nhân viên | Chuyển trạng thái `da_xoa = true` cho nhân viên nghỉ việc | `A` | X |
 
 ---
 

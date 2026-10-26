@@ -18,13 +18,17 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(405, "HTTP method not supported", HttpStatus.METHOD_NOT_ALLOWED),
     REQUEST_TIMEOUT(408, "Request has timeout", HttpStatus.REQUEST_TIMEOUT),
 
-    // User & Customer errors
+    // User & Customer & Employee errors
     CUSTOMER_NOT_FOUND(404, "Customer not found", HttpStatus.NOT_FOUND),
+    EMPLOYEE_NOT_FOUND(404, "Employee not found", HttpStatus.NOT_FOUND),
     USER_NOT_FOUND(404, "User not found", HttpStatus.NOT_FOUND),
     USER_ALREADY_EXISTS(400, "User already exists", HttpStatus.BAD_REQUEST),
     USERNAME_ALREADY_EXISTS(400, "Username already exists", HttpStatus.BAD_REQUEST),
     PHONE_NUMBER_ALREADY_EXISTS(400, "Phone number already exists", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_EXISTS(400, "Email already exists", HttpStatus.BAD_REQUEST),
+    CCCD_ALREADY_EXISTS(400, "CCCD already exists", HttpStatus.BAD_REQUEST),
+    ACCOUNT_NOT_FOUND(404, "Account not found", HttpStatus.NOT_FOUND),
+    ACCOUNT_ALREADY_LINKED(400, "Account is already linked to another employee", HttpStatus.BAD_REQUEST),
 
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
