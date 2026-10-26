@@ -1,11 +1,13 @@
 package com.springboot.fasearch.modules.user.service.interfaces;
 
-import java.util.List;
+import org.springframework.data.domain.Pageable;
 
 import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
-
+import com.springboot.fasearch.shared.PageResponse;
 
 public interface UserService {
+
     CustomerRes getCustomerById(Long id);
-    List<CustomerRes> getListCustomers();
+
+    PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId);
 }

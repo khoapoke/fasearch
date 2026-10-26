@@ -10,19 +10,32 @@
 
 ## 1. CURRENT CONTEXT
 
-- **In-progress Task:** `FR-11` — Get customer details (`CustomerRes` in `user` module).
+- **Completed Tasks:** `FR-10` (Paginated customer search/filtering) & `FR-11` (Customer detail by ID with RBAC ownership check).
+- **In-progress Task:** Ready for `FR-12` (Create/Update customer profile) or `FR-13` (Soft delete customer).
 - **Next Immediate Actions:**
-  1. Inspect and add missing customer fields to `Customer` entity and `CustomerRes` (address, dob, membership tier).
-  2. Implement `FR-10` (Paginated customer search/list) or `FR-12` (Create/Update customer).
+  1. Implement `FR-12`: `POST /api/v1/users/customers` & `PUT /api/v1/users/customers/{id}` with validation (`CustomerCreateReq`, `CustomerUpdateReq`).
+  2. Implement `FR-13`: `DELETE /api/v1/users/customers/{id}` (`da_xoa = true`).
+  3. Implement `FR-14`: POS fast phone lookup `GET /api/v1/users/customers/lookup?phone={sdt}`.
 - **Technical Gotchas & Constraints:**
-  - Seed passwords hashed with BCrypt (Flyway `V3`), default password: `123456`.
-  - No separate `admin` table; Admins reside in `nhan_vien` and are assigned `ADMIN` role in `vai_tro`.
-  - Automatic MapStruct generation: Always run `./mvnw.cmd test-compile` after modifying mappers.
-  - Mandatory response format: `ApiResponse<T>`, 100% UPPER_SNAKE_CASE enums.
+  - Paginated API responses must wrap Spring Data `Page<T>` in `PageResponse<T>` inside `ApiResponse<T>`.
+  - Customers (`CUSTOMER` role) can only access their own profile; `SecurityUtils` verifies ownership against `customer.account.username`.
+  - Automatic MapStruct generation: Run `./mvnw.cmd test-compile` after editing mappers.
+  - Hibernate `@SQLRestriction("da_xoa = false")` automatically ignores soft-deleted entities.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 6] Implemented FR-10 and FR-11 in User Module (2026-10-26)
+- **Done:**
+  - Created shared DTO `PageResponse<T>` for standard paginated responses.
+  - Created `MembershipTier` entity and `MembershipTierRepository` for table `hang_thanh_vien`.
+  - Created `SecurityUtils` for extracting current username and checking authorities.
+  - Updated `Customer` entity with `address`, `avatar`, and relationships to `MembershipTier` and `Account`.
+  - Updated `CustomerRes` with `address`, `tierId`, and `tierName` via `UserMapper`.
+  - Implemented `FR-10` (Paginated search by keyword & tierId via `JpaSpecificationExecutor`) and `FR-11` (Get customer detail by ID with RBAC ownership check).
+  - Updated `SecurityConfig` and `UserController` with `@PreAuthorize` role protection.
+- **Build Status:** `BUILD SUCCESS` (0 errors).
 
 ### [Session 5] Setup Working Memory & Document Cross-linking (2026-10-25)
 - **Done:** Initialized `be_docs/memory.md` with Rolling 5 Sessions rule. Streamlined `AGENTS.md` (single source of truth in `be_docs/module.md`). Added bidirectional cross-links across all docs.
@@ -38,8 +51,4 @@
 
 ### [Session 2] Standardized Enums, Soft Delete & Flyway Migrations (2026-10-25)
 - **Done:** Added `V2` (added `da_xoa`, UPPER_SNAKE_CASE enums), `V3` (BCrypt hash for seed passwords), `V4` (added `da_xoa` to `vai_tro`).
-- **Build Status:** `BUILD SUCCESS`.
-
-### [Session 1] Completed Auth Module & Spring Security (2026-10-25)
-- **Done:** Configured Spring Security 6 (`SecurityConfig`, `JwtConfig`), created `JwtProvider`, `JwtAuthenticationFilter`, implemented 3 core APIs: `login`, `register`, `my-info`.
 - **Build Status:** `BUILD SUCCESS`.
