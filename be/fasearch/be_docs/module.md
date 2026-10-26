@@ -3,11 +3,11 @@
 Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requirements) của hệ thống **FaSearch Backend**, phân nhóm theo từng Module nghiệp vụ.
 
 > **Tài liệu liên quan:**
-> - Bộ nhớ làm việc & Tiến độ 5 phiên gần nhất: **[memory.md](file:///d:/fasearch/be/fasearch/be_docs/memory.md)**
-> - Bối cảnh bài toán & 10 phân hệ nghiệp vụ: **[OVERVIEW.md](file:///d:/fasearch/be/fasearch/OVERVIEW.md)**
-> - Hướng dẫn kỹ thuật & cài đặt: **[README.md](file:///d:/fasearch/be/fasearch/README.md)**
-> - Quy tắc phát triển & Coding Standards: **[AGENTS.md](file:///d:/fasearch/be/fasearch/AGENTS.md)**
-> - Đặc tả kỹ thuật Request / Response API: **[be_docs/api/README.md](file:///d:/fasearch/be/fasearch/be_docs/api/README.md)**
+> - Bộ nhớ làm việc & Tiến độ 5 phiên gần nhất: **[memory.md](./memory.md)**
+> - Bối cảnh bài toán & 10 phân hệ nghiệp vụ: **[OVERVIEW.md](../OVERVIEW.md)**
+> - Hướng dẫn kỹ thuật & cài đặt: **[README.md](../README.md)**
+> - Quy tắc phát triển & Coding Standards: **[AGENTS.md](../AGENTS.md)**
+> - Đặc tả kỹ thuật Request / Response API: **[api/README.md](./api/README.md)**
 
 ### Chú giải cột Trạng thái & Vai trò
 

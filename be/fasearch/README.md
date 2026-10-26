@@ -1,308 +1,188 @@
-# FA Search Backend
+# FA SEARCH BACKEND — DEVELOPER GUIDE
 
-Tài liệu này mô tả cấu trúc và luồng hoạt động của backend `fasearch`. Backend
-được xây dựng bằng Spring Boot, Java 21, Spring Data JPA, PostgreSQL và Flyway.
+Tài liệu này là cẩm nang kỹ thuật chi tiết dành cho lập trình viên và người đóng góp nhằm cài đặt, cấu hình, chạy thử và phát triển hệ sinh thái **FaSearch Backend**.
 
-## 1. Mục tiêu của backend
+> 📖 **Tài liệu tham chiếu:**
+> - Bối cảnh bài toán, giá trị kinh doanh và 10 phân hệ nghiệp vụ: **[OVERVIEW.md](./OVERVIEW.md)**
+> - Quy chuẩn kiến trúc, quy tắc phát triển dành cho AI Agent: **[AGENTS.md](./AGENTS.md)**
 
-Backend cung cấp REST API cho hệ thống bán hàng và tìm kiếm sản phẩm. Database
-đã được thiết kế cho các nhóm nghiệp vụ:
+---
 
-- tài khoản, vai trò và khách hàng;
-- sản phẩm, danh mục và biến thể sản phẩm;
-- khuyến mãi, mã giảm giá và hạng thành viên;
-- giỏ hàng, đơn hàng, hóa đơn và thanh toán;
-- đổi trả và nhật ký hệ thống.
+## I. CÔNG NGHỆ SỬ DỤNG (TECH STACK)
 
-Hiện tại code nghiệp vụ đã triển khai mới có module `user` với API lấy thông
-tin khách hàng theo ID. Các bảng còn lại đã được tạo trong migration/seed để
-chuẩn bị cho các module tiếp theo.
+| Thành phần | Công nghệ / Thư viện | Phiên bản | Ghi chú |
+| :--- | :--- | :--- | :--- |
+| **Ngôn ngữ** | Java (OpenJDK / Eclipse Adoptium) | 21 LTS | Hỗ trợ Virtual Threads & Pattern Matching |
+| **Framework** | Spring Boot | 4.1.2 | Nền tảng RESTful Web Services |
+| **Bảo mật** | Spring Security & JJWT | 7.1.2 / 0.12.6 | Xác thực Stateless JWT Token & Phân quyền RBAC |
+| **Database** | PostgreSQL | 15+ | Cơ sở dữ liệu quan hệ chính |
+| **Database Migration** | Flyway | Tích hợp sẵn | Tự động quản lý phiên bản lược đồ CSDL |
+| **ORM** | Spring Data JPA / Hibernate | 6+ | Quản lý thực thể CSDL & Tối ưu truy vấn |
+| **Mapper** | MapStruct | 1.6.3 | Ánh xạ 2 chiều hiệu năng cao giữa Entity và DTO |
+| **API Documentation** | Springdoc OpenAPI (Swagger UI) | 2.8.6 | Sinh tài liệu API tương tác tự động |
+| **Quản lý biến môi trường**| Dotenv Java | 3.2.0 | Nạp cấu hình từ file `.env` cục bộ |
+| **Tiện ích mã nguồn** | Project Lombok | Bản mới nhất | Giảm thiểu mã lặp (Getter, Setter, Builder...) |
 
-## 2. Cấu trúc thư mục hiện tại
+---
 
-```text
-be/fasearch/
-├── .env.example                         # Mẫu biến môi trường cho local
-├── pom.xml                              # Dependency và cấu hình Maven
-├── mvnw, mvnw.cmd                       # Maven Wrapper
-├── HELP.md                              # Ghi chú được Spring Initializr tạo
-├── src/
-│   ├── main/
-│   │   ├── java/com/springboot/fasearch/
-│   │   │   ├── FasearchApplication.java
-│   │   │   ├── common/                  # Đang để trống, dành cho tiện ích dùng chung
-│   │   │   ├── config/                  # Đang để trống, dành cho cấu hình Spring
-│   │   │   ├── exception/
-│   │   │   │   ├── AppException.java
-│   │   │   │   ├── ErrorCode.java
-│   │   │   │   ├── FieldErrorDetail.java
-│   │   │   │   └── GlobalExceptionHandler.java
-│   │   │   ├── modules/
-│   │   │   │   ├── auth/                # Đã tạo namespace, chưa có class nghiệp vụ
-│   │   │   │   └── user/
-│   │   │   │       ├── controller/
-│   │   │   │       ├── dto/
-│   │   │   │       │   ├── request/
-│   │   │   │       │   └── response/
-│   │   │   │       ├── entity/
-│   │   │   │       ├── mapper/
-│   │   │   │       ├── repository/
-│   │   │   │       └── service/
-│   │   │   │           ├── impl/
-│   │   │   │           └── interfaces/
-│   │   │   └── shared/
-│   │   │       └── ApiResponse.java
-│   │   ├── resources/
-│   │   │   ├── application.yaml          # Cấu hình app, datasource, JPA, Flyway
-│   │   │   └── db/
-│   │   │       ├── migration/
-│   │   │       │   └── V1__init_database.sql
-│   │   │       ├── seed/                 # Dữ liệu mẫu chạy qua Flyway
-│   │   │       └── scripts/
-│   │   │           └── drop_all_table.sql
-│   │   └── test/
-│   │       └── java/com/springboot/fasearch/
-│   │           └── FasearchApplicationTests.java
-└── target/                               # Output build, không commit
+## II. YÊU CẦU MÔI TRƯỜNG (PREREQUISITES)
+
+Để chạy dự án trên máy cục bộ, bạn cần chuẩn bị:
+1. **Java Development Kit (JDK):** Phiên bản **Java 21 LTS** trở lên. Kiểm tra bằng lệnh:
+   ```bash
+   java -version
+   ```
+2. **PostgreSQL Database:** Phiên bản 15 trở lên đang chạy cục bộ hoặc qua Docker container.
+3. **Maven:** Dự án đã tích hợp sẵn Maven Wrapper (`mvnw` cho Linux/macOS và `mvnw.cmd` cho Windows), không bắt buộc phải cài đặt Maven toàn cục.
+
+---
+
+## III. HƯỚNG DẪN KHỞI CHẠY NHANH (QUICK START)
+
+### 1. Chuẩn bị file cấu hình môi trường (.env)
+Tại thư mục gốc `be/fasearch`, tạo file `.env` từ file mẫu `.env.example`:
+
+```bash
+# Trên Windows PowerShell
+Copy-Item .env.example .env
+
+# Trên Linux / macOS
+cp .env.example .env
 ```
 
-> `target/` có thể xuất hiện sau khi build và nên được bỏ qua bởi Git. Các
-> thư mục `common`, `config`, `auth` và `user/dto/request` hiện là namespace
-> chuẩn bị trước; không nên giả định chúng đã có chức năng khi viết code.
-
-## 3. Trách nhiệm của từng thư mục
-
-### 3.1. Package gốc
-
-`FasearchApplication.java` là entry point của ứng dụng. Khi khởi động, ứng dụng
-đọc file `.env` nếu file tồn tại, đưa các giá trị vào system properties rồi
-khởi chạy Spring Boot.
-
-### 3.2. `modules`
-
-Đây là nơi chứa code theo **nghiệp vụ**. Mỗi nghiệp vụ nên có một thư mục riêng,
-ví dụ `user`, `auth`, `product`, `order`. Cách tổ chức này giúp các thành phần
-của cùng một nghiệp vụ nằm gần nhau thay vì chia toàn bộ project thành một
-`controller/`, một `service/` và một `repository/` dùng chung cho mọi nghiệp vụ.
-
-### 3.3. `modules/user`
-
-Module user hiện có các lớp sau:
-
-| Thư mục | Vai trò |
-|---|---|
-| `controller` | Nhận HTTP request, lấy path/query/body parameter, gọi service và trả HTTP response. Không đặt business logic ở đây. |
-| `service/interfaces` | Khai báo use case mà controller hoặc module khác được phép gọi. |
-| `service/impl` | Cài đặt business logic, điều phối repository và mapper. |
-| `repository` | Truy cập database qua Spring Data JPA; chỉ nên chứa logic truy vấn dữ liệu. |
-| `entity` | Ánh xạ bảng database sang object JPA. `User` ánh xạ bảng `khach_hang`. |
-| `dto/request` | Kiểu dữ liệu cho dữ liệu client gửi lên; hiện chưa có DTO. |
-| `dto/response` | Kiểu dữ liệu trả ra ngoài API. `UserResponse` tránh expose trực tiếp entity. |
-| `mapper` | Chuyển đổi giữa entity và DTO. `UserMapper` hiện gộp `ho` và `ten` thành `hoTen`. |
-
-### 3.4. `exception`
-
-- `AppException`: exception nghiệp vụ có mã lỗi.
-- `ErrorCode`: danh sách mã và message lỗi chuẩn hóa.
-- `FieldErrorDetail`: mô tả lỗi theo từng field khi validation thất bại.
-- `GlobalExceptionHandler`: bắt exception ở toàn ứng dụng và chuyển thành
-  response JSON thống nhất.
-
-Khi thêm lỗi nghiệp vụ, ưu tiên thêm `ErrorCode` và ném `AppException` thay vì
-tự tạo message rải rác trong controller/service. Các exception chưa được định
-nghĩa cụ thể hiện được xử lý như lỗi HTTP 500 bởi handler chung.
-
-### 3.5. `shared`
-
-Chứa các kiểu dùng chung giữa nhiều module. `ApiResponse<T>` hỗ trợ format
-`success`, `code`, `message`, `result`, `errors` và `timestamp`.
-
-API user hiện tại trả trực tiếp `UserResponse`, chưa bọc trong `ApiResponse`.
-Khi thay đổi format response, cần thống nhất trên toàn team và cập nhật cả
-controller, tài liệu API và frontend.
-
-### 3.6. `common` và `config`
-
-Hai package này hiện chưa có class:
-
-- `common`: phù hợp cho constant, pagination, utility hoặc abstract type dùng
-  ở nhiều module; không đặt business logic riêng của một module vào đây.
-- `config`: phù hợp cho CORS, Jackson, OpenAPI, security, database hoặc các
-  bean cấu hình toàn ứng dụng.
-
-### 3.7. `resources/db`
-
-- `migration`: migration cấu trúc database. File Flyway dùng format
-  `V<version>__<description>.sql` và không được sửa sau khi đã chạy trên môi
-  trường dùng chung.
-- `seed`: dữ liệu khởi tạo/mẫu. Các file seed đang được Flyway load cùng
-  `migration` nhờ `application.yaml`.
-- `scripts`: script thao tác thủ công, ví dụ xóa toàn bộ bảng; không tự động
-  chạy khi ứng dụng khởi động.
-
-## 4. Luồng request hiện tại
-
-Ví dụ với request:
-
-```http
-GET /api/v1/users/{id}
-```
-
-Luồng xử lý:
-
-```text
-Client
-  -> UserController.getUserById(id)
-  -> UserService.getUserById(id)
-  -> UserRepository.findById(id)
-  -> User entity
-  -> UserMapper.toResponseDTO(user)
-  -> UserResponse
-  -> HTTP 200
-```
-
-Chi tiết:
-
-1. `UserController` nhận `id` từ URL và gọi `UserServiceInterface`.
-2. `UserService` truy vấn `UserRepository`.
-3. Nếu không tìm thấy user, service ném exception.
-4. `UserMapper` chuyển `User` thành `UserResponse`, trong đó họ và tên được
-   gộp thành `hoTen`.
-5. Controller trả `ResponseEntity.ok(...)`.
-6. Nếu xảy ra exception, `GlobalExceptionHandler` chuyển exception thành JSON
-   lỗi theo rule tương ứng.
-
-Endpoint hiện tại:
-
-| Method | Path | Mục đích |
-|---|---|---|
-| `GET` | `/api/v1/users/{id}` | Lấy thông tin khách hàng theo `ma_kh` |
-
-## 5. Luồng khởi động và database
-
-```text
-FasearchApplication
-  -> đọc .env
-  -> nạp application.yaml
-  -> kết nối PostgreSQL
-  -> Flyway chạy migration/seed
-  -> JPA validate schema (ddl-auto: validate)
-  -> Spring Boot sẵn sàng nhận request
-```
-
-`application.yaml` dùng các biến:
-
-```env
+Mở file `.env` và cập nhật thông tin kết nối PostgreSQL của bạn:
+```properties
+# Cấu hình Cơ sở dữ liệu PostgreSQL
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=<database-name>
-DB_USERNAME=<username>
-DB_PASSWORD=<password>
+DB_NAME=fasearch_db
+DB_USERNAME=postgres
+DB_PASSWORD=your_password_here
+
+# Cấu hình Bảo mật JWT
+JWT_SECRET=your_jwt_secret_key_minimum_256_bits_length_here_123456789
+JWT_EXPIRATION_MS=86400000
+
+# Cổng khởi chạy máy chủ
+PORT=8080
 ```
 
-Tạo bản sao từ `.env.example` thành `.env`, điền thông tin PostgreSQL rồi chạy
-ứng dụng. Không commit `.env` hoặc mật khẩu thật.
+> [!IMPORTANT]
+> - Cần đảm bảo database `fasearch_db` đã được tạo sẵn trong PostgreSQL trước khi chạy app (`CREATE DATABASE fasearch_db;`).
+> - Khi ứng dụng khởi động, Flyway sẽ tự động chạy các script migration (`V1` -> `V4`) để tạo bảng và nạp dữ liệu mẫu ban đầu.
 
-Các dependency chính:
+### 2. Kiểm tra biên dịch mã nguồn
+Chạy lệnh biên dịch để đảm bảo toàn bộ mã nguồn và MapStruct mapper hoạt động chính xác:
 
-- Java 21;
-- Spring Boot Web MVC;
-- Spring Data JPA;
-- PostgreSQL;
-- Flyway;
-- Spring Validation;
-- Springdoc OpenAPI;
-- Lombok.
+```powershell
+# Windows
+.\mvnw.cmd test-compile
 
-## 6. Quy ước viết code cho team
+# Linux / macOS
+./mvnw test-compile
+```
 
-1. Tạo code theo module nghiệp vụ: `modules/<module-name>/...`.
-2. Controller chỉ xử lý HTTP; business rule đặt trong service.
-3. Repository chỉ truy vấn/persistence; không trả DTO từ repository.
-4. Không trả JPA entity trực tiếp ra API; dùng DTO và mapper.
-5. Request dùng `dto/request`, response dùng `dto/response`.
-6. Dùng `@Valid` cho request DTO và bổ sung validation annotation phù hợp.
-7. Dùng `AppException`/`ErrorCode` cho lỗi nghiệp vụ có thể dự đoán.
-8. Đặt tên endpoint theo số nhiều và giữ version, ví dụ `/api/v1/users`.
-9. Mỗi use case quan trọng nên có unit test service và integration test
-   controller/repository tương ứng.
-10. Migration mới phải có version tăng dần; không sửa migration cũ đã chạy trên
-    môi trường dùng chung.
-
-## 7. Cách chạy và kiểm tra
-
-Từ thư mục `be/fasearch`:
-
+### 3. Khởi chạy máy chủ phát triển (Development Server)
 ```powershell
 # Windows
 .\mvnw.cmd spring-boot:run
 
-# Build và chạy test
-.\mvnw.cmd clean test
+# Linux / macOS
+./mvnw spring-boot:run
 ```
 
-OpenAPI UI được cung cấp bởi Springdoc sau khi ứng dụng khởi động. URL mặc định
-có thể dùng là `/swagger-ui/index.html`; nếu thay đổi cấu hình server thì cần
-điều chỉnh lại URL tương ứng.
+Sau khi máy chủ khởi động thành công trên cổng `8080`:
+- **Giao diện Swagger UI:** [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- **Tài liệu OpenAPI Spec (JSON):** [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
 
-## 8. Cấu trúc đề xuất khi project phát triển
+---
 
-Đây là cấu trúc đề xuất, chưa phải các thư mục đã có trong repository:
+## IV. CẤU TRÚC THƯ MỤC DỰ ÁN (PROJECT STRUCTURE)
+
+Mã nguồn được tổ chức theo kiến trúc phân tách nghiệp vụ (**Vertical Slice + Layered Architecture**):
 
 ```text
-modules/
-├── auth/
-│   ├── controller/
-│   ├── dto/request/
-│   ├── dto/response/
-│   ├── security/
-│   └── service/
-├── user/
-├── product/
-├── category/
-├── promotion/
-├── cart/
-├── order/
-├── payment/
-└── returnorder/
-
-common/
-├── constant/
-├── pagination/
-├── util/
-└── validation/
-
-config/
-├── OpenApiConfig.java
-├── SecurityConfig.java
-├── CorsConfig.java
-└── JacksonConfig.java
-
-infrastructure/
-├── storage/             # Upload ảnh/file
-├── payment/             # Adapter tới cổng thanh toán
-└── search/              # Adapter tới engine tìm kiếm hoặc AI service
-
-resources/
-├── db/migration/
-├── db/seed/
-└── db/scripts/
+be/fasearch/
+├── .env.example                                # Mẫu cấu hình biến môi trường
+├── pom.xml                                     # Cấu hình dependencies và plugin Maven
+├── mvnw, mvnw.cmd                              # Maven Wrapper thực thi lệnh
+├── be_docs/                                    # Tài liệu thiết kế hệ thống & đặc tả API
+│   ├── memory.md                               # Bộ nhớ làm việc & bàn giao (tối đa 5 phiên)
+│   ├── module.md                               # Danh mục 54 chức năng, vai trò & tiến độ (Roadmap)
+│   └── api/                                    # Đặc tả chi tiết Request/Response 10 phân hệ API
+│       ├── README.md                           # Mục lục & quy chuẩn chung ApiResponse
+│       ├── api-auth.md                         # Đặc tả API xác thực & tài khoản
+│       ├── api-user.md                         # Đặc tả API người dùng & tích điểm
+│       └── ...                                 # (Các file đặc tả API phân hệ khác)
+├── src/
+│   ├── main/
+│   │   ├── java/com/springboot/fasearch/
+│   │   │   ├── FasearchApplication.java        # Entry point khởi chạy app & nạp .env
+│   │   │   ├── common/
+│   │   │   │   └── enums/                      # 11 Java Enums Type-Safety (AccountStatus, RoleType...)
+│   │   │   ├── config/                         # Configuration Bean (SecurityConfig, JwtConfig)
+│   │   │   ├── security/                       # Thành phần bảo mật (JwtProvider, JwtFilter, Handlers)
+│   │   │   ├── exception/                      # Quản lý ngoại lệ (AppException, ErrorCode, Handler)
+│   │   │   ├── shared/                         # DTO dùng chung (ApiResponse<T>)
+│   │   │   └── modules/
+│   │   │       ├── auth/                       # Phân hệ Xác thực & Phân quyền
+│   │   │       │   ├── controller/             # AuthController (login, register, my-info)
+│   │   │       │   ├── dto/                    # Request & Response DTOs
+│   │   │       │   ├── entity/                 # Account, Role
+│   │   │       │   ├── repository/             # AccountRepository, RoleRepository
+│   │   │       │   └── service/                # AuthService & AuthServiceImpl
+│   │   │       └── user/                       # Phân hệ Người dùng & Nhân sự
+│   │   │           ├── controller/             # UserController
+│   │   │           ├── dto/response/           # CustomerRes
+│   │   │           ├── entity/                 # Customer (khach_hang)
+│   │   │           ├── mapper/                 # CustomerMapper (MapStruct)
+│   │   │           ├── repository/             # CustomerRepository
+│   │   │           └── service/                # UserService & UserServiceImpl
+│   │   └── resources/
+│   │       ├── application.yaml                # Cấu hình Spring, JPA, Flyway
+│   │       └── db/
+│   │           └── migration/                  # Các bản cập nhật CSDL tự động qua Flyway
+│   │               ├── V1__init_database.sql
+│   │               ├── V2__refactor_enums_and_add_soft_delete.sql
+│   │               ├── V3__update_seed_passwords_to_bcrypt.sql
+│   │               └── V4__add_da_xoa_to_vai_tro.sql
+│   └── test/                                   # Kiểm thử tự động (Unit & Integration Tests)
 ```
 
-### Thứ tự ưu tiên nên bổ sung
+---
 
-1. **`config/SecurityConfig.java` và hoàn thiện `modules/auth`**: xác thực,
-   phân quyền và bảo vệ endpoint trước khi mở rộng API quản trị.
-2. **`modules/product` và `modules/category`**: đây là dữ liệu lõi cho chức
-   năng search.
-3. **`common/pagination`**: thống nhất `Pageable`, metadata phân trang và filter.
-4. **`infrastructure/search`**: gom logic kết nối search/AI bên ngoài, tránh để
-   SDK hoặc HTTP client rải trong các service nghiệp vụ.
-5. **`config/OpenApiConfig.java`**: mô tả API, security scheme và response mẫu.
-6. **Test theo module**: thêm `src/test` tương ứng với từng use case, repository
-   và endpoint.
+## V. TÀI KHOẢN MẪU & DANH SÁCH REST API ĐÃ TRIỂN KHAI
 
-Khi thêm module mới, hãy bắt đầu từ use case và contract API, sau đó triển khai
-theo thứ tự `dto -> entity/repository -> service -> mapper -> controller ->
-test`. Cách này giúp luồng phụ thuộc rõ ràng và tránh đưa business logic vào
-controller.
+### 1. Tài khoản mẫu thử nghiệm (Seed Credentials)
+Sau khi Flyway thực hiện migration `V3`, các tài khoản mẫu dưới đây đã sẵn sàng để kiểm thử (Mật khẩu mặc định: `123456`):
+
+| Tên đăng nhập | Mật khẩu mặc định | Vai trò (`RoleType`) | Mục đích thử nghiệm |
+| :--- | :--- | :--- | :--- |
+| `admin` | `123456` | `ADMIN` | Kiểm thử các chức năng và quyền của Quản trị viên |
+| `nhanvien1` | `123456` | `STAFF` | Kiểm thử nghiệp vụ của Nhân viên bán hàng / Thu ngân |
+| `khachhang1` | `123456` | `CUSTOMER` | Kiểm thử nghiệp vụ mua sắm của Khách hàng |
+
+### 2. Danh sách REST API sẵn sàng hoạt động
+
+> 📖 **Tài liệu API đầy đủ:** Xem chi tiết Request/Response của toàn bộ 10 phân hệ tại **[be_docs/api/README.md](./be_docs/api/README.md)**.
+
+| Phương thức | Đường dẫn Endpoint | Yêu cầu quyền (RBAC) | Mô tả chức năng |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/login` | Public (Mọi người) | Đăng nhập hệ thống, trả về JWT Token và thông tin tài khoản |
+| `POST` | `/api/v1/auth/register` | Public (Mọi người) | Đăng ký tài khoản mới cho Khách hàng (`CUSTOMER`) |
+| `GET` | `/api/v1/auth/my-info` | Đã đăng nhập (`Bearer Token`) | Lấy thông tin tài khoản hiện tại từ Token xác thực |
+| `GET` | `/api/v1/users/customers/{id}` | Đã đăng nhập (`Bearer Token`) | Lấy thông tin chi tiết hồ sơ khách hàng theo ID |
+
+---
+
+## VI. BẢNG LỆNH CLI CHUẨN (CLI CHEATSHEET)
+
+Thực hiện tại thư mục gốc backend `be/fasearch`:
+
+| Thao tác | Lệnh Windows (PowerShell/CMD) | Lệnh Linux / macOS |
+| :--- | :--- | :--- |
+| **Kiểm tra biên dịch** | `.\mvnw.cmd test-compile` | `./mvnw test-compile` |
+| **Chạy ứng dụng (Dev)** | `.\mvnw.cmd spring-boot:run` | `./mvnw spring-boot:run` |
+| **Chạy toàn bộ Test** | `.\mvnw.cmd clean test` | `./mvnw clean test` |
+| **Đóng gói file JAR** | `.\mvnw.cmd clean package -DskipTests` | `./mvnw clean package -DskipTests` |
+| **Hiển thị Deprecation** | `.\mvnw.cmd compile "-Dmaven.compiler.showDeprecation=true"` | `./mvnw compile -Dmaven.compiler.showDeprecation=true` |

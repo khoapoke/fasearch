@@ -3,8 +3,8 @@
 Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc Request, Response và quy chuẩn giao tiếp API của hệ thống **FaSearch Backend**.
 
 > 📌 **Tài liệu liên quan:**
-> - Danh mục 54 chức năng, ma trận Role (RBAC) & Tiến độ: **[module.md](file:///d:/fasearch/be/fasearch/be_docs/module.md)**
-> - Hướng dẫn quy tắc phát triển dành cho Agent: **[AGENTS.md](file:///d:/fasearch/be/fasearch/AGENTS.md)**
+> - Danh mục 54 chức năng, ma trận Role (RBAC) & Tiến độ: **[module.md](../module.md)**
+> - Hướng dẫn quy tắc phát triển dành cho Agent: **[AGENTS.md](../../AGENTS.md)**
 
 ---
 
@@ -12,16 +12,16 @@ Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc R
 
 | STT | Phân hệ (Module) | File tài liệu | Mô tả |
 | :---: | :--- | :--- | :--- |
-| 1 | **Xác thực & Tài khoản** | [api-auth.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-auth.md) | Đăng nhập, đăng ký, thông tin tài khoản, quản lý tài khoản & RBAC |
-| 2 | **Người dùng & Khách hàng** | [api-user.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-user.md) | Hồ sơ khách hàng, nhân viên, tích điểm & hạng thành viên |
-| 3 | **Sản phẩm & Danh mục** | [api-product.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-product.md) | Danh mục, sản phẩm, biến thể SKU, mã vạch Barcode, tra cứu POS |
-| 4 | **Tìm kiếm thông minh (AI)** | [api-search.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-search.md) | Tìm kiếm tự nhiên NLP, tìm kiếm bằng ảnh & tìm kiếm đa phương thức |
-| 5 | **Kho hàng & Tồn kho** | [api-inventory.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-inventory.md) | Tra cứu tồn, nhập kho, xuất hủy/chuyển kho, kiểm kê & cảnh báo |
-| 6 | **Đơn hàng & Giỏ hàng** | [api-order.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-order.md) | Giỏ hàng, đặt hàng Online, POS đơn tạm, cập nhật trạng thái đơn |
-| 7 | **Thanh toán & Hóa đơn** | [api-payment.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-payment.md) | Tính tiền, phương thức thanh toán, xuất hóa đơn & VNPAY QR |
-| 8 | **Khuyến mãi & Giảm giá** | [api-promotion.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-promotion.md) | Chương trình khuyến mãi, phát hành mã voucher & xác thực voucher |
-| 9 | **Đổi / Trả hàng** | [api-returnorder.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-returnorder.md) | Tra cứu hóa đơn đổi trả, lập phiếu đổi trả & nhập kho thu hồi |
-| 10 | **Báo cáo & Thống kê** | [api-analytics.md](file:///d:/fasearch/be/fasearch/be_docs/api/api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn |
+| 1 | **Xác thực & Tài khoản** | [api-auth.md](./api-auth.md) | Đăng nhập, đăng ký, thông tin tài khoản, quản lý tài khoản & RBAC |
+| 2 | **Người dùng & Khách hàng** | [api-user.md](./api-user.md) | Hồ sơ khách hàng, nhân viên, tích điểm & hạng thành viên |
+| 3 | **Sản phẩm & Danh mục** | [api-product.md](./api-product.md) | Danh mục, sản phẩm, biến thể SKU, mã vạch Barcode, tra cứu POS |
+| 4 | **Tìm kiếm thông minh (AI)** | [api-search.md](./api-search.md) | Tìm kiếm tự nhiên NLP, tìm kiếm bằng ảnh & tìm kiếm đa phương thức |
+| 5 | **Kho hàng & Tồn kho** | [api-inventory.md](./api-inventory.md) | Tra cứu tồn, nhập kho, xuất hủy/chuyển kho, kiểm kê & cảnh báo |
+| 6 | **Đơn hàng & Giỏ hàng** | [api-order.md](./api-order.md) | Giỏ hàng, đặt hàng Online, POS đơn tạm, cập nhật trạng thái đơn |
+| 7 | **Thanh toán & Hóa đơn** | [api-payment.md](./api-payment.md) | Tính tiền, phương thức thanh toán, xuất hóa đơn & VNPAY QR |
+| 8 | **Khuyến mãi & Giảm giá** | [api-promotion.md](./api-promotion.md) | Chương trình khuyến mãi, phát hành mã voucher & xác thực voucher |
+| 9 | **Đổi / Trả hàng** | [api-returnorder.md](./api-returnorder.md) | Tra cứu hóa đơn đổi trả, lập phiếu đổi trả & nhập kho thu hồi |
+| 10 | **Báo cáo & Thống kê** | [api-analytics.md](./api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn |
 
 ---
 
