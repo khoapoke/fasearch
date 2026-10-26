@@ -38,6 +38,13 @@ public enum ErrorCode {
     VARIANT_NOT_FOUND(404, "Product variant not found", HttpStatus.NOT_FOUND),
     VARIANT_ALREADY_EXISTS(400, "Variant with this color and size already exists for this product", HttpStatus.BAD_REQUEST),
 
+    // Inventory errors
+    INVENTORY_NOT_FOUND(404, "Inventory record not found", HttpStatus.NOT_FOUND),
+    RECEIPT_NOT_FOUND(404, "Import receipt not found", HttpStatus.NOT_FOUND),
+    EXPORT_RECEIPT_NOT_FOUND(404, "Export receipt not found", HttpStatus.NOT_FOUND),
+    INVALID_RECEIPT_ITEM(400, "Receipt must contain at least one valid item", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_STOCK(400, "Insufficient stock for requested SKU", HttpStatus.BAD_REQUEST),
+
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),

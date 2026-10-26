@@ -11,32 +11,62 @@
 ## 1. CURRENT CONTEXT
 
 - **Completed Tasks:**
-  - Module `product` & `category` (100% COMPLETED):
-    - `FR-21`: Category CRUD & soft delete.
-    - `FR-22`: Paginated product list & dynamic specification search (`keyword`, `categoryId`, `priceRange`, `status`).
-    - `FR-23`: Create product with initial variants & auto-generated barcodes.
-    - `FR-24`: Get product detail & partial update (`PATCH /api/v1/products/{id}`).
-    - `FR-25`: Soft delete product (`DISCONTINUED`, `da_xoa = true`).
-    - `FR-26`: Variant CRUD (`GET`, `POST`, `PATCH`, `DELETE` on `/api/v1/products/**/variants/**`).
-    - `FR-27`: Barcode export with ZXing Code 128 as Base64 JSON and direct PNG byte stream.
-    - `FR-28`: Rapid POS lookup & keyword search at cashier checkout.
+  - Module `inventory`:
+    - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
+    - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
+    - `FR-31`: Export receipt creation, warehouse transfer & damaged stock write-off (`POST /api/v1/inventory/export-receipts`, `GET /api/v1/inventory/export-receipts`, `GET /api/v1/inventory/export-receipts/{id}`).
+  - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to transition to next business module.
+- **In-progress Task:** Ready for subsequent Inventory features (`FR-32` -> `FR-34`).
 - **Next Immediate Actions:**
-  - Discuss with user on next module:
-    - Module 6 `inventory`: `FR-29` -> `FR-34` (Kho hàng & tồn kho: tra cứu tồn kho, phiếu nhập/xuất kho, kiểm kê, cảnh báo tồn kho thấp).
-    - Or Module 7 `order` / `cart`: `FR-35` -> `FR-41` (Giỏ hàng, đặt hàng trực tuyến, POS lưu đơn tạm, quản lý đơn hàng).
-    - Or Module 5 `search`: `FR-NC1` -> `FR-NC3` (Tìm kiếm thông minh AI văn bản/hình ảnh).
+  1. Implement `FR-32`: Stocktaking by barcode scanning (`POST /api/v1/inventory/stocktakes`).
+  2. Implement `FR-33`: Automatic inventory reconciliation (`POST /api/v1/inventory/stocktakes/{id}/reconcile`).
+  3. Implement `FR-34`: Low-stock alert retrieval (`GET /api/v1/inventory/low-stock-alerts`).
 - **Technical Gotchas & Constraints:**
-  - ZXing 3.5.3 integrated for Code 128 barcode rendering (Base64 data URI and raw PNG bytes).
-  - Specific protected matchers (`/api/v1/products/pos-lookup/**`, `/api/v1/products/variants/*/barcode/**`) placed before broad `GET /api/v1/products/**` in `SecurityConfig` to reject unauthenticated requests immediately.
-  - `AppException` supports overloaded constructor with custom messages, mapped cleanly in `GlobalExceptionHandler`.
+  - Database tables: `ton_kho`, `phieu_nhap_kho`, `ct_phieu_nhap` via `V5`, `phieu_xuat_kho`, `ct_phieu_xuat` via `V6`.
+  - Export receipts use auto-generated unique code `XK-YYYYMMDD-XXX` and export types: `DAMAGED`, `TRANSFER`, `OTHER`.
+  - Stock deduction strictly validates available stock per SKU (`availableStock >= requestedQuantity`) before modifying any records; fails immediately with HTTP 400 `INSUFFICIENT_STOCK`.
+  - Auto-deduction formula: `physicalStock -= quantity`, `availableStock = physicalStock - reservedStock` inside a `@Transactional` boundary.
+  - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 15] Implemented FR-31 (Export Receipts & Warehouse Transfers) in Inventory Module (2026-10-26)
+- **Done:**
+  - Created Flyway migration script `V6__create_export_receipt_tables.sql` for tables `phieu_xuat_kho` and `ct_phieu_xuat` with soft-delete flags and foreign key indexes.
+  - Created `ExportType` enum (`DAMAGED`, `TRANSFER`, `OTHER`).
+  - Added new error codes to `ErrorCode`: `EXPORT_RECEIPT_NOT_FOUND` (404), `INSUFFICIENT_STOCK` (400).
+  - Created JPA entities: `ExportReceipt` and `ExportReceiptDetail` with `@SQLRestriction("da_xoa = false")`.
+  - Created DTOs: `ExportReceiptItemReq`, `ExportReceiptCreateReq`, `ExportReceiptItemRes`, `ExportReceiptRes`, `ExportReceiptDetailRes`.
+  - Created Repositories: `ExportReceiptRepository` (with `JpaSpecificationExecutor`) and `ExportReceiptDetailRepository`.
+  - Updated `InventoryMapper` with MapStruct mappings for export receipts and line items.
+  - Implemented `InventoryService` & `InventoryServiceImpl`:
+    - `POST /api/v1/inventory/export-receipts`: Aggregates SKU quantities, pre-validates against available stock, generates auto code `XK-YYYYMMDD-XXX`, deducts physical and available stock atomically, saves receipt and items.
+    - `GET /api/v1/inventory/export-receipts`: Paginated specification search by `receiptCode` and `exportType`.
+    - `GET /api/v1/inventory/export-receipts/{id}`: Detailed receipt view with full line item details.
+  - Updated `InventoryController` without `@Operation` annotations, protected with `@PreAuthorize("hasRole('ADMIN')")` for creation and `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")` for reading.
+  - Updated `be_docs/module.md` marking FR-31 as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (119 source files, 0 errors, 0 warnings).
+
+### [Session 14] Implemented FR-29 and FR-30 in Inventory Module (2026-10-26)
+- **Done:**
+  - Created Flyway migration `V5__create_inventory_tables.sql` for tables `ton_kho`, `phieu_nhap_kho`, and `ct_phieu_nhap` with indexes and soft delete columns.
+  - Added `ReceiptStatus` enum (`PENDING`, `COMPLETED`, `CANCELLED`) and inventory error codes (`INVENTORY_NOT_FOUND`, `RECEIPT_NOT_FOUND`, `INVALID_RECEIPT_ITEM`).
+  - Created JPA entities: `Inventory` (OneToOne with `ProductVariant`), `ImportReceipt`, and `ImportReceiptDetail` with `@SQLRestriction("da_xoa = false")`.
+  - Created DTOs: `StockRes`, `ImportReceiptCreateReq`, `ImportReceiptItemReq`, `ImportReceiptRes`, `ImportReceiptDetailRes`, `ImportReceiptItemRes`.
+  - Created Repositories: `InventoryRepository`, `ImportReceiptRepository`, `ImportReceiptDetailRepository` (with `JpaSpecificationExecutor`).
+  - Created `InventoryMapper` with MapStruct for clean entity/DTO translation.
+  - Implemented `InventoryService` & `InventoryServiceImpl`:
+    - `FR-29`: Dynamic specification search for stock list (`GET /api/v1/inventory/stock`) by SKU/barcode, product name, or keyword, and get by SKU ID (`GET /api/v1/inventory/stock/{skuId}`).
+    - `FR-30`: Create import receipt (`POST /api/v1/inventory/import-receipts`) with date-formatted receipt codes (`NK-YYYYMMDD-XXX`) and atomic inventory accretion; plus list/detail endpoints.
+  - Created `InventoryController` without `@Operation` annotations, secured with `@SecurityRequirement(name = "BearerAuth")`.
+  - Updated `SecurityConfig` to grant `ADMIN` and `STAFF` access to inventory endpoints.
+  - Updated `be_docs/module.md` marking FR-29 and FR-30 as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (109 source files, 0 errors, 0 warnings).
 
 ### [Session 13] Implemented FR-27 and FR-28 in Product Module (2026-10-26)
 - **Done:**
@@ -84,31 +114,3 @@
   - Configured `SecurityConfig` to protect mutating product endpoints with `ADMIN` role.
 - **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 
-### [Session 10] Implemented FR-21 (Category Management) in Product Module (2026-10-26)
-- **Done:**
-  - Added new error codes: `CATEGORY_NOT_FOUND` (404), `CATEGORY_NAME_ALREADY_EXISTS` (400).
-  - Created `Category` entity mapping to `danh_muc` with `@SQLRestriction("da_xoa = false")`.
-  - Created `CategoryRes` and `CategoryReq` DTOs with validation.
-  - Created `CategoryRepository` and `CategoryMapper` with MapStruct.
-  - Implemented `CategoryService` & `CategoryServiceImpl`:
-    - List all active categories (`GET /api/v1/categories`).
-    - Get category detail by ID (`GET /api/v1/categories/{id}`).
-    - Create category with duplicate name check (`POST /api/v1/categories`).
-    - Partial update category (`PATCH /api/v1/categories/{id}`).
-    - Soft delete category (`DELETE /api/v1/categories/{id}`).
-  - Created `CategoryController` with public GET and admin-protected mutations.
-  - Updated `SecurityConfig` to protect category mutations with `ADMIN` role.
-- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
-
-### [Session 9] Implemented FR-01, FR-02, FR-03, and FR-04 in Auth Module (2026-10-26)
-- **Done:**
-  - Restricted `PUBLIC_ENDPOINTS` in `SecurityConfig` from `/api/v1/auth/**` to `/api/v1/auth/login` and `/api/v1/auth/register` to protect `/api/v1/auth/accounts/**` and `/api/v1/auth/my-info`.
-  - Created `AccountCreateReq` and `AccountUpdateReq` for internal account management.
-  - Created `AccountMapper` with MapStruct and updated `AccountRepository` with `JpaSpecificationExecutor`.
-  - Implemented `AuthService` & `AuthServiceImpl`:
-    - `FR-01`: Paginated list/search accounts by keyword, role, status (`GET /api/v1/auth/accounts`).
-    - `FR-02`: Create internal account for Staff/Admin (`POST /api/v1/auth/accounts`) with password BCrypt hashing and role assignment.
-    - `FR-03`: Partial update account (`PATCH /api/v1/auth/accounts/{id}`) for email, status, role, and password.
-    - `FR-04`: Soft delete and deactivate account (`DELETE /api/v1/auth/accounts/{id}`).
-  - Created `AccountController` protected with `@PreAuthorize("hasRole('ADMIN')")` and `@SecurityRequirement`.
-- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).

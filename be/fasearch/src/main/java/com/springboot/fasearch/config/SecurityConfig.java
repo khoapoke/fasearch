@@ -72,6 +72,7 @@ public class SecurityConfig {
                         // 3. Nhóm quyền Nhân viên hoặc Admin
                         .requestMatchers("/api/v1/staff/**").hasAnyRole(RoleType.ADMIN.toString(), RoleType.STAFF.toString())
                         .requestMatchers("/api/v1/users/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/inventory/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
 
                         // 4. Nhóm quyền Khách hàng
                         .requestMatchers("/api/v1/cart/**").hasRole(RoleType.CUSTOMER.toString())
