@@ -10,21 +10,36 @@
 
 ## 1. CURRENT CONTEXT
 
-- **Completed Tasks:** `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
+- **Completed Tasks:**
+  - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
+  - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
 - **In-progress Task:** Ready for `FR-14` (POS phone lookup) or Loyalty/Points (`FR-18`..`FR-20`).
 - **Next Immediate Actions:**
   1. Implement `FR-14`: Fast customer lookup at POS `GET /api/v1/users/customers/lookup?phone={sdt}` (`STAFF` role).
   2. Implement `FR-19`: Public membership tiers list `GET /api/v1/users/loyalty/tiers`.
   3. Implement `FR-20`: Redeem points for order discount `POST /api/v1/users/loyalty/redeem`.
 - **Technical Gotchas & Constraints:**
-  - Resigned employee soft delete: Must lock linked account (`account.setStatus(AccountStatus.LOCKED)`).
-  - Employee management is isolated in `EmployeeController` at `/api/v1/users/employees`, protected for `ADMIN` only via `@PreAuthorize("hasRole('ADMIN')")`.
-  - Partial updates across all user entities use PATCH/PUT with MapStruct `@BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)`.
+  - Restricted `PUBLIC_ENDPOINTS` in `SecurityConfig` to `/api/v1/auth/login` and `/api/v1/auth/register`. All `/api/v1/auth/accounts/**` endpoints require `ADMIN` role.
+  - Isolated account management in `AccountController` (`/api/v1/auth/accounts`) with `@PreAuthorize("hasRole('ADMIN')")`.
+  - All partial updates across entities use PATCH/PUT with MapStruct `@BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)`.
   - Soft delete universally sets `da_xoa = true` (or `isDeleted = true`) with `@SQLRestriction("da_xoa = false")`.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 9] Implemented FR-01, FR-02, FR-03, and FR-04 in Auth Module (2026-10-26)
+- **Done:**
+  - Restricted `PUBLIC_ENDPOINTS` in `SecurityConfig` from `/api/v1/auth/**` to `/api/v1/auth/login` and `/api/v1/auth/register` to protect `/api/v1/auth/accounts/**` and `/api/v1/auth/my-info`.
+  - Created `AccountCreateReq` and `AccountUpdateReq` for internal account management.
+  - Created `AccountMapper` with MapStruct and updated `AccountRepository` with `JpaSpecificationExecutor`.
+  - Implemented `AuthService` & `AuthServiceImpl`:
+    - `FR-01`: Paginated list/search accounts by keyword, role, status (`GET /api/v1/auth/accounts`).
+    - `FR-02`: Create internal account for Staff/Admin (`POST /api/v1/auth/accounts`) with password BCrypt hashing and role assignment.
+    - `FR-03`: Partial update account (`PATCH /api/v1/auth/accounts/{id}`) for email, status, role, and password.
+    - `FR-04`: Soft delete and deactivate account (`DELETE /api/v1/auth/accounts/{id}`).
+  - Created `AccountController` protected with `@PreAuthorize("hasRole('ADMIN')")` and `@SecurityRequirement`.
+- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 
 ### [Session 8] Implemented FR-15, FR-16, and FR-17 in User Module (2026-10-26)
 - **Done:**
@@ -63,8 +78,4 @@
 
 ### [Session 5] Setup Working Memory & Document Cross-linking (2026-10-25)
 - **Done:** Initialized `be_docs/memory.md` with Rolling 5 Sessions rule. Streamlined `AGENTS.md` (single source of truth in `be_docs/module.md`). Added bidirectional cross-links across all docs.
-- **Build Status:** `BUILD SUCCESS`.
-
-### [Session 4] Generated 10 API Specification Files (2026-10-25)
-- **Done:** Created `be_docs/api/` with `README.md` and 10 detailed Request/Response specification files covering all 10 modules with `ApiResponse<T>` and Spring Data pagination.
 - **Build Status:** `BUILD SUCCESS`.

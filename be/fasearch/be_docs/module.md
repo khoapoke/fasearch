@@ -31,10 +31,10 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-01 | Xem danh sách tài khoản | Hiển thị danh sách tài khoản, tìm kiếm/lọc theo Tên, Tên đăng nhập, SĐT hoặc Vai trò | `A` | |
-| FR-02 | Thêm mới tài khoản | Tạo tài khoản mới với Họ tên, Tên đăng nhập, Mật khẩu, Email, SĐT và Vai trò | `A` | |
-| FR-03 | Cập nhật tài khoản | Chỉnh sửa thông tin cá nhân, Email, SĐT hoặc thay đổi Mật khẩu / Vai trò | `A` | |
-| FR-04 | Xóa / Khóa tài khoản | Chuyển trạng thái tài khoản sang `LOCKED` hoặc `DELETED` để ngăn đăng nhập | `A` | |
+| FR-01 | Xem danh sách tài khoản | Hiển thị danh sách tài khoản, tìm kiếm/lọc theo Tên, Tên đăng nhập, SĐT hoặc Vai trò | `A` | X |
+| FR-02 | Thêm mới tài khoản | Tạo tài khoản mới với Họ tên, Tên đăng nhập, Mật khẩu, Email, SĐT và Vai trò | `A` | X |
+| FR-03 | Cập nhật tài khoản | Chỉnh sửa thông tin cá nhân, Email, SĐT hoặc thay đổi Mật khẩu / Vai trò | `A` | X |
+| FR-04 | Xóa / Khóa tài khoản | Chuyển trạng thái tài khoản sang `LOCKED` hoặc `DELETED` để ngăn đăng nhập | `A` | X |
 | FR-05 | Đăng nhập & Xác thực | Xác thực tên đăng nhập và mật khẩu, cấp JWT Token để truy cập hệ thống | `P` | X |
 | FR-06 | Đăng ký tài khoản | Khách hàng tự đăng ký tài khoản mới với vai trò `CUSTOMER` | `P` | X |
 | FR-07 | Xem thông tin tài khoản hiện tại | Lấy thông tin tài khoản đang đăng nhập từ JWT Token | `A` `S` `C` | X |

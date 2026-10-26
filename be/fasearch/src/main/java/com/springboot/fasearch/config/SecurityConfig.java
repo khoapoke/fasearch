@@ -37,7 +37,8 @@ public class SecurityConfig {
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/api/v1/auth/**",
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -62,6 +63,7 @@ public class SecurityConfig {
 
                         // 2. Nhóm quyền Admin
                         .requestMatchers("/api/v1/admin/**").hasRole(RoleType.ADMIN.toString())
+                        .requestMatchers("/api/v1/auth/accounts/**").hasRole(RoleType.ADMIN.name())
 
                         // 3. Nhóm quyền Nhân viên hoặc Admin
                         .requestMatchers("/api/v1/staff/**").hasAnyRole(RoleType.ADMIN.toString(), RoleType.STAFF.toString())

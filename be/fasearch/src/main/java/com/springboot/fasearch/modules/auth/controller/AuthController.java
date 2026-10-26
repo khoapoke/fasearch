@@ -16,6 +16,7 @@ import com.springboot.fasearch.modules.auth.dto.response.AuthRes;
 import com.springboot.fasearch.modules.auth.service.interfaces.AuthService;
 import com.springboot.fasearch.shared.ApiResponse;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -41,6 +42,7 @@ public class AuthController {
     }
 
     @GetMapping("/my-info")
+    @SecurityRequirement(name = "BearerAuth")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<AccountInfoRes> getMyInfo(Authentication authentication) {
         AccountInfoRes response = authService.getMyInfo(authentication.getName());
