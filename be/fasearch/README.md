@@ -145,7 +145,8 @@ be/fasearch/
 │   │               ├── V1__init_database.sql
 │   │               ├── V2__refactor_enums_and_add_soft_delete.sql
 │   │               ├── V3__update_seed_passwords_to_bcrypt.sql
-│   │               └── V4__add_da_xoa_to_vai_tro.sql
+│   │               ├── V4__add_da_xoa_to_vai_tro.sql
+│   │               └── V5__create_inventory_tables.sql
 │   └── test/                                   # Kiểm thử tự động (Unit & Integration Tests)
 ```
 
@@ -182,7 +183,14 @@ Thực hiện tại thư mục gốc backend `be/fasearch`:
 | Thao tác | Lệnh Windows (PowerShell/CMD) | Lệnh Linux / macOS |
 | :--- | :--- | :--- |
 | **Kiểm tra biên dịch** | `.\mvnw.cmd test-compile` | `./mvnw test-compile` |
-| **Chạy ứng dụng (Dev)** | `.\mvnw.cmd spring-boot:run` | `./mvnw spring-boot:run` |
+| **Chạy ứng dụng (Dev & Auto-Migrate)** | `.\mvnw.cmd spring-boot:run` | `./mvnw spring-boot:run` |
+| **Kiểm tra trạng thái Migration** | `.\mvnw.cmd --% flyway:info -Dflyway.url=jdbc:postgresql://localhost:5432/fasearch_db -Dflyway.user=postgres -Dflyway.password=your_password` | `./mvnw flyway:info -Dflyway.url=jdbc:postgresql://localhost:5432/fasearch_db -Dflyway.user=postgres -Dflyway.password=your_password` |
+| **Chạy Migration độc lập (CLI)** | `.\mvnw.cmd --% flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/fasearch_db -Dflyway.user=postgres -Dflyway.password=your_password` | `./mvnw flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/fasearch_db -Dflyway.user=postgres -Dflyway.password=your_password` |
+| **Sửa Checksum Migration (Repair)** | `.\mvnw.cmd --% flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/fasearch_db -Dflyway.user=postgres -Dflyway.password=your_password` | `./mvnw flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/fasearch_db -Dflyway.user=postgres -Dflyway.password=your_password` |
 | **Chạy toàn bộ Test** | `.\mvnw.cmd clean test` | `./mvnw clean test` |
 | **Đóng gói file JAR** | `.\mvnw.cmd clean package -DskipTests` | `./mvnw clean package -DskipTests` |
 | **Hiển thị Deprecation** | `.\mvnw.cmd compile "-Dmaven.compiler.showDeprecation=true"` | `./mvnw compile -Dmaven.compiler.showDeprecation=true` |
+
+> 💡 **Mẹo:**
+> - Khi chạy `.\mvnw.cmd spring-boot:run`, Spring Boot tự động nạp file `.env` và tự động thực thi tất cả các bản migration mới (như `V5`) mà không cần chạy lệnh migration thủ công.
+> - Trên PowerShell, ký hiệu `--%` (stop-parsing symbol) giúp truyền các tham số `-Dflyway.*` mà không bị PowerShell phân tách nhầm.
