@@ -11,25 +11,47 @@
 ## 1. CURRENT CONTEXT
 
 - **Completed Tasks:**
-  - Module `product`: `FR-21` (Category CRUD), `FR-22` (Product list & multi-criteria search), `FR-23` (Add product with initial variants), `FR-24` (Product details & partial update), `FR-25` (Soft delete / discontinue product), `FR-26` (Product Variant management - color, size, SKU, soft delete).
+  - Module `product` & `category` (100% COMPLETED):
+    - `FR-21`: Category CRUD & soft delete.
+    - `FR-22`: Paginated product list & dynamic specification search (`keyword`, `categoryId`, `priceRange`, `status`).
+    - `FR-23`: Create product with initial variants & auto-generated barcodes.
+    - `FR-24`: Get product detail & partial update (`PATCH /api/v1/products/{id}`).
+    - `FR-25`: Soft delete product (`DISCONTINUED`, `da_xoa = true`).
+    - `FR-26`: Variant CRUD (`GET`, `POST`, `PATCH`, `DELETE` on `/api/v1/products/**/variants/**`).
+    - `FR-27`: Barcode export with ZXing Code 128 as Base64 JSON and direct PNG byte stream.
+    - `FR-28`: Rapid POS lookup & keyword search at cashier checkout.
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready for Barcode Export & POS Lookup (`FR-27` -> `FR-28`).
+- **In-progress Task:** Ready to transition to next business module.
 - **Next Immediate Actions:**
-  1. Implement `FR-27`: Barcode export for variant SKUs (`GET /api/v1/products/variants/{skuId}/barcode`).
-  2. Implement `FR-28`: Rapid POS product lookup by SKU / Barcode (`GET /api/v1/products/pos-lookup?barcode={code}`).
+  - Discuss with user on next module:
+    - Module 6 `inventory`: `FR-29` -> `FR-34` (Kho hàng & tồn kho: tra cứu tồn kho, phiếu nhập/xuất kho, kiểm kê, cảnh báo tồn kho thấp).
+    - Or Module 7 `order` / `cart`: `FR-35` -> `FR-41` (Giỏ hàng, đặt hàng trực tuyến, POS lưu đơn tạm, quản lý đơn hàng).
+    - Or Module 5 `search`: `FR-NC1` -> `FR-NC3` (Tìm kiếm thông minh AI văn bản/hình ảnh).
 - **Technical Gotchas & Constraints:**
-  - `Product` has 1-N relation with `ProductVariant` (`bien_the_sp`) and N-1 with `Category` (`danh_muc`).
-  - Read APIs (`GET /api/v1/products/**`, `GET /api/v1/categories/**`) are public (`permitAll`).
-  - Mutating APIs (`POST`, `PATCH`, `PUT`, `DELETE` on `/api/v1/products/**` and `/api/v1/categories/**`) require `ADMIN` role.
-  - Hibernate `@SQLRestriction("da_xoa = false")` applied to `Product`, `ProductVariant`, and `Category`.
-  - Automatic Barcode generation pattern `SP%04d-%s-%s` when custom barcode is not supplied.
-  - Variant duplicate prevention checks `(productId, color, size)` uniqueness case-insensitively.
+  - ZXing 3.5.3 integrated for Code 128 barcode rendering (Base64 data URI and raw PNG bytes).
+  - Specific protected matchers (`/api/v1/products/pos-lookup/**`, `/api/v1/products/variants/*/barcode/**`) placed before broad `GET /api/v1/products/**` in `SecurityConfig` to reject unauthenticated requests immediately.
+  - `AppException` supports overloaded constructor with custom messages, mapped cleanly in `GlobalExceptionHandler`.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 13] Implemented FR-27 and FR-28 in Product Module (2026-10-26)
+- **Done:**
+  - Integrated ZXing 3.5.3 (`core`, `javase`) in `pom.xml` for standard Code 128 barcode encoding.
+  - Created DTOs: `BarcodeRes` (with `barcodeBase64`, product & pricing metadata) and `PosProductRes` (for POS cashier lookup).
+  - Created `BarcodeService` & `BarcodeServiceImpl` to encode Code 128 into PNG byte arrays and Base64 data URLs.
+  - Implemented `FR-27` in `ProductVariantService` & `ProductVariantController`:
+    - `GET /api/v1/products/variants/{skuId}/barcode`: Export Base64 barcode data for price tag printing (`ADMIN`, `STAFF`).
+    - `GET /api/v1/products/variants/{skuId}/barcode/image`: Direct PNG byte stream for barcode preview (`ADMIN`, `STAFF`).
+  - Implemented `FR-28` in `ProductVariantService` & `ProductController`:
+    - `GET /api/v1/products/pos-lookup?barcode={code}`: Instant variant lookup by barcode or SKU ID (`STAFF`, `ADMIN`).
+    - `GET /api/v1/products/pos-search?keyword={text}`: Keyword search across product name, color, size, barcode (`STAFF`, `ADMIN`).
+  - Updated `SecurityConfig` with strict role protection (`ADMIN`, `STAFF`) for POS and Barcode routes.
+  - Updated `be_docs/module.md` marking Module `product` completely done.
+- **Build Status:** `BUILD SUCCESS` (92 source files, 0 errors, 0 warnings).
 
 ### [Session 12] Implemented FR-26 (Product Variant Management) in Product Module (2026-10-26)
 - **Done:**
@@ -89,18 +111,4 @@
     - `FR-03`: Partial update account (`PATCH /api/v1/auth/accounts/{id}`) for email, status, role, and password.
     - `FR-04`: Soft delete and deactivate account (`DELETE /api/v1/auth/accounts/{id}`).
   - Created `AccountController` protected with `@PreAuthorize("hasRole('ADMIN')")` and `@SecurityRequirement`.
-- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
-
-### [Session 8] Implemented FR-15, FR-16, and FR-17 in User Module (2026-10-26)
-- **Done:**
-  - Added new error codes to `ErrorCode`: `EMPLOYEE_NOT_FOUND`, `CCCD_ALREADY_EXISTS`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_ALREADY_LINKED`.
-  - Created `Employee` entity mapping to `nhan_vien` table with soft delete and `@OneToOne` account relationship.
-  - Created `EmployeeRes`, `EmployeeCreateReq`, and `EmployeeUpdateReq` with 12-digit CCCD and phone validations.
-  - Created `EmployeeRepository` with `JpaSpecificationExecutor` and uniqueness check queries.
-  - Created `EmployeeMapper` with MapStruct and null-ignoring property strategy.
-  - Implemented `EmployeeService` & `EmployeeServiceImpl`:
-    - `FR-15`: Paginated search by name, phone, CCCD (`GET /api/v1/users/employees`).
-    - `FR-16`: Create employee (`POST /api/v1/users/employees`) with account link validation & partial update (`PATCH /api/v1/users/employees/{id}`).
-    - `FR-17`: Soft delete employee (`DELETE /api/v1/users/employees/{id}`) and automatically lock linked account (`status = LOCKED`).
-  - Created `EmployeeController` with `@PreAuthorize("hasRole('ADMIN')")` and OpenAPI `@SecurityRequirement`.
 - **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).

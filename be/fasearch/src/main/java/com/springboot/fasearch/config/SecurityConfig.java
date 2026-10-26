@@ -58,6 +58,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 1. Nhóm endpoint công khai (Public)
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers("/api/v1/products/pos-lookup/**", "/api/v1/products/pos-search/**", "/api/v1/products/variants/*/barcode/**")
+                                .hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 

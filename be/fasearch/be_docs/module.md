@@ -78,8 +78,8 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | FR-24 | Cập nhật sản phẩm | Chỉnh sửa thông tin chi tiết, hình ảnh và giá niêm yết của sản phẩm đã tồn tại | `A` | X |
 | FR-25 | Xóa / Tạm ẩn sản phẩm | Xóa SP (nếu chưa có giao dịch) hoặc chuyển trạng thái `DISCONTINUED` để ẩn khỏi danh mục | `A` | X |
 | FR-26 | Quản lý biến thể (Màu/Size) | Thêm / Sửa / Xóa thuộc tính Màu sắc và Size, tự động sinh mã SKU duy nhất | `A` | X |
-| FR-27 | Xuất mã vạch (Barcode) | Xuất dữ liệu mã vạch chuẩn tương ứng từng mã SKU biến thể phục vụ in tem dán | `A` `S` | |
-| FR-28 | Tìm kiếm SP tại quầy (POS) | Tìm nhanh sản phẩm bằng Mã SKU / Tên hoặc quét mã vạch (Barcode) | `S` | |
+| FR-27 | Xuất mã vạch (Barcode) | Xuất dữ liệu mã vạch chuẩn tương ứng từng mã SKU biến thể phục vụ in tem dán | `A` `S` | X |
+| FR-28 | Tìm kiếm SP tại quầy (POS) | Tìm nhanh sản phẩm bằng Mã SKU / Tên hoặc quét mã vạch (Barcode) | `S` | X |
 
 ---
 

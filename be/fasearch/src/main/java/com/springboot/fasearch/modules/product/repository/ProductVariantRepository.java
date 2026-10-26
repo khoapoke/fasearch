@@ -15,6 +15,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     Optional<ProductVariant> findByBarcode(String barcode);
 
+    Optional<ProductVariant> findByBarcodeIgnoreCase(String barcode);
+
     List<ProductVariant> findByProductId(Long productId);
 
     boolean existsByProductIdAndColorIgnoreCaseAndSizeIgnoreCase(Long productId, String color, String size);

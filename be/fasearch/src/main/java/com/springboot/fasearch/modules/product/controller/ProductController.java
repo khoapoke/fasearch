@@ -1,6 +1,7 @@
 package com.springboot.fasearch.modules.product.controller;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -22,11 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.springboot.fasearch.common.enums.ProductStatus;
 import com.springboot.fasearch.modules.product.dto.request.ProductCreateReq;
 import com.springboot.fasearch.modules.product.dto.request.ProductUpdateReq;
+import com.springboot.fasearch.modules.product.dto.response.PosProductRes;
 import com.springboot.fasearch.modules.product.dto.response.ProductDetailRes;
 import com.springboot.fasearch.modules.product.dto.response.ProductRes;
 import com.springboot.fasearch.modules.product.service.interfaces.ProductService;
+import com.springboot.fasearch.modules.product.service.interfaces.ProductVariantService;
 import com.springboot.fasearch.shared.ApiResponse;
 import com.springboot.fasearch.shared.PageResponse;
+
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -38,6 +42,7 @@ import lombok.RequiredArgsConstructor;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductVariantService productVariantService;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -51,6 +56,26 @@ public class ProductController {
 
         PageResponse<ProductRes> result = productService.getProducts(pageable, keyword, categoryId, minPrice, maxPrice, status);
         return ApiResponse.success(200, "Lấy danh sách sản phẩm thành công", result);
+    }
+
+    
+    @GetMapping("/pos-lookup")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<PosProductRes> posLookup(@RequestParam String barcode) {
+        PosProductRes result = productVariantService.posLookup(barcode);
+        return ApiResponse.success(200, "Tra cứu thành công", result);
+    }
+
+    
+    @GetMapping("/pos-search")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<PosProductRes>> posSearch(@RequestParam String keyword) {
+        List<PosProductRes> result = productVariantService.posSearch(keyword);
+        return ApiResponse.success(200, "Tìm kiếm POS thành công", result);
     }
 
     @GetMapping("/{id}")
