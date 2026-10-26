@@ -11,6 +11,8 @@ import org.mapstruct.ReportingPolicy;
 
 import com.springboot.fasearch.modules.product.dto.request.ProductCreateReq;
 import com.springboot.fasearch.modules.product.dto.request.ProductUpdateReq;
+import com.springboot.fasearch.modules.product.dto.request.VariantCreateReq;
+import com.springboot.fasearch.modules.product.dto.request.VariantUpdateReq;
 import com.springboot.fasearch.modules.product.dto.response.ProductDetailRes;
 import com.springboot.fasearch.modules.product.dto.response.ProductRes;
 import com.springboot.fasearch.modules.product.dto.response.VariantRes;
@@ -21,9 +23,21 @@ import com.springboot.fasearch.modules.product.entity.ProductVariant;
 public interface ProductMapper {
 
     @Mapping(source = "id", target = "skuId")
+    @Mapping(source = "product.id", target = "productId")
     VariantRes toVariantResponse(ProductVariant variant);
 
     List<VariantRes> toVariantResponseList(List<ProductVariant> variants);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "product", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    ProductVariant toVariant(VariantCreateReq req);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "product", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    void updateVariantFromReq(VariantUpdateReq req, @MappingTarget ProductVariant variant);
 
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.categoryName", target = "categoryName")

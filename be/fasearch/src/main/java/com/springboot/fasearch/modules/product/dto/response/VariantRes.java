@@ -14,6 +14,7 @@ import lombok.Setter;
 public class VariantRes {
 
     private Long skuId;
+    private Long productId;
     private String color;
     private String size;
     private String barcode;

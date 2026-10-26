@@ -11,25 +11,41 @@
 ## 1. CURRENT CONTEXT
 
 - **Completed Tasks:**
-  - Module `product`: `FR-21` (Category CRUD), `FR-22` (Product list & multi-criteria search), `FR-23` (Add product with initial variants), `FR-24` (Product details & partial update), `FR-25` (Soft delete / discontinue product).
+  - Module `product`: `FR-21` (Category CRUD), `FR-22` (Product list & multi-criteria search), `FR-23` (Add product with initial variants), `FR-24` (Product details & partial update), `FR-25` (Soft delete / discontinue product), `FR-26` (Product Variant management - color, size, SKU, soft delete).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready for Variant & Barcode Management (`FR-26` -> `FR-28`).
+- **In-progress Task:** Ready for Barcode Export & POS Lookup (`FR-27` -> `FR-28`).
 - **Next Immediate Actions:**
-  1. Implement `FR-26`: Variant management (Add / update / delete variants for existing products).
-  2. Implement `FR-27`: Barcode export for variant SKUs.
-  3. Implement `FR-28`: Rapid POS product lookup (by SKU / Barcode).
+  1. Implement `FR-27`: Barcode export for variant SKUs (`GET /api/v1/products/variants/{skuId}/barcode`).
+  2. Implement `FR-28`: Rapid POS product lookup by SKU / Barcode (`GET /api/v1/products/pos-lookup?barcode={code}`).
 - **Technical Gotchas & Constraints:**
   - `Product` has 1-N relation with `ProductVariant` (`bien_the_sp`) and N-1 with `Category` (`danh_muc`).
   - Read APIs (`GET /api/v1/products/**`, `GET /api/v1/categories/**`) are public (`permitAll`).
   - Mutating APIs (`POST`, `PATCH`, `PUT`, `DELETE` on `/api/v1/products/**` and `/api/v1/categories/**`) require `ADMIN` role.
   - Hibernate `@SQLRestriction("da_xoa = false")` applied to `Product`, `ProductVariant`, and `Category`.
   - Automatic Barcode generation pattern `SP%04d-%s-%s` when custom barcode is not supplied.
-  - Swagger `@ParameterObject` unpacks Spring `Pageable` cleanly for GET product query parameters.
+  - Variant duplicate prevention checks `(productId, color, size)` uniqueness case-insensitively.
+  - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 12] Implemented FR-26 (Product Variant Management) in Product Module (2026-10-26)
+- **Done:**
+  - Added new error codes to `ErrorCode`: `VARIANT_NOT_FOUND` (404), `VARIANT_ALREADY_EXISTS` (400).
+  - Created DTOs: `VariantCreateReq` (validated with `@NotBlank`, `@Size`), `VariantUpdateReq` (for partial updates), and updated `VariantRes` with `productId`.
+  - Added query methods to `ProductVariantRepository` for duplicate checks by `(productId, color, size)` and barcode uniqueness.
+  - Updated `ProductMapper` to map `VariantCreateReq -> ProductVariant` and support `updateVariantFromReq`.
+  - Implemented `ProductVariantService` & `ProductVariantServiceImpl`:
+    - List variants by product ID (`GET /api/v1/products/{productId}/variants`).
+    - Get variant detail by ID (`GET /api/v1/products/variants/{variantId}`).
+    - Add new variant with duplicate checks and auto-generated barcodes (`POST /api/v1/products/{productId}/variants`).
+    - Partial update variant color, size, barcode (`PATCH /api/v1/products/variants/{variantId}`).
+    - Soft delete variant (`DELETE /api/v1/products/variants/{variantId}`).
+  - Created `ProductVariantController` with OpenAPI `@Tag` and `@SecurityRequirement`.
+  - Updated `be_docs/api/api-product.md` with complete documentation for all FR-26 endpoints.
+- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 
 ### [Session 11] Implemented FR-22, FR-23, FR-24, FR-25 in Product Module (2026-10-26)
 - **Done:**
@@ -87,14 +103,4 @@
     - `FR-16`: Create employee (`POST /api/v1/users/employees`) with account link validation & partial update (`PATCH /api/v1/users/employees/{id}`).
     - `FR-17`: Soft delete employee (`DELETE /api/v1/users/employees/{id}`) and automatically lock linked account (`status = LOCKED`).
   - Created `EmployeeController` with `@PreAuthorize("hasRole('ADMIN')")` and OpenAPI `@SecurityRequirement`.
-- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
-
-### [Session 7] Implemented FR-12 and FR-13 in User Module (2026-10-26)
-- **Done:**
-  - Implemented `CustomerCreateReq` with phone regex format (`^(0|\+84)[0-9]{9}$`) and name validation.
-  - Implemented `CustomerUpdateReq` for safe partial updates (omitting `@NotBlank` on fields).
-  - Configured `UserMapper` with `NullValuePropertyMappingStrategy.IGNORE` and `ReportingPolicy.IGNORE`.
-  - Implemented `FR-12`: `POST /api/v1/users/customers` (duplicate phone check, default tier assignment, 201 Created) and `PATCH /api/v1/users/customers/{id}` (ownership check for CUSTOMER, partial update).
-  - Implemented `FR-13`: `DELETE /api/v1/users/customers/{id}` (ADMIN only, soft delete `isDeleted = true`).
-  - Synchronized `be_docs/api/api-user.md` with PATCH semantics.
 - **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).

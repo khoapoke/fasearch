@@ -178,17 +178,127 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 ## 3. Quản lý Biến thể SKU & Barcode (FR-26, FR-27)
 
-### 3.1. Thêm biến thể cho sản phẩm (FR-26)
+### 3.1. Quản lý Biến thể Sản phẩm (FR-26)
+
+#### 3.1.1. Lấy danh sách biến thể theo sản phẩm
+- **Endpoint:** `GET /api/v1/products/{id}/variants`
+- **Quyền hạn:** `PUBLIC`
+- **Response Thành công (HTTP 200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách biến thể thành công",
+  "result": [
+    {
+      "skuId": 101,
+      "productId": 1,
+      "color": "Trắng",
+      "size": "S",
+      "barcode": "SP0001-TRANG-S"
+    }
+  ],
+  "errors": null,
+  "timestamp": "2026-10-26T16:50:00"
+}
+```
+
+#### 3.1.2. Lấy chi tiết biến thể theo ID
+- **Endpoint:** `GET /api/v1/products/variants/{variantId}`
+- **Quyền hạn:** `PUBLIC`
+- **Response Thành công (HTTP 200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy thông tin biến thể thành công",
+  "result": {
+    "skuId": 101,
+    "productId": 1,
+    "color": "Trắng",
+    "size": "S",
+    "barcode": "SP0001-TRANG-S"
+  },
+  "errors": null,
+  "timestamp": "2026-10-26T16:50:00"
+}
+```
+
+#### 3.1.3. Thêm biến thể cho sản phẩm
 - **Endpoint:** `POST /api/v1/products/{id}/variants`
 - **Quyền hạn:** `ADMIN`
 - **Request Body:**
 ```json
 {
   "color": "Trắng",
-  "size": "S"
+  "size": "S",
+  "barcode": "SP0001-TRANG-S"
 }
 ```
-- **Hệ thống tự động:** Sinh mã SKU duy nhất và gán mã vạch Barcode chuẩn `EAN-13`.
+*(Nếu không truyền `barcode`, hệ thống tự động sinh theo mẫu `SP%04d-%s-%s`).*
+
+- **Response Thành công (HTTP 201 Created):**
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Thêm mới biến thể thành công",
+  "result": {
+    "skuId": 101,
+    "productId": 1,
+    "color": "Trắng",
+    "size": "S",
+    "barcode": "SP0001-TRANG-S"
+  },
+  "errors": null,
+  "timestamp": "2026-10-26T16:50:00"
+}
+```
+
+#### 3.1.4. Cập nhật biến thể
+- **Endpoint:** `PATCH /api/v1/products/variants/{variantId}` (hoặc `PUT`)
+- **Quyền hạn:** `ADMIN`
+- **Request Body:**
+```json
+{
+  "color": "Xanh navy",
+  "size": "M",
+  "barcode": "SP0001-XANH-M"
+}
+```
+- **Response Thành công (HTTP 200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Cập nhật biến thể thành công",
+  "result": {
+    "skuId": 101,
+    "productId": 1,
+    "color": "Xanh navy",
+    "size": "M",
+    "barcode": "SP0001-XANH-M"
+  },
+  "errors": null,
+  "timestamp": "2026-10-26T16:50:00"
+}
+```
+
+#### 3.1.5. Xóa biến thể
+- **Endpoint:** `DELETE /api/v1/products/variants/{variantId}`
+- **Quyền hạn:** `ADMIN`
+- **Mô tả:** Xóa mềm biến thể (`da_xoa = true`).
+- **Response Thành công (HTTP 200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Xóa biến thể thành công",
+  "result": true,
+  "errors": null,
+  "timestamp": "2026-10-26T16:50:00"
+}
+```
 
 ### 3.2. Xuất mã vạch Barcode (FR-27)
 - **Endpoint:** `GET /api/v1/products/variants/{skuId}/barcode`

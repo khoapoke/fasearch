@@ -11,7 +11,13 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     boolean existsByBarcode(String barcode);
 
+    boolean existsByBarcodeAndIdNot(String barcode, Long id);
+
     Optional<ProductVariant> findByBarcode(String barcode);
 
     List<ProductVariant> findByProductId(Long productId);
+
+    boolean existsByProductIdAndColorIgnoreCaseAndSizeIgnoreCase(Long productId, String color, String size);
+
+    boolean existsByProductIdAndColorIgnoreCaseAndSizeIgnoreCaseAndIdNot(Long productId, String color, String size, Long id);
 }
