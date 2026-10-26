@@ -33,6 +33,8 @@ public enum ErrorCode {
     // Product & Category errors
     CATEGORY_NOT_FOUND(404, "Category not found", HttpStatus.NOT_FOUND),
     CATEGORY_NAME_ALREADY_EXISTS(400, "Category name already exists", HttpStatus.BAD_REQUEST),
+    PRODUCT_NOT_FOUND(404, "Product not found", HttpStatus.NOT_FOUND),
+    BARCODE_ALREADY_EXISTS(400, "Barcode already exists", HttpStatus.BAD_REQUEST),
 
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),

@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/**").hasRole(RoleType.ADMIN.toString())
                         .requestMatchers("/api/v1/auth/accounts/**").hasRole(RoleType.ADMIN.name())
                         .requestMatchers("/api/v1/categories/**").hasRole(RoleType.ADMIN.name())
+                        .requestMatchers("/api/v1/products/**").hasRole(RoleType.ADMIN.name())
 
                         // 3. Nhóm quyền Nhân viên hoặc Admin
                         .requestMatchers("/api/v1/staff/**").hasAnyRole(RoleType.ADMIN.toString(), RoleType.STAFF.toString())

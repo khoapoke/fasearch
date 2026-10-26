@@ -11,23 +11,40 @@
 ## 1. CURRENT CONTEXT
 
 - **Completed Tasks:**
-  - Module `product`: `FR-21` (Category CRUD & soft delete).
+  - Module `product`: `FR-21` (Category CRUD), `FR-22` (Product list & multi-criteria search), `FR-23` (Add product with initial variants), `FR-24` (Product details & partial update), `FR-25` (Soft delete / discontinue product).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready for Product Management (`FR-22` -> `FR-25`).
+- **In-progress Task:** Ready for Variant & Barcode Management (`FR-26` -> `FR-28`).
 - **Next Immediate Actions:**
-  1. Implement `FR-22`: Paginated product search & filtering `GET /api/v1/products` (by keyword, categoryId, price range, status).
-  2. Implement `FR-23`: Create product `POST /api/v1/products` (`ProductCreateReq`).
-  3. Implement `FR-24`: Get product detail `GET /api/v1/products/{id}` and partial update `PATCH /api/v1/products/{id}`.
-  4. Implement `FR-25`: Soft delete / discontinue product `DELETE /api/v1/products/{id}`.
+  1. Implement `FR-26`: Variant management (Add / update / delete variants for existing products).
+  2. Implement `FR-27`: Barcode export for variant SKUs.
+  3. Implement `FR-28`: Rapid POS product lookup (by SKU / Barcode).
 - **Technical Gotchas & Constraints:**
-  - `Category` entity cleanly maps to table `danh_muc` without any classpath collision.
-  - `GET /api/v1/categories/**` is public (`permitAll`), while mutating endpoints (`POST`, `PATCH`, `PUT`, `DELETE`) require `ADMIN` role.
-  - Hibernate `@SQLRestriction("da_xoa = false")` applied to `Category` to exclude soft-deleted categories automatically.
+  - `Product` has 1-N relation with `ProductVariant` (`bien_the_sp`) and N-1 with `Category` (`danh_muc`).
+  - Read APIs (`GET /api/v1/products/**`, `GET /api/v1/categories/**`) are public (`permitAll`).
+  - Mutating APIs (`POST`, `PATCH`, `PUT`, `DELETE` on `/api/v1/products/**` and `/api/v1/categories/**`) require `ADMIN` role.
+  - Hibernate `@SQLRestriction("da_xoa = false")` applied to `Product`, `ProductVariant`, and `Category`.
+  - Automatic Barcode generation pattern `SP%04d-%s-%s` when custom barcode is not supplied.
+  - Swagger `@ParameterObject` unpacks Spring `Pageable` cleanly for GET product query parameters.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 11] Implemented FR-22, FR-23, FR-24, FR-25 in Product Module (2026-10-26)
+- **Done:**
+  - Added new error codes: `PRODUCT_NOT_FOUND` (404), `BARCODE_ALREADY_EXISTS` (400).
+  - Created entities: `Product` (`san_pham`) and `ProductVariant` (`bien_the_sp`) with `@SQLRestriction("da_xoa = false")`.
+  - Created DTOs: `ProductRes`, `ProductDetailRes`, `VariantRes`, `ProductCreateReq`, `ProductUpdateReq`, `VariantReq`.
+  - Created `ProductRepository` (with `JpaSpecificationExecutor`), `ProductVariantRepository`, and `ProductMapper` (MapStruct).
+  - Implemented `ProductService` & `ProductServiceImpl`:
+    - `FR-22`: Dynamic multi-criteria specification search (`keyword`, `categoryId`, `minPrice`, `maxPrice`, `status`) with pagination.
+    - `FR-23`: Create product with initial variants and auto-generated barcodes (`SP%04d-%s-%s`).
+    - `FR-24`: Get product detail by ID and partial update (`PATCH /api/v1/products/{id}`).
+    - `FR-25`: Soft delete product (`da_xoa = true`, status `DISCONTINUED`).
+  - Created `ProductController` with `@ParameterObject Pageable` and `@SecurityRequirement`.
+  - Configured `SecurityConfig` to protect mutating product endpoints with `ADMIN` role.
+- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 
 ### [Session 10] Implemented FR-21 (Category Management) in Product Module (2026-10-26)
 - **Done:**
@@ -81,14 +98,3 @@
   - Implemented `FR-13`: `DELETE /api/v1/users/customers/{id}` (ADMIN only, soft delete `isDeleted = true`).
   - Synchronized `be_docs/api/api-user.md` with PATCH semantics.
 - **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
-
-### [Session 6] Implemented FR-10 and FR-11 in User Module (2026-10-26)
-- **Done:**
-  - Created shared DTO `PageResponse<T>` for standard paginated responses.
-  - Created `MembershipTier` entity and `MembershipTierRepository` for table `hang_thanh_vien`.
-  - Created `SecurityUtils` for extracting current username and checking authorities.
-  - Updated `Customer` entity with `address`, `avatar`, and relationships to `MembershipTier` and `Account`.
-  - Updated `CustomerRes` with `address`, `tierId`, and `tierName` via `UserMapper`.
-  - Implemented `FR-10` (Paginated search by keyword & tierId via `JpaSpecificationExecutor`) and `FR-11` (Get customer detail by ID with RBAC ownership check).
-  - Updated `SecurityConfig` and `UserController` with `@PreAuthorize` role protection.
-- **Build Status:** `BUILD SUCCESS`.
