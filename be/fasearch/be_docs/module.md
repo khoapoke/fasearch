@@ -72,7 +72,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-21 | Quản lý danh mục sản phẩm | Xem, Thêm, Sửa, Xóa các danh mục (Áo sơ mi, Quần Jean, Phụ kiện...) | `A` | |
+| FR-21 | Quản lý danh mục sản phẩm | Xem, Thêm, Sửa, Xóa các danh mục (Áo sơ mi, Quần Jean, Phụ kiện...) | `A` | X |
 | FR-22 | Xem danh sách & Tìm kiếm SP | Hiển thị danh sách SP, tìm kiếm/lọc theo Tên, Mã SP, Danh mục, Khoảng giá, Trạng thái | `A` `S` `C` | |
 | FR-23 | Thêm mới sản phẩm | Nhập thông tin: Tên, Danh mục, Chất liệu, Kiểu dáng, Mô tả, Giá bán, Giá nhập, Hình ảnh | `A` | |
 | FR-24 | Cập nhật sản phẩm | Chỉnh sửa thông tin chi tiết, hình ảnh và giá niêm yết của sản phẩm đã tồn tại | `A` | |

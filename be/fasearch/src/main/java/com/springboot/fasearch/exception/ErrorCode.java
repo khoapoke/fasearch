@@ -30,6 +30,10 @@ public enum ErrorCode {
     ACCOUNT_NOT_FOUND(404, "Account not found", HttpStatus.NOT_FOUND),
     ACCOUNT_ALREADY_LINKED(400, "Account is already linked to another employee", HttpStatus.BAD_REQUEST),
 
+    // Product & Category errors
+    CATEGORY_NOT_FOUND(404, "Category not found", HttpStatus.NOT_FOUND),
+    CATEGORY_NAME_ALREADY_EXISTS(400, "Category name already exists", HttpStatus.BAD_REQUEST),
+
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),
