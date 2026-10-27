@@ -11,6 +11,8 @@
 ## 1. CURRENT CONTEXT
 
 - **Completed Tasks:**
+  - Module `order` / `cart`:
+    - `FR-35A`: Online Cart Management (`GET /api/v1/cart`, `POST /api/v1/cart/items`, `PUT /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart`).
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -19,19 +21,41 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to transition to the next business module per user request (e.g. Module 7 `order` / `cart` `FR-35` -> `FR-41`, or completing remaining inventory background actions `FR-33`, `FR-34`).
+- **In-progress Task:** Ready to implement `FR-35B` (Online Checkout / Đặt hàng trực tuyến: `POST /api/v1/orders/checkout`) in Module 7 `order`.
 - **Next Immediate Actions:**
-  1. Confirm next target module with user (e.g. Module 7: Order & Cart Management `FR-35`..`FR-41`).
+  1. Follow AGENTS.md 3-step process to clarify edge cases, constraints, and DTOs for `FR-35B` (Checkout).
 - **Technical Gotchas & Constraints:**
-  - Database tables: `ton_kho`, `phieu_nhap_kho`, `ct_phieu_nhap` via `V5`, `phieu_xuat_kho`, `ct_phieu_xuat` via `V6`, `phieu_kiem_ke`, `ct_phieu_kiem_ke` via `V7`.
+  - Cart item table `mat_hang_gio` uses composite PK `(ma_gio_hang, ma_sku)` referencing `bien_the_sp(ma_sku)` without soft delete `da_xoa` (hard delete on item removal / clear).
+  - Dynamic SKU pricing: `unitPrice = product.price + variant.additionalPrice`.
+  - Stock validation: Cart addition & quantity update validate against `inventory.availableStock`.
+  - Lean Order refactoring: `don_hang` holds `ma_don` (Order Code), `ghi_chu`, `tien_giam`; payment transactions and methods are decoupled in Module 8 (`hoa_don`, `thanh_toan`).
   - Stocktake records use auto-generated code `KK-YYYYMMDD-XXX` and status `PENDING_APPROVAL`.
-  - Stocktake discrepancy formula: `difference = actualCount - systemCount`, tracking total discrepancy magnitude `totalDiscrepancy += Math.abs(difference)`.
   - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 17] Implemented FR-35A (Online Cart Management) in Order Module (2026-10-27)
+- **Done:**
+  - Created Flyway migration `V8__refactor_cart_and_order_tables.sql` adding `gia_phu_thu` to `bien_the_sp`, fixing `mat_hang_gio` to reference `ma_sku` with composite PK `(ma_gio_hang, ma_sku)`, and adding `ma_don`, `ghi_chu`, `tien_giam` to `don_hang`.
+  - Updated `ProductVariant` entity & `VariantRes` with `additionalPrice`.
+  - Added new error codes to `ErrorCode`: `CART_NOT_FOUND` (404), `CART_ITEM_NOT_FOUND` (404), `ORDER_NOT_FOUND` (404).
+  - Created JPA entities: `Cart`, `CartItem`, `CartItemId` (composite key), `Order`, `OrderDetail`, `OrderDetailId`.
+  - Created DTOs: `CartItemReq`, `CartItemUpdateReq`, `CartItemRes`, `CartRes`.
+  - Created Repositories: `CartRepository`, `CartItemRepository`.
+  - Implemented `CartService` & `CartServiceImpl`:
+    - `GET /api/v1/cart`: Returns current customer's cart with dynamic SKU pricing (`unitPrice = product.price + additionalPrice`), `subTotal`, and `totalItems`. Auto-initializes cart if none exists.
+    - `POST /api/v1/cart/items`: Adds SKU to cart, accumulates quantity if exists, validates against available stock (`inventory.availableStock`).
+    - `PUT /api/v1/cart/items/{skuId}`: Updates item quantity in cart with stock validation.
+    - `DELETE /api/v1/cart/items/{skuId}`: Hard removes SKU from cart.
+    - `DELETE /api/v1/cart`: Clears all items from cart.
+  - Created `CartController` without `@Operation` annotations, protected with `@PreAuthorize("hasRole('CUSTOMER')")`.
+  - Configured `SecurityConfig` to restrict `/api/v1/cart/**` to `CUSTOMER`.
+  - Updated `be_docs/module.md` marking FR-35A as completed (`X`).
+  - Updated `be_docs/api/api-order.md` with complete documentation for all cart endpoints.
+- **Build Status:** `BUILD SUCCESS` (144 source files, 0 errors, 0 warnings).
 
 ### [Session 16] Implemented FR-32 (Stocktaking by Barcode Scanning) in Inventory Module (2026-10-27)
 - **Done:**
@@ -97,21 +121,5 @@
   - Updated `SecurityConfig` with strict role protection (`ADMIN`, `STAFF`) for POS and Barcode routes.
   - Updated `be_docs/module.md` marking Module `product` completely done.
 - **Build Status:** `BUILD SUCCESS` (92 source files, 0 errors, 0 warnings).
-
-### [Session 12] Implemented FR-26 (Product Variant Management) in Product Module (2026-10-26)
-- **Done:**
-  - Added new error codes to `ErrorCode`: `VARIANT_NOT_FOUND` (404), `VARIANT_ALREADY_EXISTS` (400).
-  - Created DTOs: `VariantCreateReq` (validated with `@NotBlank`, `@Size`), `VariantUpdateReq` (for partial updates), and updated `VariantRes` with `productId`.
-  - Added query methods to `ProductVariantRepository` for duplicate checks by `(productId, color, size)` and barcode uniqueness.
-  - Updated `ProductMapper` to map `VariantCreateReq -> ProductVariant` and support `updateVariantFromReq`.
-  - Implemented `ProductVariantService` & `ProductVariantServiceImpl`:
-    - List variants by product ID (`GET /api/v1/products/{productId}/variants`).
-    - Get variant detail by ID (`GET /api/v1/products/variants/{variantId}`).
-    - Add new variant with duplicate checks and auto-generated barcodes (`POST /api/v1/products/{productId}/variants`).
-    - Partial update variant color, size, barcode (`PATCH /api/v1/products/variants/{variantId}`).
-    - Soft delete variant (`DELETE /api/v1/products/variants/{variantId}`).
-  - Created `ProductVariantController` with OpenAPI `@Tag` and `@SecurityRequirement`.
-  - Updated `be_docs/api/api-product.md` with complete documentation for all FR-26 endpoints.
-- **Build Status:** `BUILD SUCCESS` (0 errors, 0 warnings).
 
 

@@ -70,6 +70,10 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 - **Endpoint:** `DELETE /api/v1/cart/items/{skuId}`
 - **Quyền hạn:** `CUSTOMER`
 
+### 1.5. Xóa sạch giỏ hàng
+- **Endpoint:** `DELETE /api/v1/cart`
+- **Quyền hạn:** `CUSTOMER`
+
 ---
 
 ## 2. Đặt hàng trực tuyến (FR-35B)

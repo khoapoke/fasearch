@@ -47,6 +47,11 @@ public enum ErrorCode {
     INVALID_STOCKTAKE_RECORD(400, "Stocktake must contain at least one valid record", HttpStatus.BAD_REQUEST),
     INSUFFICIENT_STOCK(400, "Insufficient stock for requested SKU", HttpStatus.BAD_REQUEST),
 
+    // Order & Cart errors
+    CART_NOT_FOUND(404, "Cart not found", HttpStatus.NOT_FOUND),
+    CART_ITEM_NOT_FOUND(404, "Cart item not found", HttpStatus.NOT_FOUND),
+    ORDER_NOT_FOUND(404, "Order not found", HttpStatus.NOT_FOUND),
+
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),
