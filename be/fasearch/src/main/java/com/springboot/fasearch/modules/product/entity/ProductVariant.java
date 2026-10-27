@@ -1,5 +1,7 @@
 package com.springboot.fasearch.modules.product.entity;
 
+import java.math.BigDecimal;
+
 import org.hibernate.annotations.SQLRestriction;
 
 import jakarta.persistence.Column;
@@ -44,6 +46,10 @@ public class ProductVariant {
 
     @Column(name = "ma_vach", length = 100, unique = true)
     private String barcode;
+
+    @Column(name = "gia_phu_thu", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal additionalPrice = BigDecimal.ZERO;
 
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
