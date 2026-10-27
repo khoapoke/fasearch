@@ -4,7 +4,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 
 ---
 
-## 1. Quản lý Giỏ hàng trực tuyến (Cart)
+## 1. Quản lý Giỏ hàng trực tuyến (FR-35A)
 
 ### 1.1. Xem giỏ hàng hiện tại
 - **Endpoint:** `GET /api/v1/cart`
@@ -21,7 +21,6 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
     "subTotal": 630000.00,
     "items": [
       {
-        "cartItemId": 11,
         "skuId": 101,
         "productName": "Áo sơ mi Oxford kẻ sọc",
         "color": "Xanh dương",
@@ -31,7 +30,6 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
         "totalPrice": 350000.00
       },
       {
-        "cartItemId": 12,
         "skuId": 105,
         "productName": "Áo Polo Pique Cổ Bẻ",
         "color": "Đen",
@@ -59,7 +57,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ```
 
 ### 1.3. Cập nhật số lượng sản phẩm trong giỏ
-- **Endpoint:** `PUT /api/v1/cart/items/{itemId}`
+- **Endpoint:** `PUT /api/v1/cart/items/{skuId}`
 - **Quyền hạn:** `CUSTOMER`
 - **Request Body:**
 ```json
@@ -69,12 +67,12 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ```
 
 ### 1.4. Xóa sản phẩm khỏi giỏ hàng
-- **Endpoint:** `DELETE /api/v1/cart/items/{itemId}`
+- **Endpoint:** `DELETE /api/v1/cart/items/{skuId}`
 - **Quyền hạn:** `CUSTOMER`
 
 ---
 
-## 2. Đặt hàng trực tuyến (FR-35)
+## 2. Đặt hàng trực tuyến (FR-35B)
 
 - **Endpoint:** `POST /api/v1/orders/checkout`
 - **Quyền hạn:** `CUSTOMER`
@@ -101,6 +99,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   "message": "Tạo đơn hàng thành công",
   "result": {
     "orderId": 1001,
+    "orderCode": "DH-20261025-001",
     "status": "PENDING",
     "subTotal": 630000.00,
     "discountAmount": 63000.00,
@@ -124,6 +123,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   - `page`: Số trang.
   - `size`: Số bản ghi/trang.
   - `status`: Lọc theo trạng thái (`PENDING`, `CONFIRMED`, `PACKING`, `SHIPPING`, `COMPLETED`, `CANCELLED`).
+  - `orderCode`: Tìm theo mã đơn hàng.
   - `customerPhone`: Tìm theo số điện thoại khách hàng.
   - `startDate`, `endDate`: Khoảng thời gian đặt hàng.
 
@@ -138,6 +138,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   "message": "Lấy chi tiết đơn hàng thành công",
   "result": {
     "orderId": 1001,
+    "orderCode": "DH-20261025-001",
     "status": "CONFIRMED",
     "customer": {
       "customerId": 1,
