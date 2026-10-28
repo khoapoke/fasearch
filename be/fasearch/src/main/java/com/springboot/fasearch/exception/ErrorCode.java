@@ -53,6 +53,12 @@ public enum ErrorCode {
     CART_EMPTY(400, "Cart is empty", HttpStatus.BAD_REQUEST),
     ORDER_NOT_FOUND(404, "Order not found", HttpStatus.NOT_FOUND),
 
+    // Payment & Invoice errors
+    INVOICE_NOT_FOUND(404, "Invoice not found", HttpStatus.NOT_FOUND),
+    ORDER_ALREADY_PAID(400, "Order is already paid", HttpStatus.BAD_REQUEST),
+    PAYMENT_METHOD_NOT_FOUND(404, "Payment method not found", HttpStatus.NOT_FOUND),
+    PAYMENT_AMOUNT_INSUFFICIENT(400, "Paid amount is insufficient to cover total bill", HttpStatus.BAD_REQUEST),
+
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),

@@ -40,6 +40,7 @@ public class SecurityConfig {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/orders/calculate-shipping-fee",
+            "/api/v1/payments/methods",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -86,6 +87,7 @@ public class SecurityConfig {
 
                         // 5. Nhóm quyền Thanh toán & Hóa đơn
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/calculate").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/process").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
 
                         // Mọi endpoint còn lại bắt buộc phải xác thực
                         .anyRequest().authenticated())
