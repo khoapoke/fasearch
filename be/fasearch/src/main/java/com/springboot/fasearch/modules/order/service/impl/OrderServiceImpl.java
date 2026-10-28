@@ -2,21 +2,29 @@ package com.springboot.fasearch.modules.order.service.impl;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.springboot.fasearch.common.enums.OrderStatus;
+import com.springboot.fasearch.common.enums.RoleType;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.order.dto.response.OrderCustomerRes;
+import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
+import com.springboot.fasearch.modules.order.dto.response.OrderItemRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
 import com.springboot.fasearch.modules.order.entity.Cart;
 import com.springboot.fasearch.modules.order.entity.CartItem;
@@ -27,10 +35,13 @@ import com.springboot.fasearch.modules.order.repository.CartItemRepository;
 import com.springboot.fasearch.modules.order.repository.CartRepository;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;
 import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
+import com.springboot.fasearch.modules.product.entity.Product;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
+import com.springboot.fasearch.shared.PageResponse;
 
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -51,6 +62,20 @@ public class OrderServiceImpl implements OrderService {
         String username = auth.getName();
         return userRepository.findByAccount_Username(username)
                 .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+    }
+
+    private boolean isCustomer(Authentication auth) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_" + RoleType.CUSTOMER.name()));
+    }
+
+    private String getCustomerFullName(Customer customer) {
+        if (customer == null) {
+            return null;
+        }
+        String first = customer.getFirstName() != null ? customer.getFirstName() : "";
+        String last = customer.getLastName() != null ? customer.getLastName() : "";
+        return (first + " " + last).trim();
     }
 
     private String generateOrderCode() {
@@ -93,8 +118,7 @@ public class OrderServiceImpl implements OrderService {
         boolean hasCustomReceiver = (req.getReceiverName() != null && !req.getReceiverName().isBlank())
                 || (req.getReceiverPhone() != null && !req.getReceiverPhone().isBlank());
         if (hasCustomReceiver) {
-            String defaultCustomerName = ((customer.getFirstName() != null ? customer.getFirstName() + " " : "")
-                    + (customer.getLastName() != null ? customer.getLastName() : "")).trim();
+            String defaultCustomerName = getCustomerFullName(customer);
             String receiverName = (req.getReceiverName() != null && !req.getReceiverName().isBlank())
                     ? req.getReceiverName().trim()
                     : defaultCustomerName;
@@ -180,11 +204,164 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(savedOrder.getId())
                 .orderCode(savedOrder.getOrderCode())
                 .status(savedOrder.getStatus())
+                .customerName(getCustomerFullName(customer))
+                .customerPhone(customer.getPhoneNumber())
+                .deliveryAddress(savedOrder.getDeliveryAddress())
                 .subTotal(subTotal)
                 .discountAmount(savedOrder.getDiscountAmount())
                 .shippingFee(savedOrder.getShippingFee())
                 .totalAmount(savedOrder.getTotalAmount())
                 .createdAt(savedOrder.getOrderDate())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderRes> getOrders(
+            Pageable pageable,
+            OrderStatus status,
+            String orderCode,
+            String customerPhone,
+            LocalDate startDate,
+            LocalDate endDate) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        boolean isCust = isCustomer(auth);
+        Customer currentCustomer = isCust
+                ? userRepository.findByAccount_Username(auth.getName())
+                        .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND))
+                : null;
+
+        Specification<Order> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 1. Phân quyền dữ liệu: CUSTOMER chỉ xem đơn của chính mình
+            if (isCust && currentCustomer != null) {
+                predicates.add(cb.equal(root.get("customer").get("id"), currentCustomer.getId()));
+            } else {
+                // ADMIN / STAFF có thể lọc theo số điện thoại khách hàng
+                if (customerPhone != null && !customerPhone.isBlank()) {
+                    predicates.add(cb.like(root.join("customer").get("phoneNumber"), "%" + customerPhone.trim() + "%"));
+                }
+            }
+
+            // 2. Lọc theo mã đơn hàng
+            if (orderCode != null && !orderCode.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("orderCode")), "%" + orderCode.trim().toLowerCase() + "%"));
+            }
+
+            // 3. Lọc theo trạng thái
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            // 4. Lọc theo khoảng ngày đặt hàng
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("orderDate"), startDate.atStartOfDay()));
+            }
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("orderDate"), endDate.atTime(LocalTime.MAX)));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+
+        List<OrderRes> content = page.getContent().stream().map(order -> {
+            BigDecimal subTotal = order.getTotalAmount()
+                    .subtract(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
+                    .add(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO);
+
+            return OrderRes.builder()
+                    .orderId(order.getId())
+                    .orderCode(order.getOrderCode())
+                    .status(order.getStatus())
+                    .customerName(getCustomerFullName(order.getCustomer()))
+                    .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhoneNumber() : null)
+                    .deliveryAddress(order.getDeliveryAddress())
+                    .subTotal(subTotal)
+                    .discountAmount(order.getDiscountAmount())
+                    .shippingFee(order.getShippingFee())
+                    .totalAmount(order.getTotalAmount())
+                    .createdAt(order.getOrderDate())
+                    .build();
+        }).toList();
+
+        return PageResponse.<OrderRes>builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isLast(page.isLast())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderDetailRes getOrderById(Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Kiểm tra quyền riêng tư dữ liệu: Khách hàng chỉ xem được đơn của mình
+        if (isCustomer(auth)) {
+            Customer currentCustomer = userRepository.findByAccount_Username(auth.getName())
+                    .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+            if (!order.getCustomer().getId().equals(currentCustomer.getId())) {
+                throw new AppException(ErrorCode.FORBIDDEN);
+            }
+        }
+
+        List<OrderItemRes> items = new ArrayList<>();
+        BigDecimal calculatedSubTotal = BigDecimal.ZERO;
+
+        for (OrderDetail detail : order.getDetails()) {
+            ProductVariant variant = detail.getVariant();
+            Product product = variant.getProduct();
+            BigDecimal lineTotal = detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
+            calculatedSubTotal = calculatedSubTotal.add(lineTotal);
+
+            items.add(OrderItemRes.builder()
+                    .skuId(variant.getId())
+                    .productName(product != null ? product.getProductName() : null)
+                    .color(variant.getColor())
+                    .size(variant.getSize())
+                    .imageUrl(product != null ? product.getImageUrl() : null)
+                    .quantity(detail.getQuantity())
+                    .unitPrice(detail.getUnitPrice())
+                    .totalPrice(lineTotal)
+                    .build());
+        }
+
+        OrderCustomerRes customerRes = OrderCustomerRes.builder()
+                .customerId(order.getCustomer().getId())
+                .fullName(getCustomerFullName(order.getCustomer()))
+                .phoneNumber(order.getCustomer().getPhoneNumber())
+                .build();
+
+        return OrderDetailRes.builder()
+                .orderId(order.getId())
+                .orderCode(order.getOrderCode())
+                .status(order.getStatus())
+                .customer(customerRes)
+                .deliveryAddress(order.getDeliveryAddress())
+                .note(order.getNote())
+                .items(items)
+                .subTotal(calculatedSubTotal)
+                .discountAmount(order.getDiscountAmount())
+                .shippingFee(order.getShippingFee())
+                .totalAmount(order.getTotalAmount())
+                .createdAt(order.getOrderDate())
                 .build();
     }
 }

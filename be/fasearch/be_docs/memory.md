@@ -14,6 +14,7 @@
   - Module `order` / `cart`:
     - `FR-35A`: Online Cart Management (`GET /api/v1/cart`, `POST /api/v1/cart/items`, `PUT /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart`).
     - `FR-35B`: Online Checkout (`POST /api/v1/orders/checkout`) with automatic stock reservation (`reservedStock` +, `availableStock` -) and cart clearing.
+    - `FR-36`: View order list & detail (`GET /api/v1/orders`, `GET /api/v1/orders/{id}`) with role-based data isolation (`CUSTOMER` sees own orders, `ADMIN`/`STAFF` see all with multi-criteria filtering).
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -22,10 +23,12 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to implement `FR-36` (Order List & Detail View: `GET /api/v1/orders`, `GET /api/v1/orders/{id}`) in Module 7 `order`.
+- **In-progress Task:** Ready to implement `FR-37` (Order Status Transition: `PATCH /api/v1/orders/{id}/status`) in Module 7 `order`.
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify edge cases, query filters, and DTOs for `FR-36` (Order List & Detail).
+  1. Follow AGENTS.md 3-step process to clarify state transition machine (`PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`) for `FR-37`.
 - **Technical Gotchas & Constraints:**
+  - Role data isolation: `CUSTOMER` role automatically scoped to `customer.id = currentCustomer.id` in `GET /api/v1/orders` and forbidden on foreign order access in `GET /api/v1/orders/{id}`.
+  - Multi-criteria specification filtering on `orderCode`, `status`, `customerPhone` (joined), and `orderDate` range (`startDate`, `endDate`).
   - Order Code generation format: `DH-YYYYMMDD-XXX` with daily sequence increment.
   - Online checkout flow atomically reserves stock (`availableStock` -, `reservedStock` + in `ton_kho`) and clears customer's cart.
   - Delivery address fallbacks to `customer.address` if empty in request; custom receiver info (`receiverName`, `receiverPhone`) is neatly preserved in order `note`.
@@ -38,6 +41,18 @@
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 19] Implemented FR-36 (Order List & Detail View) in Order Module (2026-10-28)
+- **Done:**
+  - Created DTOs: `OrderCustomerRes` (customer summary: `customerId`, `fullName`, `phoneNumber`), `OrderItemRes` (line item: `skuId`, `productName`, `color`, `size`, `imageUrl`, `quantity`, `unitPrice`, `totalPrice`), `OrderDetailRes` (full order view).
+  - Updated `OrderRes` with `customerName`, `customerPhone`, and `deliveryAddress` for rich paginated order lists.
+  - Updated `OrderService` & `OrderServiceImpl`:
+    - `GET /api/v1/orders`: Implemented dynamic `Specification<Order>` filtering by `status`, `orderCode`, `customerPhone`, `startDate`, `endDate`. Built-in RBAC data isolation (automatically enforces `customer.id = currentCustomer.id` for `CUSTOMER`, allows full search for `ADMIN`/`STAFF`).
+    - `GET /api/v1/orders/{id}`: Retrieves comprehensive order details with line items, SKU metadata, dynamic subtotal calculation, and ownership verification for `CUSTOMER` (throws 403 `FORBIDDEN` if accessing foreign order).
+  - Updated `OrderController`: Added `GET /api/v1/orders` (paginated `PageResponse<OrderRes>`) and `GET /api/v1/orders/{id}`, protected with `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")`, wrapped in `ApiResponse<T>`, no `@Operation` annotations.
+  - Updated `SecurityConfig` to authorize `GET /api/v1/orders/**` for `ADMIN`, `STAFF`, `CUSTOMER`.
+  - Updated `be_docs/module.md` marking FR-36 as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (154 source files, 0 errors, 0 warnings).
 
 ### [Session 18] Implemented FR-35B (Online Checkout) in Order Module (2026-10-28)
 - **Done:**
@@ -111,21 +126,5 @@
   - Updated `InventoryController` without `@Operation` annotations, protected with `@PreAuthorize("hasRole('ADMIN')")` for creation and `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")` for reading.
   - Updated `be_docs/module.md` marking FR-31 as completed (`X`).
 - **Build Status:** `BUILD SUCCESS` (119 source files, 0 errors, 0 warnings).
-
-### [Session 14] Implemented FR-29 and FR-30 in Inventory Module (2026-10-26)
-- **Done:**
-  - Created Flyway migration `V5__create_inventory_tables.sql` for tables `ton_kho`, `phieu_nhap_kho`, and `ct_phieu_nhap` with indexes and soft delete columns.
-  - Added `ReceiptStatus` enum (`PENDING`, `COMPLETED`, `CANCELLED`) and inventory error codes (`INVENTORY_NOT_FOUND`, `RECEIPT_NOT_FOUND`, `INVALID_RECEIPT_ITEM`).
-  - Created JPA entities: `Inventory` (OneToOne with `ProductVariant`), `ImportReceipt`, and `ImportReceiptDetail` with `@SQLRestriction("da_xoa = false")`.
-  - Created DTOs: `StockRes`, `ImportReceiptCreateReq`, `ImportReceiptItemReq`, `ImportReceiptRes`, `ImportReceiptDetailRes`, `ImportReceiptItemRes`.
-  - Created Repositories: `InventoryRepository`, `ImportReceiptRepository`, `ImportReceiptDetailRepository` (with `JpaSpecificationExecutor`).
-  - Created `InventoryMapper` with MapStruct for clean entity/DTO translation.
-  - Implemented `InventoryService` & `InventoryServiceImpl`:
-    - `FR-29`: Dynamic specification search for stock list (`GET /api/v1/inventory/stock`) by SKU/barcode, product name, or keyword, and get by SKU ID (`GET /api/v1/inventory/stock/{skuId}`).
-    - `FR-30`: Create import receipt (`POST /api/v1/inventory/import-receipts`) with date-formatted receipt codes (`NK-YYYYMMDD-XXX`) and atomic inventory accretion; plus list/detail endpoints.
-  - Created `InventoryController` without `@Operation` annotations, secured with `@SecurityRequirement(name = "BearerAuth")`.
-  - Updated `SecurityConfig` to grant `ADMIN` and `STAFF` access to inventory endpoints.
-  - Updated `be_docs/module.md` marking FR-29 and FR-30 as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (109 source files, 0 errors, 0 warnings).
 
 

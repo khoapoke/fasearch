@@ -112,7 +112,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | :--- | :--- | :--- | :---: | :---: |
 | FR-35A | Quản lý giỏ hàng trực tuyến | Xem giỏ hàng, thêm sản phẩm theo SKU, cập nhật số lượng và xóa mặt hàng khỏi giỏ | `C` | X |
 | FR-35B | Đặt hàng trực tuyến (Checkout) | Chốt giỏ hàng tạo đơn hàng mới, tạm giữ tồn kho và áp dụng mã giảm giá | `C` | X |
-| FR-36 | Xem danh sách & Chi tiết đơn hàng | Lọc đơn hàng theo Mã đơn, SĐT khách, Ngày đặt hoặc Trạng thái | `A` `S` `C` | |
+| FR-36 | Xem danh sách & Chi tiết đơn hàng | Lọc đơn hàng theo Mã đơn, SĐT khách, Ngày đặt hoặc Trạng thái | `A` `S` `C` | X |
 | FR-37 | Cập nhật trạng thái đơn hàng | Chuyển trạng thái tuần tự: `PENDING` → `CONFIRMED` → `PACKING` → `SHIPPING` → `COMPLETED` | `A` `S` | |
 | FR-38 | Hủy đơn hàng | Hủy đơn trước khi hoàn tất thanh toán, không ghi nhận doanh thu | `A` `S` `C` | |
 | FR-39 | Tạm lưu đơn hàng (POS) | Lưu tạm đơn đang tính dở để phục vụ khách tiếp theo, mở lại khi cần | `S` | |

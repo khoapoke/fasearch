@@ -24,6 +24,12 @@ public class OrderRes {
 
     private OrderStatus status;
 
+    private String customerName;
+
+    private String customerPhone;
+
+    private String deliveryAddress;
+
     private BigDecimal subTotal;
 
     private BigDecimal discountAmount;
