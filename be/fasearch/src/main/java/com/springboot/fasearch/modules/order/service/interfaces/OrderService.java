@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.springboot.fasearch.common.enums.OrderStatus;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
@@ -26,4 +27,6 @@ public interface OrderService {
     OrderDetailRes getOrderById(Long id);
 
     OrderDetailRes updateOrderStatus(Long id, OrderStatusUpdateReq req);
+
+    OrderDetailRes cancelOrder(Long id, OrderCancelReq req);
 }

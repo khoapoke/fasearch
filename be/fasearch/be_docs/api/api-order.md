@@ -189,11 +189,51 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ### 4.2. Hủy đơn hàng (FR-38)
 - **Endpoint:** `POST /api/v1/orders/{id}/cancel`
 - **Quyền hạn:** `ADMIN`, `STAFF`, `CUSTOMER`
-- **Mô tả:** Hủy đơn hàng trước khi hoàn tất thanh toán. Hệ thống tự động giải phóng số lượng tồn kho đã tạm giữ (FR-40).
+- **Mô tả:** Hủy đơn hàng trước khi hoàn tất thanh toán. Khách hàng chỉ có thể tự hủy đơn khi đơn ở trạng thái `PENDING` hoặc `CONFIRMED`. Nhân viên/Admin có thể hủy bất kỳ lúc nào trước khi hoàn tất. Hệ thống tự động hoàn trả số lượng tồn kho đã tạm giữ (availableStock += quantity, reservedStock -= quantity) (FR-40).
 - **Request Body:**
 ```json
 {
   "reason": "Khách hàng đổi ý muốn chọn size khác"
+}
+```
+- **Response Thành công (HTTP 200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Hủy đơn hàng thành công",
+  "result": {
+    "id": 1,
+    "orderCode": "DH-20261028-001",
+    "status": "CANCELLED",
+    "deliveryAddress": "Số 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM",
+    "note": "Giao vào giờ hành chính | [CUSTOMER] Hủy đơn: Khách hàng đổi ý muốn chọn size khác (2026-10-28 15:30:00)",
+    "shippingFee": 30000.00,
+    "discountAmount": 0.00,
+    "subTotal": 630000.00,
+    "totalAmount": 660000.00,
+    "customer": {
+      "customerId": 1,
+      "fullName": "Nguyễn Văn A",
+      "phoneNumber": "0987654321"
+    },
+    "employee": null,
+    "items": [
+      {
+        "skuId": 101,
+        "productName": "Áo sơ mi Oxford kẻ sọc",
+        "color": "Xanh dương",
+        "size": "L",
+        "imageUrl": "https://example.com/img1.jpg",
+        "quantity": 1,
+        "unitPrice": 350000.00,
+        "totalPrice": 350000.00
+      }
+    ],
+    "createdAt": "2026-10-28T15:20:00"
+  },
+  "errors": null,
+  "timestamp": "2026-10-28T15:30:00"
 }
 ```
 

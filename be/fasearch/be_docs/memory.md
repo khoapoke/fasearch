@@ -16,6 +16,7 @@
     - `FR-35B`: Online Checkout (`POST /api/v1/orders/checkout`) with automatic stock reservation (`reservedStock` +, `availableStock` -) and cart clearing.
     - `FR-36`: View order list & detail (`GET /api/v1/orders`, `GET /api/v1/orders/{id}`) with role-based data isolation (`CUSTOMER` sees own orders, `ADMIN`/`STAFF` see all with multi-criteria filtering).
     - `FR-37`: Sequential order status transition (`PATCH /api/v1/orders/{id}/status`: `PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`) with employee tracking and automatic inventory release & physical deduction upon completion.
+    - `FR-38`: Cancel Order (`POST /api/v1/orders/{id}/cancel`) with permission validation (`CUSTOMER` can only cancel `PENDING`/`CONFIRMED`, `ADMIN`/`STAFF` can cancel prior to completion), audit notes, and automatic inventory reserved stock restoration (`availableStock += quantity`, `reservedStock -= quantity`).
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -24,10 +25,11 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to implement `FR-38` (Cancel Order: `POST /api/v1/orders/{id}/cancel`) in Module 7 `order`.
+- **In-progress Task:** Ready to implement `FR-39` (Draft Order at POS: `POST /api/v1/orders/pos/draft` & `GET /api/v1/orders/pos/drafts`) in Module 7 `order`.
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify cancellation rules, roles (`ADMIN`, `STAFF`, `CUSTOMER`), reason tracking, and stock release (FR-40) for `FR-38`.
+  1. Follow AGENTS.md 3-step process to clarify POS draft order creation, items, cashier/staff tracking, and draft listing for `FR-39`.
 - **Technical Gotchas & Constraints:**
+  - Order cancellation (`POST /api/v1/orders/{id}/cancel`): Customer can only cancel `PENDING` or `CONFIRMED` orders; `ADMIN`/`STAFF` can cancel anytime before terminal status. Releases reserved stock (`availableStock += quantity`, `reservedStock -= quantity`).
   - Sequential order status transitions: strictly `PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`. Closed orders (`CANCELLED`, `COMPLETED`, `RETURNED`) cannot be transitioned.
   - Completing an order (`COMPLETED`) atomically deducts `physicalStock` and releases `reservedStock` in `ton_kho`.
   - Auditing employee: `order.employee` updated with the `ADMIN`/`STAFF` performing status transition.
@@ -45,6 +47,23 @@
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 21] Implemented FR-38 (Cancel Order) in Order Module (2026-10-28)
+- **Done:**
+  - Created DTO: `OrderCancelReq` (validated with `@NotBlank private String reason;`).
+  - Updated `OrderService` & `OrderServiceImpl`:
+    - `POST /api/v1/orders/{id}/cancel`:
+      - Validates order is not in a terminal state (`CANCELLED`, `COMPLETED`, `RETURNED`).
+      - Role-based cancellation permissions: `CUSTOMER` can cancel only when status is `PENDING` or `CONFIRMED` (throws 400 with guidance to contact staff if `PACKING`/`SHIPPING`, and checks order ownership throwing 403 `FORBIDDEN` if foreign order). `ADMIN` and `STAFF` can cancel any active order before completion.
+      - Tracks staff in `order.employee` when cancelled by internal staff/admin.
+      - Inventory restoration (FR-40): For every `OrderDetail`, atomically returns reserved stock back to available stock (`availableStock += quantity`, `reservedStock -= quantity`).
+      - Appends timestamped audit note with actor role and cancel reason into `order.note`.
+      - Updates order status to `OrderStatus.CANCELLED`.
+  - Updated `OrderController`: Added `POST /api/v1/orders/{id}/cancel`, protected with `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")`, returning `ApiResponse<OrderDetailRes>` with HTTP 200 OK, no `@Operation` annotations.
+  - Updated `SecurityConfig`: Configured `POST /api/v1/orders/*/cancel` for `ADMIN`, `STAFF`, `CUSTOMER`.
+  - Updated `be_docs/module.md` marking FR-38 as completed (`X`).
+  - Updated `be_docs/api/api-order.md` with cancel order documentation and response sample.
+- **Build Status:** `BUILD SUCCESS` (156 source files, 0 errors, 0 warnings).
 
 ### [Session 20] Implemented FR-37 (Order Status Transition) in Order Module (2026-10-28)
 - **Done:**
@@ -112,22 +131,5 @@
   - Updated `be_docs/module.md` marking FR-35A as completed (`X`).
   - Updated `be_docs/api/api-order.md` with complete documentation for all cart endpoints.
 - **Build Status:** `BUILD SUCCESS` (144 source files, 0 errors, 0 warnings).
-
-### [Session 16] Implemented FR-32 (Stocktaking by Barcode Scanning) in Inventory Module (2026-10-27)
-- **Done:**
-  - Created Flyway migration `V7__create_stocktake_tables.sql` for tables `phieu_kiem_ke` and `ct_phieu_kiem_ke` with indexes on code and FKs.
-  - Created `StocktakeStatus` enum (`PENDING_APPROVAL`, `RECONCILED`, `CANCELLED`).
-  - Added new error codes to `ErrorCode`: `STOCKTAKE_NOT_FOUND` (404), `INVALID_STOCKTAKE_RECORD` (400).
-  - Created JPA entities: `Stocktake` and `StocktakeDetail` with `@SQLRestriction("da_xoa = false")`.
-  - Created DTOs: `StocktakeItemReq`, `StocktakeCreateReq`, `StocktakeDiscrepancyRes`, `StocktakeRes`, `StocktakeDetailRes`.
-  - Created Repositories: `StocktakeRepository` (with `JpaSpecificationExecutor`) and `StocktakeDetailRepository`.
-  - Updated `InventoryMapper` with MapStruct mappings for stocktakes, line records, and discrepancy items.
-  - Implemented `InventoryService` & `InventoryServiceImpl`:
-    - `POST /api/v1/inventory/stocktakes`: Auto-generates `KK-YYYYMMDD-XXX`, captures system snapshot `systemCount` from inventory physical stock, computes `difference = actualCount - systemCount`, sums absolute discrepancies, and saves in status `PENDING_APPROVAL`.
-    - `GET /api/v1/inventory/stocktakes`: Paginated specification search by `stocktakeCode` and `status`.
-    - `GET /api/v1/inventory/stocktakes/{id}`: Detailed view of stocktake with list of discrepancies.
-  - Updated `InventoryController` without `@Operation` annotations, accessible by `ADMIN` and `STAFF`.
-  - Updated `be_docs/module.md` marking FR-32 as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (129 source files, 0 errors, 0 warnings).
 
 

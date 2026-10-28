@@ -22,6 +22,7 @@ import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderCustomerRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
@@ -441,6 +442,84 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(targetStatus);
+        Order savedOrder = orderRepository.save(order);
+
+        return mapToOrderDetailRes(savedOrder);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderDetailRes cancelOrder(Long id, OrderCancelReq req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        OrderStatus currentStatus = order.getStatus();
+
+        // 1. Kiểm tra trạng thái đóng
+        if (currentStatus == OrderStatus.CANCELLED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã được hủy trước đó");
+        }
+        if (currentStatus == OrderStatus.COMPLETED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã hoàn tất, không thể hủy (chỉ có thể thực hiện đổi trả)");
+        }
+        if (currentStatus == OrderStatus.RETURNED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã hoàn trả, không thể hủy");
+        }
+
+        // 2. Phân quyền và điều kiện hủy theo vai trò
+        boolean isCust = isCustomer(auth);
+        String cancelActorLog;
+
+        if (isCust) {
+            Customer currentCustomer = userRepository.findByAccount_Username(auth.getName())
+                    .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+
+            if (!order.getCustomer().getId().equals(currentCustomer.getId())) {
+                throw new AppException(ErrorCode.FORBIDDEN);
+            }
+
+            // Khách hàng chỉ được tự hủy khi đơn ở trạng thái PENDING hoặc CONFIRMED
+            if (currentStatus != OrderStatus.PENDING && currentStatus != OrderStatus.CONFIRMED) {
+                throw new AppException(ErrorCode.INVALID_REQUEST,
+                        "Đơn hàng đang trong quá trình chuẩn bị hoặc giao hàng, khách hàng không thể tự hủy. Vui lòng liên hệ nhân viên để được hỗ trợ.");
+            }
+
+            cancelActorLog = "[HỦY ĐƠN - KHÁCH HÀNG]";
+        } else {
+            // ADMIN hoặc STAFF hủy đơn
+            String username = auth.getName();
+            employeeRepository.findByAccount_Username(username).ifPresent(order::setEmployee);
+            cancelActorLog = String.format("[HỦY ĐƠN - NHÂN VIÊN %s]", username);
+        }
+
+        // 3. Hoàn trả tồn kho tạm giữ sang khả dụng (FR-40)
+        for (OrderDetail detail : order.getDetails()) {
+            ProductVariant variant = detail.getVariant();
+            Inventory inventory = inventoryRepository.findByVariantId(variant.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+
+            // Hoàn trả tồn khả dụng và giải phóng tồn tạm giữ
+            inventory.setAvailableStock(inventory.getAvailableStock() + detail.getQuantity());
+            inventory.setReservedStock(inventory.getReservedStock() - detail.getQuantity());
+            inventoryRepository.save(inventory);
+        }
+
+        // 4. Cập nhật ghi chú lý do hủy
+        String reason = req.getReason() != null ? req.getReason().trim() : "Khách hàng yêu cầu hủy đơn";
+        String noteLog = String.format("%s: %s", cancelActorLog, reason);
+        String currentNote = order.getNote();
+        String updatedNote = (currentNote != null && !currentNote.isBlank())
+                ? currentNote + " | " + noteLog
+                : noteLog;
+        order.setNote(updatedNote);
+
+        // 5. Cập nhật trạng thái CANCELLED
+        order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
 
         return mapToOrderDetailRes(savedOrder);
