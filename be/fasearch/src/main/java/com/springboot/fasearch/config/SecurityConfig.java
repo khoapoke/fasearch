@@ -76,6 +76,7 @@ public class SecurityConfig {
 
                         // 4. Nhóm quyền Khách hàng
                         .requestMatchers("/api/v1/cart/**").hasRole(RoleType.CUSTOMER.toString())
+                        .requestMatchers("/api/v1/orders/checkout").hasRole(RoleType.CUSTOMER.toString())
                         .requestMatchers("/api/v1/orders/my-orders/**").hasRole(RoleType.CUSTOMER.toString())
 
                         // Mọi endpoint còn lại bắt buộc phải xác thực

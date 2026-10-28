@@ -50,6 +50,7 @@ public enum ErrorCode {
     // Order & Cart errors
     CART_NOT_FOUND(404, "Cart not found", HttpStatus.NOT_FOUND),
     CART_ITEM_NOT_FOUND(404, "Cart item not found", HttpStatus.NOT_FOUND),
+    CART_EMPTY(400, "Cart is empty", HttpStatus.BAD_REQUEST),
     ORDER_NOT_FOUND(404, "Order not found", HttpStatus.NOT_FOUND),
 
     // Auth & Security errors

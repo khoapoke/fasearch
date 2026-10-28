@@ -13,6 +13,7 @@
 - **Completed Tasks:**
   - Module `order` / `cart`:
     - `FR-35A`: Online Cart Management (`GET /api/v1/cart`, `POST /api/v1/cart/items`, `PUT /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart`).
+    - `FR-35B`: Online Checkout (`POST /api/v1/orders/checkout`) with automatic stock reservation (`reservedStock` +, `availableStock` -) and cart clearing.
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -21,21 +22,41 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to implement `FR-35B` (Online Checkout / Đặt hàng trực tuyến: `POST /api/v1/orders/checkout`) in Module 7 `order`.
+- **In-progress Task:** Ready to implement `FR-36` (Order List & Detail View: `GET /api/v1/orders`, `GET /api/v1/orders/{id}`) in Module 7 `order`.
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify edge cases, constraints, and DTOs for `FR-35B` (Checkout).
+  1. Follow AGENTS.md 3-step process to clarify edge cases, query filters, and DTOs for `FR-36` (Order List & Detail).
 - **Technical Gotchas & Constraints:**
-  - Cart item table `mat_hang_gio` uses composite PK `(ma_gio_hang, ma_sku)` referencing `bien_the_sp(ma_sku)` without soft delete `da_xoa` (hard delete on item removal / clear).
+  - Order Code generation format: `DH-YYYYMMDD-XXX` with daily sequence increment.
+  - Online checkout flow atomically reserves stock (`availableStock` -, `reservedStock` + in `ton_kho`) and clears customer's cart.
+  - Delivery address fallbacks to `customer.address` if empty in request; custom receiver info (`receiverName`, `receiverPhone`) is neatly preserved in order `note`.
+  - Cart item table `mat_hang_gio` uses composite PK `(ma_gio_hang, ma_sku)` referencing `bien_the_sp(ma_sku)` with hard delete.
   - Dynamic SKU pricing: `unitPrice = product.price + variant.additionalPrice`.
-  - Stock validation: Cart addition & quantity update validate against `inventory.availableStock`.
   - Lean Order refactoring: `don_hang` holds `ma_don` (Order Code), `ghi_chu`, `tien_giam`; payment transactions and methods are decoupled in Module 8 (`hoa_don`, `thanh_toan`).
-  - Stocktake records use auto-generated code `KK-YYYYMMDD-XXX` and status `PENDING_APPROVAL`.
   - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 18] Implemented FR-35B (Online Checkout) in Order Module (2026-10-28)
+- **Done:**
+  - Added `CART_EMPTY` (400) to `ErrorCode`.
+  - Created DTOs: `CheckoutReq` (validated with `@DecimalMin` for shipping fee, delivery details, receiver info, voucher code) and `OrderRes`.
+  - Created Repositories: `OrderRepository` (with `countByOrderCodeStartingWith`, `existsByOrderCode`, `findByOrderCode`, `JpaSpecificationExecutor`) and `OrderDetailRepository`.
+  - Implemented `OrderService` & `OrderServiceImpl`:
+    - `POST /api/v1/orders/checkout`:
+      - Validates authenticated customer and verifies cart is not empty.
+      - Resolves delivery address (fallback to `customer.address`) and formats custom receiver info into order note.
+      - Checks stock availability and performs atomic stock reservation (`availableStock` -, `reservedStock` + in `ton_kho` - FR-40).
+      - Computes line totals (`unitPrice = product.price + additionalPrice`), `subTotal`, and `totalAmount = subTotal - discountAmount + shippingFee`.
+      - Auto-generates unique order code `DH-YYYYMMDD-XXX`.
+      - Persists `Order` and cascaded `OrderDetail` records.
+      - Clears customer's cart upon checkout success.
+  - Created `OrderController` without `@Operation` annotations, protected with `@PreAuthorize("hasRole('CUSTOMER')")`, returning HTTP 201 Created.
+  - Configured `SecurityConfig` to authorize `/api/v1/orders/checkout` for `CUSTOMER`.
+  - Updated `be_docs/module.md` marking FR-35B as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (151 source files, 0 errors, 0 warnings).
 
 ### [Session 17] Implemented FR-35A (Online Cart Management) in Order Module (2026-10-27)
 - **Done:**
@@ -106,20 +127,5 @@
   - Updated `SecurityConfig` to grant `ADMIN` and `STAFF` access to inventory endpoints.
   - Updated `be_docs/module.md` marking FR-29 and FR-30 as completed (`X`).
 - **Build Status:** `BUILD SUCCESS` (109 source files, 0 errors, 0 warnings).
-
-### [Session 13] Implemented FR-27 and FR-28 in Product Module (2026-10-26)
-- **Done:**
-  - Integrated ZXing 3.5.3 (`core`, `javase`) in `pom.xml` for standard Code 128 barcode encoding.
-  - Created DTOs: `BarcodeRes` (with `barcodeBase64`, product & pricing metadata) and `PosProductRes` (for POS cashier lookup).
-  - Created `BarcodeService` & `BarcodeServiceImpl` to encode Code 128 into PNG byte arrays and Base64 data URLs.
-  - Implemented `FR-27` in `ProductVariantService` & `ProductVariantController`:
-    - `GET /api/v1/products/variants/{skuId}/barcode`: Export Base64 barcode data for price tag printing (`ADMIN`, `STAFF`).
-    - `GET /api/v1/products/variants/{skuId}/barcode/image`: Direct PNG byte stream for barcode preview (`ADMIN`, `STAFF`).
-  - Implemented `FR-28` in `ProductVariantService` & `ProductController`:
-    - `GET /api/v1/products/pos-lookup?barcode={code}`: Instant variant lookup by barcode or SKU ID (`STAFF`, `ADMIN`).
-    - `GET /api/v1/products/pos-search?keyword={text}`: Keyword search across product name, color, size, barcode (`STAFF`, `ADMIN`).
-  - Updated `SecurityConfig` with strict role protection (`ADMIN`, `STAFF`) for POS and Barcode routes.
-  - Updated `be_docs/module.md` marking Module `product` completely done.
-- **Build Status:** `BUILD SUCCESS` (92 source files, 0 errors, 0 warnings).
 
 
