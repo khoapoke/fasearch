@@ -26,10 +26,12 @@ import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.request.PosDraftItemReq;
 import com.springboot.fasearch.modules.order.dto.request.PosDraftOrderReq;
+import com.springboot.fasearch.modules.order.dto.request.ShippingFeeCalcReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderCustomerRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderItemRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
+import com.springboot.fasearch.modules.order.dto.response.ShippingFeeRes;
 import com.springboot.fasearch.modules.order.entity.Cart;
 import com.springboot.fasearch.modules.order.entity.CartItem;
 import com.springboot.fasearch.modules.order.entity.Order;
@@ -644,5 +646,44 @@ public class OrderServiceImpl implements OrderService {
         return drafts.stream()
                 .map(this::mapToOrderDetailRes)
                 .toList();
+    }
+
+    @Override
+    public ShippingFeeRes calculateShippingFee(ShippingFeeCalcReq req) {
+        String province = req.getProvince() != null ? req.getProvince().trim().toLowerCase() : "";
+        int weight = req.getTotalWeightGram() != null ? req.getTotalWeightGram() : 0;
+
+        int baseFee;
+        String estimatedDays;
+
+        // 1. Phân loại vùng giao hàng (Nội tỉnh TP.HCM vs Liên tỉnh)
+        if (province.contains("hồ chí minh") || province.contains("ho chi minh") || province.contains("hcm")) {
+            baseFee = 25000;
+            estimatedDays = "1 - 2 ngày";
+        } else if (province.contains("hà nội") || province.contains("ha noi")
+                || province.contains("đà nẵng") || province.contains("da nang")
+                || province.contains("bình dương") || province.contains("binh duong")
+                || province.contains("đồng nai") || province.contains("dong nai")) {
+            baseFee = 30000;
+            estimatedDays = "2 - 3 ngày";
+        } else {
+            baseFee = 35000;
+            estimatedDays = "3 - 5 ngày";
+        }
+
+        // 2. Phụ phí vượt cân nặng (Base cước áp dụng tối đa 2000g, mỗi 500g vượt +5.000 VNĐ)
+        int extraFee = 0;
+        if (weight > 2000) {
+            int extraGrams = weight - 2000;
+            int extraSteps = (int) Math.ceil((double) extraGrams / 500.0);
+            extraFee = extraSteps * 5000;
+        }
+
+        BigDecimal totalShippingFee = BigDecimal.valueOf(baseFee + extraFee).setScale(2);
+
+        return ShippingFeeRes.builder()
+                .shippingFee(totalShippingFee)
+                .estimatedDays(estimatedDays)
+                .build();
     }
 }

@@ -18,6 +18,9 @@
     - `FR-37`: Sequential order status transition (`PATCH /api/v1/orders/{id}/status`: `PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`) with employee tracking and automatic inventory release & physical deduction upon completion.
     - `FR-38`: Cancel Order (`POST /api/v1/orders/{id}/cancel`) with permission validation (`CUSTOMER` can only cancel `PENDING`/`CONFIRMED`, `ADMIN`/`STAFF` can cancel prior to completion), audit notes, and automatic inventory reserved stock restoration (`availableStock += quantity`, `reservedStock -= quantity`).
     - `FR-39`: POS Draft Order management (`POST /api/v1/orders/pos/draft` & `GET /api/v1/orders/pos/drafts`) for cashiers to temporarily save cart while serving subsequent customers, with `DRAFT` status, walk-in customer support (nullable customer), and stock availability checks.
+    - `FR-40`: Automated Stock Reservation & Release (`SYS`) - built-in atomic stock locking upon checkout (`availableStock` -, `reservedStock` +), physical deduction upon delivery completion (`physicalStock` -, `reservedStock` -), and release upon cancellation (`availableStock` +, `reservedStock` -).
+    - `FR-41`: Automated Shipping Fee Calculation (`POST /api/v1/orders/calculate-shipping-fee`) calculating real-time delivery fee and estimated delivery days based on destination (intra-city TP.HCM vs inter-provincial) and package weight (>2000g surcharge).
+    *(Module 7 `order` & `cart` is 100% COMPLETED: FR-35A -> FR-41)*.
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -26,10 +29,11 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to implement `FR-40` (Reserve & Release Stock - verified as part of FR-35B, FR-37, FR-38) or `FR-41` (Calculate Shipping Fee: `POST /api/v1/orders/calculate-shipping-fee`).
+- **In-progress Task:** Ready to implement Module 8 `payment` (`FR-42`: Order calculation `SYS`, `FR-43`: Payment & Invoice Generation `S`, `C`).
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify shipping fee calculation rule (weight, province/district) for `FR-41`.
+  1. Follow AGENTS.md 3-step process to clarify Module 8 `payment` entities (`hoa_don`, `thanh_toan`), payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`), and invoice issuance for `FR-42` / `FR-43`.
 - **Technical Gotchas & Constraints:**
+  - Automated shipping fee calculation (`POST /api/v1/orders/calculate-shipping-fee`): Public access in `PUBLIC_ENDPOINTS`; calculates base rate (TP.HCM: 25k, major hubs: 30k, other provinces: 35k) and 5k / 500g surcharge for weight > 2000g.
   - POS Draft Orders (`DRAFT`): Do NOT reserve stock (`reservedStock` remains unchanged) to prevent holding inventory for undecided in-store shoppers. When cancelling, only non-draft orders restore reserved stock. Transitioning `DRAFT` via standard `updateOrderStatus` is blocked.
   - Order entity `customer` is nullable (`ma_kh` nullable) to accommodate walk-in POS customers without registered accounts.
   - Order cancellation (`POST /api/v1/orders/{id}/cancel`): Customer can only cancel `PENDING` or `CONFIRMED` orders; `ADMIN`/`STAFF` can cancel anytime before terminal status. Releases reserved stock (`availableStock += quantity`, `reservedStock -= quantity`).
@@ -50,6 +54,17 @@
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 23] Implemented FR-41 (Shipping Fee Calculation) & Verified FR-40 in Order Module (2026-10-28)
+- **Done:**
+  - Created DTOs: `ShippingFeeCalcReq` (validated with `@NotBlank province`, `@NotBlank district`, `@NotNull @Min(1) totalWeightGram`) and `ShippingFeeRes` (`shippingFee`, `estimatedDays`).
+  - Updated `OrderService` & `OrderServiceImpl`:
+    - `POST /api/v1/orders/calculate-shipping-fee`: Calculates real-time delivery fee based on destination location (intra-city TP.HCM 25,000 VNĐ; major cities 30,000 VNĐ; other provinces 35,000 VNĐ) and package weight with overweight surcharge (5,000 VNĐ per 500g above 2,000g). Returns `ShippingFeeRes` with estimated delivery days ("1 - 2 ngày" / "2 - 3 ngày" / "3 - 5 ngày").
+  - Updated `OrderController`: Added `POST /calculate-shipping-fee` returning `ApiResponse<ShippingFeeRes>` with HTTP 200 OK.
+  - Updated `SecurityConfig`: Added `/api/v1/orders/calculate-shipping-fee` to `PUBLIC_ENDPOINTS` (accessible by both guests and authenticated customers).
+  - Verified and closed `FR-40` (Automated stock reservation on checkout, deduction on completion, and restoration on cancellation).
+  - Updated `be_docs/module.md` marking both `FR-40` and `FR-41` as completed (`X`). Module 7 is now 100% completed.
+- **Build Status:** `BUILD SUCCESS` (160 source files, 0 errors, 0 warnings).
 
 ### [Session 22] Implemented FR-39 (POS Draft Orders) in Order Module (2026-10-28)
 - **Done:**
@@ -113,24 +128,5 @@
   - Updated `SecurityConfig` to authorize `GET /api/v1/orders/**` for `ADMIN`, `STAFF`, `CUSTOMER`.
   - Updated `be_docs/module.md` marking FR-36 as completed (`X`).
 - **Build Status:** `BUILD SUCCESS` (154 source files, 0 errors, 0 warnings).
-
-### [Session 18] Implemented FR-35B (Online Checkout) in Order Module (2026-10-28)
-- **Done:**
-  - Added `CART_EMPTY` (400) to `ErrorCode`.
-  - Created DTOs: `CheckoutReq` (validated with `@DecimalMin` for shipping fee, delivery details, receiver info, voucher code) and `OrderRes`.
-  - Created Repositories: `OrderRepository` (with `countByOrderCodeStartingWith`, `existsByOrderCode`, `findByOrderCode`, `JpaSpecificationExecutor`) and `OrderDetailRepository`.
-  - Implemented `OrderService` & `OrderServiceImpl`:
-    - `POST /api/v1/orders/checkout`:
-      - Validates authenticated customer and verifies cart is not empty.
-      - Resolves delivery address (fallback to `customer.address`) and formats custom receiver info into order note.
-      - Checks stock availability and performs atomic stock reservation (`availableStock` -, `reservedStock` + in `ton_kho` - FR-40).
-      - Computes line totals (`unitPrice = product.price + additionalPrice`), `subTotal`, and `totalAmount = subTotal - discountAmount + shippingFee`.
-      - Auto-generates unique order code `DH-YYYYMMDD-XXX`.
-      - Persists `Order` and cascaded `OrderDetail` records.
-      - Clears customer's cart upon checkout success.
-  - Created `OrderController` without `@Operation` annotations, protected with `@PreAuthorize("hasRole('CUSTOMER')")`, returning HTTP 201 Created.
-  - Configured `SecurityConfig` to authorize `/api/v1/orders/checkout` for `CUSTOMER`.
-  - Updated `be_docs/module.md` marking FR-35B as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (151 source files, 0 errors, 0 warnings).
 
 

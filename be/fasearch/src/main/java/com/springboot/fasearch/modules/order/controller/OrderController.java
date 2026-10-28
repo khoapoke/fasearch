@@ -25,8 +25,10 @@ import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.request.PosDraftOrderReq;
+import com.springboot.fasearch.modules.order.dto.request.ShippingFeeCalcReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
+import com.springboot.fasearch.modules.order.dto.response.ShippingFeeRes;
 import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
 import com.springboot.fasearch.shared.ApiResponse;
 import com.springboot.fasearch.shared.PageResponse;
@@ -79,6 +81,13 @@ public class OrderController {
     public ApiResponse<List<OrderDetailRes>> getPosDraftOrders() {
         List<OrderDetailRes> result = orderService.getPosDraftOrders();
         return ApiResponse.success(200, "Lấy danh sách đơn tạm tại quầy POS thành công", result);
+    }
+
+    @PostMapping("/calculate-shipping-fee")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<ShippingFeeRes> calculateShippingFee(@Valid @RequestBody ShippingFeeCalcReq req) {
+        ShippingFeeRes result = orderService.calculateShippingFee(req);
+        return ApiResponse.success(200, "Tính phí vận chuyển thành công", result);
     }
 
     @GetMapping("/{id}")

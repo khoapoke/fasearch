@@ -11,8 +11,10 @@ import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.request.PosDraftOrderReq;
+import com.springboot.fasearch.modules.order.dto.request.ShippingFeeCalcReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
+import com.springboot.fasearch.modules.order.dto.response.ShippingFeeRes;
 import com.springboot.fasearch.shared.PageResponse;
 
 public interface OrderService {
@@ -36,4 +38,6 @@ public interface OrderService {
     OrderDetailRes createPosDraftOrder(PosDraftOrderReq req);
 
     List<OrderDetailRes> getPosDraftOrders();
+
+    ShippingFeeRes calculateShippingFee(ShippingFeeCalcReq req);
 }
