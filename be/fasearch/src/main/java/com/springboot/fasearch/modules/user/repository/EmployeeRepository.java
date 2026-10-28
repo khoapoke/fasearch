@@ -14,4 +14,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     Optional<Employee> findByCccd(String cccd);
 
     Optional<Employee> findByAccountId(Long accountId);
+
+    Optional<Employee> findByAccount_Username(String username);
 }

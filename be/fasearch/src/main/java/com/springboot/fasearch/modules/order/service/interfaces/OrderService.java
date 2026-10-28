@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.springboot.fasearch.common.enums.OrderStatus;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
 import com.springboot.fasearch.shared.PageResponse;
@@ -23,4 +24,6 @@ public interface OrderService {
             LocalDate endDate);
 
     OrderDetailRes getOrderById(Long id);
+
+    OrderDetailRes updateOrderStatus(Long id, OrderStatusUpdateReq req);
 }

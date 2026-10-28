@@ -22,6 +22,7 @@ import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderCustomerRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderItemRes;
@@ -38,6 +39,7 @@ import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
 import com.springboot.fasearch.modules.product.entity.Product;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
 import com.springboot.fasearch.modules.user.entity.Customer;
+import com.springboot.fasearch.modules.user.repository.EmployeeRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 import com.springboot.fasearch.shared.PageResponse;
 
@@ -52,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
+    private final EmployeeRepository employeeRepository;
     private final InventoryRepository inventoryRepository;
 
     private Customer getCurrentCustomer() {
@@ -89,6 +92,50 @@ public class OrderServiceImpl implements OrderService {
             orderCode = String.format("%s%03d", prefix, seq);
         }
         return orderCode;
+    }
+
+    private OrderDetailRes mapToOrderDetailRes(Order order) {
+        List<OrderItemRes> items = new ArrayList<>();
+        BigDecimal calculatedSubTotal = BigDecimal.ZERO;
+
+        for (OrderDetail detail : order.getDetails()) {
+            ProductVariant variant = detail.getVariant();
+            Product product = variant.getProduct();
+            BigDecimal lineTotal = detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
+            calculatedSubTotal = calculatedSubTotal.add(lineTotal);
+
+            items.add(OrderItemRes.builder()
+                    .skuId(variant.getId())
+                    .productName(product != null ? product.getProductName() : null)
+                    .color(variant.getColor())
+                    .size(variant.getSize())
+                    .imageUrl(product != null ? product.getImageUrl() : null)
+                    .quantity(detail.getQuantity())
+                    .unitPrice(detail.getUnitPrice())
+                    .totalPrice(lineTotal)
+                    .build());
+        }
+
+        OrderCustomerRes customerRes = OrderCustomerRes.builder()
+                .customerId(order.getCustomer().getId())
+                .fullName(getCustomerFullName(order.getCustomer()))
+                .phoneNumber(order.getCustomer().getPhoneNumber())
+                .build();
+
+        return OrderDetailRes.builder()
+                .orderId(order.getId())
+                .orderCode(order.getOrderCode())
+                .status(order.getStatus())
+                .customer(customerRes)
+                .deliveryAddress(order.getDeliveryAddress())
+                .note(order.getNote())
+                .items(items)
+                .subTotal(calculatedSubTotal)
+                .discountAmount(order.getDiscountAmount())
+                .shippingFee(order.getShippingFee())
+                .totalAmount(order.getTotalAmount())
+                .createdAt(order.getOrderDate())
+                .build();
     }
 
     @Override
@@ -322,46 +369,80 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        List<OrderItemRes> items = new ArrayList<>();
-        BigDecimal calculatedSubTotal = BigDecimal.ZERO;
+        return mapToOrderDetailRes(order);
+    }
 
-        for (OrderDetail detail : order.getDetails()) {
-            ProductVariant variant = detail.getVariant();
-            Product product = variant.getProduct();
-            BigDecimal lineTotal = detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
-            calculatedSubTotal = calculatedSubTotal.add(lineTotal);
-
-            items.add(OrderItemRes.builder()
-                    .skuId(variant.getId())
-                    .productName(product != null ? product.getProductName() : null)
-                    .color(variant.getColor())
-                    .size(variant.getSize())
-                    .imageUrl(product != null ? product.getImageUrl() : null)
-                    .quantity(detail.getQuantity())
-                    .unitPrice(detail.getUnitPrice())
-                    .totalPrice(lineTotal)
-                    .build());
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderDetailRes updateOrderStatus(Long id, OrderStatusUpdateReq req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        OrderCustomerRes customerRes = OrderCustomerRes.builder()
-                .customerId(order.getCustomer().getId())
-                .fullName(getCustomerFullName(order.getCustomer()))
-                .phoneNumber(order.getCustomer().getPhoneNumber())
-                .build();
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        return OrderDetailRes.builder()
-                .orderId(order.getId())
-                .orderCode(order.getOrderCode())
-                .status(order.getStatus())
-                .customer(customerRes)
-                .deliveryAddress(order.getDeliveryAddress())
-                .note(order.getNote())
-                .items(items)
-                .subTotal(calculatedSubTotal)
-                .discountAmount(order.getDiscountAmount())
-                .shippingFee(order.getShippingFee())
-                .totalAmount(order.getTotalAmount())
-                .createdAt(order.getOrderDate())
-                .build();
+        OrderStatus currentStatus = order.getStatus();
+        OrderStatus targetStatus = req.getStatus();
+
+        // 1. Kiểm tra trạng thái đóng
+        if (currentStatus == OrderStatus.CANCELLED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã bị hủy, không thể thay đổi trạng thái");
+        }
+        if (currentStatus == OrderStatus.COMPLETED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã hoàn tất, không thể thay đổi trạng thái");
+        }
+        if (currentStatus == OrderStatus.RETURNED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã được trả lại, không thể thay đổi trạng thái");
+        }
+
+        // 2. Kiểm tra tính tuần tự: PENDING -> CONFIRMED -> PACKING -> SHIPPING -> COMPLETED
+        boolean isValidTransition = switch (currentStatus) {
+            case PENDING -> targetStatus == OrderStatus.CONFIRMED;
+            case CONFIRMED -> targetStatus == OrderStatus.PACKING;
+            case PACKING -> targetStatus == OrderStatus.SHIPPING;
+            case SHIPPING -> targetStatus == OrderStatus.COMPLETED;
+            default -> false;
+        };
+
+        if (!isValidTransition) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, String.format(
+                    "Không thể chuyển trạng thái từ %s sang %s. Thứ tự tuần tự là: PENDING -> CONFIRMED -> PACKING -> SHIPPING -> COMPLETED",
+                    currentStatus, targetStatus));
+        }
+
+        // 3. Gán nhân viên xử lý
+        String username = auth.getName();
+        employeeRepository.findByAccount_Username(username).ifPresent(order::setEmployee);
+
+        // 4. Cập nhật ghi chú tiến trình nếu có
+        if (req.getNote() != null && !req.getNote().isBlank()) {
+            String currentNote = order.getNote();
+            String noteLog = String.format("[%s]: %s", targetStatus, req.getNote().trim());
+            String updatedNote = (currentNote != null && !currentNote.isBlank())
+                    ? currentNote + " | " + noteLog
+                    : noteLog;
+            order.setNote(updatedNote);
+        }
+
+        // 5. Cập nhật tồn kho khi hoàn tất đơn hàng (COMPLETED)
+        if (targetStatus == OrderStatus.COMPLETED) {
+            for (OrderDetail detail : order.getDetails()) {
+                ProductVariant variant = detail.getVariant();
+                Inventory inventory = inventoryRepository.findByVariantId(variant.getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+
+                // Trừ tồn kho vật lý và giải phóng tồn tạm giữ
+                inventory.setPhysicalStock(inventory.getPhysicalStock() - detail.getQuantity());
+                inventory.setReservedStock(inventory.getReservedStock() - detail.getQuantity());
+                inventoryRepository.save(inventory);
+            }
+        }
+
+        order.setStatus(targetStatus);
+        Order savedOrder = orderRepository.save(order);
+
+        return mapToOrderDetailRes(savedOrder);
     }
 }

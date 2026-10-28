@@ -76,6 +76,7 @@ public class SecurityConfig {
 
                         // 4. Nhóm quyền Khách hàng & Đơn hàng
                         .requestMatchers(HttpMethod.GET, "/api/v1/orders/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
                         .requestMatchers("/api/v1/cart/**").hasRole(RoleType.CUSTOMER.toString())
                         .requestMatchers("/api/v1/orders/checkout").hasRole(RoleType.CUSTOMER.toString())
                         .requestMatchers("/api/v1/orders/my-orders/**").hasRole(RoleType.CUSTOMER.toString())

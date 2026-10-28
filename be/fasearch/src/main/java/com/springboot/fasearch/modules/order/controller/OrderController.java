@@ -10,6 +10,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.springboot.fasearch.common.enums.OrderStatus;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
 import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
@@ -66,5 +68,15 @@ public class OrderController {
     public ApiResponse<OrderDetailRes> getOrderById(@PathVariable Long id) {
         OrderDetailRes result = orderService.getOrderById(id);
         return ApiResponse.success(200, "Lấy chi tiết đơn hàng thành công", result);
+    }
+
+    @PatchMapping("/{id}/status")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<OrderDetailRes> updateOrderStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody OrderStatusUpdateReq req) {
+        OrderDetailRes result = orderService.updateOrderStatus(id, req);
+        return ApiResponse.success(200, "Cập nhật trạng thái đơn hàng thành công", result);
     }
 }

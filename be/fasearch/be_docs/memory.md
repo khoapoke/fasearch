@@ -15,6 +15,7 @@
     - `FR-35A`: Online Cart Management (`GET /api/v1/cart`, `POST /api/v1/cart/items`, `PUT /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart/items/{skuId}`, `DELETE /api/v1/cart`).
     - `FR-35B`: Online Checkout (`POST /api/v1/orders/checkout`) with automatic stock reservation (`reservedStock` +, `availableStock` -) and cart clearing.
     - `FR-36`: View order list & detail (`GET /api/v1/orders`, `GET /api/v1/orders/{id}`) with role-based data isolation (`CUSTOMER` sees own orders, `ADMIN`/`STAFF` see all with multi-criteria filtering).
+    - `FR-37`: Sequential order status transition (`PATCH /api/v1/orders/{id}/status`: `PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`) with employee tracking and automatic inventory release & physical deduction upon completion.
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -23,10 +24,13 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to implement `FR-37` (Order Status Transition: `PATCH /api/v1/orders/{id}/status`) in Module 7 `order`.
+- **In-progress Task:** Ready to implement `FR-38` (Cancel Order: `POST /api/v1/orders/{id}/cancel`) in Module 7 `order`.
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify state transition machine (`PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`) for `FR-37`.
+  1. Follow AGENTS.md 3-step process to clarify cancellation rules, roles (`ADMIN`, `STAFF`, `CUSTOMER`), reason tracking, and stock release (FR-40) for `FR-38`.
 - **Technical Gotchas & Constraints:**
+  - Sequential order status transitions: strictly `PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`. Closed orders (`CANCELLED`, `COMPLETED`, `RETURNED`) cannot be transitioned.
+  - Completing an order (`COMPLETED`) atomically deducts `physicalStock` and releases `reservedStock` in `ton_kho`.
+  - Auditing employee: `order.employee` updated with the `ADMIN`/`STAFF` performing status transition.
   - Role data isolation: `CUSTOMER` role automatically scoped to `customer.id = currentCustomer.id` in `GET /api/v1/orders` and forbidden on foreign order access in `GET /api/v1/orders/{id}`.
   - Multi-criteria specification filtering on `orderCode`, `status`, `customerPhone` (joined), and `orderDate` range (`startDate`, `endDate`).
   - Order Code generation format: `DH-YYYYMMDD-XXX` with daily sequence increment.
@@ -41,6 +45,22 @@
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 20] Implemented FR-37 (Order Status Transition) in Order Module (2026-10-28)
+- **Done:**
+  - Created DTO: `OrderStatusUpdateReq` (validated with `@NotNull` for target `OrderStatus` and optional `note`).
+  - Updated `EmployeeRepository` with `findByAccount_Username(username)` for auditing assigned employees.
+  - Updated `OrderService` & `OrderServiceImpl`:
+    - `PATCH /api/v1/orders/{id}/status`:
+      - Guards terminal order states: prevents any modification if status is already `CANCELLED`, `COMPLETED`, or `RETURNED`.
+      - Enforces strict sequential transitions: `PENDING` -> `CONFIRMED` -> `PACKING` -> `SHIPPING` -> `COMPLETED`. Rejects any invalid or backward transitions.
+      - Assigns processing employee to `order.employee` from authentication context.
+      - Appends timestamped audit note logs into `order.note`.
+      - Automatically releases `reservedStock` and deducts `physicalStock` in `ton_kho` upon reaching `COMPLETED`.
+  - Updated `OrderController`: Added `PATCH /api/v1/orders/{id}/status`, protected with `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")`, returning `ApiResponse<OrderDetailRes>`, no `@Operation` annotations.
+  - Updated `SecurityConfig` to authorize `PATCH /api/v1/orders/*/status` for `ADMIN` and `STAFF`.
+  - Updated `be_docs/module.md` marking FR-37 as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (155 source files, 0 errors, 0 warnings).
 
 ### [Session 19] Implemented FR-36 (Order List & Detail View) in Order Module (2026-10-28)
 - **Done:**
@@ -109,22 +129,5 @@
   - Updated `InventoryController` without `@Operation` annotations, accessible by `ADMIN` and `STAFF`.
   - Updated `be_docs/module.md` marking FR-32 as completed (`X`).
 - **Build Status:** `BUILD SUCCESS` (129 source files, 0 errors, 0 warnings).
-
-### [Session 15] Implemented FR-31 (Export Receipts & Warehouse Transfers) in Inventory Module (2026-10-26)
-- **Done:**
-  - Created Flyway migration script `V6__create_export_receipt_tables.sql` for tables `phieu_xuat_kho` and `ct_phieu_xuat` with soft-delete flags and foreign key indexes.
-  - Created `ExportType` enum (`DAMAGED`, `TRANSFER`, `OTHER`).
-  - Added new error codes to `ErrorCode`: `EXPORT_RECEIPT_NOT_FOUND` (404), `INSUFFICIENT_STOCK` (400).
-  - Created JPA entities: `ExportReceipt` and `ExportReceiptDetail` with `@SQLRestriction("da_xoa = false")`.
-  - Created DTOs: `ExportReceiptItemReq`, `ExportReceiptCreateReq`, `ExportReceiptItemRes`, `ExportReceiptRes`, `ExportReceiptDetailRes`.
-  - Created Repositories: `ExportReceiptRepository` (with `JpaSpecificationExecutor`) and `ExportReceiptDetailRepository`.
-  - Updated `InventoryMapper` with MapStruct mappings for export receipts and line items.
-  - Implemented `InventoryService` & `InventoryServiceImpl`:
-    - `POST /api/v1/inventory/export-receipts`: Aggregates SKU quantities, pre-validates against available stock, generates auto code `XK-YYYYMMDD-XXX`, deducts physical and available stock atomically, saves receipt and items.
-    - `GET /api/v1/inventory/export-receipts`: Paginated specification search by `receiptCode` and `exportType`.
-    - `GET /api/v1/inventory/export-receipts/{id}`: Detailed receipt view with full line item details.
-  - Updated `InventoryController` without `@Operation` annotations, protected with `@PreAuthorize("hasRole('ADMIN')")` for creation and `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")` for reading.
-  - Updated `be_docs/module.md` marking FR-31 as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (119 source files, 0 errors, 0 warnings).
 
 
