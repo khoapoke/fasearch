@@ -115,7 +115,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | FR-36 | Xem danh sách & Chi tiết đơn hàng | Lọc đơn hàng theo Mã đơn, SĐT khách, Ngày đặt hoặc Trạng thái | `A` `S` `C` | X |
 | FR-37 | Cập nhật trạng thái đơn hàng | Chuyển trạng thái tuần tự: `PENDING` → `CONFIRMED` → `PACKING` → `SHIPPING` → `COMPLETED` | `A` `S` | X |
 | FR-38 | Hủy đơn hàng | Hủy đơn trước khi hoàn tất thanh toán, không ghi nhận doanh thu | `A` `S` `C` | X |
-| FR-39 | Tạm lưu đơn hàng (POS) | Lưu tạm đơn đang tính dở để phục vụ khách tiếp theo, mở lại khi cần | `S` | |
+| FR-39 | Tạm lưu đơn hàng (POS) | Lưu tạm đơn đang tính dở để phục vụ khách tiếp theo, mở lại khi cần | `A` `S` | X |
 | FR-40 | Tạm giữ & Hoàn trả tồn kho | Tự động khóa tồn kho khi tạo đơn, hoàn trả nếu đơn bị Hủy / Giao thất bại | `SYS` | |
 | FR-41 | Tính phí vận chuyển | Tự động tính phí giao hàng dựa trên Địa chỉ, Trọng lượng và đối tác vận chuyển | `SYS` | |
 

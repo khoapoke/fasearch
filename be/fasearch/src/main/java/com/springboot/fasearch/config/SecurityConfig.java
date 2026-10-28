@@ -75,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/inventory/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
 
                         // 4. Nhóm quyền Khách hàng & Đơn hàng
+                        .requestMatchers("/api/v1/orders/pos/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
                         .requestMatchers(HttpMethod.GET, "/api/v1/orders/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/cancel").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())

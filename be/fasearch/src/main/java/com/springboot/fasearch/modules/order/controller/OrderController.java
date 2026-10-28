@@ -1,6 +1,7 @@
 package com.springboot.fasearch.modules.order.controller;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import com.springboot.fasearch.common.enums.OrderStatus;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
+import com.springboot.fasearch.modules.order.dto.request.PosDraftOrderReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderRes;
 import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
@@ -61,6 +63,22 @@ public class OrderController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         PageResponse<OrderRes> result = orderService.getOrders(pageable, status, orderCode, customerPhone, startDate, endDate);
         return ApiResponse.success(200, "Lấy danh sách đơn hàng thành công", result);
+    }
+
+    @PostMapping("/pos/draft")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<OrderDetailRes> createPosDraftOrder(@Valid @RequestBody PosDraftOrderReq req) {
+        OrderDetailRes result = orderService.createPosDraftOrder(req);
+        return ApiResponse.success(201, "Tạm lưu đơn hàng tại quầy POS thành công", result);
+    }
+
+    @GetMapping("/pos/drafts")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<List<OrderDetailRes>> getPosDraftOrders() {
+        List<OrderDetailRes> result = orderService.getPosDraftOrders();
+        return ApiResponse.success(200, "Lấy danh sách đơn tạm tại quầy POS thành công", result);
     }
 
     @GetMapping("/{id}")

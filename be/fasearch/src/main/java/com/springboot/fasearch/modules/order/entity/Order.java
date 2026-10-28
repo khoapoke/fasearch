@@ -50,7 +50,7 @@ public class Order {
     private String orderCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ma_kh", nullable = false)
+    @JoinColumn(name = "ma_kh")
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -24,6 +24,8 @@ import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
+import com.springboot.fasearch.modules.order.dto.request.PosDraftItemReq;
+import com.springboot.fasearch.modules.order.dto.request.PosDraftOrderReq;
 import com.springboot.fasearch.modules.order.dto.response.OrderCustomerRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderDetailRes;
 import com.springboot.fasearch.modules.order.dto.response.OrderItemRes;
@@ -39,7 +41,9 @@ import com.springboot.fasearch.modules.order.repository.OrderRepository;
 import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
 import com.springboot.fasearch.modules.product.entity.Product;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
+import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
 import com.springboot.fasearch.modules.user.entity.Customer;
+import com.springboot.fasearch.modules.user.entity.Employee;
 import com.springboot.fasearch.modules.user.repository.EmployeeRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 import com.springboot.fasearch.shared.PageResponse;
@@ -57,6 +61,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final EmployeeRepository employeeRepository;
     private final InventoryRepository inventoryRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     private Customer getCurrentCustomer() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -95,6 +100,19 @@ public class OrderServiceImpl implements OrderService {
         return orderCode;
     }
 
+    private String generatePosOrderCode() {
+        String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String prefix = "POS-" + todayStr + "-";
+        long count = orderRepository.countByOrderCodeStartingWith(prefix);
+        int seq = (int) count + 1;
+        String orderCode = String.format("%s%03d", prefix, seq);
+        while (orderRepository.existsByOrderCode(orderCode)) {
+            seq++;
+            orderCode = String.format("%s%03d", prefix, seq);
+        }
+        return orderCode;
+    }
+
     private OrderDetailRes mapToOrderDetailRes(Order order) {
         List<OrderItemRes> items = new ArrayList<>();
         BigDecimal calculatedSubTotal = BigDecimal.ZERO;
@@ -117,11 +135,14 @@ public class OrderServiceImpl implements OrderService {
                     .build());
         }
 
-        OrderCustomerRes customerRes = OrderCustomerRes.builder()
-                .customerId(order.getCustomer().getId())
-                .fullName(getCustomerFullName(order.getCustomer()))
-                .phoneNumber(order.getCustomer().getPhoneNumber())
-                .build();
+        OrderCustomerRes customerRes = null;
+        if (order.getCustomer() != null) {
+            customerRes = OrderCustomerRes.builder()
+                    .customerId(order.getCustomer().getId())
+                    .fullName(getCustomerFullName(order.getCustomer()))
+                    .phoneNumber(order.getCustomer().getPhoneNumber())
+                    .build();
+        }
 
         return OrderDetailRes.builder()
                 .orderId(order.getId())
@@ -365,7 +386,7 @@ public class OrderServiceImpl implements OrderService {
         if (isCustomer(auth)) {
             Customer currentCustomer = userRepository.findByAccount_Username(auth.getName())
                     .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
-            if (!order.getCustomer().getId().equals(currentCustomer.getId())) {
+            if (order.getCustomer() == null || !order.getCustomer().getId().equals(currentCustomer.getId())) {
                 throw new AppException(ErrorCode.FORBIDDEN);
             }
         }
@@ -387,7 +408,11 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus currentStatus = order.getStatus();
         OrderStatus targetStatus = req.getStatus();
 
-        // 1. Kiểm tra trạng thái đóng
+        // 1. Kiểm tra trạng thái đóng & trạng thái tạm lưu POS
+        if (currentStatus == OrderStatus.DRAFT) {
+            throw new AppException(ErrorCode.INVALID_REQUEST,
+                    "Đơn hàng đang ở trạng thái tạm lưu (DRAFT). Vui lòng thực hiện thanh toán tại quầy POS để hoàn tất.");
+        }
         if (currentStatus == OrderStatus.CANCELLED) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã bị hủy, không thể thay đổi trạng thái");
         }
@@ -479,7 +504,7 @@ public class OrderServiceImpl implements OrderService {
             Customer currentCustomer = userRepository.findByAccount_Username(auth.getName())
                     .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
 
-            if (!order.getCustomer().getId().equals(currentCustomer.getId())) {
+            if (order.getCustomer() == null || !order.getCustomer().getId().equals(currentCustomer.getId())) {
                 throw new AppException(ErrorCode.FORBIDDEN);
             }
 
@@ -497,16 +522,18 @@ public class OrderServiceImpl implements OrderService {
             cancelActorLog = String.format("[HỦY ĐƠN - NHÂN VIÊN %s]", username);
         }
 
-        // 3. Hoàn trả tồn kho tạm giữ sang khả dụng (FR-40)
-        for (OrderDetail detail : order.getDetails()) {
-            ProductVariant variant = detail.getVariant();
-            Inventory inventory = inventoryRepository.findByVariantId(variant.getId())
-                    .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+        // 3. Hoàn trả tồn kho tạm giữ sang khả dụng (FR-40) nếu đơn không phải DRAFT
+        if (currentStatus != OrderStatus.DRAFT) {
+            for (OrderDetail detail : order.getDetails()) {
+                ProductVariant variant = detail.getVariant();
+                Inventory inventory = inventoryRepository.findByVariantId(variant.getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
-            // Hoàn trả tồn khả dụng và giải phóng tồn tạm giữ
-            inventory.setAvailableStock(inventory.getAvailableStock() + detail.getQuantity());
-            inventory.setReservedStock(inventory.getReservedStock() - detail.getQuantity());
-            inventoryRepository.save(inventory);
+                // Hoàn trả tồn khả dụng và giải phóng tồn tạm giữ
+                inventory.setAvailableStock(inventory.getAvailableStock() + detail.getQuantity());
+                inventory.setReservedStock(inventory.getReservedStock() - detail.getQuantity());
+                inventoryRepository.save(inventory);
+            }
         }
 
         // 4. Cập nhật ghi chú lý do hủy
@@ -523,5 +550,99 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderRepository.save(order);
 
         return mapToOrderDetailRes(savedOrder);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderDetailRes createPosDraftOrder(PosDraftOrderReq req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        // 1. Lấy thông tin nhân viên thu ngân tạo đơn tạm
+        String username = auth.getName();
+        Employee employee = employeeRepository.findByAccount_Username(username).orElse(null);
+
+        // 2. Tìm khách hàng theo số điện thoại (nếu có cung cấp)
+        Customer customer = null;
+        String note = req.getNote() != null ? req.getNote().trim() : "";
+        if (req.getCustomerPhone() != null && !req.getCustomerPhone().isBlank()) {
+            String phone = req.getCustomerPhone().trim();
+            customer = userRepository.findByPhoneNumber(phone).orElse(null);
+            if (customer == null) {
+                note = (note.isBlank() ? "" : note + " | ") + "[SĐT khách: " + phone + "]";
+            }
+        }
+
+        // 3. Xử lý các mặt hàng trong đơn tạm
+        List<OrderDetail> orderDetails = new ArrayList<>();
+        BigDecimal subTotal = BigDecimal.ZERO;
+
+        for (PosDraftItemReq item : req.getItems()) {
+            ProductVariant variant = productVariantRepository.findById(item.getSkuId())
+                    .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND,
+                            "Không tìm thấy biến thể SKU với ID: " + item.getSkuId()));
+
+            Inventory inventory = inventoryRepository.findByVariantId(variant.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+
+            if (inventory.getAvailableStock() < item.getQuantity()) {
+                throw new AppException(ErrorCode.INSUFFICIENT_STOCK,
+                        String.format("Sản phẩm SKU %s không đủ số lượng tồn khả dụng (còn: %d, yêu cầu: %d)",
+                                variant.getId(), inventory.getAvailableStock(), item.getQuantity()));
+            }
+
+            // Tính đơn giá: basePrice + additionalPrice
+            BigDecimal basePrice = variant.getProduct().getPrice();
+            BigDecimal additionalPrice = variant.getAdditionalPrice() != null
+                    ? variant.getAdditionalPrice()
+                    : BigDecimal.ZERO;
+            BigDecimal unitPrice = basePrice.add(additionalPrice);
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+
+            subTotal = subTotal.add(lineTotal);
+
+            OrderDetail detail = OrderDetail.builder()
+                    .id(new OrderDetailId(null, variant.getId()))
+                    .variant(variant)
+                    .quantity(item.getQuantity())
+                    .unitPrice(unitPrice)
+                    .build();
+            orderDetails.add(detail);
+        }
+
+        // 4. Sinh mã đơn tạm POS-YYYYMMDD-XXX
+        String orderCode = generatePosOrderCode();
+
+        // 5. Khởi tạo đơn hàng trạng thái DRAFT
+        Order order = Order.builder()
+                .orderCode(orderCode)
+                .customer(customer)
+                .employee(employee)
+                .status(OrderStatus.DRAFT)
+                .deliveryAddress("Bán tại quầy (POS)")
+                .shippingFee(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .totalAmount(subTotal)
+                .note(note)
+                .build();
+
+        for (OrderDetail detail : orderDetails) {
+            detail.setOrder(order);
+        }
+        order.setDetails(orderDetails);
+
+        Order savedOrder = orderRepository.save(order);
+        return mapToOrderDetailRes(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderDetailRes> getPosDraftOrders() {
+        List<Order> drafts = orderRepository.findByStatusOrderByOrderDateDesc(OrderStatus.DRAFT);
+        return drafts.stream()
+                .map(this::mapToOrderDetailRes)
+                .toList();
     }
 }

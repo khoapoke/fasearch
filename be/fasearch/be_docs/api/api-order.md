@@ -241,11 +241,11 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 
 ## 5. Tạm lưu đơn hàng tại quầy POS (FR-39)
 
-- **Mô tả:** Thu ngân đang tính hóa đơn cho khách A nhưng khách cần chọn thêm đồ, thu ngân tạm lưu đơn để phục vụ ngay cho khách B tiếp theo.
+- **Mô tả:** Thu ngân đang tính hóa đơn cho khách A nhưng khách cần chọn thêm đồ, thu ngân tạm lưu đơn để phục vụ ngay cho khách B tiếp theo. Đơn tạm lưu được gán trạng thái `DRAFT` và không tạm giữ tồn kho (chỉ kiểm tra số lượng khả dụng tại thời điểm lưu).
 
 ### 5.1. Lưu tạm đơn hàng POS
 - **Endpoint:** `POST /api/v1/orders/pos/draft`
-- **Quyền hạn:** `STAFF`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Request Body:**
 ```json
 {
@@ -259,10 +259,90 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   ]
 }
 ```
+- **Response Thành công (HTTP 201 Created):**
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Tạm lưu đơn hàng tại quầy POS thành công",
+  "result": {
+    "orderId": 1002,
+    "orderCode": "POS-20261028-001",
+    "status": "DRAFT",
+    "customer": {
+      "customerId": 1,
+      "fullName": "Nguyễn Văn A",
+      "phoneNumber": "0987654321"
+    },
+    "deliveryAddress": "Bán tại quầy (POS)",
+    "note": "Khách đang chọn thêm màu khác",
+    "items": [
+      {
+        "skuId": 101,
+        "productName": "Áo sơ mi Oxford kẻ sọc",
+        "color": "Xanh dương",
+        "size": "L",
+        "imageUrl": "https://example.com/img1.jpg",
+        "quantity": 1,
+        "unitPrice": 350000.00,
+        "totalPrice": 350000.00
+      }
+    ],
+    "subTotal": 350000.00,
+    "discountAmount": 0.00,
+    "shippingFee": 0.00,
+    "totalAmount": 350000.00,
+    "createdAt": "2026-10-28T15:25:00"
+  },
+  "errors": null,
+  "timestamp": "2026-10-28T15:25:00"
+}
+```
 
 ### 5.2. Lấy danh sách đơn tạm tại quầy
 - **Endpoint:** `GET /api/v1/orders/pos/drafts`
-- **Quyền hạn:** `STAFF`
+- **Quyền hạn:** `ADMIN`, `STAFF`
+- **Response Thành công (HTTP 200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách đơn tạm tại quầy POS thành công",
+  "result": [
+    {
+      "orderId": 1002,
+      "orderCode": "POS-20261028-001",
+      "status": "DRAFT",
+      "customer": {
+        "customerId": 1,
+        "fullName": "Nguyễn Văn A",
+        "phoneNumber": "0987654321"
+      },
+      "deliveryAddress": "Bán tại quầy (POS)",
+      "note": "Khách đang chọn thêm màu khác",
+      "items": [
+        {
+          "skuId": 101,
+          "productName": "Áo sơ mi Oxford kẻ sọc",
+          "color": "Xanh dương",
+          "size": "L",
+          "imageUrl": "https://example.com/img1.jpg",
+          "quantity": 1,
+          "unitPrice": 350000.00,
+          "totalPrice": 350000.00
+        }
+      ],
+      "subTotal": 350000.00,
+      "discountAmount": 0.00,
+      "shippingFee": 0.00,
+      "totalAmount": 350000.00,
+      "createdAt": "2026-10-28T15:25:00"
+    }
+  ],
+  "errors": null,
+  "timestamp": "2026-10-28T15:26:00"
+}
+```
 
 ---
 
