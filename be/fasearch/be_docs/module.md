@@ -125,7 +125,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-42 | Tính tiền đơn hàng | Tự động tính tổng tiền sau khi trừ chiết khấu khuyến mãi hoặc ưu đãi hạng thành viên | `SYS` | |
+| FR-42 | Tính tiền đơn hàng | Tự động tính tổng tiền sau khi trừ chiết khấu khuyến mãi hoặc ưu đãi hạng thành viên | `SYS` | X |
 | FR-43 | Thanh toán & Xuất hóa đơn | Chọn phương thức (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`), trừ tồn kho và xuất hóa đơn | `S` `C` | |
 
 ---

@@ -84,6 +84,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/orders/checkout").hasRole(RoleType.CUSTOMER.toString())
                         .requestMatchers("/api/v1/orders/my-orders/**").hasRole(RoleType.CUSTOMER.toString())
 
+                        // 5. Nhóm quyền Thanh toán & Hóa đơn
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/calculate").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+
                         // Mọi endpoint còn lại bắt buộc phải xác thực
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

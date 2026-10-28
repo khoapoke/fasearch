@@ -21,6 +21,8 @@
     - `FR-40`: Automated Stock Reservation & Release (`SYS`) - built-in atomic stock locking upon checkout (`availableStock` -, `reservedStock` +), physical deduction upon delivery completion (`physicalStock` -, `reservedStock` -), and release upon cancellation (`availableStock` +, `reservedStock` -).
     - `FR-41`: Automated Shipping Fee Calculation (`POST /api/v1/orders/calculate-shipping-fee`) calculating real-time delivery fee and estimated delivery days based on destination (intra-city TP.HCM vs inter-provincial) and package weight (>2000g surcharge).
     *(Module 7 `order` & `cart` is 100% COMPLETED: FR-35A -> FR-41)*.
+  - Module `payment`:
+    - `FR-42`: Order payment calculation (`POST /api/v1/payments/calculate`) calculating item subtotal, voucher discounts, point redemptions (1 point = 1,000 VNĐ), shipping fee, 8% VAT, and final payable amount with customer ownership and terminal order state guards.
   - Module `inventory`:
     - `FR-29`: Paginated available stock search (`GET /api/v1/inventory/stock` & `GET /api/v1/inventory/stock/{skuId}`).
     - `FR-30`: Import receipt creation & automatic inventory stock accretion (`POST /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts`, `GET /api/v1/inventory/import-receipts/{id}`).
@@ -29,10 +31,11 @@
   - Module `product` & `category` (100% COMPLETED): `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Ready to implement Module 8 `payment` (`FR-42`: Order calculation `SYS`, `FR-43`: Payment & Invoice Generation `S`, `C`).
+- **In-progress Task:** Ready to implement `FR-43` (Payment & Invoice Generation: `GET /api/v1/payments/methods`, `POST /api/v1/payments/process`, Flyway migration `V9`).
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify Module 8 `payment` entities (`hoa_don`, `thanh_toan`), payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`), and invoice issuance for `FR-42` / `FR-43`.
+  1. Follow AGENTS.md 3-step process to clarify entities (`hoa_don`, `thanh_toan`, `phuong_thuc_thanh_toan`), cash change calculation, and omnichannel inventory deduction for `FR-43`.
 - **Technical Gotchas & Constraints:**
+  - Payment calculation (`POST /api/v1/payments/calculate`): Validates order existence, prevents calculation on `CANCELLED`/`RETURNED` orders, enforces customer ownership isolation, validates point redemption against customer available points (1 pt = 1,000 VNĐ), and computes 8% VAT on final payable amount.
   - Automated shipping fee calculation (`POST /api/v1/orders/calculate-shipping-fee`): Public access in `PUBLIC_ENDPOINTS`; calculates base rate (TP.HCM: 25k, major hubs: 30k, other provinces: 35k) and 5k / 500g surcharge for weight > 2000g.
   - POS Draft Orders (`DRAFT`): Do NOT reserve stock (`reservedStock` remains unchanged) to prevent holding inventory for undecided in-store shoppers. When cancelling, only non-draft orders restore reserved stock. Transitioning `DRAFT` via standard `updateOrderStatus` is blocked.
   - Order entity `customer` is nullable (`ma_kh` nullable) to accommodate walk-in POS customers without registered accounts.
@@ -54,6 +57,22 @@
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 24] Implemented FR-42 (Order Payment Calculation) in Payment Module (2026-10-29)
+- **Done:**
+  - Created DTOs in `modules.payment.dto`: `PaymentCalculateReq` (validated with `@NotNull orderId`, `@Min(0) redeemedPoints`, optional `voucherCode`) and `PaymentCalculationRes` (`subTotal`, `voucherDiscount`, `pointDiscount`, `shippingFee`, `taxVat`, `finalAmount`).
+  - Created `PaymentService` & `PaymentServiceImpl`:
+    - `POST /api/v1/payments/calculate`:
+      - Validates order existence and terminal states (`CANCELLED`, `RETURNED`).
+      - Enforces customer ownership isolation (returns 403 `FORBIDDEN` if foreign order accessed by `CUSTOMER`).
+      - Computes line item subtotal from `order.getDetails()`.
+      - Computes voucher discount (supports `FASEARCH10` 10% voucher or order discount amount).
+      - Computes point redemption discount (1 point = 1,000 VNĐ, verified against `customer.accumulatePoint`).
+      - Calculates net product total, adds delivery `shippingFee`, and computes 8% VAT.
+  - Created `PaymentController` with `POST /api/v1/payments/calculate`, protected by `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")`, returning `ApiResponse<PaymentCalculationRes>` with HTTP 200 OK.
+  - Updated `SecurityConfig` authorizing `POST /api/v1/payments/calculate` for `ADMIN`, `STAFF`, `CUSTOMER`.
+  - Updated `be_docs/module.md` marking `FR-42` as completed (`X`).
+- **Build Status:** `BUILD SUCCESS` (165 source files, 0 errors, 0 warnings).
 
 ### [Session 23] Implemented FR-41 (Shipping Fee Calculation) & Verified FR-40 in Order Module (2026-10-28)
 - **Done:**
@@ -116,17 +135,5 @@
   - Updated `SecurityConfig` to authorize `PATCH /api/v1/orders/*/status` for `ADMIN` and `STAFF`.
   - Updated `be_docs/module.md` marking FR-37 as completed (`X`).
 - **Build Status:** `BUILD SUCCESS` (155 source files, 0 errors, 0 warnings).
-
-### [Session 19] Implemented FR-36 (Order List & Detail View) in Order Module (2026-10-28)
-- **Done:**
-  - Created DTOs: `OrderCustomerRes` (customer summary: `customerId`, `fullName`, `phoneNumber`), `OrderItemRes` (line item: `skuId`, `productName`, `color`, `size`, `imageUrl`, `quantity`, `unitPrice`, `totalPrice`), `OrderDetailRes` (full order view).
-  - Updated `OrderRes` with `customerName`, `customerPhone`, and `deliveryAddress` for rich paginated order lists.
-  - Updated `OrderService` & `OrderServiceImpl`:
-    - `GET /api/v1/orders`: Implemented dynamic `Specification<Order>` filtering by `status`, `orderCode`, `customerPhone`, `startDate`, `endDate`. Built-in RBAC data isolation (automatically enforces `customer.id = currentCustomer.id` for `CUSTOMER`, allows full search for `ADMIN`/`STAFF`).
-    - `GET /api/v1/orders/{id}`: Retrieves comprehensive order details with line items, SKU metadata, dynamic subtotal calculation, and ownership verification for `CUSTOMER` (throws 403 `FORBIDDEN` if accessing foreign order).
-  - Updated `OrderController`: Added `GET /api/v1/orders` (paginated `PageResponse<OrderRes>`) and `GET /api/v1/orders/{id}`, protected with `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")`, wrapped in `ApiResponse<T>`, no `@Operation` annotations.
-  - Updated `SecurityConfig` to authorize `GET /api/v1/orders/**` for `ADMIN`, `STAFF`, `CUSTOMER`.
-  - Updated `be_docs/module.md` marking FR-36 as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (154 source files, 0 errors, 0 warnings).
 
 
