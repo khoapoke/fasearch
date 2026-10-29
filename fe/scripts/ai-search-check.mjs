@@ -143,6 +143,12 @@ const PROBE = `(() => {
     mains: document.querySelectorAll('main').length,
     aiPageTag: q('.aiPage')?.tagName ?? null,
     hintCS: { marginBottom: cs(q('.mode-hint'))?.marginBottom, lineHeight: cs(q('.mode-hint'))?.lineHeight, fontSize: cs(q('.mode-hint'))?.fontSize },
+    inputPadX: [cs(q('.ai-input'))?.paddingLeft, cs(q('.ai-input'))?.paddingRight],
+    outputPadX: [cs(q('.ai-output'))?.paddingLeft, cs(q('.ai-output'))?.paddingRight],
+    headingFont: cs(q('.examples-heading h2'))?.fontSize,
+    mainCaptionFont: cs(q('.example-main .example-caption'))?.fontSize,
+    otherCaptionFont: [...document.querySelectorAll('.example-caption')][1] ? cs([...document.querySelectorAll('.example-caption')][1])?.fontSize : null,
+    boardCols: cs(q('.examples-board'))?.gridTemplateColumns,
     captionCS: { direction: cs(q('.example-caption'))?.flexDirection, align: cs(q('.example-caption'))?.alignItems, gap: cs(q('.example-caption'))?.gap },
     useCS: { display: cs(q('.example-use'))?.display, gap: cs(q('.example-use'))?.gap, verbFont: cs(q('.use-verb'))?.fontSize, verbWrap: cs(q('.use-verb'))?.whiteSpace },
     h1: q('.ai-input h1')?.textContent,
@@ -171,8 +177,8 @@ await (async () => {
       "1440": { inputW: 392, boardH: 540, prominence: "2col" },
       "1024": { inputW: 330, boardH: 480, prominence: "2col" },
       "768": { inputW: 330, boardH: 480, prominence: "2col" },
-      "390": { inputW: 390, boardH: 460, prominence: "stack" },
-      "320": { inputW: 320, boardH: 460, prominence: "stack" },
+      "390": { inputW: 390, boardH: 360, prominence: "stack" },
+      "320": { inputW: 320, boardH: 480, prominence: "stack" },
     };
     for (const scheme of ["light", "dark"]) {
       await p.setColorScheme(scheme);
@@ -206,8 +212,11 @@ await (async () => {
             && x.useCS.verbFont === "12px" && x.useCS.verbWrap === "nowrap"
             && (w <= 1100
               ? x.captionCS.direction === "column" && x.captionCS.align === "flex-start" && x.captionCS.gap === "2px"
-              : x.captionCS.direction === "row"),
-          JSON.stringify({ mains: x.mains, tag: x.aiPageTag, hint: x.hintCS, caption: x.captionCS, use: x.useCS }));
+              : x.captionCS.direction === "row")
+            && (w > 480 || (x.inputPadX.every((v) => v === "16px") && x.outputPadX.every((v) => v === "16px")
+              && x.headingFont === "22px" && x.mainCaptionFont === "16px" && x.otherCaptionFont === "13px"
+              && (() => { const cols = (x.boardCols ?? "").split(" ").map(parseFloat); return cols.length === 2 && Math.abs(cols[0] / cols[1] - 1.15 / 0.9) < 0.02; })())),
+          JSON.stringify({ mains: x.mains, tag: x.aiPageTag, hint: x.hintCS, caption: x.captionCS, use: x.useCS, padX: x.inputPadX, heading: x.headingFont, mainFont: x.mainCaptionFont, otherFont: x.otherCaptionFont, cols: x.boardCols }));
         await p.shot(join(shots, `ai-${w}-${scheme}.png`));
       }
     }
@@ -345,6 +354,29 @@ await (async () => {
     record("AI validation: mô tả rỗng báo lỗi tại field, aria-invalid + focus",
       /Nhập từ khóa/.test(validation.error ?? "") && validation.invalid === "true" && validation.focus === "ai-query",
       JSON.stringify(validation));
+
+    // ---------- Mobile result cascade (<=480) ----------
+    await p.setViewport(390, 844);
+    await p.goto(`${base}/tim-kiem-ai?preview=results`);
+    const mobileResults = await p.eval(`(() => {
+      const q = (s) => document.querySelector(s);
+      const cs = (el) => getComputedStyle(el);
+      return {
+        gap: cs(q('.results-grid')).columnGap,
+        title: cs(q('.result-copy h3')).fontSize,
+        copyDisplay: cs(q('.result-copy')).display,
+        copyTop: cs(q('.result-copy')).paddingTop,
+        rawDisplay: cs(q('.raw-score')).display,
+        rawTop: cs(q('.raw-score')).marginTop,
+        zoom: [q('.image-zoom').getBoundingClientRect().width, q('.image-zoom').getBoundingClientRect().height],
+      };
+    })()`);
+    record("AI result cascade @390: gap14/title14/raw block/zoom32 theo final <=480",
+      mobileResults.gap === "14px" && mobileResults.title === "14px" && mobileResults.copyDisplay === "block"
+        && mobileResults.copyTop === "11px" && mobileResults.rawDisplay === "block" && mobileResults.rawTop === "4px"
+        && mobileResults.zoom[0] === 32 && mobileResults.zoom[1] === 32,
+      JSON.stringify(mobileResults));
+    await p.shot(join(shots, "ai-results-390-light.png"));
 
     // ---------- Upload select/replace/remove/validation ----------
     await p.goto(`${base}/tim-kiem-ai`);
