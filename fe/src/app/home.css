@@ -123,20 +123,49 @@ html[data-theme="dark"] .hmHome {
   display: block;
 }
 
-/* ---------- Nút dùng trong Home ---------- */
+/* ---------- Nút dùng trong Home ----------
+   LƯU Ý: home.css cũng được `/nam` (listings.tsx) import, nên `.hmCta*` là lớp
+   DÙNG CHUNG. Giữ nguyên khai báo gốc cho `.hmCta`/`.hmCtaPrimary`/`.hmCtaGhost`;
+   mọi điều chỉnh của Home nằm trong `.hmHome` để route khác không đổi hình học. */
 .hmCta {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  min-height: 44px;
   font-size: 14px;
   font-weight: 700;
-  border-radius: 10px;
-  padding: 12px 20px;
+  border-radius: 12px;
+  padding: 13px 22px;
   text-decoration: none;
   border: 1px solid transparent;
   cursor: pointer;
   font-family: inherit;
+}
+
+.hmCtaPrimary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.hmCtaPrimary:hover {
+  background: var(--accent-deep);
+}
+
+.hmCtaGhost {
+  border-color: var(--line);
+  color: var(--ink);
+  background: #fff;
+}
+
+.hmCtaGhost:hover {
+  border-color: var(--accent);
+  color: var(--brand);
+}
+
+/* Home dùng hai biến thể riêng + siết lại kích thước trong phạm vi Home. */
+.hmHome .hmCta {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 12px 20px;
 }
 
 .hmCtaBrand {
