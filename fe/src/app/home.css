@@ -533,7 +533,12 @@ html[data-theme="dark"] .hmHome {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 30%;
+  /* Crop bomber-only theo bản đã duyệt (editorial.css .editorial-result-photo[data-photo="jacketBomber"]):
+     dịch khung lên 5% + phóng tĩnh 1.6 neo mép trên, khung 4:5 đã clip nên phần áo thứ hai phía dưới bị cắt.
+     Chỉ tĩnh — không có transition/animation. */
+  object-position: 50% 5%;
+  transform: scale(1.6);
+  transform-origin: center top;
   display: block;
 }
 
