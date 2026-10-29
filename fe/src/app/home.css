@@ -1,108 +1,985 @@
-/* Home sections (Stitch #28). */
+/* Home A r2 (static slice) — chuyển composition đã được duyệt vào ứng dụng.
+ *
+ * Phạm vi: CHỈ trang chủ, gói trong `.hmHome`. Toàn bộ token Home lấy từ lớp
+ * theme đã được kiểm chứng (`--st-*`, có sẵn light/dark theo lựa chọn thiết bị),
+ * nên không ghi đè palette/font toàn cục và không đổi route khác.
+ * Tham chiếu: 6fdbcee (p23-a-refine-r2) — styles.css/editorial.css của bản tĩnh.
+ */
 
+.hmHome {
+  --hm-canvas: var(--st-canvas, #fbfaf7);
+  --hm-surface: var(--st-surface, #ffffff);
+  --hm-subtle: var(--st-select, #f1f0ea);
+  --hm-text: var(--st-ink, #1b1c1a);
+  --hm-muted: var(--st-ink-soft, #5f655c);
+  --hm-line: var(--st-line, #dedfd7);
+  --hm-brand: var(--st-brand, #3730d8);
+  --hm-brand-text: var(--st-brand-text, #3730d8);
+  --hm-brand-hover: var(--st-brand-hover, #2d27bc);
+  --hm-citron: var(--st-citron, #d6ef72);
+  --hm-panel: #3730d8;
+  --hm-panel-text: #ffffff;
+  --hm-focus: var(--st-focus, #3730d8);
+  --hm-error: var(--st-err-text, #a6293a);
+  --hm-error-bg: var(--st-err-bg, #f9eaec);
+  --hm-error-line: var(--st-err-border, #e7b3ba);
+  --hm-media: var(--st-raised, #f1f0ea);
+
+  color: var(--hm-text);
+  background: var(--hm-canvas);
+}
+
+/* Bản đã duyệt dùng panel Ultramarine đậm hơn trong theme tối. */
+html[data-theme="dark"] .hmHome {
+  --hm-panel: #241f72;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .hmHome {
+    --hm-panel: #241f72;
+  }
+}
+
+.hmHome > section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* ---------- Hero: khối Ultramarine bên cạnh một ảnh biên tập ---------- */
 .hmHero {
-  max-width: 1280px; margin: 0 auto; padding: 34px 20px 8px;
-  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 34px; align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.05fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: stretch;
+  padding-top: clamp(16px, 2.6vh, 32px);
+  padding-bottom: clamp(28px, 5vh, 56px);
 }
-.hmKicker {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 11.5px; font-weight: 700; color: var(--brand);
-  background: var(--surface-tint); border-radius: 999px; padding: 6px 13px;
+
+.hmHeroCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+  padding: clamp(24px, 3.2vw, 44px);
+  border-radius: 6px;
+  color: var(--hm-panel-text);
+  background: var(--hm-panel);
 }
-.hmTitle { font-size: clamp(30px, 4.4vw, 52px); font-weight: 800; line-height: 1.12; letter-spacing: -0.025em; margin: 14px 0 12px; }
-.hmTitle .hl { color: var(--accent); }
-.hmSub { color: var(--ink-soft); font-size: 14.5px; line-height: 1.7; max-width: 52ch; }
-.hmCtas { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+.hmHeroTitle {
+  max-width: 11ch;
+  color: var(--hm-panel-text);
+  font-size: clamp(32px, 4.6vw, 60px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.hmHeroLede {
+  max-width: 34ch;
+  color: var(--hm-panel-text);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.hmHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.hmHeroCopy :focus-visible {
+  outline-color: #fff;
+}
+
+.hmHeroFigure {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin: 0;
+  min-width: 0;
+}
+
+.hmHeroMedia {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: min(58vh, 560px);
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--hm-media);
+}
+
+.hmHeroMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Cắt ảnh có chủ đích để giữ trọn mặt (R3.3 của bản đã duyệt). */
+  object-position: 50% 14%;
+  display: block;
+}
+
+/* ---------- Nút dùng trong Home ---------- */
 .hmCta {
-  display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700;
-  border-radius: 12px; padding: 13px 22px; text-decoration: none; border: 1px solid transparent; cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 12px 20px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
 }
-.hmCtaPrimary { background: var(--accent); color: #fff; }
-.hmCtaPrimary:hover { background: var(--accent-deep); }
-.hmCtaGhost { border-color: var(--line); color: var(--ink); background: #fff; }
-.hmCtaGhost:hover { border-color: var(--accent); color: var(--brand); }
-.hmAiMini {
-  margin-top: 18px; border: 1px solid var(--line-soft); border-radius: 14px; background: #fff;
-  padding: 13px 15px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-card); max-width: 480px;
-}
-.hmAiMini small { display: block; font-size: 11px; color: var(--ink-soft); font-weight: 600; }
-.hmAiMini b { font-size: 12.5px; display: block; margin: 2px 0 8px; }
-.hmAiBtn { background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; border-radius: 9px; padding: 8px 14px; text-decoration: none; white-space: nowrap; }
-.hmHeroMedia { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 4 / 4.6; background: linear-gradient(160deg, #ece7e1, #d8d2c9); box-shadow: var(--shadow-card); }
-.hmHeroMedia img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 
-.hmCats { max-width: 1280px; margin: 0 auto; padding: 30px 20px 6px; }
-.hmSecHead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; }
-.hmSecHead h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; }
-.hmSecHead h2 .dot { color: var(--accent); }
-.hmSecHead a { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
-.hmSecHead a:hover { color: var(--brand); }
-.hmCatRow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; }
-.hmCat { text-align: center; font-size: 12.5px; font-weight: 600; }
-.hmCat span.img { display: block; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #f1ede8; margin-bottom: 8px; border: 1px solid var(--line-soft); }
-.hmCat img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.hmCat:hover span.img { box-shadow: 0 0 0 2px var(--accent); }
-
-.hmAiBand { max-width: 1280px; margin: 26px auto 0; padding: 0 20px; }
-.hmAiCard {
-  border: 1px solid var(--line-soft); border-radius: 18px; background: #fff; box-shadow: var(--shadow-card);
-  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 26px; padding: 28px;
+.hmCtaBrand {
+  background: var(--hm-brand);
+  border-color: var(--hm-brand);
+  color: #fff;
 }
-.hmAiCard h2 { font-size: clamp(19px, 2.4vw, 26px); font-weight: 800; letter-spacing: -0.02em; }
-.hmAiCard h2 .hl { color: var(--accent); }
-.hmAiCard > div > p { color: var(--ink-soft); font-size: 13.5px; margin-top: 8px; line-height: 1.7; }
-.hmAiStats { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
-.hmAiStats div { background: var(--surface-subtle); border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px 16px; text-align: center; }
-.hmAiStats b { display: block; font-size: 16px; color: var(--brand); }
-.hmAiStats small { font-size: 11px; color: var(--ink-soft); }
-.hmTags { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.hmTags span { font-size: 11.5px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; color: var(--ink-soft); }
-.hmDrop {
-  border: 1.5px dashed #f0b49a; border-radius: 16px; background: #fff8f4;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  padding: 30px 20px; text-align: center;
-}
-.hmDropIco { width: 52px; height: 52px; border-radius: 50%; background: var(--surface-tint); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; }
-.hmDrop b { font-size: 14px; }
-.hmDrop p { font-size: 12.5px; color: var(--ink-soft); }
-.hmDropRow { display: flex; gap: 10px; }
 
-.hmBest { max-width: 1280px; margin: 0 auto; padding: 30px 20px 6px; }
-.hmBest h2 { font-size: clamp(19px, 2.4vw, 25px); font-weight: 800; letter-spacing: -0.02em; }
-.hmTabs { display: flex; gap: 8px; margin: 14px 0 18px; flex-wrap: wrap; }
-.hmTabs a { font-size: 12.5px; font-weight: 700; border-radius: 999px; padding: 8px 15px; background: var(--surface-subtle); border: 1px solid var(--line-soft); }
-.hmTabs a[aria-current="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-.hmMore { display: flex; justify-content: center; margin: 22px 0 6px; }
+.hmCtaBrand:hover {
+  background: var(--hm-brand-hover);
+  border-color: var(--hm-brand-hover);
+}
+
+/* Trên panel Ultramarine: nút trắng đặc, viền trắng cho nút phụ (bản đã duyệt). */
+.hmHeroCopy .hmCtaBrand {
+  background: #fff;
+  border-color: #fff;
+  color: var(--hm-panel);
+}
+
+.hmHeroCopy .hmCtaBrand:hover {
+  background: #ecebff;
+  border-color: #ecebff;
+}
+
+.hmCtaOutline {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.55);
+  color: var(--hm-panel-text);
+}
+
+.hmCtaOutline:hover {
+  border-color: #fff;
+}
+
+/* ---------- Ba cách tìm ---------- */
+.hmModes {
+  padding-top: clamp(18px, 3vh, 36px);
+}
+
+.hmSectionTitle {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--hm-text);
+}
+
+.hmModeList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hmMode {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 15px 2px;
+  border-top: 1px solid var(--hm-line);
+  color: var(--hm-text);
+  text-decoration: none;
+}
+
+.hmModeIcon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  color: var(--hm-muted);
+}
+
+.hmModeCopy {
+  min-width: 0;
+}
+
+.hmModeCopy strong {
+  display: block;
+  color: var(--hm-text);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.hmModeGo {
+  margin-left: auto;
+  color: var(--hm-muted);
+}
+
+.hmMode:hover .hmModeCopy strong {
+  color: var(--hm-brand-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.hmMode:hover .hmModeGo {
+  color: var(--hm-text);
+}
+
+.hmNote {
+  margin-top: 14px;
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* ---------- Một demo tích hợp, ba bước tĩnh ---------- */
+.hmDemo {
+  margin-top: clamp(28px, 4.5vh, 52px);
+  padding-bottom: 8px;
+}
+
+.hmDemoHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hmKicker {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hm-brand-text);
+}
+
+.hmDemoNote {
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hmDemoSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 22px;
+  border-top: 1px solid var(--hm-line);
+  border-bottom: 1px solid var(--hm-line);
+}
+
+.hmDemoStep {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 0;
+  border-right: 1px solid var(--hm-line);
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--hm-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hmDemoStep:last-child {
+  border-right: 0;
+}
+
+.hmDemoStep span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.hmDemoStep[aria-pressed="true"] {
+  color: var(--hm-text);
+  border-bottom-color: var(--hm-brand);
+}
+
+.hmDemoStep:hover {
+  color: var(--hm-text);
+}
+
+/* Hai cột: lời mô tả bên trái, kết quả bên phải. min-height giữ hình học ổn định
+   khi chuyển bước (A3: "demo text/CTA geometry stable"). */
+.hmDemoLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 40px);
+  margin-top: 24px;
+}
+
+.hmDemoPrompt {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hmDemoPromptTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--hm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hmDemoPromptMark {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--hm-muted);
+}
+
+.hmQuery {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+.hmQueryIcon {
+  color: var(--hm-brand-text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.hmQueryCopy {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--hm-text);
+}
+
+.hmTags {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.hmTags > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--hm-line);
+  border-radius: 999px;
+  background: var(--hm-surface);
+}
+
+.hmTags dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hm-muted);
+}
+
+.hmTags dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hm-text);
+}
+
+.hmDemoStatus {
+  margin: 0;
+  color: var(--hm-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.hmDemoOutcome {
+  display: grid;
+  align-content: start;
+  min-height: 300px;
+  min-width: 0;
+}
+
+.hmOutcomeIdle {
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed var(--hm-line);
+  border-radius: 10px;
+  color: var(--hm-muted);
+  font-size: 13.5px;
+}
+
+.hmSuggestion {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 24px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-muted);
+}
+
+.hmSuggestionIcon {
+  width: 30px;
+  height: 30px;
+  color: var(--hm-brand-text);
+}
+
+.hmSuggestion p {
+  margin: 4px 0 0;
+  color: var(--hm-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hmSuggestion span {
+  font-size: 13px;
+}
+
+.hmResult {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.hmMiniLabel {
+  margin: 0;
+  color: var(--hm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hmResultCard {
+  display: grid;
+  grid-template-columns: minmax(0, 152px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+/* Khung ảnh cố định tỉ lệ: chuyển bước không làm nhảy layout. */
+.hmResultMedia {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--hm-media);
+}
+
+.hmResultMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  display: block;
+}
+
+.hmResultCopy {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+
+.hmResultOverline {
+  color: var(--hm-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hmResultCopy strong {
+  color: var(--hm-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.hmResultCopy span {
+  color: var(--hm-muted);
+  font-size: 13px;
+}
+
+.hmResultPrice {
+  margin-top: 6px;
+  color: var(--hm-text) !important;
+  font-size: 17px !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hmResultCredit {
+  margin: 0;
+  color: var(--hm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.hmCredit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hmCredit a:hover {
+  color: var(--hm-brand-text);
+}
+
+.hmTry {
+  justify-self: start;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 44px;
+  padding: 11px 0;
+  color: var(--hm-brand-text);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.hmDisclosure {
+  margin: 20px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--hm-line);
+  color: var(--hm-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 78ch;
+}
+
+/* Ảnh lỗi phải nói rõ, không để khung trống khó hiểu. */
+.hmImgFail {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  padding: 12px;
+  color: var(--hm-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---------- Danh mục + sản phẩm thật (giữ từ Home cũ) ---------- */
+.hmCats {
+  padding-top: clamp(24px, 4vh, 44px);
+}
+
+.hmSecHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.hmSecHead a {
+  margin-left: auto;
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hmSecHead a:hover {
+  color: var(--hm-brand-text);
+}
+
+.hmCatRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.hmCat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 12px 10px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.hmCat:hover {
+  border-color: var(--hm-brand);
+  color: var(--hm-brand-text);
+}
+
+.hmBest {
+  padding-top: clamp(24px, 4vh, 44px);
+}
+
+/* Sản phẩm thật chưa có ảnh: hiện nhãn giữ chỗ thay vì khung trắng trống.
+   Chỉ trong lưới của Home (`.hmBest`) nên không đổi card ở route khác. */
+.hmBest .pCardMedia {
+  background: var(--hm-media);
+}
+
+.hmBest .pCardMedia:not(:has(img))::after {
+  content: "Chưa có ảnh";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hmMore {
+  display: flex;
+  justify-content: center;
+  margin: 22px 0 6px;
+}
+
 .hmMore a {
-  display: inline-flex; gap: 9px; align-items: center; font-size: 13.5px; font-weight: 700;
-  border: 1px solid var(--line); border-radius: 12px; padding: 12px 24px; background: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 12px 24px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font-size: 13.5px;
+  font-weight: 700;
 }
-.hmMore a:hover { border-color: var(--accent); color: var(--brand); }
 
-.hmCollections { max-width: 1280px; margin: 0 auto; padding: 26px 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.hmCol { position: relative; border-radius: 18px; overflow: hidden; min-height: 300px; display: flex; align-items: flex-end; background: #23272f; }
-.hmCol img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.hmCol::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgb(10 12 18 / 0.72)); }
-.hmCol div { position: relative; z-index: 1; padding: 24px; color: #fff; }
-.hmCol small { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; background: var(--accent); border-radius: 6px; padding: 4px 9px; margin-bottom: 9px; }
-.hmCol h3 { font-size: 21px; font-weight: 800; }
-.hmCol p { font-size: 13px; color: #e2e8f0; margin: 6px 0 12px; max-width: 40ch; }
-.hmCol a { display: inline-flex; gap: 8px; align-items: center; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 700; border-radius: 10px; padding: 9px 16px; }
+.hmMore a:hover {
+  border-color: var(--hm-brand);
+  color: var(--hm-brand-text);
+}
 
-.hmTrust { max-width: 1280px; margin: 0 auto; padding: 22px 20px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.hmTrust div { border: 1px solid var(--line-soft); border-radius: 14px; background: #fff; padding: 16px; display: flex; gap: 12px; }
-.hmTrustIco { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-tint); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.hmTrust b { display: block; font-size: 13px; }
-.hmTrust small { font-size: 12px; color: var(--ink-soft); }
+/* ---------- Trạng thái dữ liệu (A2) ---------- */
+.hmState {
+  display: grid;
+  gap: 6px;
+  padding: 24px;
+  border: 1px dashed var(--hm-line);
+  border-radius: 10px;
+  color: var(--hm-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
 
+.hmState strong {
+  color: var(--hm-text);
+  font-size: 15px;
+}
+
+.hmState a {
+  color: var(--hm-brand-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hmStateError {
+  border-style: solid;
+  border-color: var(--hm-error-line);
+  background: var(--hm-error-bg);
+  color: var(--hm-error);
+}
+
+.hmStateError strong {
+  color: var(--hm-error);
+}
+
+.hmRetry {
+  justify-self: start;
+  margin-top: 6px;
+}
+
+/* ---------- Dải cam kết (giữ từ Home cũ) ---------- */
+.hmTrust {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding-top: clamp(24px, 4vh, 44px);
+  padding-bottom: 40px;
+}
+
+.hmTrust div {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+.hmTrustIco {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--hm-subtle);
+  color: var(--hm-brand-text);
+}
+
+.hmTrust b {
+  display: block;
+  color: var(--hm-text);
+  font-size: 13px;
+}
+
+.hmTrust small {
+  color: var(--hm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- Lớp dùng chung với các trang khác (giữ nguyên API lớp) ---------- */
+.hmAiBand {
+  max-width: 1280px;
+  margin: 26px auto 0;
+  padding: 0 20px;
+}
+
+.hmAiCard {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 26px;
+  padding: 28px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.hmAiCard h2 {
+  font-size: clamp(19px, 2.4vw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hmAiCard h2 .hl {
+  color: var(--brand-text);
+}
+
+.hmAiCard > div > p {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.hmDropIco {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--surface-tint);
+  color: var(--brand-text);
+}
+
+.hmDropRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hmTabs {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0 18px;
+  flex-wrap: wrap;
+}
+
+.hmTabs a {
+  padding: 8px 15px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.hmTabs a[aria-current="true"] {
+  background: var(--ink-fill, var(--ink));
+  border-color: var(--ink-fill, var(--ink));
+  color: #fff;
+}
+
+.hmCollections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 26px 20px 0;
+}
+
+.hmCol {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 300px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #23272f;
+}
+
+.hmCol img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hmCol::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgb(10 12 18 / 0.72));
+}
+
+.hmCol div {
+  position: relative;
+  z-index: 1;
+  padding: 24px;
+  color: #fff;
+}
+
+.hmCol small {
+  display: inline-block;
+  margin-bottom: 9px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.hmCol h3 {
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.hmCol p {
+  max-width: 40ch;
+  margin: 6px 0 12px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.hmCol a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: #fff;
+  color: #1b1c1a;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
-  .hmHero { grid-template-columns: 1fr; }
-  .hmCatRow { grid-template-columns: repeat(4, 1fr); }
-  .hmAiCard { grid-template-columns: 1fr; }
-  .hmTrust { grid-template-columns: repeat(2, 1fr); }
-  .hmCollections { grid-template-columns: 1fr; }
+  .hmHero {
+    grid-template-columns: 1fr;
+  }
+
+  .hmDemoLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .hmDemoOutcome {
+    min-height: 0;
+  }
+
+  .hmTrust {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hmCollections,
+  .hmAiCard {
+    grid-template-columns: 1fr;
+  }
 }
+
 @media (max-width: 640px) {
-  .hmCatRow { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .hmTrust { grid-template-columns: 1fr; }
+  .hmHome > section {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hmHeroCopy {
+    padding: 24px 20px;
+  }
+
+  .hmModeList {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .hmDemoStep {
+    font-size: 12.5px;
+    padding: 9px 8px;
+  }
+
+  .hmResultCard {
+    grid-template-columns: minmax(0, 110px) minmax(0, 1fr);
+  }
+
+  .hmTrust {
+    grid-template-columns: 1fr;
+  }
+
+  .hmCatRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

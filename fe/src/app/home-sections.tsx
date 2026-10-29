@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, type UiIcon } from "@/components/ui/icon";
-import { StitchImage } from "@/components/ui/stitch-image";
 import { ProductCard, type CardProduct } from "@/components/storefront/product-card";
 import { beFetch, unwrap, type Page } from "@/lib/mgmt-client";
-import { stitchImages } from "@/lib/stitch-assets";
+import {
+  HOME_DEMO,
+  HOME_DEMO_STEPS,
+  HOME_PHOTOS,
+  homeDiscoveryState,
+  type HomeCategory,
+  type HomeDemoStep,
+  type HomePhoto,
+  type HomeProduct,
+} from "./home-data";
 import "./home.css";
 import "@/components/storefront/listing.css";
-
-const HOME = "fashionsearch_ai_trang_ch_th_ng_m_i_i_n_t";
-const CAT_NAMES = ["Áo Thun Daily", "Quần Short", "Sơ Mi Công Sở", "Quần Dài Casual", "Áo Khoác Gió", "Đồ Lót Kháng Khuẩn", "Phụ Kiện & Tất"];
 
 type PublicCategory = { maDanhMuc: number; tenDanhMuc: string };
 type PublicProduct = {
@@ -19,169 +24,358 @@ type PublicProduct = {
   giaBan: number; coHinhAnh: boolean;
 };
 
-function img(i: number) {
-  const all = stitchImages(HOME);
-  return all[i];
+const DISCOVERY_ERROR = "Không tải được sản phẩm. Vui lòng thử lại.";
+
+/**
+ * Ảnh Home có khung tỉ lệ cố định (không nhảy layout) và báo LỖI TẢI rõ ràng
+ * thay vì im lặng bỏ ảnh (A2: "stable image dimensions and explicit image failure").
+ */
+function HomePhotoFrame({
+  photo,
+  className,
+  eager = false,
+}: {
+  photo: HomePhoto;
+  className: string;
+  eager?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className={className}>
+      {failed ? (
+        <span className="hmImgFail" role="img" aria-label={`Không tải được ảnh: ${photo.alt}`}>
+          Không tải được ảnh minh họa
+        </span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- ảnh ngoài (Unsplash), không dùng Image optimizer
+        <img
+          src={photo.src}
+          alt={photo.alt}
+          loading={eager ? "eager" : "lazy"}
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          // Ảnh có thể LỖI TRƯỚC khi React hydrate (chặn mạng, offline, ảnh 404):
+          // khi đó onError đã xảy ra rồi và sẽ không bắn lại, nên kiểm ngay lúc gắn ref.
+          ref={(el) => {
+            if (el && el.complete && el.naturalWidth === 0) setFailed(true);
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
+function PhotoCredit({ photo }: { photo: HomePhoto }) {
+  return (
+    <span className="hmCredit">
+      Ảnh minh họa:{" "}
+      <a href={photo.page} target="_blank" rel="noopener noreferrer">
+        {photo.sourceLabel} · {photo.author}
+      </a>
+    </span>
+  );
 }
 
 export function HomeSections() {
-  const [cats, setCats] = useState<PublicCategory[]>([]);
-  const [products, setProducts] = useState<PublicProduct[]>([]);
-  const [total, setTotal] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  const hero = img(0);
-  const catImgs = [1, 2, 3, 4, 5, 6, 7].map(img);
-  const best = [8, 9, 10, 11].map(img);
+  const [categories, setCategories] = useState<HomeCategory[] | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [products, setProducts] = useState<HomeProduct[] | null>(null);
+  const [productsTotal, setProductsTotal] = useState<number | null>(null);
+  const [productError, setProductError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  // Bản tĩnh hoàn chỉnh là mặc định: mở Home là thấy ngay kết quả của cả ba bước.
+  const [step, setStep] = useState<HomeDemoStep>("explore");
+  const stepRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     let live = true;
     beFetch("v1/catalog/danh-muc")
       .then((r) => unwrap<PublicCategory[]>(r))
-      .then((list) => live && setCats(list))
-      .catch(() => live && setError("Không tải được danh mục. Vui lòng thử lại."));
+      .then((list) => {
+        if (!live) return;
+        setCategories(list.map((c) => ({ id: c.maDanhMuc, name: c.tenDanhMuc })));
+      })
+      .catch(() => {
+        if (live) setCategoryError("Không tải được danh mục.");
+      });
     beFetch("v1/catalog/san-pham?page=0&size=4")
       .then((r) => unwrap<Page<PublicProduct>>(r))
       .then((page) => {
         if (!live) return;
-        setProducts(page.data);
-        setTotal(page.totalElements);
+        setProducts(
+          page.data.map((p) => ({
+            id: p.maSp,
+            name: p.tenSp,
+            price: p.giaBan,
+            image: p.coHinhAnh ? `/api/be/v1/catalog/san-pham/${p.maSp}/hinh-anh` : undefined,
+            href: `/san-pham/${p.maSp}`,
+          })),
+        );
+        setProductsTotal(page.totalElements);
       })
-      .catch(() => live && setError("Không tải được sản phẩm. Vui lòng thử lại."));
+      .catch(() => {
+        if (live) setProductError(DISCOVERY_ERROR);
+      });
     return () => {
       live = false;
     };
+  }, [reloadKey]);
+
+  const retry = useCallback(() => {
+    // Đặt lại trạng thái ở đây (không trong effect) để effect chỉ còn tác dụng phụ mạng.
+    setProducts(null);
+    setProductsTotal(null);
+    setCategoryError(null);
+    setProductError(null);
+    setReloadKey((k) => k + 1);
   }, []);
 
-  const cards: CardProduct[] = products.map((p, i) => ({
-    id: p.maSp,
-    name: p.tenSp,
-    price: p.giaBan,
-    image: p.coHinhAnh ? `/api/be/v1/catalog/san-pham/${p.maSp}/hinh-anh` : best[i % best.length]?.src,
-    href: `/san-pham/${p.maSp}`,
-    sold: undefined,
+  const discovery = homeDiscoveryState({
+    categories,
+    categoriesError: categoryError,
+    products,
+    productsTotal,
+    productsError: productError,
+  });
+
+  const cards: CardProduct[] = (discovery.status === "ready" ? discovery.products : []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    image: p.image,
+    href: p.href,
   }));
 
+  function selectStep(next: HomeDemoStep) {
+    setStep(next);
+    // Trả tiêu điểm về nút vừa chọn để người dùng bàn phím biết trạng thái đã đổi.
+    stepRefs.current[next]?.focus();
+  }
+
+  const stepIndex = HOME_DEMO_STEPS.findIndex((s) => s.id === step);
+  const showTags = stepIndex >= 1;
+  const statusText =
+    step === "describe"
+      ? "Mô tả món đồ bạn muốn tìm."
+      : step === "suggest"
+        ? `Đối chiếu mô tả với danh mục: ${HOME_DEMO.tags.map((t) => t.value).join(" · ")}.`
+        : "Một gợi ý phù hợp trong danh mục mẫu.";
+
   return (
-    <>
-      <section className="hmHero">
-        <div>
-          <span className="hmKicker">Tìm kiếm AI theo ảnh</span>
-          <h1 className="hmTitle">
-            Tìm món đồ bạn thích, <span className="hl">bằng ảnh</span> hoặc bằng chữ
-          </h1>
-          <p className="hmSub">
-            Tải ảnh outfit bạn thích để AI gợi ý món đồ tương tự trong danh mục thật,
-            hoặc tìm bằng từ khóa. Kết quả tìm kiếm AI là ảnh trong bộ dữ liệu, chưa
-            phải mã sản phẩm bán được.
+    <div className="hmHome">
+      <section className="hmHero" aria-labelledby="hm-hero-title">
+        <div className="hmHeroCopy">
+          <h1 className="hmHeroTitle" id="hm-hero-title">Tìm đồ theo ảnh</h1>
+          <p className="hmHeroLede">Tìm món đồ hợp gu từ ảnh hoặc vài dòng mô tả.</p>
+          <div className="hmHeroActions">
+            <Link className="hmCta hmCtaBrand" href="/tim-kiem-ai">
+              <Icon name="search" size={17} /> Tìm bằng AI
+            </Link>
+            <Link className="hmCta hmCtaOutline" href="/nam">
+              Xem danh mục <Icon name="arrowRight" size={16} />
+            </Link>
+          </div>
+        </div>
+        <figure className="hmHeroFigure">
+          <HomePhotoFrame photo={HOME_PHOTOS.hero} className="hmHeroMedia" eager />
+          <figcaption>
+            <PhotoCredit photo={HOME_PHOTOS.hero} />
+          </figcaption>
+        </figure>
+      </section>
+
+      <section className="hmModes" aria-labelledby="hm-modes-title">
+        <h2 className="hmSectionTitle" id="hm-modes-title">Tìm theo cách của bạn</h2>
+        <ul className="hmModeList">
+          {[
+            { id: "text", icon: "search" as UiIcon, label: "Mô tả" },
+            { id: "image", icon: "upload" as UiIcon, label: "Ảnh" },
+            { id: "composed", icon: "spark" as UiIcon, label: "Kết hợp" },
+          ].map((m) => (
+            <li key={m.id}>
+              <Link className="hmMode" href="/tim-kiem-ai">
+                <span className="hmModeIcon" aria-hidden="true"><Icon name={m.icon} size={19} /></span>
+                <span className="hmModeCopy"><strong>{m.label}</strong></span>
+                <span className="hmModeGo" aria-hidden="true"><Icon name="arrowRight" size={16} /></span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <p className="hmNote">Chọn cách tìm ở trang tìm kiếm — Home không tự chọn hay tự gửi thay bạn.</p>
+      </section>
+
+      <section
+        className="hmDemo"
+        aria-labelledby="hm-demo-title"
+        aria-describedby="hm-demo-note"
+        data-step={step}
+      >
+        <header className="hmDemoHead">
+          <div>
+            <p className="hmKicker">01 · Tìm bằng AI</p>
+            <h2 className="hmSectionTitle" id="hm-demo-title">Tìm món đồ hợp gu.</h2>
+          </div>
+          <p className="hmDemoNote" id="hm-demo-note">Ví dụ minh họa</p>
+        </header>
+
+        <div className="hmDemoSteps" role="group" aria-label="Các bước của ví dụ minh họa">
+          {HOME_DEMO_STEPS.map((s) => (
+            <button
+              key={s.id}
+              ref={(el) => { stepRefs.current[s.id] = el; }}
+              className="hmDemoStep"
+              type="button"
+              aria-pressed={step === s.id}
+              onClick={() => selectStep(s.id)}
+            >
+              <span aria-hidden="true">{s.index}</span>
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="hmDemoLayout">
+          <div className="hmDemoPrompt">
+            <div className="hmDemoPromptTop">
+              <span>Bạn mô tả</span>
+              <span className="hmDemoPromptMark" aria-hidden="true">Aa</span>
+            </div>
+            <div className="hmQuery">
+              <span className="hmQueryIcon" aria-hidden="true">↳</span>
+              <p className="hmQueryCopy">{HOME_DEMO.query}</p>
+            </div>
+            {showTags ? (
+              <dl className="hmTags">
+                {HOME_DEMO.tags.map((t) => (
+                  <div key={t.label}>
+                    <dt>{t.label}</dt>
+                    <dd>{t.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            <p className="hmDemoStatus" role="status">{statusText}</p>
+          </div>
+
+          <div className="hmDemoOutcome">
+            {step === "describe" ? (
+              <p className="hmOutcomeIdle">Gợi ý từ mô tả của bạn</p>
+            ) : null}
+
+            {step === "suggest" ? (
+              <div className="hmSuggestion">
+                <svg
+                  className="hmSuggestionIcon"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="13" cy="13" r="8" />
+                  <path d="m19 19 8 8M9 13l3 3 5-6" />
+                </svg>
+                <p>Minh họa tìm gợi ý</p>
+                <span>Đối chiếu mô tả với danh mục.</span>
+              </div>
+            ) : null}
+
+            {step === "explore" ? (
+              <div className="hmResult">
+                <p className="hmMiniLabel">1 gợi ý</p>
+                <div className="hmResultCard">
+                  <HomePhotoFrame photo={HOME_DEMO.product.photo} className="hmResultMedia" />
+                  <div className="hmResultCopy">
+                    <span className="hmResultOverline">{HOME_DEMO.product.overline}</span>
+                    <strong>{HOME_DEMO.product.name}</strong>
+                    <span>{HOME_DEMO.product.subtitle}</span>
+                    <span className="hmResultPrice">{HOME_DEMO.product.priceLabel}</span>
+                  </div>
+                </div>
+                <p className="hmResultCredit"><PhotoCredit photo={HOME_DEMO.product.photo} /></p>
+                <Link className="hmTry" href="/tim-kiem-ai">
+                  Thử tìm kiếm <span aria-hidden="true">↗</span>
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <p className="hmDisclosure">{HOME_DEMO.disclosure}</p>
+      </section>
+
+      {discovery.status === "ready" || discovery.status === "partial" || discovery.status === "empty" ? (
+        discovery.categories.length > 0 ? (
+          <section className="hmCats" aria-labelledby="hm-cats-title">
+            <div className="hmSecHead">
+              <h2 className="hmSectionTitle" id="hm-cats-title">Danh mục nổi bật</h2>
+              <Link href="/nam">Xem tất cả sản phẩm →</Link>
+            </div>
+            <div className="hmCatRow">
+              {discovery.categories.slice(0, 7).map((c) => (
+                <Link key={c.id} className="hmCat" href={`/nam?maDanhMuc=${c.id}`}>
+                  {c.name}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null
+      ) : null}
+
+      <section className="hmBest" aria-labelledby="hm-best-title">
+        <div className="hmSecHead">
+          <h2 className="hmSectionTitle" id="hm-best-title">
+            Sản phẩm nổi bật{discovery.status === "ready" ? ` (${discovery.total})` : ""}
+          </h2>
+          <Link href="/nam">Xem cả danh mục →</Link>
+        </div>
+
+        {discovery.status === "loading" ? (
+          <p className="hmState" role="status">
+            <strong>Đang tải sản phẩm…</strong>
+            Đang lấy danh mục thật từ máy chủ.
           </p>
-          <div className="hmCtas">
-            <Link className="hmCta hmCtaPrimary" href="/tim-kiem-ai">
-              Tìm bằng AI <Icon name="arrowRight" size={17} />
-            </Link>
-            <Link className="hmCta hmCtaGhost" href="/nam">
-              Khám phá danh mục
-            </Link>
-          </div>
-          <div className="hmAiMini">
-            <Icon name="spark" size={22} />
-            <div style={{ flex: 1 }}>
-              <small>Tìm kiếm AI gợi ý phong cách</small>
-              <b>Áo thun oversize phối quần short kaki cho dịp cuối tuần</b>
-              <Link className="hmAiBtn" href="/tim-kiem-ai">Tìm kiếm →</Link>
-            </div>
-          </div>
-        </div>
-        <div className="hmHeroMedia">
-          <StitchImage src={hero?.src} alt={hero?.alt || "Người mẫu thời trang"} eager />
-        </div>
-      </section>
+        ) : null}
 
-      <section className="hmCats" aria-label="Danh mục nổi bật">
-        <div className="hmSecHead">
-          <h2>Danh mục nổi bật</h2>
-          <Link href="/nam">Được nhiều tìm kiếm nhất trong tuần này →</Link>
-        </div>
-        <div className="hmCatRow">
-          {CAT_NAMES.map((name, i) => (
-            <Link key={name} className="hmCat" href={cats[i] ? `/nam?maDanhMuc=${cats[i].maDanhMuc}` : "/nam"}>
-              <span className="img">
-                <StitchImage src={catImgs[i]?.src} alt={catImgs[i]?.alt || name} />
-              </span>
-              {cats[i]?.tenDanhMuc ?? name}
-            </Link>
-          ))}
-        </div>
-      </section>
+        {discovery.status === "error" ? (
+          <div className="hmState hmStateError" role="alert">
+            <strong>Không tải được sản phẩm</strong>
+            <span>{discovery.message} Không hiển thị dữ liệu thay thế.</span>
+            <button className="hmCta hmCtaBrand hmRetry" type="button" onClick={retry}>Thử lại</button>
+          </div>
+        ) : null}
 
-      <section className="hmAiBand" aria-label="Tìm bằng ảnh">
-        <div className="hmAiCard">
-          <div>
-            <h2>Bắt gặp outfit đẹp?<br /><span className="hl">Thả ảnh vào đây để tìm đồ tương tự.</span></h2>
-            <p>AI tìm ảnh gần giống trong bộ dữ liệu đã duyệt. Kết quả là ảnh tập dữ liệu, chưa phải mã sản phẩm bán được.</p>
-            <div className="hmAiStats">
-              <div><b>Tìm bằng ảnh</b><small>Chụp là tìm</small></div>
-              <div><b>Tìm ảnh gần giống</b><small>Theo độ tương đồng ảnh</small></div>
-              <div><b>Kết quả từ tập dữ liệu</b><small>Chưa phải mã sản phẩm</small></div>
-            </div>
-            <div className="hmTags">
-              <span>Tìm theo ảnh</span>
-              <span>Kết quả là ảnh tập dữ liệu</span>
-            </div>
+        {discovery.status === "partial" ? (
+          <div className="hmState hmStateError" role="alert">
+            <strong>Danh mục có, sản phẩm chưa tải được</strong>
+            <span>{discovery.productError} Danh mục bên trên vẫn là dữ liệu thật từ máy chủ.</span>
+            <button className="hmCta hmCtaBrand hmRetry" type="button" onClick={retry}>Thử lại</button>
           </div>
-          <div className="hmDrop">
-            <span className="hmDropIco"><Icon name="upload" size={24} /></span>
-            <b>Kéo thả ảnh outfit vào đây hoặc chụp trực tiếp</b>
-            <p>Hỗ trợ JPG/PNG tới 5MB. Ảnh chỉ xử lý preview trên trình duyệt.</p>
-            <div className="hmDropRow">
-              <Link className="hmCta hmCtaPrimary" href="/lich-su-ai">Tải ảnh lên ngay</Link>
-              <Link className="hmCta hmCtaGhost" href="/lich-su-ai">Mở camera</Link>
-            </div>
-          </div>
-        </div>
-      </section>
+        ) : null}
 
-      <section className="hmBest" aria-label="Sản phẩm bán chạy nhất">
-        <div className="hmSecHead">
-          <h2 style={{ fontSize: 22, letterSpacing: "-0.02em", textTransform: "none" }}>Sản Phẩm Nổi Bật{typeof total === "number" ? ` (${total})` : ""}</h2>
-        </div>
-        <div className="hmTabs" role="list">
-          {["Tất cả", "Áo Thun", "Quần Short", "Sơ Mi & Polo", "Đồ Thể Thao"].map((t, i) => (
-            <Link key={t} href="/nam" aria-current={i === 0 ? "true" : undefined}>{t}</Link>
-          ))}
-        </div>
-        {error ? (
-          <p className="pgState" role="alert"><strong>Không tải được sản phẩm</strong>{error}</p>
-        ) : (
-          <div className="pgGrid">
-            {cards.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        )}
-        <div className="hmMore">
-          <Link href="/nam">Xem tất cả{typeof total === "number" ? ` ${total}` : ""} sản phẩm <Icon name="arrowRight" size={16} /></Link>
-        </div>
-      </section>
+        {discovery.status === "empty" ? (
+          <p className="hmState" role="status">
+            <strong>Danh mục đang trống</strong>
+            Máy chủ trả về 0 sản phẩm. <Link href="/nam">Xem trang danh mục →</Link>
+          </p>
+        ) : null}
 
-      <section className="hmCollections" aria-label="Bộ sưu tập">
-        <div className="hmCol">
-          <StitchImage src={stitchImages(HOME)[8]?.src} alt="Ảnh minh họa đồ thể thao" />
-          <div>
-            <small>Lookbook</small>
-            <h3>Đồ thể thao</h3>
-            <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
-            <Link href="/bo-suu-tap">Xem sản phẩm →</Link>
-          </div>
-        </div>
-        <div className="hmCol">
-          <StitchImage src={stitchImages(HOME)[10]?.src} alt="Ảnh minh họa phong cách tối giản" />
-          <div>
-            <small>Lookbook</small>
-            <h3>Phong cách tối giản</h3>
-            <p>Ảnh minh họa từ bản thiết kế. Sản phẩm thật nằm trong danh mục.</p>
-            <Link href="/bo-suu-tap">Xem sản phẩm →</Link>
-          </div>
-        </div>
+        {discovery.status === "ready" ? (
+          <>
+            <div className="pgGrid">
+              {cards.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+            <div className="hmMore">
+              <Link href="/nam">
+                Xem tất cả {discovery.total} sản phẩm <Icon name="arrowRight" size={16} />
+              </Link>
+            </div>
+          </>
+        ) : null}
       </section>
 
       <section className="hmTrust" aria-label="Điều hệ thống thực thi">
@@ -192,11 +386,11 @@ export function HomeSections() {
           { icon: "ticket" as UiIcon, t: "Voucher tại trang ưu đãi", d: "Nhập mã giảm giá khi thanh toán." },
         ].map((b) => (
           <div key={b.t}>
-            <span className="hmTrustIco"><Icon name={b.icon as UiIcon} size={20} /></span>
+            <span className="hmTrustIco"><Icon name={b.icon} size={20} /></span>
             <div><b>{b.t}</b><small>{b.d}</small></div>
           </div>
         ))}
       </section>
-    </>
+    </div>
   );
 }
