@@ -597,6 +597,208 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
     hideProbe.hidden.fit === "none" && hideProbe.hidden.reason === "insufficient-space"
       && hideProbe.hidden.display === "none" && hideProbe.restored.fit === "visible",
     JSON.stringify(hideProbe));
+
+  // ---------- CONTROL-HEADER-04: header Customer đã duyệt (Home-only) ----------
+  const HDR_PROBE = `(() => {
+    const q = (s) => document.querySelector(s);
+    const h = q('.chHeader'), brand = q('.chBrand'), mark = q('.chMark'), word = q('.chWord');
+    const acts = q('.chActions'), nav = q('.chNav'), cart = q('.chCart');
+    const cnt = q('.chCartCount'), label = q('.chCartLabel'), mob = q('.chMobile'), sum = q('.chMobile > summary');
+    const ai = q('.chAiIcon'), vf = q('.chViewfinder'), circle = vf?.querySelector('circle');
+    const cs = (el) => el ? getComputedStyle(el) : null;
+    const rect = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, right: b.right, bottom: b.bottom }; };
+    const preview = q('.chPreviewBar');
+    return {
+      exists: !!h, preview: !!preview, previewRole: preview?.getAttribute('role'), previewOnly: preview?.dataset.previewOnly,
+      themeOutside: !!q('.chPreviewBar .stThemeSelect'), themeInsideHeader: !!q('.chHeader .stThemeSelect'),
+      header: rect(h),
+      headerCS: { minHeight: cs(h).minHeight, padding: cs(h).padding, gap: cs(h).gap, border: cs(h).borderBottom, position: cs(h).position, bg: cs(h).backgroundColor },
+      mark: rect(mark), markCS: { width: cs(mark)?.width, color: cs(mark)?.color },
+      markSvg: { viewBox: mark?.getAttribute('viewBox'), paths: mark ? [...mark.querySelectorAll('path')].map((x) => x.getAttribute('d')) : null },
+      word: { text: word?.textContent, fontSize: cs(word)?.fontSize, fontWeight: cs(word)?.fontWeight, letterSpacing: cs(word)?.letterSpacing, color: cs(word)?.color },
+      brand: { label: brand?.getAttribute('aria-label'), href: brand?.getAttribute('href'), gap: cs(brand)?.gap, color: cs(brand)?.color },
+      actions: { gap: cs(acts)?.gap },
+      nav: { display: cs(nav)?.display, gap: cs(nav)?.gap },
+      links: [...document.querySelectorAll('.chNav a')].map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href'), current: a.getAttribute('aria-current'), font: cs(a).fontSize, minH: cs(a).minHeight, padding: cs(a).padding, color: cs(a).color })),
+      cart: { href: cart?.getAttribute('href'), label: cart?.getAttribute('aria-label'), gap: cs(cart)?.gap, padding: cs(cart)?.padding, minHeight: cs(cart)?.minHeight, fontSize: cs(cart)?.fontSize, color: cs(cart)?.color },
+      count: { text: cnt?.textContent, w: rect(cnt)?.w, h: rect(cnt)?.h, minWidth: cs(cnt)?.minWidth, fontSize: cs(cnt)?.fontSize, bg: cs(cnt)?.backgroundColor, radius: cs(cnt)?.borderRadius },
+      label: { display: cs(label)?.display },
+      mobile: { display: cs(mob)?.display },
+      summary: { padding: cs(sum)?.padding, gap: cs(sum)?.gap, minHeight: cs(sum)?.minHeight, fontSize: cs(sum)?.fontSize },
+      panel: (() => { const n = mob?.querySelector('nav'); if (!n) return null; const c = cs(n); return { width: c.width, zIndex: c.zIndex, bg: c.backgroundColor, padding: c.padding, radius: c.borderRadius }; })(),
+      mobLinks: [...document.querySelectorAll('.chMobile a')].map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href'), current: a.getAttribute('aria-current') })),
+      ai: { w: cs(ai)?.width, h: cs(ai)?.height, marginRight: cs(ai)?.marginRight, vf: cs(vf)?.width, circleFill: circle ? cs(circle).fill : null },
+      old: { promo: !!q('.sfPromo'), sfHeader: !!q('.sfHeader'), search: !!q('.sfSearch'), chips: !!q('.sfMobileNav'), fav: !!q('a[aria-label="Sản phẩm yêu thích"]'), avatar: !!q('.sfAvatar'), fsMark: !!q('.sfHeader .sfBrandMark') },
+      heroTop: +document.querySelector('.hmHero')?.getBoundingClientRect().top.toFixed(1),
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      theme: document.documentElement.getAttribute('data-theme'),
+    };
+  })()`;
+  const HDR_EXPECT = {
+    1440: { h: 88, pad: "18px 64.8px", gap: "24px", mark: 38, word: "26px", actions: "32px", nav: "flex", mobile: "none", label: "block", count: 20, countFont: "11px", cartGap: "7px", cartPad: "6px 8px", sumPad: "6px 8px", sumGap: "8px" },
+    1024: { h: 88, pad: "18px 46.08px", gap: "24px", mark: 38, word: "26px", actions: "32px", nav: "flex", mobile: "none", label: "block", count: 20, countFont: "11px", cartGap: "7px", cartPad: "6px 8px", sumPad: "6px 8px", sumGap: "8px" },
+    900: { h: 88, pad: "18px 40.5px", gap: "24px", mark: 38, word: "26px", actions: "10px", nav: "none", mobile: "block", label: "block", count: 20, countFont: "11px", cartGap: "7px", cartPad: "6px 8px", sumPad: "6px 8px", sumGap: "8px" },
+    768: { h: 88, pad: "18px 34.56px", gap: "24px", mark: 38, word: "26px", actions: "10px", nav: "none", mobile: "block", label: "block", count: 20, countFont: "11px", cartGap: "7px", cartPad: "6px 8px", sumPad: "6px 8px", sumGap: "8px" },
+    480: { h: 72, pad: "15px 16px", gap: "8px", mark: 28, word: "21px", actions: "5px", nav: "none", mobile: "block", label: "none", count: 18, countFont: "10px", cartGap: "4px", cartPad: "6px", sumPad: "6px", sumGap: "6px" },
+    390: { h: 72, pad: "15px 16px", gap: "8px", mark: 28, word: "21px", actions: "5px", nav: "none", mobile: "block", label: "none", count: 18, countFont: "10px", cartGap: "4px", cartPad: "6px", sumPad: "6px", sumGap: "6px" },
+    320: { h: 72, pad: "15px 16px", gap: "8px", mark: 28, word: "21px", actions: "5px", nav: "none", mobile: "block", label: "none", count: 18, countFont: "10px", cartGap: "4px", cartPad: "6px", sumPad: "6px", sumGap: "6px" },
+  };
+  const HDR_LINKS = [
+    { text: "Tìm bằng AI", href: "/tim-kiem-ai" },
+    { text: "Sản phẩm", href: "/nam" },
+    { text: "Tài khoản", href: "/tai-khoan" },
+  ];
+  const MARK_PATHS = ["M27 3h10v10M13 37H3V27", "m14 10 6 3 6-3 8 6-4 6-4-2v12H14V20l-4 2-4-6 8-6Z"];
+  const VF_PATHS = ["M1 5V1h4M11 1h4v4M15 11v4h-4M5 15H1v-4"];
+
+  for (const scheme of ["light", "dark"]) {
+    await p.setColorScheme(scheme);
+    for (const [w, h] of [[1440, 1000], [1024, 900], [900, 900], [768, 900], [480, 900], [390, 844], [320, 780]]) {
+      await p.setViewport(w, h);
+      await p.goto(`${base}/`);
+      await sleep(300);
+      const x = await p.eval(HDR_PROBE);
+      const exp = HDR_EXPECT[w];
+      record(`HEADER ${scheme} @${w}: có header Customer, không còn strip/search/chips/avatar cũ`,
+        x.exists && x.preview && x.previewRole === "note" && x.previewOnly === "true"
+          && Object.values(x.old).every((v) => v === false),
+        JSON.stringify({ exists: x.exists, preview: x.preview, old: x.old }));
+      record(`HEADER ${scheme} @${w}: layout/mark/word/actions khớp 6fdbcee (${exp.h}px, ${exp.pad})`,
+        Math.abs(x.header.h - exp.h) <= 0.5 && x.headerCS.minHeight === `${exp.h}px` && x.headerCS.padding === exp.pad
+          && x.headerCS.gap === exp.gap && x.headerCS.position === "static"
+          && Math.abs(x.mark.w - exp.mark) <= 0.1 && x.word.fontSize === exp.word
+          && x.word.fontWeight === "600" && x.word.letterSpacing === (w <= 480 ? "-1.155px" : w <= 760 ? "-1.265px" : "-1.43px")
+          && x.actions.gap === exp.actions,
+        JSON.stringify({ header: x.headerCS, mark: x.mark.w, word: x.word, actions: x.actions }));
+      record(`HEADER ${scheme} @${w}: brand FaSearch + mark SVG 40x40 đúng nguồn`,
+        x.brand.label === "FaSearch, trang chủ" && x.brand.href === "/"
+          && x.markSvg.viewBox === "0 0 40 40" && JSON.stringify(x.markSvg.paths) === JSON.stringify(MARK_PATHS),
+        JSON.stringify({ brand: x.brand, svg: x.markSvg }));
+      record(`HEADER ${scheme} @${w}: 3 nav đúng thứ tự/route, viewfinder signature 18px, không aria-current sai`,
+        JSON.stringify(x.links.map((l) => ({ text: l.text, href: l.href }))) === JSON.stringify(HDR_LINKS)
+          && x.links.every((l) => l.current === null && l.font === "14px" && l.minH === "44px")
+          && x.ai.w === "18px" && x.ai.h === "18px" && x.ai.marginRight === "8px" && x.ai.vf === "18px"
+          && x.ai.circleFill === "rgb(214, 239, 114)",
+        JSON.stringify({ links: x.links, ai: x.ai }));
+      record(`HEADER ${scheme} @${w}: cart thật /gio-hang, count 0 hiển thị, badge đúng cỡ`,
+        x.cart.href === "/gio-hang" && x.cart.label === "Giỏ hàng, 0 sản phẩm" && x.count.text === "0"
+          && Math.abs(x.count.w - exp.count) <= 0.1 && Math.abs(x.count.h - exp.count) <= 0.1
+          && x.count.fontSize === exp.countFont && x.label.display === exp.label
+          && x.cart.gap === exp.cartGap && x.cart.padding === exp.cartPad,
+        JSON.stringify({ cart: x.cart, count: x.count, label: x.label }));
+      record(`HEADER ${scheme} @${w}: nav/mobile/menu cascade đúng (nav ${exp.nav}, mobile ${exp.mobile})`,
+        x.nav.display === exp.nav && x.mobile.display === exp.mobile
+          && JSON.stringify(x.mobLinks.map((l) => ({ text: l.text, href: l.href }))) === JSON.stringify(HDR_LINKS)
+          && (exp.mobile === "none" || (x.summary.minHeight === "40px" && x.summary.padding === exp.sumPad && x.summary.gap === exp.sumGap && x.panel?.width === "190px")),
+        JSON.stringify({ nav: x.nav, mobile: x.mobile, summary: x.summary, panel: x.panel }));
+      record(`HEADER ${scheme} @${w}: không tràn ngang, header liền mạch trước hero, theme control ngoài header`,
+        x.overflow <= 1 && Math.abs(x.header.bottom - x.heroTop) <= 0.5
+          && x.themeOutside && !x.themeInsideHeader && x.theme === scheme,
+        JSON.stringify({ overflow: x.overflow, headerBottom: x.header.bottom, heroTop: x.heroTop, theme: x.theme }));
+      await p.shot(join(shots, `home-header-${w}-${scheme}.png`));
+    }
+  }
+
+  // Mobile menu: keyboard/open/close, overlay, focus; theme control; cart fixture thật.
+  const press = async (key, code, vk, text = "") => {
+    await p.send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk, text });
+    await p.send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+    await sleep(220);
+  };
+  await p.setColorScheme("light");
+  await p.setViewport(390, 844);
+  await p.goto(`${base}/`);
+  await p.eval(`document.querySelector('.chMobile > summary').focus()`);
+  await press("Enter", "Enter", 13, "\r");
+  const menuOpen = await p.eval(`(() => {
+    const d = document.querySelector('.chMobile'), panel = d.querySelector('nav'), s = d.querySelector('summary');
+    const r = panel.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { open: d.open, display: getComputedStyle(panel).display, z: getComputedStyle(panel).zIndex,
+      inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight,
+      topTag: top?.tagName, links: [...panel.querySelectorAll('a')].map((a) => a.getAttribute('href')),
+      focusVisible: s.matches(':focus-visible'), outline: getComputedStyle(s).outlineWidth };
+  })()`);
+  record("HEADER menu mobile: Enter mở, panel 3 route, nằm trên nội dung, không tràn viewport",
+    menuOpen.open && menuOpen.display === "grid" && menuOpen.z === "30" && menuOpen.inside
+      && menuOpen.topTag === "A" && JSON.stringify(menuOpen.links) === JSON.stringify(HDR_LINKS.map((l) => l.href))
+      && menuOpen.focusVisible && menuOpen.outline === "2px",
+    JSON.stringify(menuOpen));
+  await p.shot(join(shots, "home-header-390-menu-open.png"));
+  await press("Escape", "Escape", 27);
+  const afterEsc = await p.eval(`(() => { const d = document.querySelector('.chMobile'); return { open: d.open, active: document.activeElement === d.querySelector('summary') }; })()`);
+  record("HEADER menu mobile: Escape đóng và trả focus về summary", !afterEsc.open && afterEsc.active, JSON.stringify(afterEsc));
+  await press("Enter", "Enter", 13, "\r");
+  const reopened = await p.eval(`document.querySelector('.chMobile').open`);
+  await p.eval(`document.querySelector('.hmHero').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
+  await sleep(220);
+  const outside = await p.eval(`document.querySelector('.chMobile').open`);
+  record("HEADER menu mobile: bấm ngoài đóng menu", reopened === true && outside === false, JSON.stringify({ reopened, outside }));
+
+  await p.eval(`document.querySelector('.chMobile > summary').focus()`);
+  await press(" ", "Space", 32, " ");
+  const spaceOpen = await p.eval(`document.querySelector('.chMobile').open`);
+  await press("Escape", "Escape", 27);
+  await p.setViewport(320, 780);
+  await p.eval(`document.querySelector('.chMobile').open = true`);
+  await sleep(200);
+  const menu320 = await p.eval(`(() => { const p = document.querySelector('.chMobile nav').getBoundingClientRect();
+    return { open: document.querySelector('.chMobile').open, inside: p.left >= 0 && p.right <= innerWidth && p.top >= 0 && p.bottom <= innerHeight,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`);
+  record("HEADER menu mobile: Space mở được; @320 panel vẫn trong viewport, không tràn ngang",
+    spaceOpen === true && menu320.open && menu320.inside && menu320.overflow <= 1,
+    JSON.stringify({ spaceOpen, menu320 }));
+  await p.eval(`document.querySelector('.chMobile').open = false`);
+
+  await p.setViewport(1440, 1000);
+  await p.goto(`${base}/tim-kiem-ai`);
+  const routeAI = await p.eval(`({ chHeader: !!document.querySelector('.chHeader'), sfHeader: !!document.querySelector('.sfHeader'), sfPromo: !!document.querySelector('.sfPromo'), search: !!document.querySelector('.sfSearch') })`);
+  await p.goto(`${base}/nam`);
+  const routeProducts = await p.eval(`({ chHeader: !!document.querySelector('.chHeader'), sfHeader: !!document.querySelector('.sfHeader'), sfPromo: !!document.querySelector('.sfPromo'), search: !!document.querySelector('.sfSearch') })`);
+  record("HEADER isolation: route khác trên 3110 vẫn header shell cũ, không dính variant Home",
+    !routeAI.chHeader && routeAI.sfHeader && routeAI.sfPromo && routeAI.search
+      && !routeProducts.chHeader && routeProducts.sfHeader && routeProducts.sfPromo && routeProducts.search,
+    JSON.stringify({ routeAI, routeProducts }));
+
+  // Quay lại Home cho các kiểm theme/cart/bàn phím (các bước trên đã đi route khác).
+  await p.setViewport(390, 844);
+  await p.goto(`${base}/`);
+  await sleep(300);
+
+  const themeSwitch = await p.eval(`(async () => {
+    const sel = document.querySelector('.chPreviewBar .stThemeSelect');
+    const set = (v) => { const s = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; s.call(sel, v); sel.dispatchEvent(new Event('change', { bubbles: true })); };
+    set('dark'); await new Promise((r) => setTimeout(r, 150));
+    const cs = getComputedStyle(document.querySelector('.chHeader'));
+    const dark = { theme: document.documentElement.getAttribute('data-theme'), border: cs.borderBottomColor, word: getComputedStyle(document.querySelector('.chWord')).color, panel: getComputedStyle(document.querySelector('.chMobile nav') || document.body).backgroundColor };
+    set('system'); await new Promise((r) => setTimeout(r, 150));
+    return { dark, after: document.documentElement.getAttribute('data-theme') };
+  })()`);
+  record("HEADER theme: control preview ngoài header đổi light/dark thật cho header",
+    themeSwitch.dark.theme === "dark" && themeSwitch.dark.border === "rgb(38, 40, 44)"
+      && themeSwitch.dark.word === "rgb(237, 238, 240)" && themeSwitch.after === "light",
+    JSON.stringify(themeSwitch));
+
+  await p.eval(`localStorage.setItem('fasearch-cart-v1', JSON.stringify([{ id: 1, name: 'A', price: 1000, qty: 2 }, { id: 2, name: 'B', price: 2000, qty: 1 }])); location.reload();`);
+  await sleep(2400);
+  const cart3 = await p.eval(`({ text: document.querySelector('.chCartCount').textContent, aria: document.querySelector('.chCart').getAttribute('aria-label') })`);
+  await p.eval(`localStorage.removeItem('fasearch-cart-v1'); location.reload();`);
+  await sleep(2200);
+  const cart0 = await p.eval(`document.querySelector('.chCartCount').textContent`);
+  record("HEADER cart: fixture cô lập 0→3→0 đọc đúng store thật, không ghi mua",
+    cart3.text === "3" && cart3.aria === "Giỏ hàng, 3 sản phẩm" && cart0 === "0",
+    JSON.stringify({ cart3, cart0 }));
+
+  // Bàn phím thật: Tab vào brand/nav có vòng focus 2px.
+  await p.setViewport(1440, 1000);
+  await p.goto(`${base}/`);
+  await tabKey();
+  const firstTab = await p.eval(`({ tag: document.activeElement?.tagName, cls: (document.activeElement?.className || '').toString() })`);
+  await tabKey();
+  const kbHeader = await p.eval(`(() => { const a = document.activeElement; const cs = getComputedStyle(a); return { tag: a.tagName, cls: (a.className || '').toString(), focusVisible: a.matches(':focus-visible'), outline: cs.outlineWidth + ' ' + cs.outlineStyle, offset: cs.outlineOffset }; })()`);
+  record("HEADER bàn phím: theme control ngoài header đứng trước, Tab tới brand có vòng focus 2px lệch 3px",
+    firstTab.cls === "stThemeSelect" && kbHeader.focusVisible && kbHeader.outline === "2px solid" && kbHeader.offset === "3px",
+    JSON.stringify({ firstTab, kbHeader }));
 });
 
 await writeFile(join(outDir, "home-static-report.json"), JSON.stringify(results, null, 2));

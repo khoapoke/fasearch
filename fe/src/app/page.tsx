@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <StorefrontShell active="/" themed palette="home">
+    <StorefrontShell active="/" themed palette="home" header="customer">
       <HomeSections />
     </StorefrontShell>
   );

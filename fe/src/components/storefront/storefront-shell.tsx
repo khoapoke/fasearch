@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { ThemeControl } from "@/components/studio/theme-control";
 import { CartCount, HeaderAccount } from "./storefront-client";
+import { CustomerHeader } from "./customer-header";
 import "./storefront.css";
 
 const NAV = [
@@ -20,6 +21,7 @@ export function StorefrontShell({
   previewNote,
   themed = false,
   palette,
+  header,
   children,
 }: {
   active?: string;
@@ -28,6 +30,8 @@ export function StorefrontShell({
   themed?: boolean;
   /** Bảng màu Home đã duyệt; chỉ trang chủ truyền "home", route khác không đổi. */
   palette?: "home";
+  /** Header Customer đã duyệt (6fdbcee); chỉ Home truyền "customer". */
+  header?: "customer";
   children: React.ReactNode;
 }) {
   const rootClass = [themed ? "studio" : "", palette === "home" ? "hmPalette" : ""]
@@ -35,6 +39,22 @@ export function StorefrontShell({
     .join(" ");
   return (
     <div className={rootClass || undefined}>
+      {header === "customer" ? (
+        <>
+          {/* Preview-only: giữ control giao diện cho review, ngoài header sản phẩm. */}
+          <div
+            className="chPreviewBar"
+            role="note"
+            aria-label="Công cụ xem thử — không thuộc giao diện khách hàng"
+            data-preview-only="true"
+          >
+            <span className="chPreviewLabel">Xem thử</span>
+            <ThemeControl />
+          </div>
+          <CustomerHeader active={active} />
+        </>
+      ) : (
+        <>
       <div className="sfPromo">
         <div className="sfPromoInner">
           <p className="sfPromoMsgs">
@@ -97,6 +117,8 @@ export function StorefrontShell({
           </div>
         </div>
       ) : null}
+        </>
+      )}
       <main className="sfMain">{children}</main>
       <footer className="sfFooter">
         <div className="sfNews">

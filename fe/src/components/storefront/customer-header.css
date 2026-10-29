@@ -1,0 +1,298 @@
+/* Customer Home header — port 1:1 từ 6fdbcee styles.css:98-113 (shared header),
+ * 502-503 (hover), 525-528 (900), 548-550 (760), 599-608 (480), 790,834-836
+ * (signature viewfinder). Chỉ dùng dưới variant `header="customer"` (Home).
+ * Không có rule global cho a/nav/header; mọi selector đều namespace .ch*. */
+
+.chHeader {
+  --ch-shadow: 0 0 0 1px rgba(27, 28, 26, 0.08), 0 6px 20px rgba(27, 28, 26, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 88px;
+  padding: 18px clamp(20px, 4.5vw, 68px);
+  border-bottom: 1px solid var(--st-line);
+  background: transparent;
+}
+
+html[data-theme="dark"] .chHeader {
+  --ch-shadow: 0 0 0 1px rgba(237, 238, 240, 0.1), 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .chHeader {
+    --ch-shadow: 0 0 0 1px rgba(237, 238, 240, 0.1), 0 10px 26px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Preview-only strip for the theme control: outside the product header and
+ * excluded from header geometry; kept neutral so it is not the old promo. */
+.chPreviewBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 6px clamp(16px, 4.5vw, 68px);
+  border-bottom: 1px solid var(--st-line);
+  background: var(--st-select);
+  color: var(--st-ink-soft);
+  font-size: 11px;
+}
+
+.chPreviewLabel {
+  white-space: nowrap;
+}
+
+.chBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  color: var(--st-ink);
+  text-decoration: none;
+}
+
+.chMark {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+}
+
+.chWord {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.chActions {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-width: 0;
+}
+
+.chNav {
+  display: flex;
+  align-items: center;
+  gap: 29px;
+}
+
+.chNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 6px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chNav a[aria-current="page"] {
+  color: var(--st-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--st-brand-text);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 9px;
+}
+
+.chAi {
+  gap: 0;
+}
+
+.chAiIcon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  flex: 0 0 auto;
+}
+
+.chViewfinder {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.chCart {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--st-ink);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chBag {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.chCartCount {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--st-select);
+  color: inherit;
+  font-size: 11px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.chMobile {
+  position: relative;
+  display: none;
+}
+
+.chMobile > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.chMobile > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chMobile > summary::after {
+  content: "\2304";
+  font-size: 13px;
+}
+
+.chMobile[open] > summary::after {
+  content: "\2303";
+}
+
+.chMobile nav {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: 190px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--st-raised);
+  box-shadow: var(--ch-shadow);
+}
+
+.chMobile a {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: var(--st-ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.chMobile a[aria-current="page"] {
+  color: var(--st-brand-text);
+  background: var(--st-select);
+}
+
+.chMobile a.chAi {
+  display: flex;
+  align-items: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chNav a:hover {
+    color: var(--st-ink);
+    text-decoration: underline;
+  }
+  .chCart:hover,
+  .chMobile a:hover {
+    background: var(--st-select);
+  }
+  .chMobile > summary:hover {
+    background: var(--st-select);
+  }
+}
+
+.chCart:active {
+  transform: scale(0.985);
+}
+
+@media (max-width: 900px) {
+  .chNav {
+    display: none;
+  }
+  .chMobile {
+    display: block;
+  }
+  .chActions {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .chHeader {
+    min-height: 72px;
+    padding: 15px 20px;
+    gap: 14px;
+  }
+  .chMark {
+    width: 32px;
+    height: 32px;
+  }
+  .chWord {
+    font-size: 23px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chHeader {
+    gap: 8px;
+    padding-inline: 16px;
+  }
+  .chBrand {
+    gap: 8px;
+  }
+  .chMark {
+    width: 28px;
+    height: 28px;
+  }
+  .chWord {
+    font-size: 21px;
+  }
+  .chActions {
+    gap: 5px;
+  }
+  .chCart {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+  .chCartLabel {
+    display: none;
+  }
+  .chCartCount {
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+  .chMobile > summary {
+    gap: 6px;
+    padding-inline: 6px;
+  }
+  .chPreviewBar {
+    padding-inline: 16px;
+  }
+}
