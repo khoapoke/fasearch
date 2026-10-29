@@ -67,37 +67,67 @@ type Envelope<T> = { success?: boolean; code?: number; message?: string; result?
 
 const SORTS: CatalogSort[] = ["id,desc", "price,asc", "price,desc", "productName,asc", "productName,desc"];
 
-function numberOrNull(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+const INVALID_DATA = "Dữ liệu danh mục từ máy chủ không hợp lệ. Thử lại.";
+
+function requireInteger(value: unknown, minimum = 0): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < minimum) {
+    throw new CatalogError(INVALID_DATA, 502);
+  }
+  return value;
 }
 
-function priceOrZero(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+function requireFinite(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new CatalogError(INVALID_DATA, 502);
+  }
+  return value;
 }
 
 function normalizeProduct(raw: unknown): CatalogProduct {
+  if (!raw || typeof raw !== "object") throw new CatalogError(INVALID_DATA, 502);
   const p = raw as Record<string, unknown>;
+  const name = typeof p.productName === "string" ? p.productName.trim() : "";
+  if (!name) throw new CatalogError(INVALID_DATA, 502);
   return {
-    id: Number(p.id),
-    name: typeof p.productName === "string" ? p.productName : "Sản phẩm",
-    categoryId: numberOrNull(p.categoryId),
+    id: requireInteger(p.id, 1),
+    name,
+    categoryId: p.categoryId === null || p.categoryId === undefined ? null : requireInteger(p.categoryId, 1),
     categoryName: typeof p.categoryName === "string" ? p.categoryName : null,
     material: typeof p.material === "string" ? p.material : null,
     style: typeof p.style === "string" ? p.style : null,
-    price: priceOrZero(p.price),
+    price: requireFinite(p.price),
     imageUrl: typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : null,
     status: typeof p.status === "string" ? p.status : null,
   };
 }
 
 function normalizeVariant(raw: unknown): CatalogVariant {
+  if (!raw || typeof raw !== "object") throw new CatalogError(INVALID_DATA, 502);
   const v = raw as Record<string, unknown>;
   return {
-    skuId: Number(v.skuId),
-    productId: Number(v.productId),
+    skuId: requireInteger(v.skuId, 1),
+    productId: requireInteger(v.productId, 1),
     color: typeof v.color === "string" ? v.color : null,
     size: typeof v.size === "string" ? v.size : null,
-    additionalPrice: priceOrZero(v.additionalPrice),
+    // BE cho phép additionalPrice null; null/absent = 0 surcharge. Any other
+    // non-number value is malformed, never silently turned into 0.
+    additionalPrice: v.additionalPrice === null || v.additionalPrice === undefined ? 0 : requireFinite(v.additionalPrice),
+  };
+}
+
+function normalizePage(result: unknown, fallbackSize: number): CatalogPage {
+  if (!result || typeof result !== "object") throw new CatalogError(INVALID_DATA, 502);
+  const page = result as Record<string, unknown>;
+  if (!Array.isArray(page.content) || typeof page.last !== "boolean") {
+    throw new CatalogError(INVALID_DATA, 502);
+  }
+  return {
+    items: page.content.map(normalizeProduct),
+    page: requireInteger(page.pageNumber),
+    size: page.pageSize === undefined ? fallbackSize : requireInteger(page.pageSize, 1),
+    totalElements: requireInteger(page.totalElements),
+    totalPages: requireInteger(page.totalPages),
+    isLast: page.last,
   };
 }
 
@@ -126,8 +156,11 @@ export async function fetchCatalogCategories(signal?: AbortSignal): Promise<Cata
   const result = await getJson<unknown>("/api/catalog/categories", signal);
   if (!Array.isArray(result)) throw new CatalogError("Danh mục không đúng định dạng.", 502);
   return result.map((item) => {
+    if (!item || typeof item !== "object") throw new CatalogError("Danh mục không đúng định dạng.", 502);
     const row = item as Record<string, unknown>;
-    return { id: Number(row.id), name: typeof row.categoryName === "string" ? row.categoryName : "Danh mục" };
+    const name = typeof row.categoryName === "string" ? row.categoryName.trim() : "";
+    if (!name) throw new CatalogError("Danh mục không đúng định dạng.", 502);
+    return { id: requireInteger(row.id, 1), name };
   });
 }
 
@@ -145,16 +178,8 @@ export function buildCatalogQuery(query: CatalogQuery): string {
 }
 
 export async function fetchCatalogProducts(query: CatalogQuery, signal?: AbortSignal): Promise<CatalogPage> {
-  const result = await getJson<Record<string, unknown>>(`/api/catalog/products?${buildCatalogQuery(query)}`, signal);
-  const content = Array.isArray(result.content) ? result.content : [];
-  return {
-    items: content.map(normalizeProduct),
-    page: Number(result.pageNumber ?? 0),
-    size: Number(result.pageSize ?? query.size),
-    totalElements: Number(result.totalElements ?? content.length),
-    totalPages: Number(result.totalPages ?? 1),
-    isLast: Boolean(result.last ?? result.isLast),
-  };
+  const result = await getJson<unknown>(`/api/catalog/products?${buildCatalogQuery(query)}`, signal);
+  return normalizePage(result, query.size);
 }
 
 export async function fetchCatalogProduct(id: string, signal?: AbortSignal): Promise<CatalogProductDetail> {
@@ -163,6 +188,9 @@ export async function fetchCatalogProduct(id: string, signal?: AbortSignal): Pro
     signal,
   );
   const base = normalizeProduct(result);
+  if (result.variants !== null && result.variants !== undefined && !Array.isArray(result.variants)) {
+    throw new CatalogError(INVALID_DATA, 502);
+  }
   const variants = Array.isArray(result.variants) ? result.variants.map(normalizeVariant) : [];
   return {
     ...base,

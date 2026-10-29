@@ -92,6 +92,9 @@ function FilterFields({
   filters,
   draft,
   categories,
+  categoriesLoading,
+  categoriesError,
+  onRetryCategories,
   onCategory,
   onDraft,
   onApply,
@@ -102,6 +105,9 @@ function FilterFields({
   filters: Filters;
   draft: { keyword: string; minPrice: string; maxPrice: string };
   categories: CatalogCategory[];
+  categoriesLoading: boolean;
+  categoriesError: string;
+  onRetryCategories: () => void;
   onCategory: (value: string) => void;
   onDraft: (next: { keyword: string; minPrice: string; maxPrice: string }) => void;
   onApply: () => void;
@@ -128,6 +134,13 @@ function FilterFields({
             <span>{category.name}</span>
           </label>
         ))}
+        {categoriesLoading ? <p className="cat-filter-note" role="status">Đang tải danh mục…</p> : null}
+        {!categoriesLoading && categoriesError ? (
+          <p className="cat-filter-note" role="alert">
+            {categoriesError}{" "}
+            <button className="cat-text-button" type="button" onClick={onRetryCategories}>Thử lại danh mục</button>
+          </p>
+        ) : null}
       </fieldset>
       <fieldset className="cat-filter-group">
         <legend>Khoảng giá</legend>
@@ -159,8 +172,11 @@ function FilterFields({
 }
 
 export function CatalogListing() {
-  const [categories, setCategories] = useState<CatalogCategory[]>([]);
-  const [categoryError, setCategoryError] = useState("");
+  const [categoryAttempt, setCategoryAttempt] = useState(0);
+  const [categorySettled, setCategorySettled] = useState<{ attempt: number; list?: CatalogCategory[]; error?: string }>({ attempt: -1 });
+  const categories = categorySettled.attempt === categoryAttempt ? categorySettled.list ?? [] : [];
+  const categoriesLoading = categorySettled.attempt !== categoryAttempt;
+  const categoryError = categorySettled.attempt === categoryAttempt ? categorySettled.error ?? "" : "";
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [draft, setDraft] = useState({ keyword: "", minPrice: "", maxPrice: "" });
   const [filterError, setFilterError] = useState("");
@@ -177,15 +193,18 @@ export function CatalogListing() {
     const controller = new AbortController();
     fetchCatalogCategories(controller.signal)
       .then((list) => {
-        setCategories(list);
-        setCategoryError("");
+        if (controller.signal.aborted) return;
+        setCategorySettled({ attempt: categoryAttempt, list });
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
-        setCategoryError(err instanceof Error ? err.message : "Không tải được danh mục.");
+        setCategorySettled({
+          attempt: categoryAttempt,
+          error: err instanceof CatalogError ? err.message : "Không kết nối được máy chủ danh mục. Thử lại.",
+        });
       });
     return () => controller.abort();
-  }, []);
+  }, [categoryAttempt]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -249,6 +268,9 @@ export function CatalogListing() {
     filters,
     draft,
     categories,
+    categoriesLoading,
+    categoriesError: categoryError,
+    onRetryCategories: () => setCategoryAttempt((n) => n + 1),
     onCategory: (categoryId: string) => commit({ ...filters, categoryId }),
     onDraft: setDraft,
     onApply: applyDraft,
@@ -258,7 +280,7 @@ export function CatalogListing() {
 
   return (
     <StorefrontShell active="/nam" themed palette="customer" header="customer">
-      <main className="catPage">
+      <div className="catPage">
         <div className="cat-content cat-catalog-content">
           <div className="cat-head cat-head-compact">
             <h1>Sản phẩm</h1>
@@ -313,7 +335,6 @@ export function CatalogListing() {
                   ))}
                 </div>
               ) : null}
-              {categoryError ? <p className="cat-status cat-info" role="status">{categoryError}</p> : null}
               {error ? (
                 <div className="cat-status cat-error" role="alert">
                   {error}{" "}
@@ -355,7 +376,7 @@ export function CatalogListing() {
             </section>
           </div>
         </div>
-      </main>
+      </div>
     </StorefrontShell>
   );
 }
