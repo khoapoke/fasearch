@@ -279,7 +279,7 @@ export function CatalogListing() {
   };
 
   return (
-    <StorefrontShell active="/nam" themed palette="customer" header="customer">
+    <StorefrontShell active="/nam" themed palette="customer" header="customer" footer="none">
       <div className="catPage">
         <div className="cat-content cat-catalog-content">
           <div className="cat-head cat-head-compact">

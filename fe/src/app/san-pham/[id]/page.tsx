@@ -9,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function DetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <StorefrontShell active="/nam" themed palette="customer" header="customer">
+    <StorefrontShell active="/nam" themed palette="customer" header="customer" footer="none">
       <DetailView id={id} />
     </StorefrontShell>
   );

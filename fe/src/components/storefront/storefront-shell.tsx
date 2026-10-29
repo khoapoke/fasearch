@@ -23,6 +23,7 @@ export function StorefrontShell({
   themed = false,
   palette,
   header,
+  footer = "storefront",
   children,
 }: {
   active?: string;
@@ -33,6 +34,8 @@ export function StorefrontShell({
   palette?: "home" | "customer";
   /** Header Customer đã duyệt (6fdbcee); Home/AI truyền "customer". */
   header?: "customer";
+  /** Shell footer cũ; mặc định giữ nguyên cho mọi route, catalog mới opt-out. */
+  footer?: "storefront" | "none";
   children: React.ReactNode;
 }) {
   const rootClass = [themed ? "studio" : "", palette === "home" || palette === "customer" ? "hmPalette" : ""]
@@ -121,6 +124,7 @@ export function StorefrontShell({
         </>
       )}
       <main className="sfMain">{children}</main>
+      {footer === "storefront" ? (
       <footer className="sfFooter">
         <div className="sfNews">
           <div>
@@ -161,6 +165,7 @@ export function StorefrontShell({
           <p>Điều khoản dịch vụ · Quyền riêng tư</p>
         </div>
       </footer>
+      ) : null}
     </div>
   );
 }
