@@ -1,7 +1,7 @@
 import {
   CommerceError, normalizeCart, normalizeOrderDetail, normalizeOrderPage,
-  normalizeShipping, type CustomerCart, type CustomerOrderDetail,
-  type CustomerOrderPage, type ShippingQuote,
+  normalizeShipping, normalizeOrder, type CustomerCart, type CustomerOrder,
+  type CustomerOrderDetail, type CustomerOrderPage, type ShippingQuote,
 } from "./customer-commerce";
 
 async function read<T>(response: Response, normalize: (raw: unknown) => T): Promise<T> {
@@ -42,8 +42,8 @@ export const fetchShippingQuote = (province: string, district: string, totalWeig
   call("/api/customer-commerce/shipping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ province, district, totalWeightGram }), signal }, normalizeShipping);
 
 export type CheckoutInput = { deliveryAddress: string; receiverName: string; receiverPhone: string; paymentMethod: string; shippingFee: number; note?: string };
-export const createCustomerOrder = (input: CheckoutInput, signal?: AbortSignal): Promise<CustomerOrderDetail> =>
-  call("/api/customer-commerce/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal }, normalizeOrderDetail);
+export const createCustomerOrder = (input: CheckoutInput, signal?: AbortSignal): Promise<CustomerOrder> =>
+  call("/api/customer-commerce/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal }, normalizeOrder);
 
 export const fetchCustomerOrders = (query: string, signal?: AbortSignal): Promise<CustomerOrderPage> =>
   call(`/api/customer-commerce/orders?${query}`, { method: "GET", signal }, normalizeOrderPage);

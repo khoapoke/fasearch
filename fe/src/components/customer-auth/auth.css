@@ -209,3 +209,10 @@
 @media (max-width: 480px) {
   .acctPage .acct-content { padding-inline: 16px; }
 }
+
+.acctPage .acct-order-list { display: grid; border-top: 1px solid var(--st-line); }
+.acctPage .acct-order-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--st-line); color: var(--st-ink); text-decoration: none; }
+.acctPage .acct-order-row span { display: grid; gap: 3px; min-width: 0; }
+.acctPage .acct-order-row strong { font-size: 14px; font-weight: 500; }
+.acctPage .acct-order-row small { color: var(--st-ink-soft); font-size: 12px; }
+.acctPage .acct-order-row > strong { white-space: nowrap; }

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authLogout, authMe, AuthApiError, formatAuthDate, isAuthAbort, type AuthIdentity } from "@/lib/customer-auth-client";
+import { fetchCustomerOrders } from "@/lib/customer-commerce-client";
+import { formatMoney, orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
 import "./auth.css";
 
 type State =
@@ -29,6 +31,8 @@ export function AccountPanel() {
   const [section, setSection] = useState<SectionKey>("profile");
   const [retry, setRetry] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [orders, setOrders] = useState<CustomerOrder[] | null>(null);
+  const [ordersError, setOrdersError] = useState("");
   const meRef = useRef<AbortController | null>(null);
   const logoutRef = useRef<AbortController | null>(null);
 
@@ -54,6 +58,20 @@ export function AccountPanel() {
     meRef.current?.abort();
     logoutRef.current?.abort();
   }, []);
+
+  useEffect(() => {
+    if (section !== "orders" || orders !== null) return;
+    const controller = new AbortController();
+    void Promise.resolve().then(async () => {
+      try {
+        const page = await fetchCustomerOrders("page=0&size=5", controller.signal);
+        if (!controller.signal.aborted) setOrders(page.items);
+      } catch (failure) {
+        if (!controller.signal.aborted) setOrdersError(failure instanceof Error ? failure.message : "Không tải được đơn gần đây.");
+      }
+    });
+    return () => controller.abort();
+  }, [orders, section]);
 
   async function logout() {
     if (logoutRef.current) return;
@@ -107,7 +125,24 @@ export function AccountPanel() {
       );
     }
     if (section === "orders") {
-      return unavailable("Đơn gần đây", "Lịch sử đơn hàng chưa được kết nối trong pilot đọc/ghi tài khoản này. Không hiển thị dữ liệu đơn mẫu.");
+      return (
+        <section aria-labelledby="account-orders-title">
+          <div className="acct-section-head"><h2 id="account-orders-title">Đơn gần đây</h2><Link className="acct-logout" href="/don-hang">Xem tất cả</Link></div>
+          {ordersError ? <p className="acct-note" role="alert">{ordersError} <Link className="auth-link" href="/don-hang">Mở đơn hàng →</Link></p> : null}
+          {orders === null && !ordersError ? <p className="acct-note" role="status">Đang tải đơn gần đây…</p> : null}
+          {orders && orders.length === 0 ? <p className="acct-note">Chưa có đơn thật. <Link className="auth-link" href="/gio-hang">Mở giỏ hàng →</Link></p> : null}
+          {orders && orders.length > 0 ? (
+            <div className="acct-order-list">
+              {orders.map((order) => (
+                <Link className="acct-order-row" href={`/don-hang/${order.orderId}`} key={order.orderId}>
+                  <span><strong>{order.orderCode}</strong><small>{orderStatusText(order.status)} · {order.createdAt ? formatAuthDate(order.createdAt) : ""}</small></span>
+                  <strong>{formatMoney(order.totalAmount)}</strong>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      );
     }
     if (section === "security") {
       return unavailable("Bảo mật", "Đổi mật khẩu, phiên đăng nhập và thiết bị chưa được mở trong pilot này.");
