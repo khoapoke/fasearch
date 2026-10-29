@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authError, fetchMyInfo, forwardAuth,
-  mapUpstreamError, readJsonObject, requestAborted, requireJsonPost, setAuthCookie,
+  mapUpstreamError, hasAuthAttempt, readJsonObject, requestAborted, requireJsonPost, setAuthCookie,
   validateAuthResult, validateIdentity,
 } from "@/lib/server/customer-auth";
 
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   if (password.length < 6 || password.length > 100) return authError("Mật khẩu phải từ 6 đến 100 ký tự.", 400, "INVALID_REQUEST");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return authError("Email chưa đúng định dạng.", 400, "INVALID_REQUEST");
   if (gender && !GENDERS.has(gender)) return authError("Giới tính chưa hợp lệ.", 400, "INVALID_REQUEST");
+  if (!hasAuthAttempt(request)) return authError("Phiên đăng ký chưa sẵn sàng. Tải lại trang rồi thử lại.", 400, "AUTH_ATTEMPT_REQUIRED");
   try {
     const { response, payload } = await forwardAuth("/api/v1/auth/register", {
       username, password, email,

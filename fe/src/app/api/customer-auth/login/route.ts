@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authError, fetchMyInfo, forwardAuth,
-  mapUpstreamError, readJsonObject, requestAborted, requireJsonPost, setAuthCookie,
+  mapUpstreamError, hasAuthAttempt, readJsonObject, requestAborted, requireJsonPost, setAuthCookie,
   validateAuthResult, validateIdentity,
 } from "@/lib/server/customer-auth";
 
@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
   if (typeof body.username !== "string" || typeof body.password !== "string" || !body.username.trim() || !body.password) {
     return authError("Nhập tên đăng nhập và mật khẩu.", 400, "INVALID_REQUEST");
   }
+  if (!hasAuthAttempt(request)) return authError("Phiên đăng nhập chưa sẵn sàng. Tải lại trang rồi thử lại.", 400, "AUTH_ATTEMPT_REQUIRED");
   try {
     const { response, payload } = await forwardAuth("/api/v1/auth/login", {
       username: body.username.trim(),

@@ -4,21 +4,24 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 
 const [base, outDir] = process.argv.slice(2);
 if (!base || !outDir) { console.error("dùng: node scripts/auth-boundary-check.mjs <feBase> <outDir>"); process.exit(1); }
 const cfg = JSON.parse(await readFile("/home/dolakhoa/.config/fasearch/customer-auth-test.json", "utf8"));
 const ORIGIN = base;
+const ATTEMPT = randomUUID();
+const POINTER = `fasearch-auth-current-3115=${ATTEMPT}`;
 const results = [];
 const record = (name, ok, detail) => { results.push({ name, ok, detail }); console.log(`${ok ? "OK  " : "FAIL"} ${name}${detail ? " — " + detail : ""}`); };
 
 async function post(path, body, headers = {}) {
-  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN, ...headers }, body: JSON.stringify(body) });
+  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN, cookie: POINTER, ...headers }, body: JSON.stringify(body) });
 }
 async function login(username, password) { return post("/api/customer-auth/login", { username, password }); }
 function cookieOf(response) { return response.headers.get("set-cookie")?.split(";")[0] ?? ""; }
 async function raw(path, contentType, body) {
-  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": contentType, origin: ORIGIN }, body });
+  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": contentType, origin: ORIGIN, cookie: POINTER }, body });
 }
 
 const validBody = JSON.stringify({ username: cfg.username, password: cfg.password });
@@ -47,6 +50,9 @@ for (const body of ["null", "[]", "\"text\""]) {
   record(`REQUEST register non-object body rejected: ${body}`, res.status === 400 && !cookieOf(res), JSON.stringify({ status: res.status, cookie: false }));
 }
 
+const noPointer = await fetch(`${base}/api/customer-auth/login`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: validBody });
+record("REQUEST mutation without attempt pointer is rejected before upstream", noPointer.status === 400 && !cookieOf(noPointer), JSON.stringify({ status: noPointer.status, cookie: false }));
+
 const loginRes = await login(cfg.username, cfg.password);
 const loginJson = await loginRes.json();
 const authCookie = cookieOf(loginRes);
@@ -60,14 +66,14 @@ record("BFF login: real CUSTOMER, no token in JSON, candidate cookie flags",
     && !/Secure/i.test(loginRes.headers.get("set-cookie") ?? ""),
   JSON.stringify({ status: loginRes.status, role: loginJson.identity?.role, cookieFlags: (loginRes.headers.get("set-cookie") ?? "").replace(/=.*?;/, "=<redacted>;") }));
 
-const me = await fetch(`${base}/api/customer-auth/me`, { headers: { cookie: authCookie } });
+const me = await fetch(`${base}/api/customer-auth/me`, { headers: { cookie: `${POINTER}; ${authCookie}` } });
 const meJson = await me.json();
 record("BFF me: my-info identity, no-store private, no token", me.status === 200 && meJson.identity?.username === cfg.username && /no-store/.test(me.headers.get("cache-control") ?? "") && !JSON.stringify(meJson).includes("accessToken"), JSON.stringify({ status: me.status, cache: me.headers.get("cache-control") }));
 const noCookie = await fetch(`${base}/api/customer-auth/me`);
 record("BFF me without cookie: 401", noCookie.status === 401, String(noCookie.status));
 
 const tampered = authCookie.replace(/=.*/, "=invalid.jwt.value");
-const tamperedRes = await fetch(`${base}/api/customer-auth/me`, { headers: { cookie: tampered } });
+const tamperedRes = await fetch(`${base}/api/customer-auth/me`, { headers: { cookie: `${POINTER}; ${tampered}` } });
 const tamperedBody = await tamperedRes.json();
 record("BFF invalid/expired cookie: 401 + local clear", tamperedRes.status === 401 && /Max-Age=0/i.test(tamperedRes.headers.get("set-cookie") ?? "") && tamperedBody.code === "SESSION_EXPIRED", JSON.stringify({ status: tamperedRes.status, setCookie: (tamperedRes.headers.get("set-cookie") ?? "").replace(/=.*?;/, "=<redacted>;"), code: tamperedBody.code }));
 
@@ -90,7 +96,7 @@ record("BFF register required fields: 400, no cookie", missing.status === 400 &&
 
 const logout = await post("/api/customer-auth/logout", {});
 record("BFF logout: local clear only, no upstream success claim", logout.status === 200 && /Max-Age=0/i.test(logout.headers.get("set-cookie") ?? ""), JSON.stringify({ status: logout.status, setCookie: (logout.headers.get("set-cookie") ?? "").replace(/=.*?;/, "=<redacted>;") }));
-const afterLogout = await fetch(`${base}/api/customer-auth/me`, { headers: { cookie: authCookie } });
+const afterLogout = await fetch(`${base}/api/customer-auth/me`, { headers: { cookie: `${POINTER}; ${authCookie}` } });
 record("BFF cookie invalidated locally after logout (upstream token may remain valid)", afterLogout.status === 200 || afterLogout.status === 401, String(afterLogout.status));
 
 const badOrigin = await fetch(`${base}/api/customer-auth/login`, { method: "POST", headers: { "content-type": "application/json", origin: "http://evil.example" }, body: JSON.stringify({ username: cfg.username, password: cfg.password }) });

@@ -196,18 +196,25 @@ function authAttempt(request: NextRequest): string | null {
   return ATTEMPT_PATTERN.test(attempt) ? attempt : null;
 }
 
-function authCookieName(request: NextRequest): string {
+function authCookieName(request: NextRequest): string | null {
   const attempt = authAttempt(request);
-  return attempt ? `${AUTH_COOKIE}.${attempt}` : AUTH_COOKIE;
+  return attempt ? `${AUTH_COOKIE}.${attempt}` : null;
+}
+
+export function hasAuthAttempt(request: NextRequest): boolean {
+  return authAttempt(request) !== null;
 }
 
 export function authCookie(request: NextRequest): string | null {
-  return request.cookies.get(authCookieName(request))?.value ?? null;
+  const name = authCookieName(request);
+  return name ? request.cookies.get(name)?.value ?? null : null;
 }
 
 export function setAuthCookie(response: NextResponse, request: NextRequest, token: string, expiresIn: number): void {
+  const name = authCookieName(request);
+  if (!name) return;
   const maxAge = Math.max(1, Math.min(Math.floor(expiresIn), MAX_COOKIE_AGE));
-  response.cookies.set(authCookieName(request), token, {
+  response.cookies.set(name, token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -217,5 +224,6 @@ export function setAuthCookie(response: NextResponse, request: NextRequest, toke
 }
 
 export function clearAuthCookie(response: NextResponse, request: NextRequest): void {
-  response.cookies.set(authCookieName(request), "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  const name = authCookieName(request);
+  if (name) response.cookies.set(name, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
 }
