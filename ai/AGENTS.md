@@ -1,7 +1,9 @@
 # HỒ SƠ QUY CHUẨN DỰ ÁN & QUY TRÌNH PHÁT TRIỂN (PROJECT GUIDELINES)
 *Hệ thống: Fashion AI Search Engine (`fasearch/ai`)*
 
-> 📖 **Tài liệu tham khảo chuyên sâu:** Xem toàn bộ bài toán, bảng Tech Stack, cấu trúc thư mục chi tiết và mô hình phân tầng kiến trúc tại [OVERVIEW.md](OVERVIEW.md).
+> 📚 **Tài liệu tham chiếu chi tiết:**
+> - [Tài liệu Kỹ thuật, Kiến trúc & Hướng dẫn Cài đặt (README.md)](README.md) — Dành cho Kỹ sư & Lập trình viên.
+> - [Tổng quan Sản phẩm & Trải nghiệm Người dùng (OVERVIEW.md)](OVERVIEW.md) — Dành cho Độc giả Low-tech & Quản lý Sản phẩm.
 
 ---
 
@@ -26,9 +28,9 @@ Trước khi đụng vào code, phải trình bày rõ:
 
 ## 1. QUY ƯỚC VIẾT CODE CỐT LÕI (CODING CONVENTIONS)
 
-1. **Đặt tên:**
+1. **Quy tắc Đặt tên:**
    - File, thư mục, hàm, biến: `snake_case` (ví dụ: `search_service.py`, `search_by_text`).
-   - Class, Schema Pydantic: `PascalCase` (ví dụ: `SearchResultItem`, `ImagePointPayload`).
+   - Class, Schema Pydantic, Model: `PascalCase` (ví dụ: `SearchResultItem`, `ImagePointPayload`).
    - Hằng số cấu hình: `UPPER_SNAKE_CASE` (ví dụ: `COLLECTION_NAME`, `QDRANT_HOST`).
 
 2. **Quy tắc BẮT BUỘC về Enum & Status:**
@@ -57,7 +59,7 @@ Trước khi đụng vào code, phải trình bày rõ:
 
 4. **Chuẩn hóa CRUD:**
    - Khi xây dựng bất kỳ module thực thể nào, phải ưu tiên hoàn thiện đầy đủ 4 thao tác CRUD cốt lõi:
-     - `Create`: Tạo mới bản ghi / Upload & trích xuất vector.
+     - `Create`: Tạo mới bản ghi / Upload & sinh vector.
      - `Read`: Tìm kiếm theo vector (Text/Image) và xem chi tiết theo ID / Scroll phân trang.
      - `Update`: Cập nhật payload thông tin / cập nhật vector.
      - `Delete`: Hỗ trợ cả 2 cơ chế Xóa mềm (`Soft Delete` gán status `DELETED`) và Xóa cứng (`Hard Delete`).
@@ -108,55 +110,30 @@ Toàn bộ API trả về cấu trúc thống nhất qua schema `ApiResponse[T]`
 
 ---
 
-## 3. BẢNG LỆNH CLI & QUY TRÌNH VẬN HÀNH
-
-### 3.1. Khởi động Docker Qdrant (GPU)
-```powershell
-# Chạy container Qdrant ở chế độ background
-docker-compose up -d
-
-# Xem log container
-docker-compose logs -f qdrant
-```
-- Qdrant REST: `http://localhost:6333`
-- Qdrant Dashboard UI: `http://localhost:6333/dashboard`
-- Qdrant gRPC: `localhost:6334`
-
-### 3.2. Môi trường & Dependencies
-```powershell
-# Kích hoạt venv
-.\venv312\Scripts\Activate.ps1
-
-# Cài đặt / cập nhật packages
-pip install -r requirements.txt
-```
-
-### 3.3. Khởi tạo & Seed Database
-```powershell
-# 1. Khởi tạo/Reset collection 'image_gallery'
-python scripts/init_qdrant.py
-
-# 2. Quét ảnh trong dataset/ và nạp vào Qdrant
-python scripts/seed_data.py
-```
-
-### 3.4. Chạy Server Development (FastAPI)
-```powershell
-python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
-```
-- Swagger UI (Docs): `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
-
-### 3.5. Chạy Admin Console & Test Playground (Streamlit)
-```powershell
-# Khởi chạy giao diện Admin & kiểm thử trực quan
-streamlit run admin_app/app.py
-```
-- Admin Console UI: `http://localhost:8501`
-
----
-
-## 4. LƯU Ý KHI LÀM VIỆC VỚI HỆ THỐNG
+## 3. LƯU Ý BẢO VỆ TÀI NGUYÊN HỆ THỐNG (RESOURCE CONSTRAINTS)
 
 - **Tuyệt đối không quét hoặc xử lý đệ quy qua các thư mục nặng:** `venv312` và `dataset`.
 - **Quản lý tài nguyên VRAM/RAM:** Khi xử lý batch ảnh bằng PyTorch và PIL, luôn gọi `img.close()` (hoặc dùng `with Image.open(...)`), `del tensor`, và `torch.cuda.empty_cache()` để tránh tràn bộ nhớ card đồ họa.
+
+---
+
+## 4. BẢNG LỆNH CLI THAO TÁC NHANH (QUICK CLI CHEATSHEET)
+
+```powershell
+# 1. Khởi động Qdrant GPU (Docker)
+docker-compose up -d
+
+# 2. Kích hoạt môi trường ảo & cài đặt thư viện
+.\venv312\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# 3. Khởi tạo & Seed Database mẫu
+python scripts/init_qdrant.py
+python scripts/seed_data.py
+
+# 4. Khởi chạy REST API Server (FastAPI)
+python -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+
+# 5. Khởi chạy Admin Console & Test Playground (Streamlit)
+streamlit run admin_app/app.py
+```
