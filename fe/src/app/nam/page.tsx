@@ -1,12 +1,7 @@
-import { Suspense } from "react";
-import { NamListing } from "../listings";
+import { CatalogListing } from "./catalog-listing";
 
-export const metadata = { title: "FashionSearch AI" };
+export const metadata = { title: "Sản phẩm | FashionSearch AI" };
 
 export default function Page() {
-  return (
-    <Suspense>
-      <NamListing />
-    </Suspense>
-  );
+  return <CatalogListing />;
 }
