@@ -298,6 +298,17 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
   await sleep(400);
   await p.shot(join(shots, "home-390-light.png"));
 
+  // 200% zoom trên cửa sổ 1280: mô hình reflow đúng là viewport CSS 640px.
+  // (Đây là proxy reflow, KHÔNG phải ảnh chụp ở 200% — ghi rõ trong handoff.)
+  await p.setColorScheme("light");
+  await p.setViewport(640, 900);
+  await p.goto(`${base}/`);
+  const zoom = await p.eval(DEMO_PROBE);
+  record("A3 200% zoom (proxy reflow 640px): không tràn ngang, demo vẫn có kết quả",
+    (zoom.overflow ?? 0) <= 1 && !!zoom.result,
+    `overflow ${zoom.overflow}px result=${!!zoom.result}`);
+  await p.shot(join(shots, "home-zoom200-proxy-640.png"));
+
   // ---------- A3: theme theo lựa chọn thiết bị, nhớ sau reload ----------
   await p.setColorScheme("light");
   await p.setViewport(1280, 900);
