@@ -152,8 +152,30 @@
   margin-bottom: 12px;
 }
 .catPage .cat-result-count { color: var(--st-ink-soft); font-size: 12px; white-space: nowrap; }
-.catPage .cat-sort-control { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--st-ink-soft); font-size: 12px; }
-.catPage .cat-sort-control .cat-select { width: 177px; min-height: 40px; padding: 7px 10px; font-size: 13px; }
+.catPage .cat-sort-control { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--st-ink-soft); font-size: 12px; line-height: 1.2; }
+.catPage .cat-sort-select-wrap { position: relative; display: inline-flex; flex: 0 0 auto; }
+.catPage .cat-sort-control .cat-select {
+  width: 177px;
+  min-height: 40px;
+  padding: 8px 36px 8px 12px;
+  font-size: 13px;
+  line-height: 1.2;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.catPage .cat-sort-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  color: var(--st-ink-soft);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.catPage .cat-sort-chevron svg { display: block; }
 .catPage .cat-applied-row { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 18px; }
 .catPage .cat-chip {
   display: inline-flex;
@@ -423,7 +445,7 @@
   .catPage .cat-filter-mobile { display: block; }
   .catPage .cat-product-grid { gap: 16px; }
   .catPage .cat-skeleton-grid { gap: 16px; }
-  .catPage .cat-sort-control .cat-select { font-size: 16px; }
+  .catPage .cat-sort-control .cat-select { width: 188px; font-size: 16px; padding: 8px 34px 8px 12px; }
   .catPage .cat-detail-content { padding-top: 14px; }
   .catPage .cat-back { margin-bottom: 16px; }
   .catPage .cat-detail-image { max-height: 620px; }
@@ -443,7 +465,7 @@
   .catPage .cat-favorite { top: 8px; right: 8px; width: 33px; height: 33px; }
   .catPage .cat-listing-tools { gap: 12px; margin-bottom: 18px; }
   .catPage .cat-sort-control { gap: 8px; }
-  .catPage .cat-sort-control .cat-select { width: 170px; }
+  .catPage .cat-sort-control .cat-select { width: 188px; }
   .catPage .cat-detail-buy-row { align-items: stretch; flex-direction: column; gap: 14px; }
   .catPage .cat-buy-row { flex-direction: column; align-items: stretch; gap: 14px; }
   .catPage .cat-buy-row .cat-stepper { align-self: flex-start; }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { readFavs, toggleFav } from "@/components/storefront/storefront-client";
-import { HeartIcon } from "@/components/customer-catalog/catalog-icons";
+import { ChevronDownIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
 import {
   CatalogError,
   fetchCatalogCategories,
@@ -302,18 +302,23 @@ export function CatalogListing() {
                 </span>
                 <label className="cat-sort-control" htmlFor="listing-sort">
                   Sắp xếp
-                  <select
-                    id="listing-sort"
-                    className="cat-select"
-                    value={filters.sort}
-                    onChange={(e) => commit({ ...filters, sort: e.target.value })}
-                  >
-                    <option value="id,desc">Mặc định</option>
-                    <option value="price,asc">Giá thấp đến cao</option>
-                    <option value="price,desc">Giá cao đến thấp</option>
-                    <option value="productName,asc">Tên A–Z</option>
-                    <option value="productName,desc">Tên Z–A</option>
-                  </select>
+                  <span className="cat-sort-select-wrap">
+                    <select
+                      id="listing-sort"
+                      className="cat-select"
+                      value={filters.sort}
+                      onChange={(e) => commit({ ...filters, sort: e.target.value })}
+                    >
+                      <option value="id,desc">Mặc định</option>
+                      <option value="price,asc">Giá thấp đến cao</option>
+                      <option value="price,desc">Giá cao đến thấp</option>
+                      <option value="productName,asc">Tên A–Z</option>
+                      <option value="productName,desc">Tên Z–A</option>
+                    </select>
+                    <span className="cat-sort-chevron" aria-hidden="true">
+                      <ChevronDownIcon />
+                    </span>
+                  </span>
                 </label>
               </div>
               {appliedChips.length ? (
