@@ -605,7 +605,11 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
     const acts = q('.chActions'), nav = q('.chNav'), cart = q('.chCart');
     const cnt = q('.chCartCount'), label = q('.chCartLabel'), mob = q('.chMobile'), sum = q('.chMobile > summary');
     const ai = q('.chAiIcon'), vf = q('.chViewfinder'), circle = vf?.querySelector('circle');
+    const chev = q('.chChevron');
     const cs = (el) => el ? getComputedStyle(el) : null;
+    const cr = document.createRange(); cr.selectNodeContents(cnt); const ctr = cnt ? cr.getBoundingClientRect() : null;
+    const chevR = chev?.getBoundingClientRect();
+    const sumR = sum?.getBoundingClientRect();
     const rect = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, right: b.right, bottom: b.bottom }; };
     const preview = q('.chPreviewBar');
     return {
@@ -621,7 +625,11 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
       nav: { display: cs(nav)?.display, gap: cs(nav)?.gap },
       links: [...document.querySelectorAll('.chNav a')].map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href'), current: a.getAttribute('aria-current'), font: cs(a).fontSize, minH: cs(a).minHeight, padding: cs(a).padding, color: cs(a).color })),
       cart: { href: cart?.getAttribute('href'), label: cart?.getAttribute('aria-label'), gap: cs(cart)?.gap, padding: cs(cart)?.padding, minHeight: cs(cart)?.minHeight, fontSize: cs(cart)?.fontSize, color: cs(cart)?.color },
-      count: { text: cnt?.textContent, w: rect(cnt)?.w, h: rect(cnt)?.h, minWidth: cs(cnt)?.minWidth, fontSize: cs(cnt)?.fontSize, bg: cs(cnt)?.backgroundColor, radius: cs(cnt)?.borderRadius },
+      count: { text: cnt?.textContent, w: rect(cnt)?.w, h: rect(cnt)?.h, minWidth: cs(cnt)?.minWidth, fontSize: cs(cnt)?.fontSize, lineHeight: cs(cnt)?.lineHeight, display: cs(cnt)?.display, bg: cs(cnt)?.backgroundColor, radius: cs(cnt)?.borderRadius,
+        textW: ctr ? +ctr.width.toFixed(2) : null, deltaCy: ctr && cnt ? +((ctr.y + ctr.height / 2) - (cnt.getBoundingClientRect().y + cnt.getBoundingClientRect().height / 2)).toFixed(2) : null,
+        fitsX: ctr && cnt ? ctr.left >= cnt.getBoundingClientRect().left - 0.5 && ctr.right <= cnt.getBoundingClientRect().right + 0.5 : false },
+      chevron: chev ? { tag: chev.tagName, w: +(chevR.width).toFixed(2), h: +(chevR.height).toFixed(2), viewBox: chev.getAttribute('viewBox'), paths: [...chev.querySelectorAll('path')].map((x) => x.getAttribute('d')), strokeWidth: chev.getAttribute('stroke-width'), ariaHidden: chev.getAttribute('aria-hidden'), focusable: chev.getAttribute('focusable'),
+        deltaCy: sumR ? +((chevR.y + chevR.height / 2) - (sumR.y + sumR.height / 2)).toFixed(2) : null, transform: cs(chev)?.transform, summaryAfter: sum ? cs(sum, '::after')?.content : null } : null,
       label: { display: cs(label)?.display },
       mobile: { display: cs(mob)?.display },
       summary: { padding: cs(sum)?.padding, gap: cs(sum)?.gap, minHeight: cs(sum)?.minHeight, fontSize: cs(sum)?.fontSize },
@@ -650,6 +658,13 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
   ];
   const MARK_PATHS = ["M27 3h10v10M13 37H3V27", "m14 10 6 3 6-3 8 6-4 6-4-2v12H14V20l-4 2-4-6 8-6Z"];
   const VF_PATHS = ["M1 5V1h4M11 1h4v4M15 11v4h-4M5 15H1v-4"];
+
+  // Profile Chrome của harness được giữ lại giữa các lần chạy; xoá cart fixture
+  // để kiểm count 0 tất định (chỉ localStorage của profile test, không phải store thật).
+  await p.setColorScheme("light");
+  await p.setViewport(1440, 1000);
+  await p.goto(`${base}/`);
+  await p.eval(`localStorage.removeItem('fasearch-cart-v1')`);
 
   for (const scheme of ["light", "dark"]) {
     await p.setColorScheme(scheme);
@@ -686,6 +701,18 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
           && x.count.fontSize === exp.countFont && x.label.display === exp.label
           && x.cart.gap === exp.cartGap && x.cart.padding === exp.cartPad,
         JSON.stringify({ cart: x.cart, count: x.count, label: x.label }));
+      record(`HEADER ${scheme} @${w}: count tự căn giữa trong frame, không clip số`,
+        x.count.display === "flex" && x.count.lineHeight === (w <= 480 ? "10px" : "11px")
+          && Math.abs(x.count.deltaCy) <= 0.75 && x.count.fitsX,
+        JSON.stringify({ deltaCy: x.count.deltaCy, textW: x.count.textW, frame: x.count.w, display: x.count.display, lineHeight: x.count.lineHeight, fitsX: x.count.fitsX }));
+      record(`HEADER ${scheme} @${w}: chevron SVG 14px cùng stroke/round-cap, bỏ pseudo Unicode, cân giữa summary`,
+        !!x.chevron && x.chevron.tag === "svg"
+          && x.chevron.viewBox === "0 0 16 16" && JSON.stringify(x.chevron.paths) === JSON.stringify(["m4 6 4 4 4-4"])
+          && x.chevron.strokeWidth === "1.5" && x.chevron.ariaHidden === "true" && x.chevron.focusable === "false"
+          && (x.mobile.display === "none" || (x.chevron.w === 14 && x.chevron.h === 14 && Math.abs(x.chevron.deltaCy) <= 0.5))
+          && (x.chevron.summaryAfter === "none" || x.chevron.summaryAfter === "normal")
+          && x.chevron.transform === "none",
+        JSON.stringify(x.chevron));
       record(`HEADER ${scheme} @${w}: nav/mobile/menu cascade đúng (nav ${exp.nav}, mobile ${exp.mobile})`,
         x.nav.display === exp.nav && x.mobile.display === exp.mobile
           && JSON.stringify(x.mobLinks.map((l) => ({ text: l.text, href: l.href }))) === JSON.stringify(HDR_LINKS)
@@ -717,12 +744,14 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
     return { open: d.open, display: getComputedStyle(panel).display, z: getComputedStyle(panel).zIndex,
       inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight,
       topTag: top?.tagName, links: [...panel.querySelectorAll('a')].map((a) => a.getAttribute('href')),
-      focusVisible: s.matches(':focus-visible'), outline: getComputedStyle(s).outlineWidth };
+      focusVisible: s.matches(':focus-visible'), outline: getComputedStyle(s).outlineWidth,
+      chevronTransform: getComputedStyle(document.querySelector('.chChevron')).transform };
   })()`);
   record("HEADER menu mobile: Enter mở, panel 3 route, nằm trên nội dung, không tràn viewport",
     menuOpen.open && menuOpen.display === "grid" && menuOpen.z === "30" && menuOpen.inside
       && menuOpen.topTag === "A" && JSON.stringify(menuOpen.links) === JSON.stringify(HDR_LINKS.map((l) => l.href))
-      && menuOpen.focusVisible && menuOpen.outline === "2px",
+      && menuOpen.focusVisible && menuOpen.outline === "2px"
+      && menuOpen.chevronTransform === "matrix(-1, 0, 0, -1, 0, 0)",
     JSON.stringify(menuOpen));
   await p.shot(join(shots, "home-header-390-menu-open.png"));
   await press("Escape", "Escape", 27);
@@ -782,12 +811,25 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
   await p.eval(`localStorage.setItem('fasearch-cart-v1', JSON.stringify([{ id: 1, name: 'A', price: 1000, qty: 2 }, { id: 2, name: 'B', price: 2000, qty: 1 }])); location.reload();`);
   await sleep(2400);
   const cart3 = await p.eval(`({ text: document.querySelector('.chCartCount').textContent, aria: document.querySelector('.chCart').getAttribute('aria-label') })`);
+  const countCases = [];
+  for (const qty of [3, 12, 100]) {
+    await p.eval(`localStorage.setItem('fasearch-cart-v1', JSON.stringify([{ id: 1, name: 'A', price: 1000, qty: ${qty} }])); location.reload();`);
+    await sleep(2200);
+    countCases.push(await p.eval(`(() => { const c = document.querySelector('.chCartCount'); const r = c.getBoundingClientRect();
+      const g = document.createRange(); g.selectNodeContents(c); const t = g.getBoundingClientRect();
+      return { qty: ${qty}, text: c.textContent, aria: document.querySelector('.chCart').getAttribute('aria-label'), w: +r.width.toFixed(1), h: +r.height.toFixed(1),
+        deltaCy: +((t.y + t.height / 2) - (r.y + r.height / 2)).toFixed(2), fits: t.left >= r.left - 0.5 && t.right <= r.right + 0.5 }; })()`));
+  }
   await p.eval(`localStorage.removeItem('fasearch-cart-v1'); location.reload();`);
   await sleep(2200);
   const cart0 = await p.eval(`document.querySelector('.chCartCount').textContent`);
   record("HEADER cart: fixture cô lập 0→3→0 đọc đúng store thật, không ghi mua",
     cart3.text === "3" && cart3.aria === "Giỏ hàng, 3 sản phẩm" && cart0 === "0",
     JSON.stringify({ cart3, cart0 }));
+  record("HEADER cart count 3/12/100: lớn rộng theo số, không clip, vẫn căn giữa",
+    countCases.every((c) => c.text === String(c.qty) && c.aria === `Giỏ hàng, ${c.qty} sản phẩm` && c.fits && Math.abs(c.deltaCy) <= 0.75)
+      && countCases[countCases.length - 1].w > countCases[0].w && countCases.every((c) => c.h === 18),
+    JSON.stringify(countCases));
 
   // Bàn phím thật: Tab vào brand/nav có vòng focus 2px.
   await p.setViewport(1440, 1000);

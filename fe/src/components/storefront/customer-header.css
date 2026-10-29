@@ -140,6 +140,9 @@ html[data-theme="dark"] .chHeader {
 }
 
 .chCartCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 20px;
   height: 20px;
   padding: 0 4px;
@@ -147,6 +150,7 @@ html[data-theme="dark"] .chHeader {
   background: var(--st-select);
   color: inherit;
   font-size: 11px;
+  line-height: 1;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -172,13 +176,17 @@ html[data-theme="dark"] .chHeader {
   display: none;
 }
 
-.chMobile > summary::after {
-  content: "\2304";
-  font-size: 13px;
+/* Chevron là SVG code-native (cùng stroke/round-cap với icon header) thay cho
+ * glyph Unicode; xoay 180deg tĩnh khi mở, không transition/animation. */
+.chChevron {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
-.chMobile[open] > summary::after {
-  content: "\2303";
+.chMobile[open] .chChevron {
+  transform: rotate(180deg);
 }
 
 .chMobile nav {
