@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/icon";
 import { ThemeControl } from "@/components/studio/theme-control";
 import { CartCount, HeaderAccount } from "./storefront-client";
 import { CustomerHeader } from "./customer-header";
+import "./customer-palette.css";
 import "./storefront.css";
 
 const NAV = [
@@ -28,13 +29,13 @@ export function StorefrontShell({
   previewNote?: string;
   /** Bề mặt pilot search-studio: áp theme + control giao diện (P1). */
   themed?: boolean;
-  /** Bảng màu Home đã duyệt; chỉ trang chủ truyền "home", route khác không đổi. */
-  palette?: "home";
-  /** Header Customer đã duyệt (6fdbcee); chỉ Home truyền "customer". */
+  /** Bảng màu Customer đã duyệt (Home/AI); route khác không truyền nên không đổi. */
+  palette?: "home" | "customer";
+  /** Header Customer đã duyệt (6fdbcee); Home/AI truyền "customer". */
   header?: "customer";
   children: React.ReactNode;
 }) {
-  const rootClass = [themed ? "studio" : "", palette === "home" ? "hmPalette" : ""]
+  const rootClass = [themed ? "studio" : "", palette === "home" || palette === "customer" ? "hmPalette" : ""]
     .filter(Boolean)
     .join(" ");
   return (
