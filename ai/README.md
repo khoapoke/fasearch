@@ -3,6 +3,7 @@
 Hệ thống Tìm kiếm Thời trang Đa phương thức (Multimodal Fashion Search) xây dựng trên nền tảng **FastAPI**, **PyTorch**, **Transformers (CLIP)** và **Qdrant Vector Database (GPU)**.
 
 > 📚 **Tài liệu tham khảo liên quan:**
+> - [Tài liệu Tích hợp API cho Backend Java Spring Boot (docs/API_DOCUMENTATION.md)](docs/API_DOCUMENTATION.md) — Dành cho Kỹ sư Backend tích hợp DTO, RestClient, cURL.
 > - [Dành cho Người dùng & Quản lý Sản phẩm (OVERVIEW.md)](OVERVIEW.md) — Tổng quan bài toán, trải nghiệm và giá trị thực tế của sản phẩm.
 > - [Quy chuẩn phát triển dành cho AI Agent (AGENTS.md)](AGENTS.md) — Quy trình bắt buộc 2 bước, coding conventions và quy tắc an toàn.
 
@@ -90,13 +91,16 @@ fasearch/ai/
 │       ├── __init__.py
 │       ├── overview.py            # Thống kê GPU/DB, sửa database.yaml, Danger Zone (Reset/Seed)
 │       ├── point_manager.py       # Quản trị Point CRUD (Gallery, Thêm mới, Sửa, Xóa)
-│       └── search_tester.py       # Sân chơi thử nghiệm Text-to-Image & Image-to-Image
+│       └── search_tester.py       # Sân chơi thử nghiệm Text, Image & Multimodal
 ├── configs/
 │   └── database.yaml              # Cấu hình Qdrant, Model CLIP, thư mục ảnh
 ├── dataset/                       # Thư mục chứa dataset ảnh sản phẩm mẫu
 │   ├── admin/                     # Nơi lưu trữ ảnh sản phẩm mới tải lên từ Admin UI
 │   ├── raw/                       # Ảnh gốc chưa qua xử lý
 │   └── test/                      # Tập dữ liệu kiểm thử
+├── docs/                          # Tài liệu kỹ thuật dự án
+│   ├── SETUP.md                   # Hướng dẫn chi tiết cài đặt môi trường
+│   └── API_DOCUMENTATION.md       # Tài liệu tích hợp API cho Backend Java Spring Boot
 ├── scripts/
 │   ├── __init__.py
 │   ├── init_qdrant.py             # Script khởi tạo/Reset Qdrant collection (vector_size: 512, cosine)
@@ -106,7 +110,7 @@ fasearch/ai/
 │   ├── main.py                    # Entrypoint FastAPI, Lifespan startup, CORS, Static mounts
 │   ├── api/
 │   │   ├── __init__.py
-│   │   └── endpoints.py           # REST Endpoints: /api/search/text, /api/search/image
+│   │   └── endpoints.py           # REST Endpoints: /api/search/text, /image, /multimodal
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── ai_model.py            # Singleton quản lý mô hình CLIP trên VRAM (eval mode)
@@ -201,8 +205,11 @@ streamlit run admin_app/app.py
 
 ## 6. DANH SÁCH REST API ENDPOINTS
 
+> 📖 **Xem tài liệu chi tiết và code mẫu tích hợp cho Java Spring Boot tại:** [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
+
 ### 6.1. Tìm kiếm bằng Văn bản (`POST /api/search/text`)
 - **Phân quyền:** `PUBLIC`
+- **Content-Type:** `application/json`
 - **Request Body (JSON):**
   ```json
   {
@@ -215,15 +222,14 @@ streamlit run admin_app/app.py
   {
     "success": true,
     "status_code": 200,
-    "message": "Search completed successfully",
+    "message": "Tìm kiếm theo văn bản thành công",
     "data": {
-      "query": "áo sơ mi trắng basic",
-      "total_results": 1,
+      "total": 1,
       "results": [
         {
           "id": "c71e280d-8df5-46aa-b2b9-1f486a43875f",
           "score": 0.8254,
-          "image_path": "/dataset/test/1001.jpg",
+          "image_path": "dataset/test/1001.jpg",
           "file_name": "1001.jpg",
           "catalog": "FASHION_PRODUCT"
         }
@@ -263,4 +269,3 @@ streamlit run admin_app/app.py
 - **Soft Delete Pattern:** Khi xóa bản ghi, ưu tiên chuyển `status = PointStatus.DELETED`. Tầng Repository tự động loại trừ các bản ghi này khỏi kết quả tìm kiếm bằng bộ lọc `must_not`.
 - **Upload Safety:** Mọi file upload tạm thời bắt buộc đặt tên kèm tiền tố UUID và phải dọn dẹp trong khối `try ... finally`.
 - **Bảo vệ tài nguyên:** Tuyệt đối không quét đệ quy các thư mục nặng (`venv312/`, `dataset/`). Xử lý batch ảnh bằng PyTorch luôn gọi `del tensor` và `torch.cuda.empty_cache()` để chống rò rỉ VRAM.
-
