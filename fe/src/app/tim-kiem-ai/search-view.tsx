@@ -296,7 +296,7 @@ function ExamplesBoard({
             <span className="example-caption">
               <span>{example.title}</span>
               <span className="example-use" aria-hidden="true">
-                <span>Dùng mô tả</span> <AiSearchIcon size={17} />
+                <span className="use-verb">Dùng mô tả</span><AiSearchIcon size={17} />
               </span>
             </span>
           </button>
@@ -335,8 +335,9 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   const [viewer, setViewer] = useState<{ src: string; alt: string; caption: string; trigger: HTMLButtonElement } | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
 
-  const busyRef = useRef(false);
-  const reqId = useRef(0);
+  const generationRef = useRef(0);
+  const opRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLElement>(null);
@@ -366,6 +367,32 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     };
   }, [previewUrl]);
 
+  // Owner-aware cleanup: unmount invalidates any in-flight generation and aborts it.
+  useEffect(() => {
+    return () => {
+      generationRef.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
+      opRef.current = null;
+    };
+  }, []);
+
+  // Input/mode/example/remove changes invalidate obsolete async work. A pending
+  // operation is cancelled; completed output is left visible for the user.
+  function invalidatePending() {
+    generationRef.current += 1;
+    if (opRef.current !== null) {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      opRef.current = null;
+    }
+    setState((current) => (current.kind === "loading" ? { kind: "idle" } : current));
+  }
+
+  function isOwner(owner: number) {
+    return generationRef.current === owner && opRef.current === owner;
+  }
+
   function setFileError(message: string) {
     setFieldError({ message, target: "file" });
     requestAnimationFrame(() => fileInputRef.current?.focus());
@@ -373,6 +400,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
 
   function onFile(files: FileList | null) {
     if (!files || files.length === 0) return;
+    invalidatePending();
     const next = files[0];
     try {
       validateImageFile(next);
@@ -390,6 +418,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   }
 
   function removeFile() {
+    invalidatePending();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(null);
     setPreviewUrl(null);
@@ -403,6 +432,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   function pickExample(exampleId: string) {
     const example = AI_EXAMPLES.find((item) => item.id === exampleId);
     if (!example) return;
+    invalidatePending();
     setSelectedExample(example.id);
     setMode("text");
     setQuery(example.query);
@@ -440,74 +470,74 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
 
   async function run(event?: FormEvent) {
     event?.preventDefault();
-    if (isPreview || checking || busyRef.current) return;
+    if (isPreview || checking || opRef.current !== null) return;
 
     let label = "";
     let path = "";
     let body: unknown = undefined;
+    let decodeFile: File | null = null;
     const limit = 5; // Reference không có control limit; API 1–5 giữ nguyên, mặc định 5.
 
     setFieldError(null);
-    try {
-      if (mode === "text") {
-        let q: string;
-        try {
-          q = validateQuery(query);
-        } catch (error) {
-          setFieldError({ message: error instanceof Error ? error.message : "Mô tả chưa hợp lệ.", target: "query" });
-          focusField("query");
-          return;
-        }
-        label = `“${q}”`;
-        path = "v1/ai/search/text";
-        body = { query: q, limit };
-      } else if (mode === "image") {
-        if (!file) {
-          setFileError("Chọn 1 ảnh JPEG/PNG ≤5MiB để tìm bằng ảnh.");
-          return;
-        }
-        try {
-          validateImageFile(file);
-          await decodeCheck(file);
-        } catch (error) {
-          setFileError(error instanceof Error ? error.message : "Ảnh chưa hợp lệ.");
-          return;
-        }
-        label = `Ảnh tham chiếu “${file.name}”`;
-        path = "v1/ai/search/image";
-        const form = new FormData();
-        form.append("file", file);
-        form.append("limit", String(limit));
-        body = form;
-      } else {
-        if (!file) {
-          setFileError("Chế độ kết hợp cần 1 ảnh JPEG/PNG ≤5MiB.");
-          return;
-        }
-        let q = "";
-        try {
-          q = validateComposed(query, file).q;
-          await decodeCheck(file);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Yêu cầu chưa hợp lệ.";
-          if (message.includes("ảnh") || message.includes("Ảnh")) setFileError(message);
-          else {
-            setFieldError({ message, target: "query" });
-            focusField("query");
-          }
-          return;
-        }
-        label = `“${q}” + ảnh “${file.name}”`;
-        path = "v1/ai/search/composed";
-        const form = new FormData();
-        form.append("file", file);
-        form.append("query", q);
-        form.append("limit", String(limit));
-        body = form;
+
+    // Synchronous validation trước khi chiếm lock: lỗi field/auth không để lại lock.
+    if (mode === "text") {
+      let q: string;
+      try {
+        q = validateQuery(query);
+      } catch (error) {
+        setFieldError({ message: error instanceof Error ? error.message : "Mô tả chưa hợp lệ.", target: "query" });
+        focusField("query");
+        return;
       }
-    } catch (error) {
-      setFieldError({ message: error instanceof Error ? error.message : "Yêu cầu chưa hợp lệ.", target: "query" });
-      return;
+      label = `“${q}”`;
+      path = "v1/ai/search/text";
+      body = { query: q, limit };
+    } else if (mode === "image") {
+      if (!file) {
+        setFileError("Chọn 1 ảnh JPEG/PNG ≤5MiB để tìm bằng ảnh.");
+        return;
+      }
+      try {
+        validateImageFile(file);
+      } catch (error) {
+        setFileError(error instanceof Error ? error.message : "Ảnh chưa hợp lệ.");
+        return;
+      }
+      decodeFile = file;
+      label = `Ảnh tham chiếu “${file.name}”`;
+      path = "v1/ai/search/image";
+      const form = new FormData();
+      form.append("file", file);
+      form.append("limit", String(limit));
+      body = form;
+    } else {
+      if (!file) {
+        setFileError("Chế độ kết hợp cần 1 ảnh JPEG/PNG ≤5MiB.");
+        return;
+      }
+      try {
+        validateImageFile(file);
+      } catch (error) {
+        setFileError(error instanceof Error ? error.message : "Ảnh chưa hợp lệ.");
+        return;
+      }
+      let q = "";
+      try {
+        q = validateComposed(query, file).q;
+      } catch (error) {
+        setFieldError({ message: error instanceof Error ? error.message : "Từ khóa chưa hợp lệ.", target: "query" });
+        focusField("query");
+        return;
+      }
+      decodeFile = file;
+      label = `“${q}” + ảnh “${file.name}”`;
+      path = "v1/ai/search/composed";
+      const form = new FormData();
+      form.append("file", file);
+      form.append("query", q);
+      form.append("limit", String(limit));
+      body = form;
     }
 
     if (!me) {
@@ -515,12 +545,23 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       return;
     }
 
-    const my = ++reqId.current;
-    busyRef.current = true;
+    // Lock BEFORE the first await (image/composed decode included). A second
+    // synchronous submit sees opRef and returns; UI shows loading immediately.
+    const owner = ++generationRef.current;
+    opRef.current = owner;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setState({ kind: "loading" });
+    let stage: "decode" | "request" | "json" = "decode";
+
     try {
-      const response = await beWrite(path, "POST", body);
-      if (reqId.current !== my) return;
+      if (decodeFile) {
+        await decodeCheck(decodeFile);
+        if (!isOwner(owner)) return;
+      }
+      stage = "request";
+      const response = await beWrite(path, "POST", body, controller.signal);
+      if (!isOwner(owner)) return;
       if (response.status === 401) {
         setState({ kind: "session", message: "Phiên đăng nhập đã hết. Đăng nhập lại rồi tìm tiếp." });
         return;
@@ -531,22 +572,43 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       }
       if (!response.ok) {
         let fallback = errorMessage(response.status);
-        try {
-          const payload = (await response.json()) as { message?: string };
-          if (payload?.message && response.status < 500) fallback = payload.message;
-        } catch {
-          /* non-JSON */
+        if (response.status < 500) {
+          try {
+            const payload = (await response.json()) as { message?: string };
+            if (payload?.message) fallback = payload.message;
+          } catch {
+            /* non-JSON */
+          }
+          if (!isOwner(owner)) return;
         }
         setState({ kind: "error", message: fallback });
         return;
       }
-      const hits = parseAiResults(await response.json());
+      stage = "json";
+      const payload = await response.json();
+      if (!isOwner(owner)) return;
+      const hits = parseAiResults(payload);
+      if (!isOwner(owner)) return;
       setState({ kind: "done", hits, label });
-    } catch {
-      if (reqId.current !== my) return;
-      setState({ kind: "error", message: "Không kết nối được máy chủ. Giữ nguyên đầu vào rồi thử lại." });
+    } catch (error) {
+      if (!isOwner(owner) || controller.signal.aborted) return;
+      if (stage === "decode") {
+        setState({ kind: "idle" });
+        setFileError(error instanceof Error ? error.message : "Ảnh chưa hợp lệ.");
+        return;
+      }
+      setState({
+        kind: "error",
+        message: stage === "json"
+          ? "Máy chủ trả về không đúng định dạng. Thử lại sau ít phút."
+          : "Không kết nối được máy chủ. Giữ nguyên đầu vào rồi thử lại.",
+      });
     } finally {
-      busyRef.current = false;
+      // Chỉ chủ sở hữu được mở lock; invalidation/new op không bị unlock nhầm.
+      if (opRef.current === owner) {
+        opRef.current = null;
+        abortRef.current = null;
+      }
     }
   }
 
@@ -719,7 +781,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
 
   return (
     <StorefrontShell active="/tim-kiem-ai" themed palette="customer" header="customer">
-      <main className="aiPage">
+      <div className="aiPage">
         <div className="ai-shell">
           <section className="ai-input" aria-labelledby="search-title">
             <span className="ai-motif" aria-hidden="true">
@@ -738,6 +800,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
                     type="button"
                     aria-pressed={mode === item}
                     onClick={() => {
+                      invalidatePending();
                       setMode(item);
                       setFieldError(null);
                       setState({ kind: "idle" });
@@ -759,6 +822,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
                     name="q"
                     value={query}
                     onChange={(event) => {
+                      invalidatePending();
                       setQuery(event.target.value);
                       if (fieldErrorOnQuery) setFieldError(null);
                     }}
@@ -858,7 +922,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
           </section>
         </div>
         <AiImageDialog viewer={viewer} onClose={closeZoom} />
-      </main>
+      </div>
     </StorefrontShell>
   );
 }

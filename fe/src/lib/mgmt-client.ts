@@ -46,12 +46,13 @@ export async function beWrite(
   path: string,
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown,
+  signal?: AbortSignal,
 ): Promise<Response> {
   // Validate CSRF trước khi ghi: hết phiên/toàn cục lỗi đều chặn write sớm
   // với 401/502 trung thực, không gửi request biến dạng (parity với whWrite).
   let token: { headerName: string; token: string };
   try {
-    const csrfRaw = await fetch("/api/auth/csrf", { cache: "no-store" });
+    const csrfRaw = await fetch("/api/auth/csrf", { cache: "no-store", signal });
     if (!csrfRaw.ok) {
       return Response.json(
         { success: false, code: 401, message: "Phiên đăng nhập đã hết hiệu lực. Đăng nhập lại trước khi thay đổi dữ liệu.", result: null },
@@ -83,7 +84,7 @@ export async function beWrite(
     headers["content-type"] = "application/json";
     payload = JSON.stringify(body);
   }
-  return fetch(`/api/be/${path}`, { method, headers, body: payload, cache: "no-store" });
+  return fetch(`/api/be/${path}`, { method, headers, body: payload, cache: "no-store", signal });
 }
 
 export function vnd(value: number | string | null | undefined): string {

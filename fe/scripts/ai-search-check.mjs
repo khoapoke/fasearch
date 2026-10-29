@@ -140,6 +140,11 @@ const PROBE = `(() => {
     oldHeader: !!q('.sfPromo, .sfHeader, .sfSearch, .stStudio, .stStudioPanel'),
     noB2: !q('.hmCanvas'),
     title: q('#search-title')?.textContent,
+    mains: document.querySelectorAll('main').length,
+    aiPageTag: q('.aiPage')?.tagName ?? null,
+    hintCS: { marginBottom: cs(q('.mode-hint'))?.marginBottom, lineHeight: cs(q('.mode-hint'))?.lineHeight, fontSize: cs(q('.mode-hint'))?.fontSize },
+    captionCS: { direction: cs(q('.example-caption'))?.flexDirection, align: cs(q('.example-caption'))?.alignItems, gap: cs(q('.example-caption'))?.gap },
+    useCS: { display: cs(q('.example-use'))?.display, gap: cs(q('.example-use'))?.gap, verbFont: cs(q('.use-verb'))?.fontSize, verbWrap: cs(q('.use-verb'))?.whiteSpace },
     h1: q('.ai-input h1')?.textContent,
     modes: [...document.querySelectorAll('.mode-switch button')].map((b) => ({ text: b.textContent.trim(), pressed: b.getAttribute('aria-pressed') })),
     hint: q('.mode-hint')?.textContent,
@@ -194,7 +199,35 @@ await (async () => {
         record(`AI ${scheme} @${w}: layout responsive khớp nguồn (input ${exp.inputW}, board ${exp.boardH}, không tràn)`,
           layoutOk && Math.abs(x.board.h - exp.boardH) <= 1.5 && x.overflow <= 1,
           JSON.stringify({ input: x.input, board: x.board, overflow: x.overflow }));
+        record(`AI ${scheme} @${w}: một main duy nhất, cascade mode-hint/example final`,
+          x.mains === 1 && x.aiPageTag === "DIV"
+            && x.hintCS.marginBottom === "18px" && x.hintCS.lineHeight === "20.15px"
+            && x.useCS.display === "flex" && x.useCS.gap === "6px"
+            && x.useCS.verbFont === "12px" && x.useCS.verbWrap === "nowrap"
+            && (w <= 1100
+              ? x.captionCS.direction === "column" && x.captionCS.align === "flex-start" && x.captionCS.gap === "2px"
+              : x.captionCS.direction === "row"),
+          JSON.stringify({ mains: x.mains, tag: x.aiPageTag, hint: x.hintCS, caption: x.captionCS, use: x.useCS }));
         await p.shot(join(shots, `ai-${w}-${scheme}.png`));
+      }
+    }
+
+    // ---------- Pending placeholders at 320/390 (no overflow, both themes) ----------
+    for (const scheme of ["light", "dark"]) {
+      await p.setColorScheme(scheme);
+      for (const [w, h] of [[390, 844], [320, 780]]) {
+        await p.setViewport(w, h);
+        await p.goto(`${base}/tim-kiem-ai?preview=pending`);
+        const pending = await p.eval(`(() => {
+          const out = document.querySelector('.ai-output').getBoundingClientRect();
+          const cards = [...document.querySelectorAll('.skeleton-card')].map((el) => { const r = el.getBoundingClientRect(); return { x: r.x, w: r.width, right: r.right, h: r.height }; });
+          return { overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, out: { x: out.x, w: out.width, right: out.right }, cards };
+        })()`);
+        record(`AI pending ${scheme} @${w}: skeleton theo cột kết quả, không tràn ngang`,
+          pending.overflow <= 1 && pending.cards.length === 2
+            && pending.cards.every((c) => c.right <= pending.out.right + 0.5 && c.w <= pending.out.w + 0.5 && c.h > 0),
+          JSON.stringify(pending));
+        await p.shot(join(shots, `ai-pending-${w}-${scheme}.png`));
       }
     }
 

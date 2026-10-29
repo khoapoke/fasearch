@@ -123,10 +123,10 @@ html[data-theme="dark"] .aiPage .ai-input {
   color: var(--panel-text);
 }
 .aiPage .mode-hint {
-  margin: 0 0 22px;
+  margin: 0 0 18px;
   color: var(--panel-muted);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .aiPage .query-field {
   margin-bottom: 0;
@@ -371,7 +371,14 @@ html[data-theme="dark"] .aiPage .ai-input {
   font-size: 22px;
 }
 .aiPage .example-use {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--st-ink-soft);
+}
+.aiPage .use-verb {
+  font-size: 12px;
+  white-space: nowrap;
 }
 .aiPage .example-use svg {
   width: 17px;
@@ -516,6 +523,14 @@ html[data-theme="dark"] .aiPage .ai-input {
   aspect-ratio: 4 / 5;
   border-radius: 4px;
   background: var(--st-select);
+}
+/* Final frozen correction (styles.css:848): placeholders follow result columns,
+ * không tràn ở 320/390; không dùng overflow clipping để che lỗi. */
+.aiPage .ai-output .skeleton-card {
+  min-width: 0;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 4 / 5;
 }
 .aiPage .search-status {
   margin: 0 0 14px;
@@ -681,6 +696,12 @@ html[data-theme="dark"] .aiPage .ai-input {
   }
 }
 
+@media (max-height: 800px) {
+  .aiPage .examples-board {
+    height: 480px;
+  }
+}
+
 @media (max-width: 1100px) {
   .aiPage .ai-shell {
     grid-template-columns: 330px minmax(0, 1fr);
@@ -697,6 +718,15 @@ html[data-theme="dark"] .aiPage .ai-input {
     flex-direction: column;
     gap: 3px;
     margin-bottom: 16px;
+  }
+  .aiPage .example-caption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .aiPage .example-use {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 }
 
