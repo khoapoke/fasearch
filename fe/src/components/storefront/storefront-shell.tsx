@@ -19,16 +19,22 @@ export function StorefrontShell({
   active,
   previewNote,
   themed = false,
+  palette,
   children,
 }: {
   active?: string;
   previewNote?: string;
   /** Bề mặt pilot search-studio: áp theme + control giao diện (P1). */
   themed?: boolean;
+  /** Bảng màu Home đã duyệt; chỉ trang chủ truyền "home", route khác không đổi. */
+  palette?: "home";
   children: React.ReactNode;
 }) {
+  const rootClass = [themed ? "studio" : "", palette === "home" ? "hmPalette" : ""]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <div className={themed ? "studio" : undefined}>
+    <div className={rootClass || undefined}>
       <div className="sfPromo">
         <div className="sfPromoInner">
           <p className="sfPromoMsgs">

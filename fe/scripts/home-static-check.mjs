@@ -377,6 +377,98 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
   }))()`);
   record("A2 bấm thử lại sau lỗi: tải lại được sản phẩm thật",
     recovered.cards > 0 && !recovered.alert, JSON.stringify(recovered));
+
+  // ---------- CONTROL-PALETTE-02: bảng màu Home khớp snapshot 6fdbcee ----------
+  // Lựa chọn theme lúc này là "Theo thiết bị" → emulated scheme phải ra đúng
+  // data-theme; token đọc trên chính phần tử mang `.hmPalette` (shell + section).
+  const PALETTE_PROBE = `(() => {
+    const root = document.querySelector('.hmPalette');
+    const home = document.querySelector('.hmHome');
+    const footer = document.querySelector('.sfFooter');
+    if (!root || !home || !footer) return { missing: true };
+    const cs = getComputedStyle(root);
+    const keys = ['--st-canvas','--st-surface','--st-raised','--st-select','--st-ink',
+      '--st-ink-soft','--st-line','--st-brand','--st-brand-hover','--st-brand-text',
+      '--st-focus','--st-control-border','--st-ok-text','--st-ok-bg','--st-err-text','--st-err-bg'];
+    const tokens = {};
+    for (const k of keys) tokens[k] = cs.getPropertyValue(k).trim();
+    return { tokens,
+      homeBg: getComputedStyle(home).backgroundColor,
+      footerBg: getComputedStyle(footer).backgroundColor,
+      bodyBg: getComputedStyle(document.body).backgroundColor,
+      theme: document.documentElement.getAttribute('data-theme') };
+  })()`;
+  const PALETTE_EXPECT = {
+    light: {
+      tokens: {
+        "--st-canvas": "#fbfaf7", "--st-surface": "#ffffff", "--st-raised": "#ffffff",
+        "--st-select": "#f1f0ea", "--st-ink": "#1b1c1a", "--st-ink-soft": "#5f655c",
+        "--st-line": "#dedfd7", "--st-brand": "#3730d8", "--st-brand-hover": "#2d27bc",
+        "--st-brand-text": "#3730d8", "--st-focus": "#3730d8", "--st-control-border": "#6f766c",
+        "--st-ok-text": "#24663c", "--st-ok-bg": "#e8f1ea",
+        "--st-err-text": "#a6293a", "--st-err-bg": "#f9eaec",
+      },
+      homeBg: "rgb(251, 250, 247)",
+      footerBg: "rgb(255, 255, 255)",
+      bodyBg: "rgb(251, 250, 247)",
+    },
+    dark: {
+      tokens: {
+        "--st-canvas": "#08090b", "--st-surface": "#101113", "--st-raised": "#1e1f23",
+        "--st-select": "#17181b", "--st-ink": "#edeef0", "--st-ink-soft": "#9ba1a6",
+        "--st-line": "#26282c", "--st-brand": "#3730d8", "--st-brand-hover": "#2d27bc",
+        "--st-brand-text": "#b4b0ff", "--st-focus": "#c6c2ff", "--st-control-border": "#7b8290",
+        "--st-ok-text": "#93c6a1", "--st-ok-bg": "#16211a",
+        "--st-err-text": "#efb0b7", "--st-err-bg": "#2c1b1e",
+      },
+      homeBg: "rgb(8, 9, 11)",
+      footerBg: "rgb(16, 17, 19)",
+      bodyBg: "rgb(8, 9, 11)",
+    },
+  };
+  const hexLum = (hex) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  // Chrome serialize màu trong custom property (vd #ffffff → #fff): so sánh đã chuẩn hoá.
+  const normHex = (h) => {
+    const v = String(h ?? "").trim().toLowerCase();
+    return /^#[0-9a-f]{3}$/.test(v) ? "#" + [...v.slice(1)].map((c) => c + c).join("") : v;
+  };
+  const contrast = (a, b) => {
+    const [hi, lo] = [hexLum(a), hexLum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  for (const scheme of ["light", "dark"]) {
+    await p.setColorScheme(scheme);
+    for (const [w, h] of [[1440, 900], [390, 780]]) {
+      await p.setViewport(w, h);
+      await p.goto(`${base}/`);
+      await sleep(250);
+      const page = await p.eval(PALETTE_PROBE);
+      const exp = PALETTE_EXPECT[scheme];
+      const wrong = Object.entries(exp.tokens)
+        .filter(([k, v]) => normHex(page.tokens?.[k]) !== normHex(v))
+        .map(([k, v]) => `${k}=${page.tokens?.[k]}≠${v}`);
+      record(`PALETTE ${scheme} @${w}px: token Home khớp snapshot 6fdbcee`,
+        !!page.tokens && wrong.length === 0, wrong.join(", ") || "16/16 token khớp");
+      record(`PALETTE ${scheme} @${w}px: canvas Home/footer/body đúng màu đã duyệt`,
+        page.homeBg === exp.homeBg && page.footerBg === exp.footerBg && page.bodyBg === exp.bodyBg
+          && page.theme === scheme,
+        JSON.stringify({ home: page.homeBg, footer: page.footerBg, body: page.bodyBg, theme: page.theme }));
+      const ratios = {
+        text: contrast(normHex(page.tokens["--st-ink"]), normHex(page.tokens["--st-canvas"])),
+        muted: contrast(normHex(page.tokens["--st-ink-soft"]), normHex(page.tokens["--st-canvas"])),
+        error: contrast(normHex(page.tokens["--st-err-text"]), normHex(page.tokens["--st-err-bg"])),
+      };
+      record(`PALETTE ${scheme} @${w}px: tương phản text/muted/error ≥ 4.5:1`,
+        Object.values(ratios).every((r) => r >= 4.5),
+        Object.entries(ratios).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(" · "));
+      await p.shot(join(shots, `home-palette-${w}-${scheme}.png`));
+    }
+  }
 });
 
 await writeFile(join(outDir, "home-static-report.json"), JSON.stringify(results, null, 2));
