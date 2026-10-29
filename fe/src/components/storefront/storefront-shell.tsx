@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/icon";
 import { ThemeControl } from "@/components/studio/theme-control";
 import { CartCount, HeaderAccount } from "./storefront-client";
 import { CustomerHeader } from "./customer-header";
+import { CustomerCartProvider } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-palette.css";
 import "./storefront.css";
 
@@ -42,6 +43,7 @@ export function StorefrontShell({
     .filter(Boolean)
     .join(" ");
   return (
+    <CustomerCartProvider>
     <div className={rootClass || undefined}>
       {header === "customer" || header === "customer-focused" ? (
         <>
@@ -167,5 +169,6 @@ export function StorefrontShell({
       </footer>
       ) : null}
     </div>
+    </CustomerCartProvider>
   );
 }

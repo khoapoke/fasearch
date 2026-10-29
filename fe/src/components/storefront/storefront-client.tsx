@@ -9,7 +9,7 @@ export function cartKey() {
   return "fasearch-cart-v1";
 }
 
-export type CartItem = { id: number; name: string; price: number; image?: string; qty: number; meta?: string };
+export type CartItem = { id: number; name: string; price: number; image?: string; qty: number; meta?: string; skuId?: number; color?: string; size?: string };
 
 export function readCart(): CartItem[] {
   try {

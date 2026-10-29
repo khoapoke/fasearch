@@ -3,395 +3,190 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
-import { readOwnIdentity } from "@/components/account/account-session";
+import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { readCart, writeCart, type CartItem as GuestItem } from "@/components/storefront/storefront-client";
-import { StitchImage } from "@/components/ui/stitch-image";
-import { formatVnd } from "@/components/storefront/product-card";
-import {
-  deleteCartItem, fetchCart, fetchWarehouses, putCartItem, quoteCart,
-} from "@/lib/commerce-client";
-import {
-  commerceErrorMessage, formatVndContract,
-  type Cart, type Quote, type Warehouse,
-} from "@/lib/commerce";
-import "@/components/storefront/preview.css";
+import { addCustomerCartItem, removeCustomerCartItem, updateCustomerCartItem, clearCustomerCart } from "@/lib/customer-commerce-client";
+import { CommerceError, formatMoney, type CustomerCart } from "@/lib/customer-commerce";
+import "@/components/customer-commerce/commerce.css";
 
-type LoadState =
-  | { kind: "checking" }
-  | { kind: "guest"; items: GuestItem[] }
-  | { kind: "loading" }
-  | { kind: "ready"; cart: Cart; quote: Quote | null; warehouses: Warehouse[]; maKho: number | null }
-  | { kind: "error"; message: string; status: number };
+type GuestLine = GuestItem & { skuId?: number; color?: string; size?: string };
 
-const GUEST_IMPORTED_KEY = "fasearch-cart-imported-v1";
-
-function readImportedSkus(): Set<string> {
-  try {
-    const raw = localStorage.getItem(GUEST_IMPORTED_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(arr) ? arr.map(String) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function markImported(skus: Array<string | number>) {
-  try {
-    const set = readImportedSkus();
-    for (const s of skus) set.add(String(s));
-    localStorage.setItem(GUEST_IMPORTED_KEY, JSON.stringify([...set]));
-  } catch {
-    /* ignore */
-  }
+function guestCount(lines: GuestLine[]): number {
+  return lines.reduce((sum, line) => sum + (line.qty || 0), 0);
 }
 
 export default function CartPage() {
-  const [state, setState] = useState<LoadState>({ kind: "checking" });
-  const [authed, setAuthed] = useState(false);
-  const [busySku, setBusySku] = useState<number | null>(null);
+  const { cart, setCart, refresh, loading, authState, error: loadError } = useCustomerCart();
+  const [guest, setGuest] = useState<GuestLine[]>([]);
+  const [busy, setBusy] = useState<number | "clear" | null>(null);
   const [notice, setNotice] = useState("");
-  const [quoteBusy, setQuoteBusy] = useState(false);
-  const pendingRef = useRef(false);
-  const errorRef = useRef<HTMLDivElement>(null);
-
-  const load = useCallback(async () => {
-    setNotice("");
-    let me = null;
-    try {
-      me = await readOwnIdentity();
-    } catch {
-      me = null;
-    }
-    if (!me) {
-      setAuthed(false);
-      setState({ kind: "guest", items: readCart() });
-      return;
-    }
-    setAuthed(true);
-    setState({ kind: "loading" });
-    try {
-      const cart = await fetchCart();
-      let warehouses: Warehouse[] = [];
-      try {
-        warehouses = await fetchWarehouses();
-      } catch {
-        warehouses = [];
-      }
-      const def = warehouses.find((w) => w.laMacDinh) ?? warehouses[0] ?? null;
-      // Guest import một lần: chỉ entries có maSku (gắn bởi detail mới), bỏ qua legacy product-only.
-      const guest = readCart() as Array<GuestItem & { maSku?: number }>;
-      const imported = readImportedSkus();
-      const candidates = guest.filter((g) => typeof g.maSku === "number" && !imported.has(String(g.maSku)));
-      if (candidates.length > 0 && cart) {
-        const done: string[] = [];
-        for (const c of candidates.slice(0, 100)) {
-          try {
-            const qty = Math.min(999, Math.max(1, c.qty || 1));
-            // Lấy version mới nhất trước mỗi PUT để tránh 409 dây chuyền.
-            const fresh = await fetchCart();
-            await putCartItem(c.maSku as number, qty, fresh.phienBan);
-            done.push(String(c.maSku));
-          } catch {
-            // Import thất bại từng dòng → giữ lại guest, báo trung thực ở notice.
-          }
-        }
-        if (done.length > 0) {
-          markImported(done);
-          const remaining = guest.filter((g) => !(typeof g.maSku === "number" && done.includes(String(g.maSku))));
-          writeCart(remaining);
-          setNotice(`Đã nhập ${done.length} món từ giỏ khách vào giỏ tài khoản. Món không rõ SKU được giữ lại minh bạch bên dưới.`);
-        }
-      }
-      const finalCart = candidates.length > 0 ? await fetchCart().catch(() => cart) : cart;
-      setState({ kind: "ready", cart: finalCart, quote: null, warehouses, maKho: def ? def.maKho : null });
-    } catch (e) {
-      const status = (e as { status?: number })?.status ?? 0;
-      const msg = e instanceof Error ? e.message : "Không tải được giỏ hàng.";
-      if (status === 401) {
-        setAuthed(false);
-        setState({ kind: "guest", items: readCart() });
-        return;
-      }
-      setState({ kind: "error", message: commerceErrorMessage(status, msg), status });
-      setTimeout(() => errorRef.current?.focus(), 0);
-    }
-  }, []);
+  const [actionError, setActionError] = useState("");
+  const pending = useRef(false);
+  const imported = useRef(false);
 
   useEffect(() => {
-    void Promise.resolve().then(() => load());
-  }, [load]);
+    if (authState === "guest") void Promise.resolve().then(() => setGuest(readCart() as GuestLine[]));
+  }, [authState]);
 
-  async function changeQty(maSku: number, qty: number, phienBan: number) {
-    if (pendingRef.current) return;
-    if (qty < 1) {
-      await removeItem(maSku, phienBan);
-      return;
+  const importGuest = useCallback(async () => {
+    if (authState !== "authenticated" || imported.current) return;
+    imported.current = true;
+    const local = (readCart() as GuestLine[]).filter((line) => typeof line.skuId === "number" && line.skuId > 0);
+    if (!local.length) return;
+    let next: CustomerCart | null = cart;
+    let ok = 0;
+    for (const line of local) {
+      try {
+        next = await addCustomerCartItem(line.skuId as number, Math.min(999, Math.max(1, line.qty || 1)));
+        ok += 1;
+        writeCart((readCart() as GuestLine[]).filter((entry) => entry.skuId !== line.skuId));
+      } catch {
+        // Keep the exact failed guest line visible; never claim it synced.
+      }
     }
-    if (qty > 999) {
-      setNotice("Số lượng tối đa 999.");
-      return;
-    }
-    pendingRef.current = true;
-    setBusySku(maSku);
+    if (next) setCart(next);
+    if (ok) setNotice(`Đã đồng bộ ${ok} món đã chọn SKU từ giỏ trình duyệt vào giỏ máy chủ.`);
+  }, [authState, cart, setCart]);
+
+  useEffect(() => { void Promise.resolve().then(() => importGuest()); }, [importGuest]);
+
+  async function mutate(skuId: number, operation: "set" | "remove", quantity = 1) {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(operation === "remove" ? skuId : skuId);
+    setActionError("");
     setNotice("");
     try {
-      const next = await putCartItem(maSku, qty, phienBan);
-      setState((s) => (s.kind === "ready" ? { ...s, cart: next, quote: null } : s));
-    } catch (e) {
-      const status = (e as { status?: number })?.status ?? 0;
-      const msg = e instanceof Error ? e.message : "Cập nhật thất bại.";
-      setNotice(commerceErrorMessage(status, msg) + (status === 409 ? " Giỏ đã làm mới — kiểm tra số lượng rồi thử lại." : " Số lượng đã nhập được giữ nguyên."));
-      if (status === 409) {
-        try {
-          const fresh = await fetchCart();
-          setState((s) => (s.kind === "ready" ? { ...s, cart: fresh, quote: null } : s));
-        } catch {
-          /* keep */
-        }
-      }
+      const next = operation === "remove"
+        ? await removeCustomerCartItem(skuId)
+        : await updateCustomerCartItem(skuId, quantity);
+      setCart(next);
+    } catch (failure) {
+      const status = failure instanceof CommerceError ? failure.status : 0;
+      const message = failure instanceof Error ? failure.message : "Không cập nhật được giỏ hàng.";
+      setActionError(message + (status === 409 ? " Giỏ đã thay đổi trên máy chủ; tải lại để xem số lượng thật." : ""));
+      if (status === 409) await refresh();
     } finally {
-      pendingRef.current = false;
-      setBusySku(null);
+      pending.current = false;
+      setBusy(null);
     }
   }
 
-  async function removeItem(maSku: number, phienBan: number) {
-    if (pendingRef.current) return;
-    pendingRef.current = true;
-    setBusySku(maSku);
+  async function clear() {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy("clear");
+    setActionError("");
     try {
-      const next = await deleteCartItem(maSku, phienBan);
-      setState((s) => (s.kind === "ready" ? { ...s, cart: next, quote: null } : s));
-    } catch (e) {
-      const status = (e as { status?: number })?.status ?? 0;
-      const msg = e instanceof Error ? e.message : "Xóa thất bại.";
-      setNotice(commerceErrorMessage(status, msg));
-      if (status === 409) {
-        try {
-          const fresh = await fetchCart();
-          setState((s) => (s.kind === "ready" ? { ...s, cart: fresh, quote: null } : s));
-        } catch {
-          /* keep */
-        }
-      }
+      await clearCustomerCart();
+      // DELETE success is the server confirmation; render the confirmed empty
+      // state directly instead of racing a background cart refetch.
+      setCart(cart ? { cartId: cart.cartId, totalItems: 0, subTotal: 0, items: [] } : null);
+      setNotice("Đã xóa toàn bộ giỏ trên máy chủ.");
+    } catch (failure) {
+      setActionError(failure instanceof Error ? failure.message : "Không xóa được giỏ hàng.");
     } finally {
-      pendingRef.current = false;
-      setBusySku(null);
+      pending.current = false;
+      setBusy(null);
     }
   }
 
-  async function runQuote() {
-    if (state.kind !== "ready" || state.maKho === null) {
-      setNotice("Chọn kho phục vụ trước khi lấy báo giá.");
-      return;
-    }
-    setQuoteBusy(true);
-    setNotice("");
-    try {
-      const q = await quoteCart(state.maKho, state.cart.phienBan);
-      setState({ ...state, quote: q });
-    } catch (e) {
-      const status = (e as { status?: number })?.status ?? 0;
-      const msg = e instanceof Error ? e.message : "Lấy báo giá thất bại.";
-      setNotice(commerceErrorMessage(status, msg));
-      if (status === 409) {
-        try {
-          const fresh = await fetchCart();
-          setState((s) => (s.kind === "ready" ? { ...s, cart: fresh, quote: null } : s));
-        } catch {
-          /* keep */
-        }
-      }
-    } finally {
-      setQuoteBusy(false);
-    }
-  }
-
-  const guestUnresolved = (() => {
-    if (!authed) return [];
-    try {
-      return (readCart() as Array<GuestItem & { maSku?: number }>).filter((g) => typeof g.maSku !== "number");
-    } catch {
-      return [];
-    }
-  })();
+  const lines = cart?.items ?? [];
+  const subtotal = cart?.subTotal ?? 0;
 
   return (
-    <StorefrontShell
-      active="/gio-hang"
-      previewNote="Giỏ hàng thật: máy chủ giữ giỏ và tổng tiền; khách chưa đăng nhập dùng giỏ trình duyệt và được mời đăng nhập để đồng bộ."
-    >
-      <div className="pvWrap">
-        <nav className="pgCrumbs" aria-label="Đường dẫn">
-          <Link href="/">Trang chủ</Link><span aria-hidden="true">›</span>
-          <span aria-current="page">Giỏ hàng</span>
-        </nav>
-        <h1 className="pgTitle">Giỏ Hàng Của Bạn</h1>
+    <StorefrontShell active="/gio-hang" themed palette="customer" header="customer" footer="none">
+      <div className="commercePage">
+        <div className="commerce-content">
+          <nav className="commerce-crumbs" aria-label="Đường dẫn">
+            <Link href="/">Trang chủ</Link><span aria-hidden="true">›</span><span aria-current="page">Giỏ hàng</span>
+          </nav>
+          <h1 className="commerce-title">Giỏ hàng</h1>
+          <p className="commerce-sub">Giá, số lượng và tổng tiền được máy chủ giỏ hàng xác nhận; không dùng tổng do trình duyệt tự tính.</p>
 
-        {notice ? <p className="mpMuted" role="status" style={{ marginBottom: 10 }}>{notice}</p> : null}
+          {notice ? <p className="commerce-status" role="status">{notice}</p> : null}
+          {actionError ? <p className="commerce-status is-error" role="alert">{actionError}</p> : null}
 
-        {state.kind === "checking" || state.kind === "loading" ? (
-          <p className="pgState" role="status"><strong>Đang tải giỏ hàng từ máy chủ…</strong></p>
-        ) : null}
-
-        {state.kind === "error" ? (
-          <div ref={errorRef} tabIndex={-1} className="pvCard" role="alert" aria-label="Lỗi giỏ hàng">
-            <h2>Không tải được giỏ hàng</h2>
-            <p className="sub">{state.message} Lựa chọn và bộ lọc được giữ nguyên.</p>
-            <p style={{ display: "flex", gap: 8 }}>
-              <button className="hmCta hmCtaPrimary" type="button" onClick={load}>Thử lại</button>
-              {state.status === 401 || state.status === 403 ? (
-                <Link className="hmCta hmCtaGhost" href="/dang-nhap?next=/gio-hang">Đăng nhập →</Link>
-              ) : null}
-            </p>
-          </div>
-        ) : null}
-
-        {state.kind === "guest" ? (
-          <div className="pvGrid">
-            <section className="pvCard" aria-label="Giỏ khách">
-              <h2>Giỏ trên trình duyệt này ({state.items.reduce((n, i) => n + i.qty, 0)} món)</h2>
-              <p className="sub">Đăng nhập để đồng bộ giỏ thật với máy chủ. Món chỉ có mã sản phẩm (không rõ SKU biến thể) sẽ không tự đoán — hiển thị minh bạch.</p>
-              {state.items.length === 0 ? (
-                <p className="pgState"><strong>Giỏ đang trống</strong>Hãy thêm sản phẩm từ <Link href="/nam">Nam</Link> hoặc <Link href="/nu">Nữ</Link>.</p>
-              ) : (
-                state.items.map((i) => (
-                  <div className="pvRow" key={`${i.id}-${i.meta ?? ""}`}>
-                    <StitchImage src={i.image} alt="" className="pvThumb" />
-                    <div style={{ flex: 1 }}>
-                      <b className="name"><Link href={`/san-pham/${i.id}`}>{i.name}</Link></b>
-                      {i.meta ? <small>{i.meta}</small> : null}
-                      {(i as GuestItem & { maSku?: number }).maSku ? (
-                        <small>SKU {(i as GuestItem & { maSku?: number }).maSku} · sẽ nhập 1 lần sau đăng nhập</small>
-                      ) : (
-                        <small>Chưa rõ SKU biến thể — đăng nhập rồi chọn lại màu/size để đồng bộ chính xác.</small>
-                      )}
-                    </div>
-                    <b className="pPrice">{formatVnd(i.price * i.qty)}</b>
-                  </div>
-                ))
-              )}
-              <p style={{ marginTop: 12 }}>
-                <Link className="hmCta hmCtaPrimary" href="/dang-nhap?next=/gio-hang">Đăng nhập để dùng giỏ thật →</Link>
-              </p>
-            </section>
-            <aside>
-              <section className="pvCard" aria-label="Ghi chú">
-                <h2>Tổng tiền do máy chủ quyết định</h2>
-                <p className="sub">Giỏ khách chỉ là bản nháp trình duyệt. Giá/kho/phí pilot hiển thị sau khi đăng nhập và lấy báo giá máy chủ. Giảm giá đợt này là 0.</p>
-              </section>
-            </aside>
-          </div>
-        ) : null}
-
-        {state.kind === "ready" ? (
-          <div className="pvGrid">
-            <div>
-              <section className="pvCard" aria-label="Sản phẩm trong giỏ">
-                {state.cart.items.length === 0 ? (
-                  <p className="pgState"><strong>Giỏ hàng đang trống</strong>Hãy thêm SKU từ <Link href="/nam">Nam</Link> hoặc <Link href="/nu">Nữ</Link>.</p>
-                ) : (
-                  state.cart.items.map((i) => (
-                    <div className="pvRow" key={i.maSku}>
-                      <div style={{ flex: 1 }}>
-                        <b className="name">{i.tenSp} <small>· SKU {i.maSku} · SP {i.maSp}</small></b>
-                        <small>{[i.mauSac, i.kichCo].filter(Boolean).join(" · ") || "—"} · Đơn giá {formatVndContract(i.donGia)}</small>
-                        {!i.coTheMua ? (
-                          <p role="note" style={{ color: "#b42318", fontSize: 12.5, marginTop: 4 }}>
-                            Tạm không thể mua: {i.lyDoKhongTheMua ?? "hết hàng/không khả dụng"}.
-                          </p>
-                        ) : null}
-                        <div>
-                          <span className="pvQty">
-                            <button type="button" aria-label={`Giảm SKU ${i.maSku}`} disabled={busySku === i.maSku} onClick={() => changeQty(i.maSku, i.soLuong - 1, state.cart.phienBan)}>−</button>
-                            <b aria-live="polite">{i.soLuong}</b>
-                            <button type="button" aria-label={`Tăng SKU ${i.maSku}`} disabled={busySku === i.maSku} onClick={() => changeQty(i.maSku, i.soLuong + 1, state.cart.phienBan)}>+</button>
-                          </span>
-                          <button
-                            type="button"
-                            disabled={busySku === i.maSku}
-                            onClick={() => removeItem(i.maSku, state.cart.phienBan)}
-                            style={{ border: 0, background: "none", cursor: "pointer", color: "var(--ink-soft)", fontSize: 12.5, marginLeft: 10 }}
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      </div>
-                      <b className="pPrice">{formatVndContract(i.tongDong)}</b>
-                    </div>
-                  ))
-                )}
-                <p className="mpMuted" style={{ fontSize: 12.5, marginTop: 8 }}>
-                  Phiên bản giỏ: {state.cart.phienBan} · Tổng hàng (máy chủ): {formatVndContract(state.cart.tongTienHang)}
-                </p>
-              </section>
-              {guestUnresolved.length > 0 ? (
-                <section className="pvCard" aria-label="Món khách chưa rõ SKU">
-                  <h2>Món trình duyệt chưa rõ SKU ({guestUnresolved.length})</h2>
-                  <p className="sub">Không tự đoán biến thể. Mở sản phẩm và chọn đúng màu/size để thêm SKU thật.</p>
-                  {guestUnresolved.map((g) => (
-                    <div className="pvRow" key={`${g.id}-${g.meta ?? ""}`}>
-                      <div style={{ flex: 1 }}>
-                        <b className="name"><Link href={`/san-pham/${g.id}`}>{g.name}</Link></b>
-                        <small>{g.meta ?? "chưa rõ biến thể"}</small>
-                      </div>
-                      <b>{formatVnd(g.price * g.qty)}</b>
-                    </div>
-                  ))}
-                </section>
-              ) : null}
+          {authState === "checking" || (authState === "authenticated" && loading && !cart) ? <p className="commerce-status" role="status">Đang tải giỏ hàng từ máy chủ…</p> : null}
+          {authState === "error" ? (
+            <div className="commerce-empty" role="alert">
+              <h2>Không tải được giỏ hàng</h2>
+              <p>{loadError}</p>
+              <button className="commerce-ghost" type="button" onClick={() => refresh()}>Thử lại</button>
             </div>
-            <aside>
-              <section className="pvCard" aria-label="Kho và báo giá">
-                <h2>Kho phục vụ &amp; báo giá máy chủ</h2>
-                {state.warehouses.length === 0 ? (
-                  <p className="sub" role="note">Chưa tải được danh sách kho — <button type="button" className="mpTopBtn" onClick={load}>Tải lại</button></p>
+          ) : null}
+
+          {authState === "guest" ? (
+            <div className="commerce-layout">
+              <section className="commerce-panel" aria-label="Giỏ nháp trên trình duyệt">
+                <div className="commerce-toolbar"><p>Giỏ nháp trên thiết bị này · chưa phải giỏ máy chủ</p><span>{guestCount(guest)} món</span></div>
+                {guest.length === 0 ? (
+                  <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Chọn màu và kích thước ở trang sản phẩm để thêm món.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div>
                 ) : (
-                  <div className="pvField">
-                    <label htmlFor="cart-warehouse">Kho (1 kho/kê đơn)</label>
-                    <select
-                      id="cart-warehouse"
-                      value={state.maKho ?? ""}
-                      onChange={(e) => setState({ ...state, maKho: Number(e.target.value), quote: null })}
-                    >
-                      <option value="">— Chọn kho —</option>
-                      {state.warehouses.map((w) => (
-                        <option key={w.maKho} value={w.maKho}>{w.tenKho}{w.laMacDinh ? " (mặc định)" : ""}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <ul className="commerce-lines commerce-guest">
+                    {guest.map((line) => (
+                      <li className="commerce-line" key={`${line.id}-${line.meta ?? ""}`}>
+                        <div><p className="commerce-line-name"><Link className="commerce-link" href={`/san-pham/${line.id}`}>{line.name}</Link></p><p className="commerce-line-meta">{line.meta ?? "Chưa rõ biến thể"} · SL {line.qty}</p><p className="commerce-line-price">{formatMoney(line.price * line.qty)}</p></div>
+                        <button className="commerce-remove" type="button" onClick={() => { const next = guest.filter((item) => item !== line); setGuest(next); writeCart(next as GuestItem[]); }}>Xóa</button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                <button className="hmCta hmCtaGhost" style={{ width: "100%", justifyContent: "center" }} type="button" disabled={quoteBusy || state.maKho === null} onClick={runQuote}>
-                  {quoteBusy ? "Đang lấy báo giá…" : "Lấy báo giá máy chủ"}
-                </button>
-                {state.quote ? (
-                  <div style={{ marginTop: 10 }}>
-                    <div className="pvLine"><span>Tạm tính</span><span>{formatVndContract(state.quote.tongTienHang)}</span></div>
-                    <div className="pvLine"><span>Giảm giá</span><span>{formatVndContract(state.quote.giamGia)} (đợt này 0)</span></div>
-                    <div className="pvLine"><span>Phí vận chuyển pilot</span><span>{formatVndContract(state.quote.phiVanChuyen)}</span></div>
-                    <div className="pvLine total"><span>Tổng thanh toán</span><span>{formatVndContract(state.quote.tongThanhToan)}</span></div>
-                    {!state.quote.coTheDat ? <p role="note" style={{ color: "#b42318", fontSize: 12.5 }}>Giỏ hiện chưa thể đặt — xem cảnh báo.</p> : null}
-                    {state.quote.canhBao.length > 0 ? (
-                      <ul style={{ fontSize: 12.5, marginTop: 6 }}>
-                        {state.quote.canhBao.map((c, k) => <li key={k}>{c}</li>)}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="mpMuted" style={{ fontSize: 12.5, marginTop: 8 }}>Tổng thanh toán chỉ có sau báo giá máy chủ. Không dùng tổng trình duyệt.</p>
-                )}
-                <Link
-                  className="hmCta hmCtaPrimary"
-                  style={{ width: "100%", justifyContent: "center", marginTop: 12, opacity: state.cart.items.length ? 1 : 0.5 }}
-                  href="/thanh-toan"
-                  aria-disabled={state.cart.items.length === 0}
-                >
-                  Tiến hành thanh toán →
-                </Link>
+                <p className="commerce-note">Đăng nhập để chuyển các món đã chọn SKU vào giỏ máy chủ. Món chưa rõ SKU sẽ không tự đoán biến thể.</p>
+                <Link className="commerce-primary" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập để dùng giỏ máy chủ →</Link>
               </section>
-            </aside>
-          </div>
-        ) : null}
+              <aside className="commerce-summary" aria-label="Tóm tắt giỏ nháp">
+                <h2>Chưa có tổng máy chủ</h2>
+                <p className="commerce-note">Tổng tiền chỉ xuất hiện sau khi đăng nhập và tải giỏ thật. Giỏ nháp không được gửi đi như một đơn hàng.</p>
+              </aside>
+            </div>
+          ) : null}
+
+          {authState === "authenticated" && cart ? (
+            <div className="commerce-layout">
+              <section className="commerce-panel" aria-label="Sản phẩm trong giỏ máy chủ">
+                <div className="commerce-toolbar"><p>Máy chủ xác nhận · cập nhật theo tồn kho hiện tại</p><span>{cart.totalItems} món</span></div>
+                {lines.length === 0 ? (
+                  <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Thêm sản phẩm từ trang chi tiết để bắt đầu.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div>
+                ) : (
+                  <ul className="commerce-lines">
+                    {lines.map((line) => (
+                      <li className="commerce-line" key={line.skuId}>
+                        {line.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- product image comes from the candidate BE
+                          <img className="commerce-line-image" src={line.imageUrl} alt="" referrerPolicy="no-referrer" />
+                        ) : <span className="commerce-line-image" aria-hidden="true" />}
+                        <div>
+                          <p className="commerce-line-name">{line.productName}</p>
+                          <p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · Đơn giá {formatMoney(line.unitPrice)}</p>
+                          <p className="commerce-line-price">SKU {line.skuId}</p>
+                        </div>
+                        <div className="commerce-line-side">
+                          <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
+                          <div className="commerce-stepper" aria-label={`Số lượng ${line.productName}`}>
+                            <button type="button" disabled={busy !== null} aria-label={`Giảm ${line.productName}`} onClick={() => line.quantity > 1 ? mutate(line.skuId, "set", line.quantity - 1) : mutate(line.skuId, "remove")}>−</button>
+                            <span aria-live="polite">{busy === line.skuId ? "…" : line.quantity}</span>
+                            <button type="button" disabled={busy !== null} aria-label={`Tăng ${line.productName}`} onClick={() => mutate(line.skuId, "set", line.quantity + 1)}>+</button>
+                          </div>
+                          <button className="commerce-remove" type="button" disabled={busy !== null} onClick={() => mutate(line.skuId, "remove")}>Xóa</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {lines.length ? <button className="commerce-ghost" type="button" disabled={busy !== null} onClick={clear}>{busy === "clear" ? "Đang xóa…" : "Xóa toàn bộ giỏ"}</button> : null}
+              </section>
+              <aside className="commerce-summary" aria-label="Tóm tắt giỏ máy chủ">
+                <h2>Tóm tắt</h2>
+                <div className="commerce-summary-row"><span>Tạm tính</span><strong>{formatMoney(subtotal)}</strong></div>
+                <div className="commerce-summary-row"><span>Số món</span><strong>{cart.totalItems}</strong></div>
+                <div className="commerce-summary-total"><span>Tổng hàng</span><strong>{formatMoney(subtotal)}</strong></div>
+                <Link className="commerce-primary" href="/thanh-toan" aria-disabled={lines.length === 0}>Tiến hành thanh toán →</Link>
+                <p className="commerce-note">Phí giao hàng được tính ở bước thanh toán bằng API vận chuyển; chưa cộng vào giỏ này.</p>
+              </aside>
+            </div>
+          ) : null}
+        </div>
       </div>
     </StorefrontShell>
   );

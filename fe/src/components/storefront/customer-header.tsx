@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart } from "./storefront-client";
+import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-header.css";
 
 /**
@@ -85,8 +86,13 @@ function BagIcon() {
 }
 
 export function CustomerHeader({ active, focused = false }: { active?: string; focused?: boolean }) {
-  // Count thật từ cart store hiện có; hiển thị cả 0 (khác CartCount cũ ẩn 0).
-  const count = useCart().reduce((sum, line) => sum + (line.qty || 0), 0);
+  // Authenticated cart count comes from the server provider; guest draft is a
+  // labelled browser-only fallback, never a second authoritative cart.
+  const customerCart = useCustomerCart();
+  const guestCount = useCart().reduce((sum, line) => sum + (line.qty || 0), 0);
+  const count = customerCart.authState === "authenticated"
+    ? customerCart.cart?.totalItems ?? 0
+    : customerCart.authState === "guest" ? guestCount : 0;
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
 
   // Details tự lo Enter/Space; thêm Escape/click-ngoài/điều hướng để menu đóng

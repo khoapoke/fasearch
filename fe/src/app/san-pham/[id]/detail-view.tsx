@@ -10,6 +10,10 @@ import {
   type CatalogProductDetail,
   type CatalogVariant,
 } from "@/lib/customer-catalog";
+import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
+import { addCustomerCartItem } from "@/lib/customer-commerce-client";
+import { CommerceError } from "@/lib/customer-commerce";
+import { readCart, writeCart, type CartItem as GuestItem } from "@/components/storefront/storefront-client";
 import "@/components/customer-catalog/catalog.css";
 
 type Viewer = { src: string; alt: string; caption: string; trigger: HTMLButtonElement };
@@ -75,6 +79,10 @@ export function DetailView({ id }: { id: string }) {
   const [quantity, setQuantity] = useState(1);
   const [imageFailed, setImageFailed] = useState(false);
   const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addNotice, setAddNotice] = useState("");
+  const [addError, setAddError] = useState("");
+  const { setCart } = useCustomerCart();
   const reqId = useRef(0);
 
   useEffect(() => {
@@ -127,6 +135,33 @@ export function DetailView({ id }: { id: string }) {
     const trigger = viewer?.trigger;
     setViewer(null);
     trigger?.focus();
+  }
+
+  async function addToCart() {
+    if (!selected || addBusy) return;
+    setAddBusy(true);
+    setAddNotice("");
+    setAddError("");
+    try {
+      const next = await addCustomerCartItem(selected.skuId, quantity);
+      setCart(next);
+      setAddNotice(`Đã thêm ${quantity} × ${product?.name ?? "sản phẩm"} vào giỏ máy chủ.`);
+    } catch (failure) {
+      if (failure instanceof CommerceError && failure.status === 401) {
+        const current = readCart() as GuestItem[];
+        const meta = [color, size].filter(Boolean).join(" · ");
+        const existing = current.find((line) => line.skuId === selected.skuId && line.meta === meta);
+        const next = existing
+          ? current.map((line) => line === existing ? { ...line, qty: line.qty + quantity } : line)
+          : [...current, { id: product?.id ?? Number(id), name: product?.name ?? "Sản phẩm", price, image: product?.imageUrl ?? undefined, qty: quantity, meta, skuId: selected.skuId, color, size }];
+        writeCart(next);
+        setAddNotice("Đã lưu nháp trên trình duyệt. Đăng nhập để đồng bộ giỏ máy chủ; món chỉ được gửi khi bạn đăng nhập.");
+      } else {
+        setAddError(failure instanceof Error ? failure.message : "Không thêm được vào giỏ. Thử lại.");
+      }
+    } finally {
+      setAddBusy(false);
+    }
   }
 
   return (
@@ -235,12 +270,14 @@ export function DetailView({ id }: { id: string }) {
                   <span aria-live="polite">{quantity}</span>
                   <button type="button" aria-label="Tăng số lượng" onClick={() => setQuantity((q) => q + 1)}>+</button>
                 </div>
-                <button className="cat-button cat-primary" type="button" disabled aria-describedby="cat-buy-note">
-                  Thêm vào giỏ
+                <button className="cat-button cat-primary" type="button" disabled={!selected || addBusy} aria-describedby="cat-buy-note" onClick={addToCart}>
+                  {addBusy ? "Đang thêm…" : "Thêm vào giỏ"}
                 </button>
               </div>
+              {addNotice ? <p className="cat-readonly-note" role="status">{addNotice}{addNotice.includes("Đăng nhập") ? <> <Link className="cat-text-button" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập →</Link></> : null}</p> : null}
+              {addError ? <p className="cat-error" role="alert">{addError}</p> : null}
               <p className="cat-readonly-note" id="cat-buy-note">
-                Bản xem thử chỉ đọc: chưa kết nối giỏ hàng máy chủ. Tồn kho chưa có trong API công khai.
+                Giỏ máy chủ xác nhận giá và tồn kho; lỗi hết hàng từ máy chủ sẽ được hiển thị, không tự báo thành công.
               </p>
 
               <div className="cat-disclosures">
