@@ -240,7 +240,17 @@ streamlit run admin_app/app.py
   - `file`: File ảnh (`.png`, `.jpg`, `.jpeg`, `.webp`).
   - `limit`: Số lượng kết quả tối đa (mặc định: 5).
 
-### 6.3. Static Mounts
+### 6.3. Tìm kiếm Đa phương thức kết hợp (`POST /api/search/multimodal`)
+- **Phân quyền:** `PUBLIC`
+- **Request Type:** `multipart/form-data`
+- **Form Parameters:**
+  - `file`: File ảnh thời trang mẫu (`.png`, `.jpg`, `.jpeg`, `.webp`).
+  - `query`: Chuỗi mô tả bổ trợ hoặc điều chỉnh phong cách (vd: *"nhưng màu xanh"*, *"dáng oversize"*).
+  - `limit`: Số lượng kết quả tối đa (mặc định: 5).
+  - `text_weight`: Trọng số ưu tiên văn bản từ `0.0` đến `1.0` (mặc định: `0.5` cân bằng 50% ảnh + 50% chữ).
+- **Response:** Chuẩn hóa theo phong bì `ApiResponse[SearchData]`.
+
+### 6.4. Static Mounts
 - `/dataset/...` -> Mount trực tiếp thư mục `dataset/` để frontend hiển thị ảnh sản phẩm.
 - `/uploads/...` -> Mount thư mục `storage/uploads/` phục vụ ảnh tạm tải lên.
 
