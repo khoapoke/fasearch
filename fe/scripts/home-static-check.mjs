@@ -469,6 +469,134 @@ await withBrowser(9411, "/tmp/home-r2-a", async (p) => {
       await p.shot(join(shots, `home-palette-${w}-${scheme}.png`));
     }
   }
+
+  // ---------- CONTROL-CANVAS-03: B2 + signature motif vs frozen 6fdbcee ----------
+  const B2_PATH = "M108,332 C240,350 390,260 500,220 C610,180 728,230 714,292 C700,354 570,347 522,318 C474,289 475,223 486,178";
+  const CANVAS_PROBE = `(() => {
+    const q = (s) => document.querySelector(s);
+    const home = q('.hmHome');
+    if (!home) return { missing: true };
+    const hr = home.getBoundingClientRect();
+    const at = (sel) => { const el = q(sel); if (!el) return null; const b = el.getBoundingClientRect();
+      return { top: b.top - hr.top, bottom: b.bottom - hr.top, left: b.left - hr.left, right: b.right - hr.left, width: b.width }; };
+    const copy = at('.hmHeroCopy'), figure = at('.hmHeroFigure'), explain = at('.hmModes');
+    const layer = q('.hmCanvas'), tl = q('.hmThreadline'), path = q('.hmThreadline path');
+    const motif = q('.hmMotif'), msvg = q('.hmMotif svg');
+    const cs = (el) => el ? getComputedStyle(el) : null;
+    const interactive = [...document.querySelectorAll('.hmHome a,.hmHome button,.hmHome input,.hmHome select,.hmHome textarea,.hmHome summary')]
+      .map((el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; });
+    const hits = (svgPath) => {
+      if (!svgPath) return -1;
+      const L = svgPath.getTotalLength(), m = svgPath.getScreenCTM();
+      let n = 0;
+      for (let i = 0; i <= 120; i += 1) {
+        const p = svgPath.getPointAtLength((L * i) / 120);
+        const v = new DOMPoint(p.x, p.y).matrixTransform(m);
+        if (interactive.some((r) => v.x >= r.x && v.x <= r.x + r.w && v.y >= r.y && v.y <= r.y + r.h)) n += 1;
+      }
+      return n;
+    };
+    const top = Math.max(copy.bottom, figure.bottom) + 10, bottom = explain.top - 10;
+    const left = figure.left + 8, right = figure.right - 8, center = figure.left + figure.width * 0.62;
+    const scale = Math.min(360 / 800, (bottom - top) / 208, (right - left) / 620);
+    const paintLeft = Math.min(Math.max(center - (620 * scale) / 2, left), right - 620 * scale);
+    const num = (v) => parseFloat(v) || 0;
+    return {
+      fit: layer?.dataset.fit, reason: layer?.dataset.reason,
+      vars: { left: num(layer?.style.getPropertyValue('--hm-thread-left')), top: num(layer?.style.getPropertyValue('--hm-thread-top')), width: num(layer?.style.getPropertyValue('--hm-thread-width')), height: num(layer?.style.getPropertyValue('--hm-thread-height')) },
+      expect: { left: +(paintLeft - 108 * scale).toFixed(2), top: +(top + (bottom - top - 208 * scale) / 2 - 155 * scale).toFixed(2), width: +(800 * scale).toFixed(2), height: +(500 * scale).toFixed(2) },
+      display: cs(tl)?.display, opacity: cs(tl)?.opacity, color: cs(tl)?.color, pointerEvents: cs(tl)?.pointerEvents,
+      transition: cs(tl)?.transitionDuration, animation: cs(tl)?.animationName,
+      pathD: path?.getAttribute('d'), viewBox: q('.hmThreadline')?.getAttribute('viewBox'), strokeWidth: path?.getAttribute('stroke-width'),
+      ink: (() => { const ctm = path?.getScreenCTM(); if (!ctm) return null; return { top: +(ctm.f + 155 * ctm.d - hr.top).toFixed(2), bottom: +(ctm.f + 363 * ctm.d - hr.top).toFixed(2), left: +(ctm.e + 108 * ctm.a - hr.left).toFixed(2), right: +(ctm.e + 728 * ctm.a - hr.left).toFixed(2) }; })(),
+      slot: { top: +top.toFixed(2), bottom: +bottom.toFixed(2), left: +left.toFixed(2), right: +right.toFixed(2) },
+      motifOffset: (() => { const mr = motif?.getBoundingClientRect(); if (!mr) return null; return { right: +((hr.left + copy.right) - mr.right).toFixed(2), bottom: +((hr.top + copy.bottom) - mr.bottom).toFixed(2) }; })(),
+      motif: { display: cs(motif)?.display, opacity: cs(motif)?.opacity, color: cs(motif)?.color, pointerEvents: cs(motif)?.pointerEvents,
+        ariaHidden: motif?.getAttribute('aria-hidden'), size: motif ? +motif.getBoundingClientRect().width.toFixed(0) : null,
+        paths: msvg ? [...msvg.querySelectorAll('path')].map((p) => p.getAttribute('d')) : null,
+        viewBox: msvg?.getAttribute('viewBox'), strokeWidth: msvg?.getAttribute('stroke-width') },
+      occluded: { canvas: hits(path), motif: hits(msvg?.querySelector('path')) },
+      spacing: { heroPadTop: cs(q('.hmHero'))?.paddingTop, heroPadBottom: cs(q('.hmHero'))?.paddingBottom, explainMarginTop: cs(q('.hmModes'))?.marginTop },
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      crop: (() => { const img = q('.hmResultMedia img'); const ci = cs(img); return ci ? { objectPosition: ci.objectPosition, transform: ci.transform } : null; })(),
+    };
+  })()`;
+  const CANVAS_EXPECT = {
+    "1440x1000": { width: 307.69, height: 192.31, motif: 148, padTop: "30px", padBottom: "60px", marginTop: "40px" },
+    "390x844": { width: 247.6, height: 154.75, motif: 84, padTop: "25.32px", padBottom: "50.64px", marginTop: "33.76px" },
+  };
+  const MOTIF_PATHS = ["M148 32V148H64", "M64 148H32"];
+
+  for (const scheme of ["light", "dark"]) {
+    await p.setColorScheme(scheme);
+    for (const [w, h] of [[1440, 1000], [390, 844]]) {
+      await p.setViewport(w, h);
+      await p.goto(`${base}/`);
+      await sleep(350);
+      const c = await p.eval(CANVAS_PROBE);
+      const exp = CANVAS_EXPECT[`${w}x${h}`];
+      const close = (a, b, tol = 0.05) => Math.abs(a - b) <= tol;
+      record(`CANVAS ${scheme} @${w}x${h}: B2 hiện đúng (visible/after-hero, không motion)`,
+        c.fit === "visible" && c.reason === "after-hero" && c.display === "block" && c.opacity === "0.72"
+          && c.pointerEvents === "none" && c.transition === "0s" && c.animation === "none",
+        JSON.stringify({ fit: c.fit, reason: c.reason, display: c.display, opacity: c.opacity, pointer: c.pointerEvents, transition: c.transition, animation: c.animation }));
+      record(`CANVAS ${scheme} @${w}x${h}: fit B2 khớp tham chiếu (rộng ${exp.width} · cao ${exp.height})`,
+        close(c.vars.width, exp.width) && close(c.vars.height, exp.height)
+          && close(c.vars.width, c.expect.width) && close(c.vars.height, c.expect.height)
+          && close(c.vars.left, c.expect.left) && close(c.vars.top, c.expect.top),
+        JSON.stringify({ got: c.vars, expect: c.expect, reference: { width: exp.width, height: exp.height } }));
+      record(`CANVAS ${scheme} @${w}x${h}: asset B2 đúng path/viewBox/stroke/màu muted`,
+        c.pathD === B2_PATH && c.viewBox === "0 0 800 500" && c.strokeWidth === "1.8"
+          && c.color === (scheme === "light" ? "rgb(95, 101, 92)" : "rgb(155, 161, 166)"),
+        JSON.stringify({ path: c.pathD === B2_PATH, viewBox: c.viewBox, stroke: c.strokeWidth, color: c.color }));
+      record(`CANVAS ${scheme} @${w}x${h}: không chạm/không che control nào`,
+        c.occluded.canvas === 0, `điểm path chạm control: ${c.occluded.canvas}`);
+      record(`CANVAS ${scheme} @${w}x${h}: nét B2 nằm gọn trong slot giữa hero và methods`,
+        !!c.ink && c.ink.top >= c.slot.top - 0.5 && c.ink.bottom <= c.slot.bottom + 0.5
+          && c.ink.left >= c.slot.left - 0.5 && c.ink.right <= c.slot.right + 0.5,
+        JSON.stringify({ ink: c.ink, slot: c.slot }));
+      record(`MOTIF ${scheme} @${w}x${h}: signature ${exp.motif}px hiện đúng, aria-hidden, không bắt sự kiện`,
+        c.motif.display === "block" && c.motif.size === exp.motif && c.motif.opacity === "0.72"
+          && c.motif.color === "rgb(255, 255, 255)" && c.motif.pointerEvents === "none"
+          && c.motif.ariaHidden === "true" && c.motif.viewBox === "0 0 160 160" && c.motif.strokeWidth === "2"
+          && JSON.stringify(c.motif.paths) === JSON.stringify(MOTIF_PATHS),
+        JSON.stringify({ size: c.motif.size, display: c.motif.display, opacity: c.motif.opacity, color: c.motif.color, paths: c.motif.paths }));
+      record(`MOTIF ${scheme} @${w}x${h}: góc L neo đúng mép panel (right4/bottom4)`,
+        c.motifOffset?.right === 4 && c.motifOffset?.bottom === 4, JSON.stringify(c.motifOffset));
+      record(`MOTIF ${scheme} @${w}x${h}: không che control nào`,
+        c.occluded.motif === 0, `điểm path chạm control: ${c.occluded.motif}`);
+      record(`SPACING ${scheme} @${w}x${h}: hero padding + explain margin khớp 6fdbcee`,
+        c.spacing.heroPadTop === exp.padTop && c.spacing.heroPadBottom === exp.padBottom
+          && c.spacing.explainMarginTop === exp.marginTop,
+        JSON.stringify(c.spacing));
+      record(`REGRESSION ${scheme} @${w}x${h}: không tràn ngang + crop bomber không đổi`,
+        c.overflow <= 1 && c.crop?.objectPosition === "50% 5%" && c.crop?.transform === "matrix(1.6, 0, 0, 1.6, 0, 0)",
+        JSON.stringify({ overflow: c.overflow, crop: c.crop }));
+      await p.shot(join(shots, `home-canvas-${w}-${scheme}.png`));
+    }
+  }
+
+  // Chính sách ẩn: khi thiếu chỗ phải ẩn (không bịa ornament) và phục hồi sau resize.
+  await p.setColorScheme("light");
+  await p.setViewport(1440, 1000);
+  await p.goto(`${base}/`);
+  const hideProbe = await p.eval(`(async () => {
+    const hero = document.querySelector('.hmHero'), modes = document.querySelector('.hmModes');
+    const layer = document.querySelector('.hmCanvas');
+    hero.style.paddingBottom = '0px'; modes.style.marginTop = '0px';
+    window.dispatchEvent(new Event('resize'));
+    await new Promise((r) => setTimeout(r, 250));
+    const hidden = { fit: layer.dataset.fit, reason: layer.dataset.reason,
+      display: getComputedStyle(document.querySelector('.hmThreadline')).display };
+    hero.style.paddingBottom = ''; modes.style.marginTop = '';
+    window.dispatchEvent(new Event('resize'));
+    await new Promise((r) => setTimeout(r, 250));
+    return { hidden, restored: { fit: layer.dataset.fit, reason: layer.dataset.reason } };
+  })()`);
+  record("CANVAS chính sách ẩn: thiếu chỗ → ẩn, resize lại → hiện (không bịa ornament)",
+    hideProbe.hidden.fit === "none" && hideProbe.hidden.reason === "insufficient-space"
+      && hideProbe.hidden.display === "none" && hideProbe.restored.fit === "visible",
+    JSON.stringify(hideProbe));
 });
 
 await writeFile(join(outDir, "home-static-report.json"), JSON.stringify(results, null, 2));

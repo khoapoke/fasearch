@@ -130,6 +130,8 @@ html[data-theme="dark"] body:has(.hmPalette) {
 
   color: var(--hm-text);
   background: var(--hm-canvas);
+  position: relative;
+  isolation: isolate;
 }
 
 /* Bản đã duyệt dùng panel Ultramarine đậm hơn trong theme tối. */
@@ -148,6 +150,35 @@ html[data-theme="dark"] .hmHome {
   margin: 0 auto;
   padding-left: 20px;
   padding-right: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* CONTROL-CANVAS-03 — canvas B2 tĩnh nằm sau nội dung, không bắt sự kiện. */
+.hmCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--hm-muted);
+}
+.hmCanvas,
+.hmCanvas * {
+  pointer-events: none !important;
+}
+.hmThreadline {
+  position: absolute;
+  display: none;
+  overflow: visible;
+  left: var(--hm-thread-left, 0px);
+  top: var(--hm-thread-top, 0px);
+  width: var(--hm-thread-width, 0px);
+  height: var(--hm-thread-height, 0px);
+  opacity: 0.72;
+}
+.hmCanvas[data-fit="visible"] .hmThreadline {
+  display: block;
 }
 
 /* ---------- Hero: khối Ultramarine bên cạnh một ảnh biên tập ---------- */
@@ -156,8 +187,8 @@ html[data-theme="dark"] .hmHome {
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.05fr);
   gap: clamp(24px, 4vw, 64px);
   align-items: stretch;
-  padding-top: clamp(16px, 2.6vh, 32px);
-  padding-bottom: clamp(28px, 5vh, 56px);
+  padding-top: clamp(20px, 3vh, 40px);
+  padding-bottom: clamp(36px, 6vh, 72px);
 }
 
 .hmHeroCopy {
@@ -170,6 +201,40 @@ html[data-theme="dark"] .hmHome {
   border-radius: 6px;
   color: var(--hm-panel-text);
   background: var(--hm-panel);
+  position: relative;
+}
+
+/* Signature motif (mặc định đã duyệt ở 6fdbcee): góc L ôm mép panel,
+ * không reserve layout, không bắt sự kiện. Ẩn sau nội dung (z-index 0). */
+.hmMotif {
+  position: absolute;
+  z-index: 0;
+  right: 4px;
+  bottom: 4px;
+  width: 148px;
+  height: 148px;
+  color: var(--hm-panel-text);
+  opacity: 0.72;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hmMotif svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.hmHeroCopy > :not(.hmMotif) {
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 760px) {
+  .hmMotif {
+    right: 4px;
+    bottom: 4px;
+    width: 84px;
+    height: 84px;
+  }
 }
 
 .hmHeroTitle {
@@ -305,8 +370,10 @@ html[data-theme="dark"] .hmHome {
 }
 
 /* ---------- Ba cách tìm ---------- */
-.hmModes {
-  padding-top: clamp(18px, 3vh, 36px);
+/* CONTROL-CANVAS-03: khôi phục đúng margin-top của `.home-explain` trong
+ * 6fdbcee (thay bản migrate padding-top) — cần cho slot canvas B2. */
+.hmHome > .hmModes {
+  margin-top: clamp(26px, 4vh, 48px);
 }
 
 .hmSectionTitle {

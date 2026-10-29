@@ -26,6 +26,126 @@ type PublicProduct = {
 
 const DISCOVERY_ERROR = "Không tải được sản phẩm. Vui lòng thử lại.";
 
+// CONTROL-CANVAS-03 — B2 “draped thread” lấy nguyên văn từ 6fdbcee
+// (assets/draped-thread-b2.svg, THREADLINE_PATHS.b2) + union bounds của fitter.
+const HOME_THREAD_PATH_B2 =
+  "M108,332 C240,350 390,260 500,220 C610,180 728,230 714,292 C700,354 570,347 522,318 C474,289 475,223 486,178";
+const HOME_THREAD_BOUNDS = { left: 108, top: 155, right: 728, bottom: 363 } as const;
+
+/**
+ * Canvas B2 tĩnh, Home-only: port trung thành `positionThreadline()` của bản đã
+ * duyệt. Đo theo landmark Home hiện có và ẩn khi thiếu chỗ — KHÔNG thêm
+ * padding/gap để ép hiển thị, không motion. Chỉ là hình học tĩnh.
+ */
+function HomeCanvasB2() {
+  const layerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const layer = layerRef.current;
+    const home = layer?.closest<HTMLElement>(".hmHome");
+    if (!layer || !home) return;
+
+    let queued = false;
+
+    const position = () => {
+      if (!layer.isConnected) return;
+      layer.dataset.fit = "none";
+      layer.dataset.reason = "off";
+
+      const homeRect = home.getBoundingClientRect();
+      const at = (selector: string) => {
+        const el = home.querySelector<HTMLElement>(selector);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return {
+          top: r.top - homeRect.top,
+          bottom: r.bottom - homeRect.top,
+          left: r.left - homeRect.left,
+          right: r.right - homeRect.left,
+          width: r.width,
+        };
+      };
+
+      const copy = at(".hmHeroCopy");
+      const figure = at(".hmHeroFigure");
+      const explain = at(".hmModes");
+      if (!copy || !figure || !explain) {
+        layer.dataset.reason = "landmarks-missing";
+        return;
+      }
+
+      // Slot gốc: ngay dưới hero, ngay trên “Tìm theo cách của bạn”.
+      const top = Math.max(copy.bottom, figure.bottom) + 10;
+      const bottom = explain.top - 10;
+      const left = figure.left + 8;
+      const right = figure.right - 8;
+      const center = figure.left + figure.width * 0.62;
+
+      const inkWidth = HOME_THREAD_BOUNDS.right - HOME_THREAD_BOUNDS.left;
+      const inkHeight = HOME_THREAD_BOUNDS.bottom - HOME_THREAD_BOUNDS.top;
+      const scale = Math.min(360 / 800, (bottom - top) / inkHeight, (right - left) / inkWidth);
+      if (!Number.isFinite(scale) || scale * 800 < 168) {
+        layer.dataset.reason = "insufficient-space";
+        return;
+      }
+
+      const paintLeft = Math.min(Math.max(center - (inkWidth * scale) / 2, left), right - inkWidth * scale);
+      layer.style.setProperty("--hm-thread-left", `${(paintLeft - HOME_THREAD_BOUNDS.left * scale).toFixed(2)}px`);
+      layer.style.setProperty("--hm-thread-top", `${(top + (bottom - top - inkHeight * scale) / 2 - HOME_THREAD_BOUNDS.top * scale).toFixed(2)}px`);
+      layer.style.setProperty("--hm-thread-width", `${(800 * scale).toFixed(2)}px`);
+      layer.style.setProperty("--hm-thread-height", `${(500 * scale).toFixed(2)}px`);
+      layer.dataset.fit = "visible";
+      layer.dataset.reason = "after-hero";
+    };
+
+    const queue = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        position();
+      });
+    };
+
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(queue);
+    for (const selector of [".hmHeroCopy", ".hmHeroFigure", ".hmModes"]) {
+      const el = home.querySelector(selector);
+      if (el) observer?.observe(el);
+    }
+    queue();
+    window.addEventListener("resize", queue);
+    document.fonts?.ready.then(queue).catch(() => {});
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", queue);
+    };
+  }, []);
+
+  return (
+    <div className="hmCanvas" aria-hidden="true" data-fit="none" data-reason="off" ref={layerRef}>
+      <svg
+        className="hmThreadline"
+        viewBox="0 0 800 500"
+        preserveAspectRatio="xMidYMid meet"
+        focusable="false"
+        aria-hidden="true"
+      >
+        <path
+          d={HOME_THREAD_PATH_B2}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
+  );
+}
+
+
 /**
  * Ảnh Home có khung tỉ lệ cố định (không nhảy layout) và báo LỖI TẢI rõ ràng
  * thay vì im lặng bỏ ảnh (A2: "stable image dimensions and explicit image failure").
@@ -163,6 +283,7 @@ export function HomeSections() {
 
   return (
     <div className="hmHome">
+      <HomeCanvasB2 />
       <section className="hmHero" aria-labelledby="hm-hero-title">
         <div className="hmHeroCopy">
           <h1 className="hmHeroTitle" id="hm-hero-title">Tìm đồ theo ảnh</h1>
@@ -175,6 +296,21 @@ export function HomeSections() {
               Xem danh mục <Icon name="arrowRight" size={16} />
             </Link>
           </div>
+          <span className="hmMotif hmMotifSignature" aria-hidden="true">
+            <svg
+              viewBox="0 0 160 160"
+              focusable="false"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M148 32V148H64" />
+              <path d="M64 148H32" strokeDasharray="7 6" />
+            </svg>
+          </span>
         </div>
         <figure className="hmHeroFigure">
           <HomePhotoFrame photo={HOME_PHOTOS.hero} className="hmHeroMedia" eager />
