@@ -304,3 +304,25 @@ html[data-theme="dark"] .chHeader {
     padding-inline: 16px;
   }
 }
+
+.chAuthHeader {
+  justify-content: space-between;
+}
+.chAuthBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 0;
+  color: var(--st-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+.chAuthBack:hover { color: var(--st-ink); text-decoration: underline; }
+.chAuthBack svg { display: block; flex: 0 0 auto; }
+@media (max-width: 480px) {
+  .chAuthBack { font-size: 12px; }
+  .chAuthBack svg { width: 14px; height: 14px; }
+}

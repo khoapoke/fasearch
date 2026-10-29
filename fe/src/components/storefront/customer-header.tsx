@@ -84,7 +84,7 @@ function BagIcon() {
   );
 }
 
-export function CustomerHeader({ active }: { active?: string }) {
+export function CustomerHeader({ active, focused = false }: { active?: string; focused?: boolean }) {
   // Count thật từ cart store hiện có; hiển thị cả 0 (khác CartCount cũ ẩn 0).
   const count = useCart().reduce((sum, line) => sum + (line.qty || 0), 0);
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
@@ -113,6 +113,23 @@ export function CustomerHeader({ active }: { active?: string }) {
   const closeMenu = () => {
     if (detailsRef.current) detailsRef.current.open = false;
   };
+
+  if (focused) {
+    return (
+      <header className="chHeader chAuthHeader">
+        <Link className="chBrand" href="/" aria-label="FaSearch, trang chủ">
+          <FaSearchMark />
+          <span className="chWord">FaSearch</span>
+        </Link>
+        <Link className="chAuthBack" href="/">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <path d="M17 10H3m6-6-6 6 6 6" />
+          </svg>
+          Trang chủ
+        </Link>
+      </header>
+    );
+  }
 
   return (
     <header className="chHeader">

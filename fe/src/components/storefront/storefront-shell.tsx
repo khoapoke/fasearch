@@ -32,8 +32,8 @@ export function StorefrontShell({
   themed?: boolean;
   /** Bảng màu Customer đã duyệt (Home/AI); route khác không truyền nên không đổi. */
   palette?: "home" | "customer";
-  /** Header Customer đã duyệt (6fdbcee); Home/AI truyền "customer". */
-  header?: "customer";
+  /** Header Customer đã duyệt (6fdbcee); Home/AI/detail "customer", auth "customer-focused". */
+  header?: "customer" | "customer-focused";
   /** Shell footer cũ; mặc định giữ nguyên cho mọi route, catalog mới opt-out. */
   footer?: "storefront" | "none";
   children: React.ReactNode;
@@ -43,7 +43,7 @@ export function StorefrontShell({
     .join(" ");
   return (
     <div className={rootClass || undefined}>
-      {header === "customer" ? (
+      {header === "customer" || header === "customer-focused" ? (
         <>
           {/* Preview-only: giữ control giao diện cho review, ngoài header sản phẩm. */}
           <div
@@ -55,7 +55,7 @@ export function StorefrontShell({
             <span className="chPreviewLabel">Xem thử</span>
             <ThemeControl />
           </div>
-          <CustomerHeader active={active} />
+          <CustomerHeader active={active} focused={header === "customer-focused"} />
         </>
       ) : (
         <>
