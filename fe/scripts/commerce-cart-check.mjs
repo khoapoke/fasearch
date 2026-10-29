@@ -52,7 +52,6 @@ const header3 = await evaluate(`document.querySelector('.chCartCount')?.textCont
 record("S1 PUT quantity updates server line and header count", qty3 && header3 === "3", { qty3, header3 });
 await shot("cart-1440.png");
 await sleep(600);
-await evaluate(`[...document.querySelectorAll('.commerce-ghost')].find(b => b.textContent === 'Xóa toàn bộ giỏ' && !b.disabled)?.click()`);
 const ghostTexts = await evaluate(`[...document.querySelectorAll('.commerce-ghost')].map(b => ({text:b.textContent, disabled:b.disabled}))`);
 const clickedClear = await evaluate(`(() => { const b=[...document.querySelectorAll('.commerce-ghost')].find(b => b.textContent === 'Xóa toàn bộ giỏ' && !b.disabled); b?.click(); return !!b; })()`);
 const cleared = await wait(async () => (await evaluate(`document.body.innerText.includes('Giỏ đang trống')`)) === true);
