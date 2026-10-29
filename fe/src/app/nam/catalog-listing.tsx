@@ -334,6 +334,10 @@ export function CatalogListing() {
                   <div className="cat-product-grid">
                     {data.items.map((product) => <ProductCard product={product} key={product.id} />)}
                   </div>
+                  <details className="cat-source">
+                    <summary>Nguồn ảnh</summary>
+                    <div>Ảnh sản phẩm lấy từ trường imageUrl của API công khai; pilot chưa có metadata tác giả.</div>
+                  </details>
                   {data.totalPages > 1 ? (
                     <nav className="cat-pagination" aria-label="Phân trang sản phẩm">
                       <button className="cat-button" type="button" disabled={page <= 0 || loading} onClick={() => setPage((p) => Math.max(0, p - 1))}>

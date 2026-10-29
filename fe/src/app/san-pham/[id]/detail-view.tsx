@@ -168,7 +168,7 @@ export function DetailView({ id }: { id: string }) {
                   Không tải được ảnh sản phẩm
                 </span>
               )}
-              <figcaption>Ảnh sản phẩm do máy chủ danh mục trả về.</figcaption>
+              <figcaption>Ảnh sản phẩm do máy chủ danh mục trả về; chưa có metadata tác giả.</figcaption>
             </figure>
 
             <section className="cat-detail-info" aria-label="Thông tin và lựa chọn sản phẩm">

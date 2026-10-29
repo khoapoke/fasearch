@@ -281,6 +281,20 @@ for (const scheme of ["light", "dark"]) {
   }
 }
 
+// Header menu keyboard (inherited Customer header).
+await page.setViewport(390, 844);
+await page.goto(`${base}/nam`);
+await page.eval(`document.querySelector('.chMobile > summary')?.focus()`);
+await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: "\r" });
+await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+await sleep(220);
+const menuOpen = await page.eval(`({ open: document.querySelector('.chMobile')?.open, current: document.querySelector('.chMobile a[href="/nam"]')?.getAttribute('aria-current') })`);
+await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
+await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
+await sleep(200);
+const menuClosed = await page.eval(`document.querySelector('.chMobile')?.open`);
+record("HEADER menu: Enter mở/current Sản phẩm, Escape đóng", menuOpen.open === true && menuOpen.current === "page" && menuClosed === false, JSON.stringify({ menuOpen, menuClosed }));
+
 // Home/AI isolation.
 await page.setViewport(1440, 1000);
 for (const [label, path, check] of [
