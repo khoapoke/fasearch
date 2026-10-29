@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authRegister, AuthApiError } from "@/lib/customer-auth-client";
+import { authRegister, AuthApiError, isAuthAbort } from "@/lib/customer-auth-client";
 import { AccessFrameIcon, EyeIcon } from "./auth-icons";
 import { AuthEditorial } from "./auth-editorial";
 import "./auth.css";
@@ -21,11 +21,15 @@ export function RegisterPanel() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const busyRef = useRef(false);
   const liveRef = useRef(true);
+  const submitRef = useRef<AbortController | null>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     liveRef.current = true;
-    return () => { liveRef.current = false; };
+    return () => {
+      liveRef.current = false;
+      submitRef.current?.abort();
+    };
   }, []);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
 
@@ -48,16 +52,18 @@ export function RegisterPanel() {
       setError("Kiểm tra lại các trường được đánh dấu.");
       return;
     }
+    const controller = new AbortController();
+    submitRef.current = controller;
     busyRef.current = true;
     setBusy(true);
     setError("");
     setFieldErrors({});
     try {
-      await authRegister({ ...values, username: values.username.trim(), email: values.email.trim(), lastName: values.lastName.trim(), firstName: values.firstName.trim(), phoneNumber: values.phoneNumber.trim() });
-      if (!liveRef.current) return;
+      await authRegister({ ...values, username: values.username.trim(), email: values.email.trim(), lastName: values.lastName.trim(), firstName: values.firstName.trim(), phoneNumber: values.phoneNumber.trim() }, controller.signal);
+      if (!liveRef.current || controller.signal.aborted || submitRef.current !== controller) return;
       router.replace("/tai-khoan");
     } catch (failure) {
-      if (!liveRef.current) return;
+      if (!liveRef.current || controller.signal.aborted || isAuthAbort(failure)) return;
       if (failure instanceof AuthApiError) {
         setError(failure.message);
         const next: Partial<Record<FieldKey, string>> = {};
@@ -71,8 +77,11 @@ export function RegisterPanel() {
         setError("Không thể tạo tài khoản lúc này. Thử lại.");
       }
     } finally {
-      busyRef.current = false;
-      if (liveRef.current) setBusy(false);
+      if (submitRef.current === controller) {
+        submitRef.current = null;
+        busyRef.current = false;
+        if (liveRef.current) setBusy(false);
+      }
     }
   }
 

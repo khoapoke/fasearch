@@ -4,7 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 // No token/password logging, no generic proxy, no legacy auth fallback.
 
 export const AUTH_COOKIE = "fasearch-auth-pilot-3115";
+export const AUTH_ATTEMPT_COOKIE = "fasearch-auth-current-3115";
+const ATTEMPT_PATTERN = /^[A-Za-z0-9-]{16,80}$/;
 const MAX_COOKIE_AGE = 7 * 24 * 60 * 60;
+
+// The browser keeps one non-secret pointer to the auth attempt it currently
+// owns. Each login/register rotates that pointer before its request; the
+// HttpOnly JWT cookie name is namespaced by the attempt. A slower response can
+// still set its old namespaced cookie, but /me and logout only read/clear the
+// pointer's attempt, so a stale response cannot replace or delete the newer
+// credential. Orphaned old auth cookies expire normally and are never selected.
 
 export type SafeIdentity = {
   id: number;
@@ -33,6 +42,22 @@ export function authError(message: string, status: number, code = "AUTH_ERROR", 
   return NextResponse.json({ success: false, code, message, errors }, { status });
 }
 
+// Accept only the JSON media type and its legitimate charset parameter.
+// Splitting before includes() rejects lookalikes such as
+// "text/plain; application/json" and "application/jsonp".
+const MEDIA_PARAM = /^\s*([!#$%&'*+\-.^_`|~0-9A-Za-z]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([!#$%&'*+\-.^_`|~0-9A-Za-z]+))\s*$/;
+
+function isJsonMediaType(value: string): boolean {
+  const [essence, ...params] = value.split(";");
+  if (essence.trim().toLowerCase() !== "application/json") return false;
+  for (const raw of params) {
+    const match = MEDIA_PARAM.exec(raw);
+    if (!match || match[1].toLowerCase() !== "charset") return false;
+    if ((match[2] ?? match[3] ?? "").toLowerCase() !== "utf-8") return false;
+  }
+  return true;
+}
+
 export function requireJsonPost(request: NextRequest): NextResponse | null {
   let origin: string | null = null;
   try {
@@ -44,10 +69,33 @@ export function requireJsonPost(request: NextRequest): NextResponse | null {
     return authError("Dịch vụ đăng nhập chưa được cấu hình.", 503, "AUTH_CONFIG");
   }
   const type = request.headers.get("content-type") ?? "";
-  if (!type.toLowerCase().includes("application/json")) {
+  if (!isJsonMediaType(type)) {
     return authError("Dữ liệu gửi lên phải là JSON.", 415, "UNSUPPORTED_MEDIA");
   }
   return null;
+}
+
+export async function readJsonObject(request: NextRequest): Promise<
+  { ok: true; body: Record<string, unknown> } | { ok: false; response: NextResponse }
+> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
+  } catch {
+    return { ok: false, response: authError("Dữ liệu gửi lên chưa hợp lệ.", 400, "INVALID_REQUEST") };
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, response: authError("Dữ liệu gửi lên chưa hợp lệ.", 400, "INVALID_REQUEST") };
+  }
+  const prototype = Object.getPrototypeOf(parsed);
+  if (prototype !== Object.prototype && prototype !== null) {
+    return { ok: false, response: authError("Dữ liệu gửi lên chưa hợp lệ.", 400, "INVALID_REQUEST") };
+  }
+  return { ok: true, body: parsed as Record<string, unknown> };
+}
+
+export function requestAborted(): NextResponse {
+  return authError("Yêu cầu đã bị hủy.", 499, "REQUEST_ABORTED");
 }
 
 async function readJson<T>(response: Response): Promise<Envelope<T> | null> {
@@ -65,23 +113,28 @@ function upstreamHeaders(token?: string) {
   };
 }
 
-export async function forwardAuth(path: string, body: unknown): Promise<{ response: Response; payload: Envelope<{ accessToken?: unknown; tokenType?: unknown; expiresIn?: unknown; username?: unknown; role?: unknown }> | null }> {
+function requestSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(10000);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
+export async function forwardAuth(path: string, body: unknown, signal?: AbortSignal): Promise<{ response: Response; payload: Envelope<{ accessToken?: unknown; tokenType?: unknown; expiresIn?: unknown; username?: unknown; role?: unknown }> | null }> {
   const response = await fetch(`${backendUrl()}${path}`, {
     method: "POST",
     cache: "no-store",
     headers: { ...upstreamHeaders(), "content-type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
+    signal: requestSignal(signal),
   });
   return { response, payload: await readJson(response) };
 }
 
-export async function fetchMyInfo(token: string): Promise<{ response: Response; payload: Envelope<Record<string, unknown>> | null }> {
+export async function fetchMyInfo(token: string, signal?: AbortSignal): Promise<{ response: Response; payload: Envelope<Record<string, unknown>> | null }> {
   const response = await fetch(`${backendUrl()}/api/v1/auth/my-info`, {
     method: "GET",
     cache: "no-store",
     headers: upstreamHeaders(token),
-    signal: AbortSignal.timeout(10000),
+    signal: requestSignal(signal),
   });
   return { response, payload: await readJson(response) };
 }
@@ -138,13 +191,23 @@ export function mapUpstreamError(status: number, payload: Envelope<unknown> | nu
   return { message: "Không thể xác thực lúc này. Thử lại sau ít phút.", code: "AUTH_UNAVAILABLE" };
 }
 
+function authAttempt(request: NextRequest): string | null {
+  const attempt = request.cookies.get(AUTH_ATTEMPT_COOKIE)?.value ?? "";
+  return ATTEMPT_PATTERN.test(attempt) ? attempt : null;
+}
+
+function authCookieName(request: NextRequest): string {
+  const attempt = authAttempt(request);
+  return attempt ? `${AUTH_COOKIE}.${attempt}` : AUTH_COOKIE;
+}
+
 export function authCookie(request: NextRequest): string | null {
-  return request.cookies.get(AUTH_COOKIE)?.value ?? null;
+  return request.cookies.get(authCookieName(request))?.value ?? null;
 }
 
 export function setAuthCookie(response: NextResponse, request: NextRequest, token: string, expiresIn: number): void {
   const maxAge = Math.max(1, Math.min(Math.floor(expiresIn), MAX_COOKIE_AGE));
-  response.cookies.set(AUTH_COOKIE, token, {
+  response.cookies.set(authCookieName(request), token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -153,6 +216,6 @@ export function setAuthCookie(response: NextResponse, request: NextRequest, toke
   });
 }
 
-export function clearAuthCookie(response: NextResponse): void {
-  response.cookies.set(AUTH_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+export function clearAuthCookie(response: NextResponse, request: NextRequest): void {
+  response.cookies.set(authCookieName(request), "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
 }

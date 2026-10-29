@@ -17,6 +17,35 @@ async function post(path, body, headers = {}) {
 }
 async function login(username, password) { return post("/api/customer-auth/login", { username, password }); }
 function cookieOf(response) { return response.headers.get("set-cookie")?.split(";")[0] ?? ""; }
+async function raw(path, contentType, body) {
+  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": contentType, origin: ORIGIN }, body });
+}
+
+const validBody = JSON.stringify({ username: cfg.username, password: cfg.password });
+const mediaCases = [
+  ["text/plain; application/json", validBody, 415],
+  ["application/jsonp", validBody, 415],
+  ["application/json; charset=latin1", validBody, 415],
+  ["application/json; charset", validBody, 415],
+  ["application/json", "null", 400],
+  ["application/json", "[]", 400],
+  ["application/json", "\"text\"", 400],
+  ["application/json", "{", 400],
+];
+for (const [contentType, body, expected] of mediaCases) {
+  const res = await raw("/api/customer-auth/login", contentType, body);
+  record(`REQUEST login media/body rejected safely: ${contentType} / ${body.slice(0, 8)}`, res.status === expected && !cookieOf(res), JSON.stringify({ status: res.status, expected, cookie: false }));
+}
+const charsetCases = ["application/json; charset=utf-8", "application/json; charset=\"utf-8\""];
+for (const contentType of charsetCases) {
+  const res = await raw("/api/customer-auth/login", contentType, validBody);
+  const json = await res.json();
+  record(`REQUEST login accepts legitimate charset: ${contentType}`, res.status === 200 && !!cookieOf(res) && !JSON.stringify(json).includes("accessToken"), JSON.stringify({ status: res.status, cookie: !!cookieOf(res) }));
+}
+for (const body of ["null", "[]", "\"text\""]) {
+  const res = await raw("/api/customer-auth/register", "application/json", body);
+  record(`REQUEST register non-object body rejected: ${body}`, res.status === 400 && !cookieOf(res), JSON.stringify({ status: res.status, cookie: false }));
+}
 
 const loginRes = await login(cfg.username, cfg.password);
 const loginJson = await loginRes.json();
@@ -24,7 +53,7 @@ const authCookie = cookieOf(loginRes);
 record("BFF login: real CUSTOMER, no token in JSON, candidate cookie flags",
   loginRes.status === 200 && loginJson.success === true && loginJson.identity?.role === "CUSTOMER"
     && !JSON.stringify(loginJson).includes("accessToken")
-    && authCookie.startsWith("fasearch-auth-pilot-3115=")
+    && authCookie.startsWith("fasearch-auth-pilot-3115")
     && /HttpOnly/i.test(loginRes.headers.get("set-cookie") ?? "")
     && /SameSite=lax/i.test(loginRes.headers.get("set-cookie") ?? "")
     && /Path=\//i.test(loginRes.headers.get("set-cookie") ?? "")

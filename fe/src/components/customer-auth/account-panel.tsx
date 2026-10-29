@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authLogout, authMe, AuthApiError, formatAuthDate, type AuthIdentity } from "@/lib/customer-auth-client";
+import { authLogout, authMe, AuthApiError, formatAuthDate, isAuthAbort, type AuthIdentity } from "@/lib/customer-auth-client";
 import "./auth.css";
 
 type State =
@@ -29,32 +29,51 @@ export function AccountPanel() {
   const [section, setSection] = useState<SectionKey>("profile");
   const [retry, setRetry] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
-  const logoutRef = useRef(false);
+  const meRef = useRef<AbortController | null>(null);
+  const logoutRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
+    meRef.current = controller;
     authMe(controller.signal)
-      .then((identity) => setState({ kind: "ready", identity }))
+      .then((identity) => {
+        if (!controller.signal.aborted) setState({ kind: "ready", identity });
+      })
       .catch((failure) => {
         if (controller.signal.aborted) return;
         if (failure instanceof AuthApiError && failure.status === 401) setState({ kind: "guest" });
         else setState({ kind: "error", message: failure instanceof Error ? failure.message : "Không tải được tài khoản." });
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (meRef.current === controller) meRef.current = null;
+    };
   }, [retry]);
+
+  useEffect(() => () => {
+    meRef.current?.abort();
+    logoutRef.current?.abort();
+  }, []);
 
   async function logout() {
     if (logoutRef.current) return;
-    logoutRef.current = true;
+    meRef.current?.abort();
+    meRef.current = null;
+    const controller = new AbortController();
+    logoutRef.current = controller;
     setLoggingOut(true);
     try {
-      await authLogout();
+      await authLogout(controller.signal);
+      if (controller.signal.aborted || logoutRef.current !== controller) return;
       router.replace("/");
     } catch (failure) {
+      if (controller.signal.aborted || logoutRef.current !== controller || isAuthAbort(failure)) return;
       setState({ kind: "error", message: failure instanceof Error ? failure.message : "Không thể đăng xuất." });
     } finally {
-      logoutRef.current = false;
-      setLoggingOut(false);
+      if (logoutRef.current === controller) {
+        logoutRef.current = null;
+        setLoggingOut(false);
+      }
     }
   }
 

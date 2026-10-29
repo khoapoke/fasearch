@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  authError, fetchMyInfo, forwardAuth, mapUpstreamError, requireJsonPost,
-  setAuthCookie, validateAuthResult, validateIdentity,
+  authError, fetchMyInfo, forwardAuth,
+  mapUpstreamError, readJsonObject, requestAborted, requireJsonPost, setAuthCookie,
+  validateAuthResult, validateIdentity,
 } from "@/lib/server/customer-auth";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,9 @@ const GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
 export async function POST(request: NextRequest) {
   const guard = requireJsonPost(request);
   if (guard) return guard;
-  let body: Record<string, unknown>;
-  try { body = await request.json(); } catch { return authError("Dữ liệu gửi lên chưa hợp lệ.", 400, "INVALID_REQUEST"); }
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const username = typeof body.username === "string" ? body.username.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const email = typeof body.email === "string" ? body.email.trim() : "";
@@ -34,13 +36,15 @@ export async function POST(request: NextRequest) {
       ...(firstName ? { firstName } : {}),
       lastName, phoneNumber,
       ...(gender ? { gender } : {}),
-    });
+    }, request.signal);
+    if (request.signal.aborted) return requestAborted();
     if (!response.ok) {
       const mapped = mapUpstreamError(response.status, payload);
       return authError(mapped.message, response.status, mapped.code, mapped.errors);
     }
     const auth = validateAuthResult(payload as never);
-    const identityResult = await fetchMyInfo(auth.accessToken);
+    const identityResult = await fetchMyInfo(auth.accessToken, request.signal);
+    if (request.signal.aborted) return requestAborted();
     if (!identityResult.response.ok) {
       return authError("Đăng ký chưa được xác nhận. Thử lại.", 502, "IDENTITY_UNAVAILABLE");
     }
@@ -48,10 +52,12 @@ export async function POST(request: NextRequest) {
     if (identity.role !== "CUSTOMER" || identity.status !== "ACTIVE") {
       return authError("Tài khoản đăng ký chưa đúng trạng thái khách hàng.", 502, "IDENTITY_INVALID");
     }
+    if (request.signal.aborted) return requestAborted();
     const out = NextResponse.json({ success: true, identity });
     setAuthCookie(out, request, auth.accessToken, auth.expiresIn);
     return out;
   } catch {
+    if (request.signal.aborted) return requestAborted();
     return authError("Không thể đăng ký lúc này. Thử lại sau ít phút.", 503, "AUTH_UNAVAILABLE");
   }
 }

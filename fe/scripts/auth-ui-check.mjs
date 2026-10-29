@@ -91,21 +91,22 @@ record("AUTH register real HTTP: CUSTOMER account created and redirected to acco
 record("AUTH account uses actual my-info only; placeholder operations are honest", (await page.eval(`document.body.innerText.includes('Chưa có trong pilot này') || document.body.innerText.includes('Đơn gần đây')`)) === true, await page.eval(`document.querySelector('.acct-main')?.innerText.slice(0,120)`));
 
 const cookieList = await cookies();
-const authCookie = cookieList.find((c) => c.name === "fasearch-auth-pilot-3115");
+const isAuthCookieName = (name) => name === "fasearch-auth-pilot-3115" || name.startsWith("fasearch-auth-pilot-3115.");
+const authCookie = cookieList.find((c) => isAuthCookieName(c.name));
 const tokenLeak = await page.eval(`(() => ({ cookie: document.cookie, local: JSON.stringify(localStorage), session: JSON.stringify(sessionStorage), htmlHasToken: /accessToken|eyJ[A-Za-z0-9_-]{10,}/.test(document.documentElement.innerHTML) }))()`);
 record("AUTH cookie: unique HttpOnly SameSite=Lax Path=/ bounded expiry, no token in JS/storage/HTML",
   !!authCookie && authCookie.httpOnly === true && authCookie.sameSite === "Lax" && authCookie.path === "/"
     && authCookie.secure === false && authCookie.session === false && authCookie.expires > Date.now() / 1000
     && authCookie.expires <= Date.now() / 1000 + 86400 + 120
-    && tokenLeak.cookie === "" && !tokenLeak.local.includes("eyJ") && !tokenLeak.session.includes("eyJ") && !tokenLeak.htmlHasToken,
-  JSON.stringify({ cookie: authCookie ? { name: authCookie.name, httpOnly: authCookie.httpOnly, sameSite: authCookie.sameSite, path: authCookie.path, secure: authCookie.secure, session: authCookie.session, expires: authCookie.expires } : null, tokenLeak: { cookieEmpty: tokenLeak.cookie === "", storageNoToken: !tokenLeak.local.includes("eyJ") && !tokenLeak.session.includes("eyJ"), htmlNoToken: !tokenLeak.htmlHasToken } }));
+    && !tokenLeak.cookie.includes("fasearch-auth-pilot-3115") && !tokenLeak.local.includes("eyJ") && !tokenLeak.session.includes("eyJ") && !tokenLeak.htmlHasToken,
+  JSON.stringify({ cookie: authCookie ? { name: authCookie.name, httpOnly: authCookie.httpOnly, sameSite: authCookie.sameSite, path: authCookie.path, secure: authCookie.secure, session: authCookie.session, expires: authCookie.expires } : null, tokenLeak: { authCookieHidden: !tokenLeak.cookie.includes("fasearch-auth-pilot-3115"), pointerCookie: tokenLeak.cookie, storageNoToken: !tokenLeak.local.includes("eyJ") && !tokenLeak.session.includes("eyJ"), htmlNoToken: !tokenLeak.htmlHasToken } }));
 
 await page.shot(join(shots, "account-authenticated-1440-light.png"));
 
 // Logout local-only; guest account state.
 await page.eval(`[...document.querySelectorAll('.acct-logout')][0]?.click()`);
 const loggedOut = await waitPath("/");
-const cookieAfter = (await cookies()).some((c) => c.name === "fasearch-auth-pilot-3115");
+const cookieAfter = (await cookies()).some((c) => isAuthCookieName(c.name));
 const logoutPosts = page.requests.filter((r) => r.url.includes("/api/customer-auth/logout") && r.method === "POST").length;
 record("AUTH logout: local cookie cleared, returns home", loggedOut && !cookieAfter && logoutPosts >= 1, JSON.stringify({ loggedOut, cookieAfter, logoutPosts }));
 await page.goto(`${base}/tai-khoan`);
@@ -143,6 +144,15 @@ await setNative("#login-password", password);
 await page.eval(`document.querySelector('form').requestSubmit()`);
 const safeReturn = await waitFor(async () => (await page.eval(`location.pathname`)) === "/tai-khoan");
 record("AUTH safe return: external next rejected to /tai-khoan", safeReturn, await page.eval(`location.pathname`));
+await page.send("Network.clearBrowserCookies");
+await page.goto(`${base}/dang-nhap?next=%2Ftai-khoan%2Fbao-mat`);
+await setNative("#login-username", username);
+await setNative("#login-password", password);
+await page.eval(`document.querySelector('form').requestSubmit()`);
+const legacyReturn = await waitFor(async () => (await page.eval(`location.pathname`)) === "/tai-khoan");
+await sleep(1800);
+const legacyStayed = (await page.eval(`location.pathname`)) === "/tai-khoan";
+record("AUTH legacy next target is narrowed to /tai-khoan with no redirect loop", legacyReturn && legacyStayed, JSON.stringify({ path: await page.eval(`location.pathname`), legacyStayed }));
 
 // Double-submit guard on login (observe at most one BFF login request from this form).
 const beforeLoginReqs = page.requests.filter((r) => r.url.includes("/api/customer-auth/login")).length;

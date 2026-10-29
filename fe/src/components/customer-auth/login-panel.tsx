@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { safeAccountReturnHref } from "@/lib/account-contract";
-import { authLogin, authMe, AuthApiError } from "@/lib/customer-auth-client";
+import { safeCustomerAuthReturn } from "@/lib/customer-auth-return";
+import { authLogin, authMe, AuthApiError, isAuthAbort } from "@/lib/customer-auth-client";
 import { AccessFrameIcon, EyeIcon } from "./auth-icons";
 import { AuthEditorial } from "./auth-editorial";
+import { AuthThreadline } from "./auth-threadline";
 import "./auth.css";
 
 export function LoginPanel({ next }: { next: string }) {
   const router = useRouter();
+  const returnTo = safeCustomerAuthReturn(next);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -18,16 +20,24 @@ export function LoginPanel({ next }: { next: string }) {
   const [error, setError] = useState("");
   const busyRef = useRef(false);
   const liveRef = useRef(true);
+  const meRef = useRef<AbortController | null>(null);
+  const submitRef = useRef<AbortController | null>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     liveRef.current = true;
     const controller = new AbortController();
+    meRef.current = controller;
     authMe(controller.signal)
-      .then(() => { if (liveRef.current) router.replace(next); })
+      .then(() => { if (liveRef.current && !submitRef.current) router.replace(returnTo); })
       .catch(() => {});
-    return () => { liveRef.current = false; controller.abort(); };
-  }, [next, router]);
+    return () => {
+      liveRef.current = false;
+      controller.abort();
+      submitRef.current?.abort();
+      if (meRef.current === controller) meRef.current = null;
+    };
+  }, [returnTo, next, router]);
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
@@ -40,26 +50,34 @@ export function LoginPanel({ next }: { next: string }) {
       setError("Nhập tên đăng nhập và mật khẩu.");
       return;
     }
+    meRef.current?.abort();
+    meRef.current = null;
+    const controller = new AbortController();
+    submitRef.current = controller;
     busyRef.current = true;
     setBusy(true);
     setError("");
     try {
-      await authLogin(username.trim(), password);
-      if (!liveRef.current) return;
+      await authLogin(username.trim(), password, controller.signal);
+      if (!liveRef.current || controller.signal.aborted || submitRef.current !== controller) return;
       setPassword("");
-      router.replace(safeAccountReturnHref(next));
+      router.replace(returnTo);
     } catch (failure) {
-      if (!liveRef.current) return;
+      if (!liveRef.current || controller.signal.aborted || isAuthAbort(failure)) return;
       setError(failure instanceof AuthApiError ? failure.message : "Không thể đăng nhập lúc này. Thử lại.");
       setPassword("");
     } finally {
-      busyRef.current = false;
-      if (liveRef.current) setBusy(false);
+      if (submitRef.current === controller) {
+        submitRef.current = null;
+        busyRef.current = false;
+        if (liveRef.current) setBusy(false);
+      }
     }
   }
 
   return (
-    <div className="authPage">
+    <div className="authPage is-login">
+      <AuthThreadline />
       <div className="auth-content">
         <div className="auth-layout">
           <AuthEditorial />
