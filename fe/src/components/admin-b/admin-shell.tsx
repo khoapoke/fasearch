@@ -8,7 +8,7 @@ import "./admin-b.css";
 
 type State = { kind: "loading" } | { kind: "guest" } | { kind: "denied" } | { kind: "ready"; identity: AuthIdentity };
 
-export function AdminShellB({ active, title, eyebrow, children }: { active: "overview" | "orders" | "products" | "categories" | "stock" | "imports"; title: string; eyebrow?: string; children: React.ReactNode }) {
+export function AdminShellB({ active, title, eyebrow, children }: { active: "overview" | "orders" | "products" | "categories" | "stock" | "imports" | "exports"; title: string; eyebrow?: string; children: React.ReactNode }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [dark, setDark] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -63,6 +63,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <Link className={`nav-item${active === "categories" ? " active" : ""}`} href="/quan-tri/danh-muc" aria-current={active === "categories" ? "page" : undefined}><Icon name="clipboard-list" /><span>Danh mục</span></Link>
             <Link className={`nav-item${active === "stock" ? " active" : ""}`} href="/quan-tri/ton-kho" aria-current={active === "stock" ? "page" : undefined}><Icon name="package" /><span>Tồn kho</span></Link>
             <Link className={`nav-item${active === "imports" ? " active" : ""}`} href="/quan-tri/phieu-nhap" aria-current={active === "imports" ? "page" : undefined}><Icon name="truck" /><span>Phiếu nhập</span></Link>
+            <Link className={`nav-item${active === "exports" ? " active" : ""}`} href="/quan-tri/phieu-xuat" aria-current={active === "exports" ? "page" : undefined}><Icon name="package" /><span>Phiếu xuất</span></Link>
           </nav>
           <div className="sidebar-bottom"><span className="fixture-dot" />Đơn thật · tài chính preview</div>
         </aside>
