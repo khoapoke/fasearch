@@ -107,6 +107,12 @@ def load_settings() -> AppSettings:
         if "id" in yaml_data["model"]:
             model_cfg.id = str(yaml_data["model"]["id"])
 
+    # Cho phép chỉ định collection qua biến môi trường: cùng một source chạy được nhiều
+    # môi trường (mặc định vẫn là giá trị YAML; env chỉ thắng khi được set tường minh).
+    env_collection = os.getenv("QDRANT_COLLECTION")
+    if env_collection:
+        qdrant_cfg.collection_name = env_collection
+
     return AppSettings(qdrant=qdrant_cfg, model=model_cfg, app=app_cfg)
 
 

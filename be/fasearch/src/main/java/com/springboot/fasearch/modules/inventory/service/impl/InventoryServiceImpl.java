@@ -174,7 +174,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         int totalQty = 0;
         BigDecimal totalAmt = BigDecimal.ZERO;
-        List<ImportReceiptDetail> details = new ArrayList<>();
 
         for (ImportReceiptItemReq itemReq : req.getItems()) {
             ProductVariant variant = productVariantRepository.findById(itemReq.getSkuId())
@@ -208,12 +207,14 @@ public class InventoryServiceImpl implements InventoryService {
                     .isDeleted(false)
                     .build();
 
-            details.add(importReceiptDetailRepository.save(detail));
+            // Thêm thẳng vào collection đang được Hibernate quản lý. Không gán lại cả
+            // collection (setDetails) vì details có orphanRemoval=true: Hibernate coi
+            // collection cũ "no longer referenced" và ném lỗi 500 khi flush.
+            savedReceipt.getDetails().add(importReceiptDetailRepository.save(detail));
         }
 
         savedReceipt.setTotalQuantity(totalQty);
         savedReceipt.setTotalAmount(totalAmt);
-        savedReceipt.setDetails(details);
         importReceiptRepository.save(savedReceipt);
 
         return inventoryMapper.toImportReceiptDetailResponse(savedReceipt);
@@ -308,7 +309,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         // 3. Trừ kho và lưu chi tiết phiếu xuất
         int totalQty = 0;
-        List<ExportReceiptDetail> details = new ArrayList<>();
 
         for (ExportReceiptItemReq itemReq : req.getItems()) {
             ProductVariant variant = productVariantRepository.findById(itemReq.getSkuId())
@@ -331,11 +331,13 @@ public class InventoryServiceImpl implements InventoryService {
                     .isDeleted(false)
                     .build();
 
-            details.add(exportReceiptDetailRepository.save(detail));
+            // Thêm thẳng vào collection đang được Hibernate quản lý. Không gán lại cả
+            // collection (setDetails) vì details có orphanRemoval=true: Hibernate coi
+            // collection cũ "no longer referenced" và ném lỗi 500 khi flush.
+            savedReceipt.getDetails().add(exportReceiptDetailRepository.save(detail));
         }
 
         savedReceipt.setTotalQuantity(totalQty);
-        savedReceipt.setDetails(details);
         exportReceiptRepository.save(savedReceipt);
 
         return inventoryMapper.toExportReceiptDetailResponse(savedReceipt);
