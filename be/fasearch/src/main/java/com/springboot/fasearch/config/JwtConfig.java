@@ -1,46 +1,44 @@
 package com.springboot.fasearch.config;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-
 import javax.crypto.SecretKey;
 
-import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 
-
-@Setter 
-@Getter 
-@AllArgsConstructor 
-@Configuration 
+@Getter
+@Configuration
 public class JwtConfig {
-    private  String secretKey;
-    private  LocalDateTime expiration;
 
+    @Value("${jwt.secret-key}")
+    private String secretKey;
 
-    @Bean
-    public SecretKey getJwtSecretKey() {
+    @Value("${jwt.expiration-ms:86400000}")
+    private long expirationMs;
+
+    public SecretKey getSigningKey() {
         if (secretKey == null || secretKey.isBlank()) {
-            throw new IllegalStateException("JWT Secret Key không được để rỗng trong file cấu hình/env!");
+            throw new IllegalStateException("JWT Secret Key không được để rỗng trong cấu hình!");
         }
 
         byte[] keyBytes;
         try {
             keyBytes = Decoders.BASE64URL.decode(secretKey);
         } catch (IllegalArgumentException e) {
-            keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+            try {
+                keyBytes = Decoders.BASE64.decode(secretKey);
+            } catch (IllegalArgumentException ex) {
+                keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+            }
         }
 
         if (keyBytes.length < 32) {
             throw new IllegalStateException(
-                    "JWT secret key phải chứa ít nhất 32 bytes (256 bits). Độ dài hiện tại: " + keyBytes.length
-                            + " bytes.");
+                    "JWT Secret Key phải chứa ít nhất 32 bytes (256 bits). Độ dài hiện tại: " + keyBytes.length + " bytes.");
         }
 
         return Keys.hmacShaKeyFor(keyBytes);
