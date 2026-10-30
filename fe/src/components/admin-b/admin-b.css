@@ -1575,6 +1575,18 @@
 .admB .review-orders-table td:last-child{
   padding-right: 0;
 }
+
+/* EXP-UI-01: export detail reason is prose; keep identifiers nowrap but let the reason column wrap. */
+.admB .export-detail-table{
+  width: 100%;
+}
+.admB .export-detail-table th:last-child,
+.admB .export-detail-table td.export-reason{
+  width: 34%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .admB .review-orders-table tbody tr:last-child td{
   border-bottom: 0;
 }
