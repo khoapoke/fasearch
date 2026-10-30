@@ -28,6 +28,10 @@ public class OrderDetailRes {
     private List<OrderItemRes> items;
     private BigDecimal subTotal;
     private BigDecimal discountAmount;
+    private Long voucherId;
+    private String voucherCode;
+    private String voucherCampaignName;
+    private Long voucherCampaignVersion;
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;

@@ -31,9 +31,9 @@
   - Module `product` & `category`: `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Module 5 (`search`) is 100% completed. Ready to proceed to Module 9 (`promotion`: FR-44 to FR-47).
+- **In-progress Task:** Module 9 (`promotion`, FR-44–47) S1 is implemented, tested, and locally committed on the isolated promotions-checkout candidate; no merge/push. BE source-to-JAR proof and a mode-600 restorable candidate DB snapshot are published in the shared packet. FE is fixing the full-build CSS blocker and must repin to this clean BE HEAD before final review. Manual acceptance remains pending.
 - **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify database schema, voucher lifecycle (`VoucherStatus`: `UPCOMING`, `ACTIVE`, `EXPIRED`, `DISABLED`), and API specifications for `FR-44` (Promotion list & filtering).
+  1. Coordinate FE's final build/runtime window and exact repin; resolve/retest the candidate login POST timeout before Review. Obtain the existing Review lane's independent S1 Spec/Standards/API verdict, fix BE findings on this lane, then proceed to S2/S3/S4 sequentially only after the preceding technical reviews pass. Final manual acceptance remains pending.
 - **Technical Gotchas & Constraints:**
   - AI Search (`POST /api/v1/search/**`): Public endpoints in `PUBLIC_ENDPOINTS` (`/api/v1/search/**`); callers do not require authentication.
   - Integration with FastAPI AI Server (`ai-service.base-url: http://localhost:8000`) using Spring 6 `RestClient` in `FashionAiClient`.
@@ -42,12 +42,21 @@
   - Image file validation: checks non-empty, supported extensions (`.png`, `.jpg`, `.jpeg`, `.webp`), and size limit ($\le 10\text{MB}$).
   - Connection resilience: catches connection refusals / timeouts and throws `AI_SERVICE_UNAVAILABLE` (503).
   - Payment processing (`POST /api/v1/payments/process`): Checks order existence and terminal states (`CANCELLED`, `RETURNED`), rejects already paid orders (`ORDER_ALREADY_PAID`), enforces customer ownership, verifies payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`), calculates cash change for cash payments, auto-generates invoice code `HD-YYYYMMDD-XXX`, persists `Invoice` & `Payment`, awards customer loyalty points (100,000 VNĐ = 1 pt), and handles omnichannel inventory deduction for POS draft orders (`OrderStatus.DRAFT` -> `OrderStatus.COMPLETED`).
+  - Promotions-checkout S1 uses the isolated candidate contract revision 2 (SHA-256 `734e0db49016c427efb1ec242214cb097c876565445b149bb651614a943aae82`), migration V10, DB `fasearch_promotions_checkout_20261030` on PG55440, and loopback BE18124 only. Exact source/JAR/data pins and retained synthetic fixtures are in the shared `live/be/BE-HANDOFF-S1.md`; no parent DB or BE18122 changes.
   - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
 ---
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
+
+### [Session 27] Implemented and verified promotions/checkout S1 candidate (2026-10-31)
+- **Done:**
+  - Implemented campaign/code APIs, voucher quote/fingerprint math, checkout idempotency and stock/quota hold/release, persisted order allocations, and atomic local CASH COD settlement using migration V10 in the isolated `codex/promotions-checkout-be` worktree at base `9bf718b76d92d41db9b1e4d7f85c95bb1eb671ff`.
+  - Preserved legacy V8 orders with a voucher FK but no S1 voucher-code snapshot; added API coverage for post-SHIPPING cancellation/payment compatibility. Added checks that voucher cancellation after SHIPPING and underpayment are rejected without releasing stock/quota.
+  - Candidate DB `fasearch_promotions_checkout_20261030` on PG55440 is migrated through V10; synthetic fixtures are retained. BE18124 PID 3055458 serves JAR SHA-256 `41fb537efd7cd016a3f1b17478e92a430482d091c7ea5c6a8dd6645ba0c0d88f` on loopback only.
+  - JDK21 full suite passed 30/30, 0 failures/errors/skips with all DB test variables explicitly bound to the candidate and test Hikari pool capped at 2/minimum idle 0 after an initial shared-cluster connection-cap failure. `git diff --check` passed. Source content digest is `0bcdd911d8eadce320acd9af93bba806d93b0705ea96284113a4d5057c7fa833`; current exact pins and DB archive are in shared `live/be/BE-HANDOFF-S1.md` and `S1-SOURCE-MANIFEST.txt`.
+  - The paired FE request was `READY_FOR_REVIEW`, then became pre-commit-stale when BE committed clean HEAD; FE final build/repin and independent review remain pending. Candidate credential location is `/home/dolakhoa/.config/fasearch/customer-profile-test.json` (mode 600); ADMIN and CUSTOMER credentials match active candidate DB hashes, but direct HTTP login probes timed out and are not certified usable until the route is retested. A mode-600 restorable custom-format DB snapshot is retained outside Git; exact path/hash are in shared `live/be/S1-SOURCE-JAR-PROOF.json`.
 
 ### [Session 26] Implemented Module 5 (AI Search: FR-NC1, FR-NC2, FR-NC3) (2026-10-30)
 - **Done:**
@@ -109,18 +118,3 @@
   - Verified and closed `FR-40` (Automated stock reservation on checkout, deduction on completion, and restoration on cancellation).
   - Updated `be_docs/module.md` marking both `FR-40` and `FR-41` as completed (`X`). Module 7 is now 100% completed.
 - **Build Status:** `BUILD SUCCESS` (160 source files, 0 errors, 0 warnings).
-
-### [Session 22] Implemented FR-39 (POS Draft Orders) in Order Module (2026-10-28)
-- **Done:**
-  - Added `DRAFT` status to `OrderStatus` enum.
-  - Updated `Order` entity to make `customer` nullable (allowing POS walk-in customers).
-  - Created DTOs: `PosDraftItemReq` and `PosDraftOrderReq`.
-  - Updated `OrderRepository` with `findByStatusOrderByOrderDateDesc(OrderStatus.DRAFT)`.
-  - Updated `OrderService` & `OrderServiceImpl`: `POST /api/v1/orders/pos/draft` (draft order creation) and `GET /api/v1/orders/pos/drafts` (list active drafts).
-  - Enhanced `mapToOrderDetailRes` to safely handle nullable customer.
-  - Added guard preventing `DRAFT` orders from transitioning via online order pipeline and skipping reserved stock release on cancellation.
-  - Updated `OrderController`: Added `POST /api/v1/orders/pos/draft` (HTTP 201) and `GET /api/v1/orders/pos/drafts` (HTTP 200).
-  - Updated `SecurityConfig`: Configured `/api/v1/orders/pos/**` for `ADMIN` and `STAFF`.
-  - Updated `be_docs/module.md` marking FR-39 as completed (`X`).
-  - Updated `be_docs/api/api-order.md` with complete request/response documentation.
-- **Build Status:** `BUILD SUCCESS` (158 source files, 0 errors, 0 warnings).

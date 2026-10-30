@@ -70,7 +70,7 @@ class ProductVariantBarcodeIntegrationTest {
     @BeforeEach
     void setUp() {
         uniq = Long.toString(System.nanoTime(), 36);
-        adminToken = jwtProvider.generateToken("admin-barcode", "ADMIN", 1L);
+        adminToken = jwtProvider.generateToken("admin", "ADMIN", 1L);
         Category category = categoryRepository.save(Category.builder()
                 .categoryName("DM barcode " + uniq).isDeleted(false).build());
         productId = productRepository.save(Product.builder()

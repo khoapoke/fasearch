@@ -34,6 +34,16 @@ public class OrderRes {
 
     private BigDecimal discountAmount;
 
+    private Long voucherId;
+
+    private String voucherCode;
+
+    private String voucherCampaignName;
+
+    private Long voucherCampaignVersion;
+
+    private Boolean replayed;
+
     private BigDecimal shippingFee;
 
     private BigDecimal totalAmount;

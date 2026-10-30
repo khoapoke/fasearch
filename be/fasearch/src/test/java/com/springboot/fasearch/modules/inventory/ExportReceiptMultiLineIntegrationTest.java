@@ -85,7 +85,7 @@ class ExportReceiptMultiLineIntegrationTest {
     @BeforeEach
     void setUp() {
         uniq = Long.toString(System.nanoTime(), 36);
-        adminToken = jwtProvider.generateToken("admin-exportfix", "ADMIN", 1L);
+        adminToken = jwtProvider.generateToken("admin", "ADMIN", 1L);
 
         Category category = categoryRepository.save(Category.builder()
                 .categoryName("DM xuat kho " + uniq).isDeleted(false).build());
@@ -267,7 +267,7 @@ class ExportReceiptMultiLineIntegrationTest {
         Resp anonymous = call("POST", "/api/v1/inventory/export-receipts", twoLineBody("anon"), null);
         assertThat(anonymous.is2xx()).as("không token thì không được tạo").isFalse();
 
-        String staffToken = jwtProvider.generateToken("staff-exportfix", "STAFF", 2L);
+        String staffToken = jwtProvider.generateToken("nhanvien1", "STAFF", 2L);
         String staffNote = "staff note " + uniq;
         Resp staffPost = call("POST", "/api/v1/inventory/export-receipts", """
                 {"exportType":"DAMAGED","note":"%s",

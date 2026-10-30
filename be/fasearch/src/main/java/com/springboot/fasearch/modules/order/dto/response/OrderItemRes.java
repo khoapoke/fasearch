@@ -23,4 +23,5 @@ public class OrderItemRes {
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
+    private BigDecimal discountAmount;
 }

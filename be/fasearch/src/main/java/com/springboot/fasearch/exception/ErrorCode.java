@@ -17,6 +17,16 @@ public enum ErrorCode {
     RESOURCE_NOT_FOUND(404, "Resource not found", HttpStatus.NOT_FOUND),
     METHOD_NOT_ALLOWED(405, "HTTP method not supported", HttpStatus.METHOD_NOT_ALLOWED),
     REQUEST_TIMEOUT(408, "Request has timeout", HttpStatus.REQUEST_TIMEOUT),
+    DATA_CONFLICT(409, "Data conflict", HttpStatus.CONFLICT),
+    VOUCHER_UNKNOWN(4101, "Voucher code not found", HttpStatus.NOT_FOUND),
+    VOUCHER_PAUSED(4102, "Voucher is paused", HttpStatus.BAD_REQUEST),
+    VOUCHER_NOT_STARTED(4103, "Voucher is not active yet", HttpStatus.BAD_REQUEST),
+    VOUCHER_EXPIRED(4104, "Voucher has expired", HttpStatus.BAD_REQUEST),
+    VOUCHER_EXHAUSTED(4105, "Voucher quota is exhausted", HttpStatus.CONFLICT),
+    VOUCHER_NOT_APPLICABLE(4106, "Voucher does not apply to this cart", HttpStatus.BAD_REQUEST),
+    QUOTE_CHANGED(4107, "Cart quote changed; refresh and confirm", HttpStatus.CONFLICT),
+    IDEMPOTENCY_CONFLICT(4108, "Checkout key was reused with different inputs", HttpStatus.CONFLICT),
+    CAMPAIGN_VERSION_CHANGED(4109, "Campaign version changed; reload before saving", HttpStatus.CONFLICT),
 
     // User & Customer & Employee errors
     CUSTOMER_NOT_FOUND(404, "Customer not found", HttpStatus.NOT_FOUND),

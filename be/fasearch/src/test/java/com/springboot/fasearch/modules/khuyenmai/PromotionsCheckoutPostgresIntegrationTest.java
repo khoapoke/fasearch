@@ -1,0 +1,295 @@
+package com.springboot.fasearch.modules.khuyenmai;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import com.springboot.fasearch.common.enums.OrderStatus;
+import com.springboot.fasearch.common.enums.PaymentMethodType;
+import com.springboot.fasearch.common.enums.PaymentStatus;
+import com.springboot.fasearch.exception.AppException;
+import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
+import com.springboot.fasearch.modules.khuyenmai.entity.KhuyenMai;
+import com.springboot.fasearch.modules.khuyenmai.entity.MaGiamGia;
+import com.springboot.fasearch.modules.khuyenmai.repository.KhuyenMaiRepository;
+import com.springboot.fasearch.modules.khuyenmai.repository.MaGiamGiaRepository;
+import com.springboot.fasearch.modules.khuyenmai.repository.VoucherUsageRepository;
+import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
+import com.springboot.fasearch.modules.order.entity.CartItem;
+import com.springboot.fasearch.modules.order.entity.Order;
+import com.springboot.fasearch.modules.order.entity.OrderDetail;
+import com.springboot.fasearch.modules.order.entity.OrderDetailId;
+import com.springboot.fasearch.modules.order.repository.OrderRepository;
+import com.springboot.fasearch.modules.payment.dto.request.PaymentProcessReq;
+import com.springboot.fasearch.modules.payment.repository.InvoiceRepository;
+import com.springboot.fasearch.modules.payment.repository.PaymentRepository;
+import com.springboot.fasearch.modules.payment.service.interfaces.PaymentService;
+import com.springboot.fasearch.modules.user.entity.Customer;
+import com.springboot.fasearch.modules.user.repository.UserRepository;
+import com.springboot.fasearch.modules.product.entity.Category;
+import com.springboot.fasearch.modules.product.entity.Product;
+import com.springboot.fasearch.modules.product.entity.ProductVariant;
+import com.springboot.fasearch.modules.product.repository.CategoryRepository;
+import com.springboot.fasearch.modules.product.repository.ProductRepository;
+import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
+
+@SpringBootTest
+class PromotionsCheckoutPostgresIntegrationTest {
+    @DynamicPropertySource
+    static void datasource(DynamicPropertyRegistry registry) {
+        String database = System.getenv("PROMOTION_TEST_DB_NAME");
+        if (database == null || database.isBlank()) {
+            throw new IllegalStateException("Set PROMOTION_TEST_DB_NAME to the isolated candidate database before running PostgreSQL tests");
+        }
+        registry.add("spring.datasource.url", () -> "jdbc:postgresql://"
+                + env("PROMOTION_TEST_DB_HOST", "127.0.0.1") + ":"
+                + env("PROMOTION_TEST_DB_PORT", "55440") + "/" + database);
+        registry.add("spring.datasource.username", () -> env("PROMOTION_TEST_DB_USER", "fasearch"));
+        registry.add("spring.datasource.password", () -> env("PROMOTION_TEST_DB_PASSWORD", ""));
+    }
+
+    private static String env(String key, String fallback) {
+        String value = System.getenv(key);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    @Autowired private CheckoutBenefitService benefits;
+    @Autowired private KhuyenMaiRepository campaignRepository;
+    @Autowired private MaGiamGiaRepository codeRepository;
+    @Autowired private VoucherUsageRepository usageRepository;
+    @Autowired private OrderRepository orderRepository;
+    @Autowired private CategoryRepository categoryRepository;
+    @Autowired private ProductRepository productRepository;
+    @Autowired private ProductVariantRepository variantRepository;
+    @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private PaymentService paymentService;
+    @Autowired private InvoiceRepository invoiceRepository;
+    @Autowired private PaymentRepository paymentRepository;
+    @Autowired private UserRepository userRepository;
+
+    @Test
+    void lastQuotaRaceAndRepeatedReleaseAreAtomicOnPostgres() throws Exception {
+        Fixture fixture = fixture(1);
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), fixture.code());
+        assertThat(quote.getVoucherDiscount()).isEqualByComparingTo("10.00");
+        Order first = newOrder(fixture.suffix() + "-A");
+        Order second = newOrder(fixture.suffix() + "-B");
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        CountDownLatch start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var a = pool.submit(() -> hold(tx, start, first, fixture, quote));
+            var b = pool.submit(() -> hold(tx, start, second, fixture, quote));
+            start.countDown();
+            List<String> results = List.of(a.get(20, TimeUnit.SECONDS), b.get(20, TimeUnit.SECONDS));
+            assertThat(results).containsExactlyInAnyOrder("HELD", "VOUCHER_EXHAUSTED");
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getHeld()).isEqualTo(1);
+
+        Long heldOrder = usageRepository.findAll().stream()
+                .filter(row -> row.getVoucherId().equals(fixture.voucher().getId()))
+                .findFirst().orElseThrow().getOrderId();
+        tx.executeWithoutResult(status -> {
+            benefits.release(heldOrder);
+            benefits.release(heldOrder);
+        });
+        assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getHeld()).isZero();
+        assertThat(usageRepository.findById(heldOrder).orElseThrow().getStatus()).isEqualTo("RELEASED");
+    }
+
+    @Test
+    void lateFailureRollsBackVoucherCounterAndUsageOnPostgres() {
+        Fixture fixture = fixture(5);
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), fixture.code());
+        Order order = newOrder(fixture.suffix() + "-ROLLBACK");
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> tx.executeWithoutResult(status -> {
+            var application = benefits.prepareCheckout(List.of(detail(fixture.variant())), fixture.code(),
+                    quote.getQuoteFingerprint(), quote.getMerchandiseAmountDue());
+            benefits.recordHold(order.getId(), application);
+            throw new IllegalStateException("simulate later order/stock failure");
+        })).isInstanceOf(IllegalStateException.class);
+        assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getHeld()).isZero();
+        assertThat(usageRepository.findById(order.getId())).isEmpty();
+    }
+
+    @Test
+    void concurrentCashCollectionConsumesVoucherOnlyOnceAndDoesNotRunLegacyPoints() throws Exception {
+        Fixture fixture = fixture(3);
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), fixture.code());
+        Customer customer = userRepository.findByAccount_Username("khachhang1").orElseThrow();
+        int pointsBefore = customer.getAccumulatePoint();
+        Order order = orderRepository.saveAndFlush(Order.builder().orderCode("PROMO-SETTLE-" + fixture.suffix())
+                .customer(customer).status(OrderStatus.SHIPPING).shippingFee(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO).totalAmount(quote.getMerchandiseAmountDue())
+                .isDeleted(false).build());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> {
+            Order locked = orderRepository.findByIdForUpdate(order.getId()).orElseThrow();
+            var application = benefits.prepareCheckout(List.of(detail(fixture.variant())), fixture.code(),
+                    quote.getQuoteFingerprint(), quote.getMerchandiseAmountDue());
+            benefits.applySnapshot(locked, application);
+            orderRepository.save(locked);
+            benefits.recordHold(locked.getId(), application);
+        });
+
+        try {
+            SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                    "khachhang1", null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+            paymentService.processPayment(PaymentProcessReq.builder().orderId(order.getId())
+                    .paymentMethodCode(PaymentMethodType.CASH).amountPaid(quote.getMerchandiseAmountDue()).build());
+            throw new AssertionError("customer must not collect voucher COD");
+        } catch (AppException denied) {
+            assertThat(denied.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+        assertThat(invoiceRepository.findByOrderId(order.getId())).isEmpty();
+        assertThat(usageRepository.findById(order.getId()).orElseThrow().getStatus()).isEqualTo("HELD");
+
+        CountDownLatch start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var a = pool.submit(() -> settle(order.getId(), quote.getMerchandiseAmountDue(), start));
+            var b = pool.submit(() -> settle(order.getId(), quote.getMerchandiseAmountDue(), start));
+            start.countDown();
+            List<String> results = List.of(a.get(20, TimeUnit.SECONDS), b.get(20, TimeUnit.SECONDS));
+            assertThat(results).containsExactlyInAnyOrder("PAID", "ORDER_ALREADY_PAID");
+        } finally {
+            pool.shutdownNow();
+            SecurityContextHolder.clearContext();
+        }
+
+        var invoice = invoiceRepository.findByOrderId(order.getId()).orElseThrow();
+        assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(paymentRepository.findByInvoiceId(invoice.getId())).hasSize(1);
+        assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getUsed()).isEqualTo(1);
+        assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getHeld()).isZero();
+        assertThat(usageRepository.findById(order.getId()).orElseThrow().getStatus()).isEqualTo("CONSUMED");
+        assertThat(userRepository.findById(customer.getId()).orElseThrow().getAccumulatePoint()).isEqualTo(pointsBefore);
+    }
+
+    @Test
+    void zeroDueCodWritesPaidInvoiceWithoutPaymentRow() {
+        Fixture fixture = fixture(3, "SO_TIEN", new BigDecimal("100.00"));
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), fixture.code());
+        assertThat(quote.getMerchandiseAmountDue()).isEqualByComparingTo("0.00");
+        Customer customer = userRepository.findByAccount_Username("khachhang1").orElseThrow();
+        Order order = orderRepository.saveAndFlush(Order.builder().orderCode("PROMO-ZERO-" + fixture.suffix())
+                .customer(customer).status(OrderStatus.SHIPPING).shippingFee(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO).totalAmount(BigDecimal.ZERO).isDeleted(false).build());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> {
+            Order locked = orderRepository.findByIdForUpdate(order.getId()).orElseThrow();
+            var application = benefits.prepareCheckout(List.of(detail(fixture.variant())), fixture.code(),
+                    quote.getQuoteFingerprint(), quote.getMerchandiseAmountDue());
+            benefits.applySnapshot(locked, application);
+            orderRepository.save(locked);
+            benefits.recordHold(locked.getId(), application);
+        });
+
+        settle(order.getId(), BigDecimal.ZERO, new CountDownLatch(0));
+        var invoice = invoiceRepository.findByOrderId(order.getId()).orElseThrow();
+        assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(invoice.getTotalActualPaid()).isEqualByComparingTo("0.00");
+        assertThat(paymentRepository.findByInvoiceId(invoice.getId())).isEmpty();
+        assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getUsed()).isEqualTo(1);
+    }
+
+    private String settle(Long orderId, BigDecimal amount, CountDownLatch start) {
+        try {
+            start.await(10, TimeUnit.SECONDS);
+            SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                    "nhanvien1", null, List.of(new SimpleGrantedAuthority("ROLE_STAFF"))));
+            paymentService.processPayment(PaymentProcessReq.builder().orderId(orderId)
+                    .paymentMethodCode(PaymentMethodType.CASH).amountPaid(amount).build());
+            return "PAID";
+        } catch (AppException e) {
+            return e.getErrorCode().name();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private String hold(TransactionTemplate tx, CountDownLatch start, Order order, Fixture f, CartQuoteResponse quote) {
+        try {
+            start.await(10, TimeUnit.SECONDS);
+            return tx.execute(status -> {
+                var application = benefits.prepareCheckout(List.of(detail(f.variant())), f.code(),
+                        quote.getQuoteFingerprint(), quote.getMerchandiseAmountDue());
+                benefits.recordHold(order.getId(), application);
+                return "HELD";
+            });
+        } catch (AppException e) {
+            return e.getErrorCode().name();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private record Fixture(String suffix, ProductVariant variant, KhuyenMai campaign,
+            MaGiamGia voucher, String code) {}
+
+    private Fixture fixture(int quota) {
+        return fixture(quota, "PHAN_TRAM", new BigDecimal("10.00"));
+    }
+
+    private Fixture fixture(int quota, String discountType, BigDecimal discountValue) {
+        String suffix = Long.toString(System.nanoTime(), 36);
+        Category category = categoryRepository.save(Category.builder()
+                .categoryName("Promo category " + suffix).isDeleted(false).build());
+        Product product = productRepository.save(Product.builder().productName("Promo item " + suffix)
+                .category(category).price(new BigDecimal("100.00")).build());
+        ProductVariant variant = variantRepository.save(ProductVariant.builder().product(product)
+                .color("Blue").size("M").barcode("PROMO-" + suffix).isDeleted(false).build());
+        LocalDateTime now = LocalDateTime.now();
+        KhuyenMai campaign = campaignRepository.saveAndFlush(KhuyenMai.builder().name("Promo " + suffix)
+                .discountType(discountType).discountValue(discountValue)
+                .startAt(now.minusHours(1)).endAt(now.plusHours(1)).status("HOAT_DONG")
+                .version(0L).productScope(Set.of(product.getId())).build());
+        String code = ("P" + suffix).toUpperCase(java.util.Locale.ROOT);
+        MaGiamGia voucher = codeRepository.saveAndFlush(MaGiamGia.builder().campaignId(campaign.getId())
+                .code(code).issued(quota).used(0).held(0).status("ACTIVE").deleted(false).build());
+        return new Fixture(suffix, variant, campaign, voucher, code);
+    }
+
+    private Order newOrder(String code) {
+        return orderRepository.saveAndFlush(Order.builder().orderCode("PROMO-" + code)
+                .status(OrderStatus.PENDING).shippingFee(BigDecimal.ZERO).discountAmount(BigDecimal.ZERO)
+                .totalAmount(new BigDecimal("100.00")).isDeleted(false).build());
+    }
+
+    private OrderDetail detail(ProductVariant variant) {
+        return OrderDetail.builder().id(new OrderDetailId(null, variant.getId())).variant(variant)
+                .quantity(1).unitPrice(new BigDecimal("100.00")).build();
+    }
+}

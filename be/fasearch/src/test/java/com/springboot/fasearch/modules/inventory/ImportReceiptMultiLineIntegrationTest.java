@@ -93,7 +93,7 @@ class ImportReceiptMultiLineIntegrationTest {
         supplierSingle = "NCC Single " + uniq;
         supplierRollback = "NCC Rollback " + uniq;
         supplierList = "NCC List " + uniq;
-        adminToken = jwtProvider.generateToken("admin-importfix", "ADMIN", 1L);
+        adminToken = jwtProvider.generateToken("admin", "ADMIN", 1L);
 
         Category category = categoryRepository.save(Category.builder()
                 .categoryName("DM nhap kho " + uniq).isDeleted(false).build());
@@ -256,7 +256,7 @@ class ImportReceiptMultiLineIntegrationTest {
         // map AccessDeniedException thành 500 (hành vi có sẵn, ngoài phạm vi fix này);
         // điều kiện an toàn là: không tạo được phiếu nào.
         String staffSupplier = "NCC Staff " + uniq;
-        String staffToken = jwtProvider.generateToken("staff-importfix", "STAFF", 2L);
+        String staffToken = jwtProvider.generateToken("nhanvien1", "STAFF", 2L);
         Resp staffPost = call("POST", "/api/v1/inventory/import-receipts", """
                 {"supplierName":"%s","items":[{"skuId":%d,"quantity":1,"importPrice":1000}]}
                 """.formatted(staffSupplier, skuB), staffToken);

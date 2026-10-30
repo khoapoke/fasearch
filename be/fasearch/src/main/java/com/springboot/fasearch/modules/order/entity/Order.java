@@ -76,6 +76,21 @@ public class Order {
     @Column(name = "ma_voucher")
     private Long voucherId;
 
+    @Column(name = "ma_code_voucher", length = 50)
+    private String voucherCode;
+
+    @Column(name = "ten_ctkm_snapshot", length = 255)
+    private String voucherCampaignName;
+
+    @Column(name = "phien_ban_km")
+    private Long voucherCampaignVersion;
+
+    @Column(name = "loai_giam_snapshot", length = 50)
+    private String voucherDiscountType;
+
+    @Column(name = "gia_tri_giam_snapshot", precision = 15, scale = 2)
+    private BigDecimal voucherDiscountValue;
+
     @Column(name = "tien_giam", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal discountAmount = BigDecimal.ZERO;

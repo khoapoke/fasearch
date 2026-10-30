@@ -21,6 +21,7 @@ import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
+import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.entity.OrderDetail;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;
@@ -54,6 +55,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final InventoryRepository inventoryRepository;
+    private final CheckoutBenefitService checkoutBenefitService;
 
     @Override
     @Transactional(readOnly = true)
@@ -96,18 +98,11 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        // 5. Tính giảm giá Voucher
-        BigDecimal voucherDiscount = BigDecimal.ZERO;
-        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
-            String code = req.getVoucherCode().trim();
-            if (code.equalsIgnoreCase("FASEARCH10")) {
-                // Áp dụng voucher 10% theo đặc tả API
-                voucherDiscount = subTotal.multiply(BigDecimal.valueOf(0.10)).setScale(2, RoundingMode.HALF_UP);
-            } else if (order.getDiscountAmount() != null && order.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
-                voucherDiscount = order.getDiscountAmount();
-            }
-        } else if (order.getDiscountAmount() != null) {
-            voucherDiscount = order.getDiscountAmount();
+        // 5. Only the persisted checkout snapshot is authoritative; request codes cannot add discounts.
+        BigDecimal voucherDiscount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()
+                && !req.getVoucherCode().trim().equalsIgnoreCase(order.getVoucherCode())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher must be applied during checkout");
         }
 
         // 6. Tính giảm giá điểm thưởng (1 điểm = 1.000 VNĐ)
@@ -183,8 +178,8 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        // 1. Kiểm tra đơn hàng tồn tại
-        Order order = orderRepository.findById(req.getOrderId())
+        // 1. Lock order so duplicate collection attempts observe the first invoice.
+        Order order = orderRepository.findByIdForUpdate(req.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         // 2. Chặn đơn hàng ở trạng thái kết thúc không thể thanh toán
@@ -221,6 +216,11 @@ public class PaymentServiceImpl implements PaymentService {
         // 6. Kiểm tra phương thức thanh toán
         PaymentMethod paymentMethod = paymentMethodRepository.findByTypeAndStatus(req.getPaymentMethodCode(), "ACTIVE")
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
+        if (order.getVoucherCode() != null && isCustomer) throw new AppException(ErrorCode.FORBIDDEN);
+        if (order.getVoucherCode() != null && (order.getStatus() != OrderStatus.SHIPPING
+                || paymentMethod.getType() != PaymentMethodType.CASH)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher COD orders can only be collected in cash by staff after handoff");
+        }
 
         BigDecimal totalAmount = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal cashReceived;
@@ -291,18 +291,21 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 11. Lưu thông tin giao dịch thanh toán (Payment)
         String transactionCode = "TXN-" + System.currentTimeMillis();
-        Payment payment = Payment.builder()
-                .invoice(invoice)
-                .paymentMethod(paymentMethod)
-                .amount(totalActualPaid)
-                .transactionCode(transactionCode)
-                .status(PaymentStatus.PAID)
-                .note(req.getNote())
-                .build();
-        paymentRepository.save(payment);
+        if (totalActualPaid.signum() > 0) {
+            Payment payment = Payment.builder()
+                    .invoice(invoice)
+                    .paymentMethod(paymentMethod)
+                    .amount(totalActualPaid)
+                    .transactionCode(transactionCode)
+                    .status(PaymentStatus.PAID)
+                    .note(req.getNote())
+                    .build();
+            paymentRepository.save(payment);
+        }
+        checkoutBenefitService.consume(order.getId());
 
-        // 12. Cộng điểm tích lũy cho khách hàng thành viên (100.000 VNĐ = 1 điểm)
-        if (order.getCustomer() != null) {
+        // S1 keeps loyalty out of voucher checkout; S2 replaces this legacy rule with policy/ledger.
+        if (order.getCustomer() != null && order.getVoucherCode() == null) {
             Customer customer = order.getCustomer();
             int pointsEarned = totalActualPaid.divide(BigDecimal.valueOf(100000), 0, RoundingMode.FLOOR).intValue();
             if (pointsEarned > 0) {

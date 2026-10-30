@@ -13,6 +13,9 @@ import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
+import com.springboot.fasearch.modules.khuyenmai.dto.request.CartQuoteRequest;
+import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
+import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
 import com.springboot.fasearch.modules.order.dto.request.CartItemReq;
 import com.springboot.fasearch.modules.order.dto.request.CartItemUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.CartItemRes;
@@ -40,6 +43,7 @@ public class CartServiceImpl implements CartService {
     private final UserRepository userRepository;
     private final ProductVariantRepository productVariantRepository;
     private final InventoryRepository inventoryRepository;
+    private final CheckoutBenefitService checkoutBenefitService;
 
     private Customer getCurrentCustomer() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -108,6 +112,16 @@ public class CartServiceImpl implements CartService {
         Customer customer = getCurrentCustomer();
         Cart cart = getOrCreateCart(customer);
         return buildCartResponse(cart);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CartQuoteResponse quote(CartQuoteRequest request) {
+        Customer customer = getCurrentCustomer();
+        Cart cart = cartRepository.findByCustomerId(customer.getId())
+                .orElseThrow(() -> new com.springboot.fasearch.exception.AppException(
+                        com.springboot.fasearch.exception.ErrorCode.CART_EMPTY));
+        return checkoutBenefitService.quote(cartItemRepository.findById_CartId(cart.getId()), request.getVoucherCode());
     }
 
     @Override

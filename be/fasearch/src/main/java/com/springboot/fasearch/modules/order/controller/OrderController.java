@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -46,11 +47,11 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/checkout")
-    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ApiResponse<OrderRes> checkout(@Valid @RequestBody CheckoutReq req) {
+    public ResponseEntity<ApiResponse<OrderRes>> checkout(@Valid @RequestBody CheckoutReq req) {
         OrderRes result = orderService.checkout(req);
-        return ApiResponse.success(201, "Tạo đơn hàng thành công", result);
+        int code = Boolean.TRUE.equals(result.getReplayed()) ? 200 : 201;
+        return ResponseEntity.status(code).body(ApiResponse.success(code, "Tạo đơn hàng thành công", result));
     }
 
     @GetMapping
