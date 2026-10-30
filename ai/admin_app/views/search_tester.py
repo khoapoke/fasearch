@@ -5,7 +5,7 @@ import streamlit as st
 from PIL import Image
 
 from src.core.config import BASE_DIR
-from src.services.search_service import search_by_text, search_by_image
+from src.services.search_service import search_by_text, search_by_image, search_multimodal
 from admin_app.components.ui_helpers import (
     resolve_image_path,
     get_status_badge,
@@ -15,7 +15,7 @@ from admin_app.components.ui_helpers import (
 
 def render_search_tester():
     """
-    Trang 3: Sân chơi thử nghiệm tìm kiếm đa phương thức (Text-to-Image và Image-to-Image).
+    Trang 3: Sân chơi thử nghiệm tìm kiếm đa phương thức (Text-to-Image, Image-to-Image và Multimodal).
     """
     st.subheader("🔍 Thử nghiệm Tìm kiếm Đa phương thức (Search Playground)")
     st.caption("Kiểm thử tính năng trích xuất vector embedding và truy vấn độ tương đồng Cosine trong Qdrant.")
@@ -43,7 +43,13 @@ def render_search_tester():
                 help="Bật để tự động ẩn các point có trạng thái DELETED.",
             )
 
-    tab_text, tab_image = st.tabs(["💬 Tìm bằng Văn bản (Text-to-Image)", "🖼️ Tìm bằng Hình ảnh (Image-to-Image)"])
+    tab_text, tab_image, tab_multimodal = st.tabs(
+        [
+            "💬 Tìm bằng Văn bản (Text-to-Image)",
+            "🖼️ Tìm bằng Hình ảnh (Image-to-Image)",
+            "✨ Tìm kết hợp Đa phương thức (Multimodal: Ảnh + Chữ)",
+        ]
+    )
 
     results = None
     query_display = ""
@@ -117,7 +123,6 @@ def render_search_tester():
 
             if btn_img_search:
                 with st.spinner("Đang trích xuất vector từ ảnh mẫu và tìm kiếm..."):
-                    # Lưu tạm ảnh query vào storage/uploads/
                     temp_dir = BASE_DIR / "storage" / "uploads"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_file = temp_dir / f"test_query_{uuid.uuid4().hex[:8]}.jpg"
@@ -138,7 +143,89 @@ def render_search_tester():
                     except Exception as ex:
                         st.error(f"Lỗi khi tìm kiếm: {ex}")
                     finally:
-                        # Luôn dọn dẹp file tạm theo quy chuẩn
+                        if temp_file.exists():
+                            try:
+                                os.remove(temp_file)
+                            except Exception:
+                                pass
+
+    # ==========================================
+    # TAB 3: MULTIMODAL (IMAGE + TEXT)
+    # ==========================================
+    with tab_multimodal:
+        st.markdown("##### Kết hợp Ảnh mẫu và Mô tả Văn bản để tinh chỉnh tìm kiếm:")
+        st.caption(
+            "Ví dụ: Tải ảnh chiếc áo thun, nhập thêm chữ *'màu đỏ'* hoặc *'có họa tiết hoa'* để tìm kiếm biến thể phù hợp."
+        )
+
+        col_m_img, col_m_txt = st.columns([1, 1])
+        with col_m_img:
+            uploaded_multi_img = st.file_uploader(
+                "1. Tải ảnh mẫu (Bắt buộc)",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="multi_img_uploader",
+            )
+            if uploaded_multi_img:
+                st.image(uploaded_multi_img, caption="Ảnh mẫu", width=180)
+
+        with col_m_txt:
+            multi_query_text = st.text_input(
+                "2. Nhập mô tả điều chỉnh / bổ sung (Bắt buộc)",
+                placeholder="vd: màu đỏ, phong cách vintage, cổ chữ V...",
+                key="multi_query_text_input",
+            )
+            text_weight = st.slider(
+                "3. Tỷ trọng ưu tiên Văn bản (Text Weight)",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.5,
+                step=0.05,
+                help="0.0: 100% Ảnh | 0.5: Cân bằng 50-50 | 1.0: 100% Văn bản",
+                key="multi_text_weight_slider",
+            )
+            st.caption(
+                f"⚖️ Tỷ trọng hiện tại: **Ảnh {(1.0 - text_weight)*100:.0f}%** — **Văn bản {text_weight*100:.0f}%**"
+            )
+
+        btn_multi_search = st.button(
+            "✨ Tìm kiếm Đa phương thức",
+            key="btn_search_multimodal",
+            type="primary",
+            use_container_width=True,
+        )
+
+        if btn_multi_search:
+            if not uploaded_multi_img:
+                st.error("Vui lòng tải lên ít nhất một ảnh mẫu.")
+            elif not multi_query_text or not multi_query_text.strip():
+                st.error("Vui lòng nhập văn bản mô tả để kết hợp tìm kiếm.")
+            else:
+                with st.spinner("Đang trích xuất và kết hợp vector đặc trưng (Ảnh + Chữ)..."):
+                    temp_dir = BASE_DIR / "storage" / "uploads"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    temp_file = temp_dir / f"test_multi_{uuid.uuid4().hex[:8]}.jpg"
+
+                    try:
+                        with open(temp_file, "wb") as f:
+                            f.write(uploaded_multi_img.getbuffer())
+
+                        start_t = time.time()
+                        results = search_multimodal(
+                            image_path=str(temp_file),
+                            query_text=multi_query_text.strip(),
+                            limit=top_k,
+                            text_weight=text_weight,
+                            exclude_deleted=exclude_deleted,
+                            score_threshold=score_threshold if score_threshold > 0 else None,
+                        )
+                        elapsed_ms = (time.time() - start_t) * 1000
+                        query_display = (
+                            f'Ảnh: "{uploaded_multi_img.name}" + Chữ: "{multi_query_text.strip()}" '
+                            f'(Tỷ trọng chữ: {text_weight*100:.0f}%)'
+                        )
+                    except Exception as ex:
+                        st.error(f"Lỗi khi tìm kiếm đa phương thức: {ex}")
+                    finally:
                         if temp_file.exists():
                             try:
                                 os.remove(temp_file)
