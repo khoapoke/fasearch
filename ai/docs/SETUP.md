@@ -34,6 +34,8 @@ cd D:\fasearch\ai
 py -3.12 -m venv venv312
 .\venv312\Scripts\Activate.ps1
 python -m pip install --upgrade pip
+
+# Cài đặt toàn bộ thư viện đồng bộ (Hỗ trợ GPU NVIDIA CUDA 12.8 / RTX 50-series)
 pip install -r requirements.txt
 ```
 
