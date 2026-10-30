@@ -8,7 +8,7 @@ import "./admin-b.css";
 
 type State = { kind: "loading" } | { kind: "guest" } | { kind: "denied" } | { kind: "ready"; identity: AuthIdentity };
 
-export function AdminShellB({ active, title, eyebrow, children }: { active: "overview" | "orders" | "products" | "categories" | "stock" | "imports" | "exports" | "stocktakes"; title: string; eyebrow?: string; children: React.ReactNode }) {
+export function AdminShellB({ active, title, eyebrow, children }: { active: "overview" | "orders" | "customers" | "products" | "categories" | "stock" | "imports" | "exports" | "stocktakes"; title: string; eyebrow?: string; children: React.ReactNode }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [dark, setDark] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -59,6 +59,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <Link className={`nav-item${active === "overview" ? " active" : ""}`} href="/quan-tri" aria-current={active === "overview" ? "page" : undefined}><Icon name="layout-dashboard" /><span>Tổng quan</span></Link>
             <div className="nav-group">Vận hành</div>
             <Link className={`nav-item${active === "orders" ? " active" : ""}`} href="/quan-tri/don-hang" aria-current={active === "orders" ? "page" : undefined}><Icon name="shopping-bag" /><span>Đơn hàng</span></Link>
+            <Link className={`nav-item${active === "customers" ? " active" : ""}`} href="/quan-tri/khach-hang" aria-current={active === "customers" ? "page" : undefined}><Icon name="users" /><span>Khách hàng</span></Link>
             <Link className={`nav-item${active === "products" ? " active" : ""}`} href="/quan-tri/san-pham" aria-current={active === "products" ? "page" : undefined}><Icon name="package" /><span>Sản phẩm</span></Link>
             <Link className={`nav-item${active === "categories" ? " active" : ""}`} href="/quan-tri/danh-muc" aria-current={active === "categories" ? "page" : undefined}><Icon name="clipboard-list" /><span>Danh mục</span></Link>
             <Link className={`nav-item${active === "stock" ? " active" : ""}`} href="/quan-tri/ton-kho" aria-current={active === "stock" ? "page" : undefined}><Icon name="package" /><span>Tồn kho</span></Link>

@@ -1937,3 +1937,9 @@
 .admB .order-confirm-note{width:100%;min-height:80px;resize:vertical;}
 .admB .order-prose{white-space:normal;overflow-wrap:anywhere;word-break:break-word;max-width:78ch;line-height:1.6;}
 @media(max-width:680px){.admB .order-action{display:grid;}.admB .order-confirm{max-width:none;}}
+
+/* Customer management: contact prose and read-only membership data. */
+.admB .customer-address-input{min-height:88px;resize:vertical;}
+.admB .customer-readonly{display:flex;flex-wrap:wrap;gap:8px 18px;padding:10px 0;border-top:1px solid var(--line);font-size:var(--meta-size);}
+.admB .customer-readonly span{color:var(--muted);}
+.admB .customer-readonly strong{color:var(--ink);}

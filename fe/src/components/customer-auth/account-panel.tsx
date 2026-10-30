@@ -7,6 +7,7 @@ import { authLogout, authMe, AuthApiError, formatAuthDate, isAuthAbort, type Aut
 import { fetchCustomerOrders } from "@/lib/customer-commerce-client";
 import { formatMoney, orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
 import "./auth.css";
+import { ProfileEditor } from "./profile-editor";
 
 type State =
   | { kind: "loading" }
@@ -112,15 +113,16 @@ export function AccountPanel() {
       return (
         <section aria-labelledby="account-profile-title">
           <div className="acct-section-head"><h2 id="account-profile-title">Hồ sơ</h2></div>
-          <dl className="acct-profile">
+          {identity.role === "CUSTOMER" ? <ProfileEditor /> : null}
+          {identity.role !== "CUSTOMER" ? <><dl className="acct-profile">
             <div className="acct-row"><dt>Mã tài khoản</dt><dd>{identity.id}</dd></div>
             <div className="acct-row"><dt>Tên đăng nhập</dt><dd>{identity.username}</dd></div>
             <div className="acct-row"><dt>Email</dt><dd>{identity.email}</dd></div>
             <div className="acct-row"><dt>Vai trò</dt><dd>{ROLE_LABEL[identity.role] ?? identity.role}</dd></div>
             <div className="acct-row"><dt>Trạng thái</dt><dd>{STATUS_LABEL[identity.status] ?? identity.status}</dd></div>
             <div className="acct-row"><dt>Ngày tạo</dt><dd>{formatAuthDate(identity.createdAt)}</dd></div>
-          </dl>
-          <p className="acct-note">Thông tin lấy trực tiếp từ máy chủ xác thực. Các mục đơn hàng, bảo mật và điểm chưa được mở trong pilot này.</p>
+          </dl><p className="acct-note">Tài khoản quản trị không có hồ sơ khách hàng để sửa tại đây.</p></> : null}
+          {identity.role === "CUSTOMER" ? <p className="acct-note">Hồ sơ liên hệ lấy trực tiếp từ BE. Hạng/điểm chỉ đọc; không có email/mật khẩu hay nhiều địa chỉ.</p> : null}
         </section>
       );
     }

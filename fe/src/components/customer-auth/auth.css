@@ -216,3 +216,11 @@
 .acctPage .acct-order-row strong { font-size: 14px; font-weight: 500; }
 .acctPage .acct-order-row small { color: var(--st-ink-soft); font-size: 12px; }
 .acctPage .acct-order-row > strong { white-space: nowrap; }
+
+.acct-prose{white-space:normal;overflow-wrap:anywhere;word-break:break-word;max-width:70ch;}
+.acct-edit-form{display:grid;gap:12px;max-width:640px;margin-top:10px;}
+.acct-field{display:grid;gap:4px;}
+.acct-field label{font-size:12px;color:var(--auth-muted,#5b6475);}
+.acct-field input,.acct-field select,.acct-field textarea{min-height:40px;padding:8px 10px;border:1px solid var(--auth-line,#d8dee8);border-radius:4px;background:var(--auth-surface,#fff);color:var(--auth-ink,#1b2030);font:inherit;}
+.acct-field textarea{min-height:88px;resize:vertical;}
+.acct-actions{display:flex;gap:10px;flex-wrap:wrap;}
