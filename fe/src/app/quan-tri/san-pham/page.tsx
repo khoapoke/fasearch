@@ -1,302 +1,43 @@
 "use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { MerchantShell } from "@/components/merchant/merchant-shell";
-import {
-  beFetch,
-  beWrite,
-  trangThaiSanPham,
-  unwrap,
-  vnd,
-  type Page,
-} from "@/lib/mgmt-client";
-
-type Product = {
-  maSp: number;
-  tenSp: string;
-  maDanhMuc: number | null;
-  tenDanhMuc: string | null;
-  giaBan: number;
-  giaNhap: number | null;
-  trangThai: string;
-  daXoa: boolean;
-  coHinhAnh: boolean;
-};
-
-type Category = { maDanhMuc: number; tenDanhMuc: string };
-
-export default function ProductsPage() {
-  const [q, setQ] = useState("");
-  const [maDanhMuc, setMaDanhMuc] = useState("");
+import { useEffect, useRef, useState } from "react";
+import { AdminShellB } from "@/components/admin-b/admin-shell";
+import { ProductImage } from "@/components/admin-b/product-image";
+import { useAdminRole } from "@/components/admin-b/use-admin-role";
+import { getCategories, getProductPage, type Category, type ProductPage } from "@/lib/admin-catalog-client";
+const STATUS = ["", "DRAFT", "ACTIVE", "OUT_OF_STOCK", "DISCONTINUED"];
+const STATUS_LABEL: Record<string, string> = { DRAFT: "Nháp", ACTIVE: "Đang bán", OUT_OF_STOCK: "Tạm hết hàng", DISCONTINUED: "Ngừng kinh doanh" };
+export default function AdminProductsPage() {
+  const role = useAdminRole();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [page, setPage] = useState(0);
-  const [data, setData] = useState<Page<Product> | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-
-  useEffect(() => {
-    beFetch("v1/danh-muc")
-      .then((r) => unwrap<Category[]>(r))
-      .then(setCategories)
-      .catch(() => {});
-  }, []);
-
-  const [reloadKey, setReloadKey] = useState(0);
-
-  function reload() {
-    setReloadKey((k) => k + 1);
+  const [page, setPage] = useState(0); const [keyword, setKeyword] = useState(""); const [categoryId, setCategoryId] = useState(""); const [status, setStatus] = useState("");
+  const [data, setData] = useState<ProductPage | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const req = useRef(0);
+  useEffect(() => { const c = new AbortController(); getCategories(c.signal).then(setCategories).catch(() => setCategories([])); return () => c.abort(); }, []);
+  async function load(nextPage = page) {
+    const my = ++req.current; setLoading(true); setError("");
+    const q = new URLSearchParams({ page: String(nextPage), size: "10" });
+    if (keyword.trim()) q.set("keyword", keyword.trim()); if (categoryId) q.set("categoryId", categoryId); if (status) q.set("status", status);
+    try { const result = await getProductPage(q.toString()); if (req.current === my) setData(result); }
+    catch (e) { if (req.current === my) setError(e instanceof Error ? e.message : "Không tải được sản phẩm."); }
+    finally { if (req.current === my) setLoading(false); }
   }
-
-  useEffect(() => {
-    let live = true;
-    const query = new URLSearchParams();
-    if (q) query.set("q", q);
-    if (maDanhMuc) query.set("maDanhMuc", maDanhMuc);
-    query.set("page", String(page));
-    query.set("size", "20");
-    beFetch(`v1/san-pham?${query.toString()}`)
-      .then((response) => unwrap<Page<Product>>(response))
-      .then((result) => {
-        if (live) {
-          setData(result);
-          setNotice(null);
-        }
-      })
-      .catch((e: unknown) => {
-        if (live) setNotice(e instanceof Error ? e.message : "Tải thất bại.");
-      });
-    return () => {
-      live = false;
-    };
-  }, [q, maDanhMuc, page, reloadKey]);
-
-  async function toggleHide(row: Product) {
-    const action = row.trangThai === "DANG_BAN" ? "an" : "hien-thi";
-    const label = row.trangThai === "DANG_BAN" ? "Tạm ẩn" : "Hiện lại";
-    if (!window.confirm(`${label} "${row.tenSp}"?`)) return;
-    try {
-      await unwrap(await beWrite(`v1/san-pham/${row.maSp}/${action}`, "POST"));
-      reload();
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Thao tác thất bại.");
-    }
-  }
-
-  async function softDelete(row: Product) {
-    if (!window.confirm(`XÓA MỀM "${row.tenSp}"? Hàng ẩn khỏi catalog nhưng giữ lịch sử.`))
-      return;
-    try {
-      await unwrap(await beWrite(`v1/san-pham/${row.maSp}`, "DELETE"));
-      reload();
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Xóa thất bại.");
-    }
-  }
-
-  return (
-    <MerchantShell
-      active="products"
-      topActions={
-        <button className="mpTopBtn primary" type="button" onClick={() => setShowCreate((v) => !v)}>
-          + {showCreate ? "Đóng form tạo" : "Tạo sản phẩm"}
-        </button>
-      }
-    >
-      <div className="mpCard">
-        <h2>Quản lý sản phẩm</h2>
-        <p className="mpMuted">Danh sách, lọc thật, tạo/sửa/ẩn/xóa mềm. Giá nhập quản trị thấy, catalog công khai không.</p>
-        <form
-          style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            setPage(0);
-            reload();
-          }}
-        >
-          <div className="mpSearch" style={{ maxWidth: 300 }}>
-            <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={100} placeholder="Tìm theo tên…" aria-label="Tìm theo tên" />
-          </div>
-          <select value={maDanhMuc} onChange={(e) => setMaDanhMuc(e.target.value)} aria-label="Danh mục" style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "9px 12px", fontSize: 13 }}>
-            <option value="">Tất cả cấp bậc</option>
-            {categories.map((c) => (
-              <option key={c.maDanhMuc} value={c.maDanhMuc}>
-                {c.tenDanhMuc}
-              </option>
-            ))}
-          </select>
-          <button className="mpTopBtn primary" type="submit">Lọc</button>
-        </form>
-        {notice ? <p className="mpMuted" role="alert" style={{ color: "#ba1a1a", marginTop: 8 }}>Lỗi: {notice}</p> : null}
-      </div>
-
-      {showCreate && <CreateForm categories={categories} onDone={() => { setShowCreate(false); reload(); }} />}
-
-      <div className="mpCard">
-        {!data ? (
-          <p className="mpMuted" role="status">Đang tải…</p>
-        ) : data.data.length === 0 ? (
-          <p className="mpMuted">Không có sản phẩm nào.</p>
-        ) : (
-          <>
-            <div className="mpTableWrap">
-              <table className="mpTable">
-                <thead>
-                  <tr>
-                    <th>Ảnh</th>
-                    <th>Tên / Danh mục</th>
-                    <th>Giá bán / Giá nhập</th>
-                    <th>Trạng thái</th>
-                    <th style={{ textAlign: "right" }}>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.data.map((row) => (
-                    <tr key={row.maSp}>
-                      <td>
-                        {row.coHinhAnh ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img className="mpThumb" src={`/api/be/v1/san-pham/${row.maSp}/hinh-anh`} alt="" loading="lazy" />
-                        ) : (
-                          <span className="mpThumb" aria-label="Chưa có ảnh" />
-                        )}
-                      </td>
-                      <td>
-                        <b>{row.tenSp}</b>
-                        <p className="mpMuted">{row.tenDanhMuc ?? "—"}{row.coHinhAnh ? " · có ảnh" : ""}</p>
-                      </td>
-                      <td>
-                        {vnd(row.giaBan)}
-                        <p className="mpMuted">Nhập: {row.giaNhap === null ? "chưa có" : vnd(row.giaNhap)}</p>
-                      </td>
-                      <td>
-                        <span className={"mpPill" + (row.daXoa ? "" : row.trangThai === "DANG_BAN" ? " mpPillLive" : " mpPillWarn")}>
-                          {row.daXoa ? "Đã xóa" : trangThaiSanPham(row.trangThai)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="mpRowBtns" style={{ justifyContent: "flex-end" }}>
-                          <Link className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} href={`/quan-tri/san-pham/${row.maSp}`}>
-                            Chi tiết
-                          </Link>
-                          {!row.daXoa && (
-                            <>
-                              <button className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => toggleHide(row)}>
-                                {row.trangThai === "DANG_BAN" ? "Tạm ẩn" : "Hiện lại"}
-                              </button>
-                              <button className="mpTopBtn" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => softDelete(row)}>
-                                Xóa
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mpMuted" style={{ marginTop: 10 }}>
-              Trang {data.page + 1}/{Math.max(data.totalPages, 1)} — {data.totalElements} sản phẩm
-              {page > 0 ? <button className="mpTopBtn" style={{ marginLeft: 8 }} onClick={() => setPage(page - 1)}>Trước</button> : null}
-              {page + 1 < data.totalPages ? <button className="mpTopBtn" style={{ marginLeft: 8 }} onClick={() => setPage(page + 1)}>Sau</button> : null}
-            </p>
-          </>
-        )}
-      </div>
-    </MerchantShell>
-  );
-}
-
-function CreateForm({
-  categories,
-  onDone,
-}: {
-  categories: Category[];
-  onDone: () => void;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(form: FormData) {
-    setSaving(true);
-    setError(null);
-    try {
-      const body = {
-        tenSp: String(form.get("tenSp")),
-        maDanhMuc: Number(form.get("maDanhMuc")),
-        chatLieu: emptyNull(form.get("chatLieu")),
-        kieuDang: emptyNull(form.get("kieuDang")),
-        moTa: emptyNull(form.get("moTa")),
-        giaBan: Number(form.get("giaBan")),
-        giaNhap: Number(form.get("giaNhap")),
-      };
-      const response = await beWrite("v1/san-pham", "POST", body);
-      await unwrap(response);
-      onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Tạo thất bại.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <section className="mpCard" aria-label="Tạo sản phẩm">
-      <h2>Tạo sản phẩm mới (bắt buộc giá nhập)</h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit(new FormData(e.currentTarget));
-        }}
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}
-      >
-        <label style={{ gridColumn: "1/-1" }}>
-          Tên sản phẩm*
-          <input name="tenSp" required maxLength={255} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
-        </label>
-        <label>
-          Danh mục*
-          <select name="maDanhMuc" required defaultValue="" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }}>
-            <option value="" disabled>Chọn danh mục</option>
-            {categories.map((c) => (
-              <option key={c.maDanhMuc} value={c.maDanhMuc}>{c.tenDanhMuc}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Giá bán (VND)*
-          <input name="giaBan" required inputMode="decimal" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
-        </label>
-        <label>
-          Giá nhập (VND)*
-          <input name="giaNhap" required inputMode="decimal" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
-        </label>
-        <label>
-          Chất liệu
-          <input name="chatLieu" maxLength={100} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
-        </label>
-        <label>
-          Kiểu dáng
-          <input name="kieuDang" maxLength={100} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
-        </label>
-        <label style={{ gridColumn: "1/-1" }}>
-          Mô tả
-          <textarea name="moTa" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 4 }} />
-        </label>
-        <div style={{ gridColumn: "1/-1" }}>
-          <button className="mpTopBtn primary" type="submit" disabled={saving}>
-            {saving ? "Đang tạo…" : "Tạo sản phẩm"}
-          </button>
-          {error ? <p role="alert" style={{ color: "#ba1a1a", marginTop: 8 }}>Lỗi: {error}</p> : null}
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function emptyNull(value: FormDataEntryValue | null): string | null {
-  if (value === null) return null;
-  const text = String(value).trim();
-  return text === "" ? null : text;
+  // Initial load only; filters apply on submit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void Promise.resolve().then(() => load(0)); }, []);
+  return <AdminShellB active="products" title="Sản phẩm" eyebrow="Vận hành · catalog thật từ BE">
+    <div className="page-heading"><div><h1>Sản phẩm</h1><p className="meta">Danh sách thật · lọc/phân trang server · {role === "ADMIN" ? "ADMIN có quyền sửa" : "STAFF chỉ đọc"}</p></div>{role === "ADMIN" ? <Link className="primary" href="/quan-tri/san-pham/new">Tạo sản phẩm</Link> : null}</div>
+    <form className="catalog-toolbar" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0); }}>
+      <div className="catalog-field"><label htmlFor="p-keyword">Từ khóa</label><input id="p-keyword" className="catalog-input" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Tên sản phẩm" /></div>
+      <div className="catalog-field"><label htmlFor="p-category">Danh mục</label><select id="p-category" className="catalog-input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">Tất cả</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.categoryName}</option>)}</select></div>
+      <div className="catalog-field"><label htmlFor="p-status">Trạng thái</label><select id="p-status" className="catalog-input" value={status} onChange={(e) => setStatus(e.target.value)}>{STATUS.map((s) => <option key={s || "all"} value={s}>{s ? STATUS_LABEL[s] : "Tất cả"}</option>)}</select></div>
+      <button className="primary" type="submit">Lọc</button><button className="text-link" type="button" onClick={() => { setKeyword(""); setCategoryId(""); setStatus(""); setPage(0); void load(0); }}>Đặt lại</button>
+    </form>
+    {loading ? <p className="meta" role="status">Đang tải sản phẩm…</p> : null}
+    {error ? <div className="order-empty" role="alert"><strong>Không tải được sản phẩm</strong><p>{error}</p><button className="text-link" type="button" onClick={() => load(page)}>Thử lại (giữ lọc)</button></div> : null}
+    {!loading && !error && data?.content.length === 0 ? <div className="order-empty"><strong>Không có sản phẩm khớp</strong><p>Thử bỏ lọc hoặc từ khóa khác.</p></div> : null}
+    {!loading && !error && data && data.content.length > 0 ? <div className="table-scroll review-table-scroll" tabIndex={0} aria-label="Danh sách sản phẩm"><table className="review-orders-table"><caption>{data.totalElements} sản phẩm · trang {data.pageNumber + 1}/{Math.max(1, data.totalPages)} · dữ liệu BE candidate</caption><thead><tr><th>Ảnh</th><th>Tên sản phẩm</th><th>Danh mục</th><th className="num">Giá</th><th>Trạng thái</th></tr></thead><tbody>{data.content.map((p) => <tr key={p.id}><td><ProductImage src={p.imageUrl} alt={p.productName} /></td><td><Link className="text-link" href={`/quan-tri/san-pham/${p.id}`}>{p.productName}</Link><small>#{p.id}{p.material ? ` · ${p.material}` : ""}</small></td><td>{p.categoryName ?? "—"}</td><td className="num">{p.price.toLocaleString("vi-VN")} VND</td><td>{STATUS_LABEL[p.status] ?? p.status}</td></tr>)}</tbody></table></div> : null}
+    {data && data.totalPages > 1 ? <div className="review-summary"><button className="text-link" disabled={page === 0} onClick={() => { setPage(page - 1); void load(page - 1); }}>← Trước</button><span>Trang {page + 1} · {data.totalElements}</span><button className="text-link" disabled={data.last} onClick={() => { setPage(page + 1); void load(page + 1); }}>Sau →</button></div> : null}
+    <p className="meta" style={{ marginTop: 16 }}>Không có nút xóa. Ảnh chỉ dùng URL từ BE; upload/tồn kho/vị trí chưa có API nên không hiển thị.</p>
+  </AdminShellB>;
 }

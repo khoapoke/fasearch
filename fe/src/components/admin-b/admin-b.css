@@ -1841,3 +1841,23 @@
 .admB .review-filter input.control:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
 .admB .review-summary button.text-link{font-size:var(--meta-size);}
 .admB .review-orders-table small{display:block;color:var(--muted);font-size:var(--small-size);line-height:var(--small-lh);}
+
+/* Catalog management adaptations on B controls. */
+.admB .catalog-toolbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end;margin:18px 0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.admB .catalog-field{display:grid;gap:5px;min-width:0;}
+.admB .catalog-field label{font-size:var(--meta-size);color:var(--muted);}
+.admB .catalog-input{min-height:40px;padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--meta-size);}
+.admB .catalog-form{display:grid;gap:14px;max-width:720px;}
+.admB .catalog-form .catalog-field{grid-template-columns:150px minmax(0,1fr);align-items:center;}
+.admB .catalog-form .catalog-input{width:100%;}
+.admB .catalog-form textarea.catalog-input{min-height:110px;resize:vertical;}
+.admB .catalog-error{color:var(--error);font-size:var(--meta-size);}
+.admB .catalog-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px;}
+.admB .catalog-thumb{width:44px;height:56px;object-fit:cover;border-radius:3px;background:var(--subtle);}
+.admB .catalog-thumb-fail{display:grid;place-items:center;width:44px;height:56px;border:1px solid var(--line);border-radius:3px;color:var(--muted);font-size:10px;}
+.admB .catalog-inline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.admB .catalog-inline .catalog-input{min-width:90px;flex:1;}
+@media(max-width:680px){.admB .catalog-form .catalog-field{grid-template-columns:1fr;align-items:start;}.admB .catalog-toolbar{align-items:stretch;}.admB .catalog-toolbar .catalog-field{flex:1 1 150px;}}
+.admB .catalog-field{max-width:100%;}
+.admB .catalog-input{max-width:100%;}
+@media(max-width:680px){.admB .catalog-toolbar .catalog-field{flex:1 1 100%;min-width:0;}.admB .catalog-toolbar{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;}.admB .catalog-toolbar .primary,.admB .catalog-toolbar .text-link{justify-self:start;}}
