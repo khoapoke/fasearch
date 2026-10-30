@@ -484,7 +484,7 @@ export const PREVIOUS_DAYS: RevenueDay[] = [
     "covered": true
   }
 ];
-export const INVENTORY_ROWS = [
+const INVENTORY_RAW = [
   {
     "sku": "AT-CT01-DEN-M",
     "warehouse": "KHO-HCM-01",
@@ -510,6 +510,8 @@ export const INVENTORY_ROWS = [
     "state": "out"
   }
 ];
+const rank = (r: {state:string}) => r.state === 'out' ? 0 : 1;
+export const INVENTORY_ROWS = [...INVENTORY_RAW].sort((a,b) => rank(a)-rank(b) || (a.stock/a.threshold)-(b.stock/b.threshold) || String(a.sku).localeCompare(String(b.sku)) || String(a.warehouse).localeCompare(String(b.warehouse)) || String(a.name).localeCompare(String(b.name)));
 export const TODAY = { date: '2026-10-26', total: 6390000, invoices: 2 };
 export const BUSINESS_CLOCK = '26/10/2026 10:00 (GMT+7)';
 export const CURRENT_RANGE = '26/09 – 25/10/2026';

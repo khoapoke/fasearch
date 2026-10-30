@@ -24,8 +24,8 @@ async function login(user){
 await send("Page.enable");await send("Runtime.enable");await send("Network.clearBrowserCookies");
 await send("Page.navigate",{url:base+"/dang-nhap?next=%2Fquan-tri"});await sleep(700);await ev("localStorage.setItem('fasearch-admin-theme','light')");
 const admin=await login("admin"); await wait(async()=>await ev(`!!document.querySelector('.sidebar')`));
-const adminState=await ev(`({path:location.pathname,admB:!!document.querySelector('.admB'),font:getComputedStyle(document.querySelector('.admB')).fontFamily,sidebar:!!document.querySelector('.sidebar'),rows:document.querySelectorAll('.order-row').length,codes:[...document.querySelectorAll('.order-id strong')].map(e=>e.textContent),finance:!!document.querySelector('.finance-desk'),inventory:!!document.querySelector('.inventory'),customerFooter:!!document.querySelector('.sfFooter'),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
-record("S1 ADMIN shell + live queue max3 + finance preview + inventory preview",adminState.admB&&adminState.sidebar&&adminState.rows===3&&adminState.finance&&adminState.inventory&&!adminState.customerFooter&&adminState.overflow<=1&&/Inter/.test(adminState.font),adminState);
+const adminState=await ev(`({path:location.pathname,admB:!!document.querySelector('.admB'),font:getComputedStyle(document.querySelector('.admB')).fontFamily,sidebar:!!document.querySelector('.sidebar'),rows:document.querySelectorAll('.order-row').length,codes:[...document.querySelectorAll('.order-id strong')].map(e=>e.textContent),selected:document.querySelector('[role=tab][aria-selected=true]')?.id,finance:!!document.querySelector('.finance-desk'),inventory:!!document.querySelector('.inventory'),inventoryOrder:[...document.querySelectorAll('.inventory tbody .sku')].map(e=>e.textContent),fresh:document.querySelector('.page-heading .meta')?.textContent,scope:document.querySelector('.scope')?.textContent,customerFooter:!!document.querySelector('.sfFooter'),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
+record("S1 ADMIN shell + selected group max2 + finance/inventory preview + freshness",adminState.admB&&adminState.sidebar&&adminState.rows===2&&adminState.codes.includes('ADM-261020-001')&&adminState.codes.includes('ADM-261023-004')&&adminState.selected==='tab-PENDING'&&adminState.finance&&adminState.inventory&&adminState.inventoryOrder[0]==='DL-L01-HONG-S'&&adminState.inventoryOrder[1]==='QJ-S01-XANH-33'&&adminState.inventoryOrder[2]==='AT-CT01-DEN-M'&&adminState.fresh&&!adminState.fresh.includes('26/10/2026 10:00')&&!adminState.scope.includes('ONLINE')&&!adminState.customerFooter&&adminState.overflow<=1&&/Inter/.test(adminState.font),adminState);
 await shot("admin-overview-1440-light.png");
 // dialog escape/focus
 await ev(`document.querySelector('.chart-open')?.click()`); await wait(async()=>await ev(`document.querySelector('#chart-dialog')?.open===true`));
@@ -39,6 +39,17 @@ await ev(`document.querySelector('.utilities button')?.click()`); await sleep(30
 const dark=await ev(`document.querySelector('.admB')?.classList.contains('dark')`);
 record("S1 theme toggle scopes dark to Admin wrapper",dark,{dark});
 await shot("admin-overview-1440-dark.png");
+// Inline group tabs + keyboard
+await ev(`document.querySelector('#tab-PENDING')?.focus()`);
+await send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39,nativeVirtualKeyCode:39});
+await send('Input.dispatchKeyEvent',{type:'keyUp',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39,nativeVirtualKeyCode:39});
+await sleep(250);
+const tabConfirmed=await ev(`({selected:document.querySelector('[role=tab][aria-selected=true]')?.id,rows:document.querySelectorAll('.order-row').length,label:document.querySelector('.order-id strong')?.textContent,panel:document.querySelector('[role=tabpanel]')?.getAttribute('aria-labelledby')})`);
+await ev(`document.querySelector('#tab-PACKING')?.click()`); await sleep(250);
+const tabPacking=await ev(`({selected:document.querySelector('[role=tab][aria-selected=true]')?.id,rows:document.querySelectorAll('.order-row').length,label:document.querySelector('.order-id strong')?.textContent})`);
+await ev(`document.querySelector('#tab-PENDING')?.click()`); await sleep(250);
+const viewAll=await ev(`document.querySelector('.preview-link')?.getAttribute('href')`);
+record("S1 active-group tabs: inline selected, ArrowRight navigation, group rows and View all target",tabConfirmed.selected==='tab-CONFIRMED'&&tabConfirmed.rows===1&&tabConfirmed.label?.startsWith('ADM-261021-002')&&tabConfirmed.panel==='tab-CONFIRMED'&&tabPacking.selected==='tab-PACKING'&&tabPacking.rows===1&&tabPacking.label?.startsWith('ADM-261022-003')&&viewAll==='/quan-tri/don-hang?status=PENDING',{tabConfirmed,tabPacking,viewAll});
 // list + detail
 await goto("/quan-tri/don-hang"); await wait(async()=>await ev(`document.querySelectorAll('.review-orders-table tbody tr').length>0`));
 const list=await ev(`({path:location.pathname,rows:document.querySelectorAll('.review-orders-table tbody tr').length,total:document.querySelector('.review-orders-table caption')?.textContent,footer:!!document.querySelector('.sfFooter'),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
@@ -52,7 +63,7 @@ await shot("admin-order-detail-1440-dark.png");
 // staff role
 const staff=await login("nhanvien1"); await wait(async()=>await ev(`!!document.querySelector('.sidebar')`));
 const staffState=await ev(`({path:location.pathname,rows:document.querySelectorAll('.order-row').length,finance:!!document.querySelector('.finance-desk'),chart:!!document.querySelector('.chart'),dialog:!!document.querySelector('#chart-dialog'),dataSection:!!document.querySelector('.data-section'),sidebar:!!document.querySelector('.sidebar'),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
-record("S1 STAFF live queue but finance/chart/dialog absent from DOM",staff&&staffState.sidebar&&staffState.rows===3&&!staffState.finance&&!staffState.chart&&!staffState.dialog&&!staffState.dataSection&&staffState.overflow<=1,staffState);
+record("S1 STAFF live queue but finance/chart/dialog absent from DOM",staff&&staffState.sidebar&&staffState.rows===2&&!staffState.finance&&!staffState.chart&&!staffState.dialog&&!staffState.dataSection&&staffState.overflow<=1,staffState);
 await shot("staff-overview-1440-light.png");
 // customer denied
 const cust=await login("khachhang1"); await sleep(700);

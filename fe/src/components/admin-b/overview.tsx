@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Icon } from "./icons";
 import { AdminShellB } from "./admin-shell";
 import {
-  BUSINESS_CLOCK, CURRENT, CURRENT_RANGE, GROWTH, INVENTORY_ROWS, MISSING_DAYS,
+  CURRENT, CURRENT_RANGE, GROWTH, INVENTORY_ROWS, MISSING_DAYS,
   MISSING_LINES, PEAK, PREVIOUS, PREVIOUS_DAYS, PREVIOUS_RANGE, REVENUE_DAYS,
   TODAY, dateText, money,
 } from "./fixtures";
 
 type Counts = Record<string, number>;
 type QueueOrder = { orderId: number; orderCode: string; status: string; customerName: string | null; totalAmount: number; createdAt: string };
-type Overview = { role: "ADMIN" | "STAFF"; counts: Counts; queueTotal: number; orders: QueueOrder[] };
+type Group = { total: number; rows: QueueOrder[] };
+type Overview = { role: "ADMIN" | "STAFF"; counts: Counts; queueTotal: number; groups: Record<string, Group>; fetchedAt: string };
 const STAGES = [
   { code: "PENDING", label: "Mới tạo", lower: "mới tạo" },
   { code: "CONFIRMED", label: "Đã xác nhận", lower: "đã xác nhận" },
@@ -24,8 +24,10 @@ function amount(v: number) { return v.toLocaleString("vi-VN"); }
 function Money({ v }: { v: number }) { return <span className="money">{amount(v)}<span className="unit">VND</span></span>; }
 function dayText(v: string) { return dateText(v); }
 function Chart({ expanded = false }: { expanded?: boolean }) {
-  const w = expanded ? 900 : 520, h = expanded ? 360 : 240;
-  const margin = expanded ? { left: 54, right: 18, top: 14, bottom: 34 } : { left: 42, right: 14, top: 12, bottom: 28 };
+  // Compact viewBox matches the rendered card (~290px) so the approved 12px
+  // SVG labels do not shrink to ~6px; expanded keeps the dialog proportions.
+  const w = expanded ? 900 : 300, h = expanded ? 360 : 200;
+  const margin = expanded ? { left: 54, right: 18, top: 14, bottom: 34 } : { left: 34, right: 10, top: 10, bottom: 26 };
   const pw = w - margin.left - margin.right, ph = h - margin.top - margin.bottom;
   const max = 8000000;
   const x = (i: number) => margin.left + pw * i / 29;
@@ -89,8 +91,8 @@ function InventoryPreview() {
   return <section className="inventory" aria-labelledby="stock-title"><div className="section-head"><div><h2 id="stock-title">Tồn kho cần chú ý</h2><p className="meta">PREVIEW fixture · 1 kho · 3 SKU</p></div><p className="exception-label"><Icon name="triangle-alert" />Theo kho: 2 mục hết hàng · 1 mục sắp hết</p></div><div className="table-scroll" tabIndex={0} aria-label="Danh sách tồn kho preview"><table><caption>PREVIEW canonical, không phải API tồn kho live; mỗi dòng là một SKU tại một kho, xếp theo quy tắc ưu tiên.</caption><thead><tr><th>SKU / Sản phẩm</th><th>Kho</th><th className="num">Tồn hiện tại</th><th className="num">Ngưỡng</th><th>Trạng thái</th></tr></thead><tbody>{INVENTORY_ROWS.map((r) => <tr key={`${r.sku}-${r.warehouse}`}><td><strong className="sku">{r.sku}</strong><small className="product-name">{r.name}</small><small className="warehouse-inline">{r.warehouse}</small></td><td className="warehouse">{r.warehouse}</td><td className={`num stock-number${r.state === "out" ? " zero" : ""}`}>{r.stock}</td><td className="num">{r.threshold}</td><td><span className={`badge ${r.state}`}>{r.state === "out" ? "Hết hàng" : "Sắp hết"}</span></td></tr>)}</tbody></table></div></section>;
 }
 export function OverviewClient() {
-  const router = useRouter();
   const [data, setData] = useState<Overview | null>(null);
+  const [stage, setStage] = useState("PENDING");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -99,19 +101,32 @@ export function OverviewClient() {
     return () => c.abort();
   }, []);
   const admin = data?.role === "ADMIN";
-  const queue = data?.orders ?? [];
   const counts = data?.counts ?? {};
+  const group = data?.groups?.[stage] ?? { total: 0, rows: [] };
+  const queue = group.rows;
+  const freshness = data?.fetchedAt ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "medium" }).format(new Date(data.fetchedAt)) : null;
+  const selectStage = (next: string) => {
+    setStage(next);
+    requestAnimationFrame(() => document.getElementById(`tab-${next}`)?.focus());
+  };
+  const onTabKey = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? STAGES.length - 1 : event.key === "ArrowRight" ? (index + 1) % STAGES.length : (index - 1 + STAGES.length) % STAGES.length;
+    selectStage(STAGES[next].code);
+  };
   return <AdminShellB active="overview" title="Tổng quan">
-    <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Cập nhật · {BUSINESS_CLOCK} · dữ liệu đơn từ BE candidate</p></div>{admin ? <details className="date-control"><summary><Icon name="calendar-days" /><span>{CURRENT_RANGE}</span><Icon name="chevron-down" /></summary><div className="date-popover"><strong>Kỳ doanh thu</strong><p className="meta">30 ngày hoàn chỉnh · PREVIEW fixture</p><div className="period-selected">{CURRENT_RANGE}</div><p className="meta">So sánh: {PREVIOUS_RANGE}</p><p className="meta">Kỳ doanh thu chỉ thuộc khối preview; danh sách đơn luôn gồm mọi ngày tạo.</p></div></details> : null}</div>
+    <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Đơn cập nhật từ BE · {freshness ?? "chưa có thời điểm tải thành công"}</p></div>{admin ? <details className="date-control"><summary><Icon name="calendar-days" /><span>{CURRENT_RANGE}</span><Icon name="chevron-down" /></summary><div className="date-popover"><strong>Kỳ doanh thu</strong><p className="meta">30 ngày hoàn chỉnh · PREVIEW fixture</p><div className="period-selected">{CURRENT_RANGE}</div><p className="meta">So sánh: {PREVIOUS_RANGE}</p><p className="meta">Kỳ doanh thu chỉ thuộc khối preview; danh sách đơn luôn gồm mọi ngày tạo.</p></div></details> : null}</div>
     {loading ? <p className="meta">Đang tải hàng đợi đơn…</p> : null}
     {error ? <div className="order-empty" role="alert"><strong>Không tải được tổng quan</strong><p>{error}</p><Link className="text-link" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div> : null}
     {data ? <div className="desk-grid"><div className="operations">
-      <section className="workbench" aria-labelledby="work-title"><div className="work-title"><span className="work-count">{data.queueTotal}</span><div><h2 id="work-title">đơn cần xử lý</h2><p className="meta scope">ONLINE · mọi ngày tạo · Cũ nhất trước</p></div></div>
-        <div className="stage-tabs" role="tablist" aria-label="Trạng thái đơn cần xử lý">{STAGES.map((stage) => <button key={stage.code} type="button" role="tab" aria-selected="false" onClick={() => { router.push(`/quan-tri/don-hang?status=${stage.code}`); }} tabIndex={-1}>{stage.label}<span>{counts[stage.code] ?? 0}</span></button>)}</div>
-        <div id="order-panel" role="tabpanel" aria-labelledby="work-title">
-          {queue.length === 0 ? <div className="order-empty"><strong>Không có đơn cần xử lý</strong><p>Chưa có bản ghi PENDING/CONFIRMED/PACKING.</p></div> : <div className="orders-list">{queue.map((order) => <Link className="order-row" href={`/quan-tri/don-hang/${order.orderId}`} key={order.orderId} aria-label={`Mở đơn ${order.orderCode}`}><span className="order-id"><strong>{order.orderCode}</strong><small>{dayText(order.createdAt)}</small></span><span className="customer"><strong>{order.customerName ?? "Không có tên"}</strong><small>{STATUS_LABEL[order.status] ?? order.status} · <Money v={order.totalAmount} /></small></span><span className="order-status">{STATUS_LABEL[order.status] ?? order.status}</span><Icon name="chevron-right" /></Link>)}</div>}
+      <section className="workbench" aria-labelledby="work-title"><div className="work-title"><span className="work-count">{data.queueTotal}</span><div><h2 id="work-title">đơn cần xử lý</h2><p className="meta scope">Đơn từ BE · chưa có kênh/thanh toán · cũ nhất trước</p></div></div>
+        <div className="stage-tabs" role="tablist" aria-label="Trạng thái đơn cần xử lý">{STAGES.map((item, index) => <button key={item.code} id={`tab-${item.code}`} type="button" role="tab" aria-selected={stage === item.code} aria-controls="order-panel" tabIndex={stage === item.code ? 0 : -1} onClick={() => selectStage(item.code)} onKeyDown={(event) => onTabKey(event, index)}>{item.label}<span>{counts[item.code] ?? 0}</span></button>)}</div>
+        <div id="order-panel" role="tabpanel" aria-labelledby={`tab-${stage}`}>
+          {queue.length === 0 ? <div className="order-empty"><strong>Không có đơn {STAGES.find((item) => item.code === stage)?.lower ?? ""}</strong><p>Không có bản ghi ở nhóm này.</p></div> : <div className="orders-list">{queue.map((order) => <Link className="order-row" href={`/quan-tri/don-hang/${order.orderId}`} key={order.orderId} aria-label={`Mở đơn ${order.orderCode}`}><span className="order-id"><strong>{order.orderCode}</strong><small>{dayText(order.createdAt)}</small></span><span className="customer"><strong>{order.customerName ?? "Không có tên"}</strong><small>{STATUS_LABEL[order.status] ?? order.status} · <Money v={order.totalAmount} /></small></span><span className="order-status">{STATUS_LABEL[order.status] ?? order.status}</span><Icon name="chevron-right" /></Link>)}</div>}
         </div>
-        <div className="work-footer" id="work-footer"><span className="preview-count">Hiển thị {queue.length}/{data.queueTotal} đơn cũ nhất</span>{data.queueTotal > 0 ? <Link className="text-link preview-link" href="/quan-tri/don-hang">Xem tất cả<Icon name="arrow-right" /></Link> : null}</div>
+        <div className="work-footer" id="work-footer"><span className="preview-count">Hiển thị {queue.length}/{group.total} đơn {STAGES.find((item) => item.code === stage)?.lower ?? ""} · tổng {data.queueTotal}</span>{group.total > 0 ? <Link className="text-link preview-link" href={`/quan-tri/don-hang?status=${stage}`}>Xem tất cả<Icon name="arrow-right" /></Link> : null}</div>
       </section>
       <div className="desk-continuations"><div className="continuation"><Icon name="truck" /><span><strong>Giao &amp; thu COD</strong><small>Chưa có dữ liệu kênh/thanh toán trong DTO</small></span><b>—</b></div><div className="continuation"><Icon name="monitor" /><span><strong>Nháp POS</strong><small>Ngoài phạm vi read pilot</small></span><b>—</b></div></div>
       <InventoryPreview />

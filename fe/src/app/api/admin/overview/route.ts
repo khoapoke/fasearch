@@ -23,12 +23,12 @@ export async function GET(request: NextRequest) {
       if (!r.ok || !payload.success || !payload.result) throw new Error("upstream");
       return { status, total: Number(payload.result.totalElements ?? 0), rows: Array.isArray(payload.result.content) ? payload.result.content : [] };
     }));
-    const rows = results.flatMap((r) => r.rows).sort((a, b) => {
-      const byDate = Date.parse(a.createdAt) - Date.parse(b.createdAt);
-      return byDate || a.orderId - b.orderId;
-    }).slice(0, 3);
+    const groups = Object.fromEntries(results.map((r) => [r.status, {
+      total: r.total,
+      rows: r.rows.sort((a, b) => (Date.parse(a.createdAt) - Date.parse(b.createdAt)) || a.orderId - b.orderId).slice(0, 3),
+    }]));
     const counts = Object.fromEntries(results.map((r) => [r.status, r.total]));
-    return Response.json({ success: true, code: 200, result: { role: who.identity.role, counts, queueTotal: results.reduce((n, r) => n + r.total, 0), orders: rows } }, { headers: { "cache-control": "no-store" } });
+    return Response.json({ success: true, code: 200, result: { role: who.identity.role, counts, queueTotal: results.reduce((n, r) => n + r.total, 0), groups, fetchedAt: new Date().toISOString() } }, { headers: { "cache-control": "no-store" } });
   } catch {
     return Response.json({ success: false, code: 503, message: "Không tải được hàng đợi đơn.", result: null }, { status: 503, headers: { "cache-control": "no-store" } });
   }
