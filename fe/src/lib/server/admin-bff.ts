@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authCookie, fetchMyInfo } from "@/lib/server/customer-auth";
 
-const BE = "http://127.0.0.1:18112";
+const BE = "http://127.0.0.1:18114";
 type Identity = { role: string; status: string };
 
 function headers(token: string): Record<string, string> {

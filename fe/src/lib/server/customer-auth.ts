@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 // Candidate-only D060 transport: JWT stays server-side in an HttpOnly cookie.
 // No token/password logging, no generic proxy, no legacy auth fallback.
 
-export const AUTH_COOKIE = "fasearch-auth-pilot-3129";
-export const AUTH_ATTEMPT_COOKIE = "fasearch-auth-current-3129";
+export const AUTH_COOKIE = "fasearch-auth-pilot-3131";
+export const AUTH_ATTEMPT_COOKIE = "fasearch-auth-current-3131";
 const ATTEMPT_PATTERN = /^[A-Za-z0-9-]{16,80}$/;
 const MAX_COOKIE_AGE = 7 * 24 * 60 * 60;
 

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authCookie, requireJsonPost } from "@/lib/server/customer-auth";
 import { adminIdentity } from "@/lib/server/admin-bff";
-const BE = "http://127.0.0.1:18112";
+const BE = "http://127.0.0.1:18114";
 function headers(token: string, json = true): Record<string, string> { return { accept: json ? "application/json" : "*/*", authorization: `Bearer ${token}` }; }
 function out(up: Response): Response { const h = new Headers({ "cache-control": "no-store" }); const t = up.headers.get("content-type"); if (t) h.set("content-type", t); return new Response(up.body, { status: up.status, headers: h }); }
 export async function stockRead(request: NextRequest, path: string): Promise<Response> {

@@ -1928,3 +1928,12 @@
   .admB .catalog-form.stocktake-form .stocktake-line > *{grid-column:1;}
   .admB .catalog-form.stocktake-form .stocktake-line > :last-child{justify-self:start;}
 }
+
+/* Order processing: the only write surface is the next sequential action. */
+.admB .order-action{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:start;margin:16px 0;padding:16px;border:1px solid var(--accent-border);border-radius:6px;background:var(--accent-bg);}
+.admB .order-action h2{margin:2px 0 4px;}
+.admB .order-confirm{flex:1 1 420px;display:grid;gap:8px;max-width:640px;}
+.admB .order-confirm label{font-size:var(--meta-size);color:var(--muted);}
+.admB .order-confirm-note{width:100%;min-height:80px;resize:vertical;}
+.admB .order-prose{white-space:normal;overflow-wrap:anywhere;word-break:break-word;max-width:78ch;line-height:1.6;}
+@media(max-width:680px){.admB .order-action{display:grid;}.admB .order-confirm{max-width:none;}}
