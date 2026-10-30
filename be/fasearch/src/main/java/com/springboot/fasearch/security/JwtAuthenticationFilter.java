@@ -1,8 +1,8 @@
 package com.springboot.fasearch.security;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -11,6 +11,10 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.springboot.fasearch.common.enums.AccountStatus;
+import com.springboot.fasearch.modules.auth.entity.Account;
+import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final AccountRepository accountRepository;
 
     @Override
     protected void doFilterInternal(
@@ -36,13 +41,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtProvider.validateToken(token)) {
             String username = jwtProvider.extractUsername(token);
-            String role = jwtProvider.extractRole(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                List<SimpleGrantedAuthority> authorities = Collections.emptyList();
-                if (StringUtils.hasText(role)) {
+                // Chữ ký token hợp lệ chưa đủ: quyền phải lấy theo trạng thái và vai trò HIỆN TẠI trong DB,
+                // nếu không token cũ vẫn giữ quyền sau khi tài khoản bị khóa/ngừng hoạt động/bị hạ vai trò.
+                Optional<Account> currentAccount = accountRepository.findByUsername(username);
+                if (currentAccount.isEmpty()
+                        || Boolean.TRUE.equals(currentAccount.get().getIsDeleted())
+                        || currentAccount.get().getStatus() != AccountStatus.ACTIVE) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                List<SimpleGrantedAuthority> authorities = List.of();
+                Account account = currentAccount.get();
+                if (account.getRole() != null && account.getRole().getName() != null) {
                     // Đảm bảo prefix ROLE_ để hasRole('ADMIN') hoặc hasAuthority('ROLE_ADMIN') đều nhận diện đúng
                     // trong spring security chỉ nhận role theo đúng định dạng ROLE_ADMIN, ROLE_STAFF,v.v
+                    String role = account.getRole().getName().name();
                     String roleAuthority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                     authorities = List.of(new SimpleGrantedAuthority(roleAuthority));
                 }
