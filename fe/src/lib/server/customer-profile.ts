@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { authCookie, authError, fetchMyInfo, readJsonObject, requireJsonPost } from "@/lib/server/customer-auth";
-const BE = "http://127.0.0.1:18120";
+const BE = "http://127.0.0.1:18122";
 const GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
 const PHONE = /^(0|\+84)[0-9]{9}$/;
 function out(up: Response): Response { const h = new Headers({ "cache-control": "no-store" }); const t = up.headers.get("content-type"); if (t) h.set("content-type", t); return new Response(up.body, { status: up.status, headers: h }); }

@@ -2,7 +2,7 @@
 // still depend on the old FASEARCH_SESSION and would bounce a new-JWT user
 // back to login, so they are deliberately outside this allowlist.
 const FALLBACK = "/tai-khoan";
-const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi", "/quan-tri/phieu-xuat", "/quan-tri/kiem-ke", "/quan-tri/kiem-ke/moi", "/tim-kiem-ai", "/nam", "/quan-tri/khach-hang", "/quan-tri/khach-hang/moi"]);
+const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi", "/quan-tri/phieu-xuat", "/quan-tri/kiem-ke", "/quan-tri/kiem-ke/moi", "/tim-kiem-ai", "/nam", "/quan-tri/khach-hang", "/quan-tri/khach-hang/moi", "/quan-tri/nhan-vien", "/quan-tri/nhan-vien/moi", "/quan-tri/tai-khoan-noi-bo"]);
 
 function hasControlChar(value: string): boolean {
   for (const char of value) {
@@ -37,7 +37,8 @@ export function safeCustomerAuthReturn(raw: string | null): string {
   const adminExport = /^\/quan-tri\/phieu-xuat\/[1-9]\d*$/.test(decoded);
   const adminStocktake = /^\/quan-tri\/kiem-ke\/[1-9]\d*$/.test(decoded);
   const adminCustomer = /^\/quan-tri\/khach-hang\/[1-9]\d*$/.test(decoded);
+  const adminEmployee = /^\/quan-tri\/nhan-vien\/[1-9]\d*$/.test(decoded);
   const customerProduct = /^\/san-pham\/[1-9]\d*$/.test(decoded);
-  if (decoded !== raw || (!TARGETS.has(decoded) && !ownedOrder && !adminOrder && !adminCatalog && !adminStock && !adminImport && !adminExport && !adminStocktake && !adminCustomer && !customerProduct)) return FALLBACK;
+  if (decoded !== raw || (!TARGETS.has(decoded) && !ownedOrder && !adminOrder && !adminCatalog && !adminStock && !adminImport && !adminExport && !adminStocktake && !adminCustomer && !adminEmployee && !customerProduct)) return FALLBACK;
   return decoded;
 }
