@@ -2,7 +2,7 @@
 // still depend on the old FASEARCH_SESSION and would bounce a new-JWT user
 // back to login, so they are deliberately outside this allowlist.
 const FALLBACK = "/tai-khoan";
-const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc"]);
+const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi"]);
 
 function hasControlChar(value: string): boolean {
   for (const char of value) {
@@ -32,6 +32,8 @@ export function safeCustomerAuthReturn(raw: string | null): string {
   const ownedOrder = /^\/don-hang\/[1-9]\d*$/.test(decoded);
   const adminOrder = /^\/quan-tri\/don-hang\/[1-9]\d*$/.test(decoded);
   const adminCatalog = /^\/quan-tri\/san-pham\/(new|[1-9]\d*)(\/sua)?$/.test(decoded);
-  if (decoded !== raw || (!TARGETS.has(decoded) && !ownedOrder && !adminOrder && !adminCatalog)) return FALLBACK;
+  const adminStock = /^\/quan-tri\/ton-kho\/[1-9]\d*$/.test(decoded);
+  const adminImport = /^\/quan-tri\/phieu-nhap\/[1-9]\d*$/.test(decoded);
+  if (decoded !== raw || (!TARGETS.has(decoded) && !ownedOrder && !adminOrder && !adminCatalog && !adminStock && !adminImport)) return FALLBACK;
   return decoded;
 }
