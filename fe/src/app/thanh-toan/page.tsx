@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
-import { createCustomerOrder, fetchShippingQuote } from "@/lib/customer-commerce-client";
-import { CommerceError, formatMoney } from "@/lib/customer-commerce";
+import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
+import { CommerceError, formatMoney, type CustomerCartQuote } from "@/lib/customer-commerce";
+import { newOperationKey } from "@/lib/commerce";
 import "@/components/customer-commerce/commerce.css";
 
 const WEIGHT_PER_ITEM_GRAM = 500;
@@ -16,6 +17,10 @@ const DEFAULT_DISTRICT = "Quận 1";
 type Quote = { shippingFee: number; estimatedDays: string; key: string };
 
 export default function CheckoutPage() {
+  return <Suspense fallback={<StorefrontShell active="/thanh-toan" themed palette="customer" header="customer" footer="none"><div className="commercePage"><p className="commerce-status" role="status">Đang tải dữ liệu thanh toán…</p></div></StorefrontShell>}><CheckoutPageContent /></Suspense>;
+}
+
+function CheckoutPageContent() {
   const router = useRouter();
   const { cart, authState, loading, error: cartError } = useCustomerCart();
   const [name, setName] = useState("");
@@ -27,14 +32,45 @@ export default function CheckoutPage() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [quoteError, setQuoteError] = useState("");
+  const initialVoucher = useSearchParams().get("voucher") ?? "";
+  const [voucherCode, setVoucherCode] = useState(initialVoucher);
+  const [cartQuote, setCartQuote] = useState<{ quote: CustomerCartQuote; cartSignature: string } | null>(null);
+  const [voucherBusy, setVoucherBusy] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const pending = useRef(false);
   const quoteReq = useRef(0);
+  const voucherReq = useRef(0);
+  const initialQuoteRequested = useRef(false);
+  const checkoutAttempt = useRef<{ signature: string; key: string } | null>(null);
 
   const weight = Math.max(1, (cart?.totalItems ?? 0) * WEIGHT_PER_ITEM_GRAM);
   const key = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weight}`;
+  const cartSignature = JSON.stringify(cart?.items.map(({ skuId, quantity, unitPrice, totalPrice }) => [skuId, quantity, unitPrice, totalPrice]) ?? []);
+  const currentCartQuote = cartQuote?.cartSignature === cartSignature && (cartQuote.quote.voucherCode ?? "") === voucherCode.trim().toUpperCase() ? cartQuote.quote : null;
+  const quoteIsCurrent = Boolean(currentCartQuote);
+
+  const applyQuote = useCallback(async (code: string | null) => {
+    if (!cart?.items.length) return null;
+    const my = ++voucherReq.current;
+    setVoucherBusy(true); setVoucherError(""); setCartQuote(null);
+    try {
+      const result = await quoteCustomerCart(code);
+      if (voucherReq.current !== my) return null;
+      setCartQuote({ quote: result, cartSignature }); checkoutAttempt.current = null; setError("");
+      return result;
+    } catch (failure) {
+      if (voucherReq.current !== my) return null;
+      setCartQuote(null);
+      setVoucherError(failure instanceof Error ? failure.message : "Không thể báo giá voucher.");
+      return null;
+    } finally {
+      if (voucherReq.current === my) setVoucherBusy(false);
+    }
+  }, [cart?.items.length, cartSignature]);
 
   const calculate = useCallback(async () => {
     if (!province.trim() || !district.trim() || !cart?.items.length) return null;
@@ -56,9 +92,20 @@ export default function CheckoutPage() {
   }, [cart?.items.length, district, province, weight]);
 
   useEffect(() => {
-    if (!cart?.items.length) return;
+    if (!cart?.items.length) { initialQuoteRequested.current = false; return; }
+    if (!initialQuoteRequested.current) {
+      initialQuoteRequested.current = true;
+      void applyQuote(null);
+    }
     void Promise.resolve().then(() => calculate());
-  }, [calculate, cart?.items.length]);
+  }, [applyQuote, calculate, cart?.items.length, cartSignature]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
+  const voucherErrorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => { if (voucherError) voucherErrorRef.current?.focus(); }, [voucherError]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -66,18 +113,28 @@ export default function CheckoutPage() {
     if (!name.trim() || !phone.trim() || !address.trim()) { setError("Điền đủ người nhận, số điện thoại và địa chỉ."); return; }
     if (!/^\d{9,11}$/.test(phone.replace(/[ .-]/g, ""))) { setError("Số điện thoại phải có 9–11 chữ số."); return; }
     if (address.trim().length < 5) { setError("Địa chỉ giao hàng quá ngắn."); return; }
+    if (!currentCartQuote) { setError("Hãy báo giá giỏ hàng/voucher trước khi đặt đơn."); return; }
     const current = quote?.key === key ? quote : await calculate();
     if (!current) { setError("Chưa có phí giao hàng hợp lệ. Kiểm tra tỉnh/quận rồi thử lại."); return; }
     pending.current = true;
     setBusy(true); setError(""); setUncertain(false);
     try {
-      const order = await createCustomerOrder({
+      const checkout = {
         deliveryAddress: address.trim(), receiverName: name.trim(), receiverPhone: phone.trim(),
         paymentMethod: "COD", shippingFee: current.shippingFee, ...(note.trim() ? { note: note.trim() } : {}),
-      });
+        ...(currentCartQuote.voucherCode ? { voucherCode: currentCartQuote.voucherCode } : {}),
+        quoteFingerprint: currentCartQuote.quoteFingerprint, expectedMerchandiseAmountDue: currentCartQuote.merchandiseAmountDue,
+      };
+      const signature = JSON.stringify(checkout);
+      const checkoutKey = checkoutAttempt.current?.signature === signature ? checkoutAttempt.current.key : newOperationKey();
+      checkoutAttempt.current = { signature, key: checkoutKey };
+      const order = await createCustomerOrder({ ...checkout, checkoutKey });
       router.push(`/don-hang/${order.orderId}`);
     } catch (failure) {
-      if (failure instanceof CommerceError) setError(failure.message);
+      if (failure instanceof CommerceError && failure.code === "4107") {
+        setCartQuote(null); checkoutAttempt.current = null;
+        setVoucherError(failure.message); setError("");
+      } else if (failure instanceof CommerceError) setError(failure.message);
       else {
         setUncertain(true);
         setError("Chưa xác định được đơn đã được tạo hay chưa. Không gửi lại tự động; mở Đơn hàng để đối soát trước.");
@@ -116,19 +173,24 @@ export default function CheckoutPage() {
                   <div className="checkout-field"><label htmlFor="checkout-district">Quận/Huyện</label><input id="checkout-district" className="checkout-input" value={district} onChange={(e) => setDistrict(e.target.value)} /></div>
                 </div>
                 <div className="checkout-field"><label htmlFor="checkout-note">Ghi chú (không bắt buộc)</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} /></div>
+                <div className="checkout-field"><label htmlFor="checkout-voucher">Mã voucher (không bắt buộc)</label><div style={{ display: "flex", gap: 8 }}><input id="checkout-voucher" className="checkout-input" value={voucherCode} onChange={(e) => { setVoucherCode(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} maxLength={50} autoComplete="off" /><button className="commerce-ghost" type="button" disabled={voucherBusy} onClick={() => { setError(""); void applyQuote(voucherCode.trim() || null); }}>{voucherBusy ? "Đang báo giá…" : voucherCode.trim() ? "Áp dụng mã" : "Bỏ mã / báo giá lại"}</button></div></div>
                 <p className="checkout-test-note">Đơn thử nghiệm. Phí giao hàng lấy từ API BE với giả định {WEIGHT_PER_ITEM_GRAM}g/món vì DTO sản phẩm công khai chưa có trọng lượng; đây không phải metadata sản xuất.</p>
+                {voucherError ? <p ref={voucherErrorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{voucherError}</p> : null}
+                {cartQuote && !quoteIsCurrent && !voucherBusy ? <p className="commerce-status" role="status">Giỏ hàng hoặc mã voucher đã thay đổi. Báo giá lại trước khi đặt đơn.</p> : null}
                 {quoteError ? <p className="commerce-status is-error" role="alert">{quoteError}</p> : null}
-                {error ? <p className="commerce-status is-error" role="alert">{error}</p> : null}
+                {error ? <p ref={errorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{error}</p> : null}
                 {uncertain ? <p className="commerce-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href="/don-hang">Mở Đơn hàng để đối soát →</Link></p> : null}
-                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy}>{busy ? "Đang tạo đơn thử nghiệm…" : "Đặt đơn thử nghiệm (COD)"}</button>
-                <p className="commerce-note">Không tự retry khi mất phản hồi; không có phí vận chuyển do trình duyệt tự đặt. Tổng cuối do BE trả về.</p>
+                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? "Đang tạo đơn thử nghiệm…" : "Đặt đơn thử nghiệm (COD)"}</button>
+                <p className="commerce-note">Không tự retry khi mất phản hồi; phí giao hàng vẫn theo biên giới legacy chưa được S1 xác thực. Tiền hàng và voucher do BE báo giá; tổng cuối trả về từ đơn đã chốt.</p>
               </form>
               <aside className="checkout-summary-panel" aria-label="Tóm tắt thanh toán">
                 <h2>Đơn của bạn</h2>
-                <ul className="checkout-lines">{cart.items.map((line) => <li className="checkout-summary-line" key={line.skuId}><span>{line.productName} · {[line.color, line.size].filter(Boolean).join(" · ")} × {line.quantity}</span><strong>{formatMoney(line.totalPrice)}</strong></li>)}</ul>
-                <div className="checkout-summary-line"><span>Tạm tính</span><strong>{formatMoney(cart.subTotal)}</strong></div>
+                <ul className="checkout-lines">{cart.items.map((line) => { const quoted = currentCartQuote?.items.find((item) => item.skuId === line.skuId); return <li className="checkout-summary-line" key={line.skuId}><span>{line.productName} · {[line.color, line.size].filter(Boolean).join(" · ")} × {line.quantity}{quoted?.discountAmount ? <small style={{ display: "block" }}>Giảm theo voucher: {formatMoney(quoted.discountAmount)}</small> : null}</span><strong>{formatMoney(quoted?.totalPrice ?? line.totalPrice)}</strong></li>; })}</ul>
+                <div className="checkout-summary-line"><span>Tạm tính hàng hóa</span><strong>{formatMoney(currentCartQuote?.subTotal ?? cart.subTotal)}</strong></div>
+                {currentCartQuote?.voucherCode ? <div className="checkout-summary-line"><span>Voucher {currentCartQuote.voucherCode}</span><strong>−{formatMoney(currentCartQuote.voucherDiscount)}</strong></div> : null}
+                <div className="checkout-summary-line"><span>Tiền hàng sau ưu đãi</span><strong>{currentCartQuote ? formatMoney(currentCartQuote.merchandiseAmountDue) : "—"}</strong></div>
                 <div className="checkout-summary-line"><span>Phí giao hàng {quote ? `(${quote.estimatedDays})` : ""}</span><strong>{quote ? formatMoney(quote.shippingFee) : quoteBusy ? "Đang tính…" : "—"}</strong></div>
-                <div className="checkout-total"><span>Tổng tạm tính</span><strong>{quote ? formatMoney(cart.subTotal + quote.shippingFee) : "—"}</strong></div>
+                <div className="checkout-total"><span>Tổng tạm tính</span><strong>{currentCartQuote && quote ? formatMoney(currentCartQuote.merchandiseAmountDue + quote.shippingFee) : "—"}</strong></div>
                 <div className="checkout-cod"><span>Thanh toán</span><strong>COD — thu khi nhận</strong></div>
                 <button className="commerce-ghost" type="button" onClick={() => { setQuote(null); void calculate(); }} disabled={quoteBusy}>{quoteBusy ? "Đang tính phí…" : "Tính lại phí giao hàng"}</button>
                 <p className="commerce-note">Tổng hiển thị là ước tính; BE tính lại tổng khi tạo đơn và trả về tổng thật.</p>

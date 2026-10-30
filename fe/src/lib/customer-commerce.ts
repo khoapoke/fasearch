@@ -31,6 +31,11 @@ export type CustomerOrder = {
   discountAmount: number;
   shippingFee: number;
   totalAmount: number;
+  voucherId: number | null;
+  voucherCode: string | null;
+  voucherCampaignName: string | null;
+  voucherCampaignVersion: number | null;
+  replayed: boolean;
   createdAt: string;
 };
 
@@ -43,7 +48,11 @@ export type CustomerOrderItem = {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  discountAmount: number;
 };
+
+export type CartQuoteLine = { skuId: number; productName: string; quantity: number; unitPrice: number; totalPrice: number; discountAmount: number };
+export type CustomerCartQuote = { items: CartQuoteLine[]; subTotal: number; voucherCode: string | null; voucherDiscount: number; merchandiseAmountDue: number; quoteFingerprint: string };
 
 export type CustomerOrderDetail = CustomerOrder & {
   note: string | null;
@@ -109,12 +118,31 @@ export function normalizeCart(raw: unknown): CustomerCart {
 
 export function normalizeOrder(raw: unknown): CustomerOrder {
   const v = record(raw);
+  const voucherId = v.voucherId === null || v.voucherId === undefined ? null : integer(v.voucherId, 1);
+  const voucherCode = text(v.voucherCode);
+  const voucherCampaignName = text(v.voucherCampaignName);
+  const voucherCampaignVersion = v.voucherCampaignVersion === null || v.voucherCampaignVersion === undefined ? null : integer(v.voucherCampaignVersion, 0);
+  if ((voucherCode && (!voucherId || !voucherCampaignName || voucherCampaignVersion === null || v.discountAmount === undefined || v.discountAmount === null)) || (voucherId !== null && !voucherCode)) throw new CommerceError(INVALID, 502);
   return {
     orderId: integer(v.orderId, 1), orderCode: typeof v.orderCode === "string" ? v.orderCode : "",
     status: typeof v.status === "string" ? v.status : "", customerName: text(v.customerName),
     customerPhone: text(v.customerPhone), deliveryAddress: text(v.deliveryAddress),
     subTotal: finite(v.subTotal), discountAmount: finite(v.discountAmount ?? 0), shippingFee: finite(v.shippingFee ?? 0),
-    totalAmount: finite(v.totalAmount), createdAt: typeof v.createdAt === "string" ? v.createdAt : "",
+    totalAmount: finite(v.totalAmount), voucherId, voucherCode, voucherCampaignName, voucherCampaignVersion,
+    replayed: v.replayed === true, createdAt: typeof v.createdAt === "string" ? v.createdAt : "",
+  };
+}
+
+export function normalizeCartQuote(raw: unknown): CustomerCartQuote {
+  const v = record(raw);
+  if (!Array.isArray(v.items) || typeof v.quoteFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(v.quoteFingerprint)) throw new CommerceError(INVALID, 502);
+  return {
+    items: v.items.map((rawItem) => {
+      const item = record(rawItem);
+      return { skuId: integer(item.skuId, 1), productName: typeof item.productName === "string" ? item.productName : "", quantity: integer(item.quantity, 1), unitPrice: finite(item.unitPrice), totalPrice: finite(item.totalPrice), discountAmount: finite(item.discountAmount) };
+    }),
+    subTotal: finite(v.subTotal), voucherCode: text(v.voucherCode), voucherDiscount: finite(v.voucherDiscount),
+    merchandiseAmountDue: finite(v.merchandiseAmountDue), quoteFingerprint: v.quoteFingerprint,
   };
 }
 
@@ -129,7 +157,8 @@ export function normalizeOrderDetail(raw: unknown): CustomerOrderDetail {
     customer: c ? { customerId: integer(c.customerId, 1), fullName: text(c.fullName), phoneNumber: text(c.phoneNumber) } : null,
     items: v.items.map((x) => {
       const i = record(x);
-      return { skuId: integer(i.skuId, 1), productName: typeof i.productName === "string" ? i.productName : "", color: text(i.color), size: text(i.size), imageUrl: text(i.imageUrl), quantity: integer(i.quantity, 1), unitPrice: finite(i.unitPrice), totalPrice: finite(i.totalPrice) };
+      if (base.voucherCode && (i.discountAmount === undefined || i.discountAmount === null)) throw new CommerceError(INVALID, 502);
+      return { skuId: integer(i.skuId, 1), productName: typeof i.productName === "string" ? i.productName : "", color: text(i.color), size: text(i.size), imageUrl: text(i.imageUrl), quantity: integer(i.quantity, 1), unitPrice: finite(i.unitPrice), totalPrice: finite(i.totalPrice), discountAmount: finite(i.discountAmount ?? 0) };
     }),
   };
 }

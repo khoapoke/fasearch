@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { cancelCustomerOrder, fetchCustomerOrder } from "@/lib/customer-commerce-client";
 import { CommerceError, formatMoney, orderStatusText, type CustomerOrderDetail } from "@/lib/customer-commerce";
+import { discountLines } from "@/lib/commerce";
 import "@/components/customer-commerce/commerce.css";
 
 function dateText(value: string): string {
@@ -24,6 +25,7 @@ export default function OrderDetailPage() {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const busy = useRef(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     if (!/^\d+$/.test(id)) { setError("Mã đơn chưa hợp lệ."); setLoading(false); return; }
@@ -34,6 +36,10 @@ export default function OrderDetailPage() {
   }, [id]);
 
   useEffect(() => { void Promise.resolve().then(() => load()); }, [load]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   async function cancel() {
     if (!order || busy.current) return;
@@ -54,7 +60,7 @@ export default function OrderDetailPage() {
         <p className="commerce-sub">Dữ liệu đơn của tài khoản đang đăng nhập, trả về từ máy chủ thử nghiệm.</p>
         <p><Link className="commerce-link" href="/don-hang">← Về danh sách đơn</Link></p>
         {loading ? <p className="commerce-status" role="status">Đang tải đơn…</p> : null}
-        {error ? <div className="commerce-empty" role="alert"><h2>Không tải được đơn</h2><p>{error}{errorStatus === 401 ? <> <Link className="commerce-link" href="/dang-nhap?next=%2Ftai-khoan">Đăng nhập →</Link></> : null}</p><button className="commerce-ghost" type="button" onClick={load}>Thử lại</button></div> : null}
+        {error ? <div ref={errorRef} tabIndex={-1} className="commerce-empty" role="alert"><h2>Không tải được đơn</h2><p>{error}{errorStatus === 401 ? <> <Link className="commerce-link" href="/dang-nhap?next=%2Ftai-khoan">Đăng nhập →</Link></> : null}</p><button className="commerce-ghost" type="button" onClick={load}>Thử lại</button></div> : null}
         {order ? (
           <div className="commerce-layout">
             <section className="commerce-panel" aria-label={`Đơn ${order.orderCode}`}>
@@ -66,7 +72,7 @@ export default function OrderDetailPage() {
                       // eslint-disable-next-line @next/next/no-img-element -- image from candidate BE
                       <img className="commerce-line-image" src={line.imageUrl} alt="" referrerPolicy="no-referrer" />
                     ) : <span className="commerce-line-image" aria-hidden="true" />}
-                    <div><p className="commerce-line-name">{line.productName}</p><p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · SL {line.quantity} · Đơn giá {formatMoney(line.unitPrice)}</p></div>
+                    <div><p className="commerce-line-name">{line.productName}</p><p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · SL {line.quantity} · Đơn giá {formatMoney(line.unitPrice)}{order.voucherCode && line.discountAmount > 0 ? ` · Giảm phân bổ ${formatMoney(line.discountAmount)}` : ""}</p></div>
                     <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
                   </li>
                 ))}
@@ -89,7 +95,9 @@ export default function OrderDetailPage() {
             <aside className="commerce-summary" aria-label="Tổng đơn">
               <h2>Tổng đơn</h2>
               <div className="commerce-summary-row"><span>Tạm tính</span><strong>{formatMoney(order.subTotal)}</strong></div>
-              <div className="commerce-summary-row"><span>Giảm giá</span><strong>{formatMoney(order.discountAmount)}</strong></div>
+              {order.voucherCode ? <div className="commerce-summary-row"><span>Voucher {order.voucherCode} · {order.voucherCampaignName} (phiên bản {order.voucherCampaignVersion})</span><strong>−{formatMoney(order.discountAmount)}</strong></div> : discountLines({ giamGia: order.discountAmount }).map((line) => (
+                <div className="commerce-summary-row" key={line.label}><span>{line.label}</span><strong>{line.amount === null ? "—" : formatMoney(line.amount)}</strong></div>
+              ))}
               <div className="commerce-summary-row"><span>Phí giao hàng</span><strong>{formatMoney(order.shippingFee)}</strong></div>
               <div className="commerce-summary-total"><span>Tổng cộng</span><strong>{formatMoney(order.totalAmount)}</strong></div>
               <p className="commerce-note">Trạng thái: {orderStatusText(order.status)} · Thanh toán COD, thu khi nhận. Không có trạng thái “đã thanh toán” giả.</p>

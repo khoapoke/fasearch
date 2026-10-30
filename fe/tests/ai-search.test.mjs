@@ -89,11 +89,13 @@ describe("parseAiResults", () => {
     assert.throws(() => parseAiResults({ success: true, result: {} }), /định dạng/);
   });
 
-  it("imageUrl BE-relative được chuyển đúng một lần sang proxy", () => {
+  it("giữ URL ảnh từ BFF chuyên biệt, không dùng proxy catch-all đã nghỉ", () => {
+    const imageUrl = `/api/ai/image?path=${encodeURIComponent("/api/v1/search/images/1008.jpg")}`;
     const hits = parseAiResults(
-      envelope([{ sourceId: "1008", score: 0.26, fileName: "1008.jpg", catalog: "dataset_a", imageUrl: "/api/v1/ai/images/1008" }]),
+      envelope([{ sourceId: "1008", score: 0.26, fileName: "1008.jpg", catalog: "dataset_a", imageUrl }]),
     );
-    assert.equal(hits[0]?.imageUrl, "/api/be/v1/ai/images/1008");
+    assert.equal(hits[0]?.imageUrl, imageUrl);
+    assert.equal(parseAiResults(envelope([{ sourceId: "1008", score: 0.26, fileName: "1008.jpg", imageUrl: "/api/v1/ai/images/1008" }]))[0]?.imageUrl, null);
   });
 
   it("imageUrl vắng → null (placeholder), không ném", () => {
@@ -116,18 +118,20 @@ describe("parseAiResults", () => {
 });
 
 describe("toProxyImageUrl", () => {
-  it("chuyển đúng một lần, không double-prefix", () => {
-    assert.equal(toProxyImageUrl("/api/v1/ai/images/1008"), "/api/be/v1/ai/images/1008");
-    // đã là proxy URL thì không phải BE-relative → từ chối (tránh double-prefix)
+  it("chỉ chấp nhận URL same-origin từ BFF ảnh chuyên biệt", () => {
+    const imageUrl = `/api/ai/image?path=${encodeURIComponent("/api/v1/search/images/1008.jpg")}`;
+    assert.equal(toProxyImageUrl(imageUrl), imageUrl);
+    // Các URL cũ bị loại vì /api/be catch-all trả HTTP 410.
+    assert.equal(toProxyImageUrl("/api/v1/ai/images/1008"), null);
     assert.equal(toProxyImageUrl("/api/be/v1/ai/images/1008"), null);
   });
 
   it("từ chối ngoài/traversal/rỗng/không phải string", () => {
     assert.equal(toProxyImageUrl("https://cdn.test/a.jpg"), null);
     assert.equal(toProxyImageUrl("//evil.test/x"), null);
-    assert.equal(toProxyImageUrl("/api/v1/ai/images/a/b"), null);
-    assert.equal(toProxyImageUrl("/api/v1/ai/images/.."), null);
-    assert.equal(toProxyImageUrl("/api/v1/ai/images/%2e%2e"), null);
+    assert.equal(toProxyImageUrl(`/api/ai/image?path=${encodeURIComponent("/api/v1/search/images/a/b.jpg")}`), null);
+    assert.equal(toProxyImageUrl(`/api/ai/image?path=${encodeURIComponent("/api/v1/search/images/..")}`), null);
+    assert.equal(toProxyImageUrl(`/api/ai/image?path=${encodeURIComponent("/api/v1/search/images/%2e%2e")}`), null);
     assert.equal(toProxyImageUrl(null), null);
     assert.equal(toProxyImageUrl(42), null);
   });

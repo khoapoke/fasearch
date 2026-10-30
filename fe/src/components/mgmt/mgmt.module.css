@@ -265,7 +265,7 @@
 }
 
 @media print {
-  body * {
+  :global(body) *:not(:where(.printArea)) {
     visibility: hidden;
   }
   .printArea,

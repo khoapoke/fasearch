@@ -50,13 +50,7 @@ type RawHit = {
 };
 
 
-/**
- * BE imageUrl là BE-relative (`/api/v1/ai/images/{sourceId}`), KHÔNG phải URL
- * browser. Validate khớp đúng endpoint đã duyệt rồi chuyển đúng một lần sang
- * same-origin proxy `/api/be/...` (proxy catch-all forward session + binary).
- * Từ chối: URL ngoài, path lạ, traversal (thô/mã hóa), remainder rỗng.
- * Vắng/null → null (placeholder trung thực), không ném.
- */
+/** Accept only the dedicated same-origin image BFF URL and its exact safe filename path. */
 export function toProxyImageUrl(raw: unknown): string | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== "string" || !raw.startsWith("/api/ai/image?path=")) return null;
@@ -64,8 +58,10 @@ export function toProxyImageUrl(raw: unknown): string | null {
   if (!encoded || encoded.length > 512) return null;
   let path: string;
   try { path = decodeURIComponent(encoded); } catch { return null; }
-  if (!path.startsWith("/dataset/") && !path.startsWith("/uploads/") && !path.startsWith("/api/v1/search/images/")) return null;
-  if (path.includes("\\") || path.includes("..") || path.includes("//")) return null;
+  const prefix = "/api/v1/search/images/";
+  if (!path.startsWith(prefix)) return null;
+  const fileName = path.slice(prefix.length);
+  if (!fileName || fileName.includes("..") || !/^[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(fileName)) return null;
   return raw;
 }
 

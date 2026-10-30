@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon, type UiIcon } from "@/components/ui/icon";
+import { authMe } from "@/lib/customer-auth-client";
 import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
 import "./admin.css";
 
@@ -40,11 +41,18 @@ export function AdminShell({
   const [me, setMe] = useState<AccountIdentity | null>(null);
   useEffect(() => {
     let live = true;
-    readOwnIdentity()
+    authMe()
       .then((identity) => {
-        if (live) setMe(identity);
+        if (!live) return;
+        if (identity.role === "ADMIN" || identity.role === "STAFF") {
+          setMe({ id: identity.id, username: identity.username, email: identity.email, role: identity.role, authenticated: true });
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        void readOwnIdentity()
+          .then((identity) => { if (live) setMe(identity); })
+          .catch(() => {});
+      });
     return () => {
       live = false;
     };

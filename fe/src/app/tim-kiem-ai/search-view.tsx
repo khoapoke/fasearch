@@ -341,6 +341,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isPreview) return;
@@ -359,6 +360,10 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       live = false;
     };
   }, [isPreview]);
+
+  useEffect(() => {
+    if (state.kind === "error" || state.kind === "session" || state.kind === "forbidden") errorRef.current?.focus();
+  }, [state]);
 
   // Object URL cleanup on replace/unmount.
   useEffect(() => {
@@ -737,7 +742,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       return (
         <>
           {heading}
-          <div className="status error" role="alert">{state.message}</div>
+          <div ref={errorRef} className="status error" role="alert" tabIndex={-1}>{state.message}</div>
           <div className="state-actions">
             {!isPreview ? (
               <button className="text-button" type="button" onClick={() => run()}>Thử lại (giữ đầu vào)</button>
@@ -754,7 +759,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       return (
         <>
           {heading}
-          <div className="status error" role="alert">{state.message}</div>
+          <div ref={errorRef} className="status error" role="alert" tabIndex={-1}>{state.message}</div>
           <div className="state-actions">
             <Link className="text-button" href="/dang-nhap?next=/tim-kiem-ai">Đăng nhập →</Link>
             <button className="text-button" type="button" onClick={focusSearchField}>
@@ -768,7 +773,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     return (
       <>
         {heading}
-        <div className="status error" role="alert">{state.message}</div>
+        <div ref={errorRef} className="status error" role="alert" tabIndex={-1}>{state.message}</div>
         <div className="state-actions">
           <Link className="text-button" href="/tai-khoan">Tài khoản của tôi →</Link>
           <button className="text-button" type="button" onClick={focusSearchField}>
