@@ -2,7 +2,7 @@
 // still depend on the old FASEARCH_SESSION and would bounce a new-JWT user
 // back to login, so they are deliberately outside this allowlist.
 const FALLBACK = "/tai-khoan";
-const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang"]);
+const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/don-hang"]);
 
 function hasControlChar(value: string): boolean {
   for (const char of value) {
@@ -30,6 +30,7 @@ export function safeCustomerAuthReturn(raw: string | null): string {
   }
   // Encoded targets are ambiguous; only the plain exact targets are allowed.
   const ownedOrder = /^\/don-hang\/[1-9]\d*$/.test(decoded);
-  if (decoded !== raw || (!TARGETS.has(decoded) && !ownedOrder)) return FALLBACK;
+  const adminOrder = /^\/quan-tri\/don-hang\/[1-9]\d*$/.test(decoded);
+  if (decoded !== raw || (!TARGETS.has(decoded) && !ownedOrder && !adminOrder)) return FALLBACK;
   return decoded;
 }
