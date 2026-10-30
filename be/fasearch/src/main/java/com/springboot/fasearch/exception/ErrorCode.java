@@ -59,6 +59,10 @@ public enum ErrorCode {
     PAYMENT_METHOD_NOT_FOUND(404, "Payment method not found", HttpStatus.NOT_FOUND),
     PAYMENT_AMOUNT_INSUFFICIENT(400, "Paid amount is insufficient to cover total bill", HttpStatus.BAD_REQUEST),
 
+    // AI Search errors
+    AI_SERVICE_UNAVAILABLE(503, "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
+    INVALID_IMAGE_FILE(400, "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp", HttpStatus.BAD_REQUEST),
+
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),

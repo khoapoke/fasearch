@@ -87,9 +87,9 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-NC1 | Tìm kiếm SP bằng mô tả tự nhiên | Tìm kiếm sản phẩm theo ngôn ngữ tự nhiên qua mô tả văn bản | `C` `S` | |
-| FR-NC2 | Tìm kiếm SP bằng hình ảnh | Tìm kiếm sản phẩm bằng hình ảnh sản phẩm do người dùng tải lên | `C` `S` | |
-| FR-NC3 | Tìm kiếm đa phương thức | Kết hợp cả mô tả văn bản và hình ảnh để tìm sản phẩm chính xác nhất | `C` `S` | |
+| FR-NC1 | Tìm kiếm SP bằng mô tả tự nhiên | Tìm kiếm sản phẩm theo ngôn ngữ tự nhiên qua mô tả văn bản | `C` `S` | X |
+| FR-NC2 | Tìm kiếm SP bằng hình ảnh | Tìm kiếm sản phẩm bằng hình ảnh sản phẩm do người dùng tải lên | `C` `S` | X |
+| FR-NC3 | Tìm kiếm đa phương thức | Kết hợp cả mô tả văn bản và hình ảnh để tìm sản phẩm chính xác nhất | `C` `S` | X |
 
 ---
 

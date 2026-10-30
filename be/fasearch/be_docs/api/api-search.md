@@ -8,7 +8,7 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 
 ## 1. Tìm kiếm bằng văn bản / mô tả tự nhiên (FR-NC1)
 
-- **Endpoint:** `POST /api/v1/search/text` *(hỗ trợ thêm `GET /api/v1/search/natural-language`)*
+- **Endpoint:** `POST /api/v1/search/text`
 - **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`, `ADMIN`
 - **Mô tả:** Người dùng nhập câu lệnh mô tả (ví dụ: *"áo sơ mi trắng cổ bẻ công sở"*), hệ thống trích xuất vector đặc trưng CLIP và truy vấn các sản phẩm có độ tương đồng cosine cao nhất từ vector database Qdrant.
 

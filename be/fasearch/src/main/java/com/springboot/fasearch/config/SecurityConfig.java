@@ -41,6 +41,7 @@ public class SecurityConfig {
             "/api/v1/auth/register",
             "/api/v1/orders/calculate-shipping-fee",
             "/api/v1/payments/methods",
+            "/api/v1/search/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
