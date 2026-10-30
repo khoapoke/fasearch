@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
-import { readOwnIdentity, type AccountIdentity } from "@/components/account/account-session";
-import { beWrite } from "@/lib/mgmt-client";
+import { authMe, type AuthIdentity } from "@/lib/customer-auth-client";
+import { searchAi, type AiSearchMode } from "@/lib/ai-client";
 import { parseAiResults, validateQuery, type AiHit } from "@/lib/ai-search";
 import {
   AI_MAX_BYTES,
@@ -323,7 +323,7 @@ function ExamplesBoard({
 
 export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   const isPreview = Boolean(preview);
-  const [me, setMe] = useState<AccountIdentity | null>(null);
+  const [me, setMe] = useState<AuthIdentity | null>(null);
   const [checking, setChecking] = useState(!isPreview);
   const [mode, setMode] = useState<AiMode>("text");
   const [query, setQuery] = useState("");
@@ -345,7 +345,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   useEffect(() => {
     if (isPreview) return;
     let live = true;
-    readOwnIdentity()
+    authMe()
       .then((identity) => {
         if (live) {
           setMe(identity);
@@ -473,8 +473,8 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     if (isPreview || checking || opRef.current !== null) return;
 
     let label = "";
-    let path = "";
-    let body: unknown = undefined;
+    let searchMode: AiSearchMode = "text";
+    let body: BodyInit | undefined = undefined;
     let decodeFile: File | null = null;
     const limit = 5; // Reference không có control limit; API 1–5 giữ nguyên, mặc định 5.
 
@@ -491,8 +491,8 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
         return;
       }
       label = `“${q}”`;
-      path = "v1/ai/search/text";
-      body = { query: q, limit };
+      searchMode = "text";
+      body = JSON.stringify({ query: q, limit });
     } else if (mode === "image") {
       if (!file) {
         setFileError("Chọn 1 ảnh JPEG/PNG ≤5MiB để tìm bằng ảnh.");
@@ -506,7 +506,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       }
       decodeFile = file;
       label = `Ảnh tham chiếu “${file.name}”`;
-      path = "v1/ai/search/image";
+      searchMode = "image";
       const form = new FormData();
       form.append("file", file);
       form.append("limit", String(limit));
@@ -532,7 +532,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       }
       decodeFile = file;
       label = `“${q}” + ảnh “${file.name}”`;
-      path = "v1/ai/search/composed";
+      searchMode = "multimodal";
       const form = new FormData();
       form.append("file", file);
       form.append("query", q);
@@ -560,7 +560,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
         if (!isOwner(owner)) return;
       }
       stage = "request";
-      const response = await beWrite(path, "POST", body, controller.signal);
+      const response = await searchAi(searchMode, body, controller.signal);
       if (!isOwner(owner)) return;
       if (response.status === 401) {
         setState({ kind: "session", message: "Phiên đăng nhập đã hết. Đăng nhập lại rồi tìm tiếp." });

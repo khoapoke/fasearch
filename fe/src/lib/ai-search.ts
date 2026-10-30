@@ -49,7 +49,6 @@ type RawHit = {
   maSpLienKet?: unknown;
 };
 
-const APPROVED_IMAGE_PREFIX = "/api/v1/ai/images/";
 
 /**
  * BE imageUrl là BE-relative (`/api/v1/ai/images/{sourceId}`), KHÔNG phải URL
@@ -60,25 +59,14 @@ const APPROVED_IMAGE_PREFIX = "/api/v1/ai/images/";
  */
 export function toProxyImageUrl(raw: unknown): string | null {
   if (raw === null || raw === undefined) return null;
-  if (typeof raw !== "string" || !raw.startsWith(APPROVED_IMAGE_PREFIX)) return null;
-  const rest = raw.slice(APPROVED_IMAGE_PREFIX.length);
-  if (!rest) return null;
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(rest);
-  } catch {
-    return null;
-  }
-  if (
-    decoded.includes("/") ||
-    decoded.includes("\\") ||
-    decoded.split("/").includes("..") ||
-    decoded === "." ||
-    /%2f/i.test(rest)
-  ) {
-    return null;
-  }
-  return `/api/be/v1/ai/images/${encodeURIComponent(decoded)}`;
+  if (typeof raw !== "string" || !raw.startsWith("/api/ai/image?path=")) return null;
+  const encoded = raw.slice("/api/ai/image?path=".length);
+  if (!encoded || encoded.length > 512) return null;
+  let path: string;
+  try { path = decodeURIComponent(encoded); } catch { return null; }
+  if (!path.startsWith("/dataset/") && !path.startsWith("/uploads/") && !path.startsWith("/api/v1/search/images/")) return null;
+  if (path.includes("\\") || path.includes("..") || path.includes("//")) return null;
+  return raw;
 }
 
 /**

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, type UiIcon } from "@/components/ui/icon";
 import { ProductCard, type CardProduct } from "@/components/storefront/product-card";
-import { beFetch, unwrap, type Page } from "@/lib/mgmt-client";
+import { fetchCatalogCategories, fetchCatalogProducts } from "@/lib/customer-catalog";
 import {
   HOME_DEMO,
   HOME_DEMO_STEPS,
@@ -17,12 +17,6 @@ import {
 } from "./home-data";
 import "./home.css";
 import "@/components/storefront/listing.css";
-
-type PublicCategory = { maDanhMuc: number; tenDanhMuc: string };
-type PublicProduct = {
-  maSp: number; tenSp: string; maDanhMuc: number | null; tenDanhMuc: string | null;
-  giaBan: number; coHinhAnh: boolean;
-};
 
 const DISCOVERY_ERROR = "Không tải được sản phẩm. Vui lòng thử lại.";
 
@@ -209,28 +203,24 @@ export function HomeSections() {
 
   useEffect(() => {
     let live = true;
-    beFetch("v1/catalog/danh-muc")
-      .then((r) => unwrap<PublicCategory[]>(r))
+    fetchCatalogCategories()
       .then((list) => {
         if (!live) return;
-        setCategories(list.map((c) => ({ id: c.maDanhMuc, name: c.tenDanhMuc })));
+        setCategories(list);
       })
       .catch(() => {
         if (live) setCategoryError("Không tải được danh mục.");
       });
-    beFetch("v1/catalog/san-pham?page=0&size=4")
-      .then((r) => unwrap<Page<PublicProduct>>(r))
+    fetchCatalogProducts({ page: 0, size: 4, sort: "id,desc" })
       .then((page) => {
         if (!live) return;
-        setProducts(
-          page.data.map((p) => ({
-            id: p.maSp,
-            name: p.tenSp,
-            price: p.giaBan,
-            image: p.coHinhAnh ? `/api/be/v1/catalog/san-pham/${p.maSp}/hinh-anh` : undefined,
-            href: `/san-pham/${p.maSp}`,
-          })),
-        );
+        setProducts(page.items.map((p) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          image: p.imageUrl ?? undefined,
+          href: `/san-pham/${p.id}`,
+        })));
         setProductsTotal(page.totalElements);
       })
       .catch(() => {

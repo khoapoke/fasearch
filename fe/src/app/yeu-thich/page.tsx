@@ -7,7 +7,7 @@ import { StitchImage } from "@/components/ui/stitch-image";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { readCart, toggleFav, useFavs, writeCart } from "@/components/storefront/storefront-client";
 import { formatVnd } from "@/components/storefront/product-card";
-import { beFetch, unwrap } from "@/lib/mgmt-client";
+import { fetchCatalogProduct, CatalogError } from "@/lib/customer-catalog";
 import { stitchImages } from "@/lib/stitch-assets";
 import "@/components/storefront/preview.css";
 import "@/components/storefront/listing.css";
@@ -55,16 +55,13 @@ export default function FavoritesPage() {
     Promise.all(
       spIds.map(async (id): Promise<SavedProduct> => {
         try {
-          const r = await beFetch(`v1/catalog/san-pham/${id}`);
-          if (r.status === 404) return { id, name: `Sản phẩm #${id}`, price: 0, gone: true };
-          const d = await unwrap<{ maSp: number; tenSp: string; giaBan: number; coHinhAnh: boolean }>(r);
-          return {
-            id: d.maSp,
-            name: d.tenSp,
-            price: d.giaBan,
-            image: d.coHinhAnh ? `/api/be/v1/catalog/san-pham/${d.maSp}/hinh-anh` : undefined,
-            gone: false,
-          };
+          try {
+            const d = await fetchCatalogProduct(String(id));
+            return { id: d.id, name: d.name, price: d.price, image: d.imageUrl ?? undefined, gone: false };
+          } catch (failure) {
+            if (failure instanceof CatalogError && failure.status === 404) return { id, name: `Sản phẩm #${id}`, price: 0, gone: true };
+            throw failure;
+          }
         } catch {
           return { id, name: `Sản phẩm #${id}`, price: 0, gone: true };
         }
