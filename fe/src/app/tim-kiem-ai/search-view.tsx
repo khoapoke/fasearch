@@ -827,7 +827,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
                       if (fieldErrorOnQuery) setFieldError(null);
                     }}
                     maxLength={200}
-                    placeholder="Áo khoác đen, dáng rộng…"
+                    placeholder="black jacket, oversized fit…"
                     aria-invalid={fieldErrorOnQuery || undefined}
                     aria-describedby={queryDescribedBy}
                   />

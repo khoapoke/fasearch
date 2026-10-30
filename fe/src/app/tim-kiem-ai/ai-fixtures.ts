@@ -47,13 +47,13 @@ export type AiExample = {
 };
 
 export const AI_EXAMPLES: AiExample[] = [
-  { id: "black-tee", photo: "teeModel", title: "Áo thun đen", query: "Áo thun đen, dáng rộng, phối quần jeans", layout: "example-main" },
-  { id: "white-tee", photo: "teeFlatlay", title: "Áo thun trắng", query: "Áo thun trắng trơn, cổ tròn", layout: "example-flatlay" },
-  { id: "light-outfit", photo: "teeWoman", title: "Trang phục sáng màu", query: "Áo màu trắng, dáng rộng", layout: "example-portrait" },
+  { id: "black-tee", photo: "teeModel", title: "Black shirt", query: "black shirt, oversized fit", layout: "example-main" },
+  { id: "white-tee", photo: "teeFlatlay", title: "White t-shirt", query: "white t-shirt, crew neck", layout: "example-flatlay" },
+  { id: "light-outfit", photo: "editorial", title: "Black jacket", query: "black jacket, street style", layout: "example-portrait" },
 ];
 
 export const AI_MODE_HINTS = {
-  text: "Mô tả món đồ bằng vài từ — ví dụ màu và dáng.",
+  text: "Mô tả ngắn bằng tiếng Anh — ví dụ black shirt.",
   image: "Chọn một ảnh JPG hoặc PNG làm tham chiếu.",
   composed: "Chọn ảnh tham chiếu, rồi thêm vài từ để thu hẹp.",
 } as const;

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { readJsonObject } from "@/lib/server/customer-auth";
 
-const BE = "http://127.0.0.1:18116";
+const BE = "http://127.0.0.1:18118";
 const MAX_FILE = 5 * 1024 * 1024;
 const MAX_QUERY = 200;
 

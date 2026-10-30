@@ -23,7 +23,7 @@ export class AuthApiError extends Error {
   }
 }
 
-const ATTEMPT_COOKIE = "fasearch-auth-current-3133";
+const ATTEMPT_COOKIE = "fasearch-auth-current-3135";
 const ATTEMPT_PATTERN = /^[A-Za-z0-9-]{16,80}$/;
 
 function readCookie(name: string): string | null {

@@ -16,6 +16,9 @@ export function catalogBaseUrl(): string {
 export function resolveCatalogImage(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw.trim()) return null;
   const value = raw.trim();
+  // Product photos are served through the narrow same-origin AI image BFF;
+  // preserve that route instead of rewriting it to the BE origin.
+  if (value.startsWith("/api/ai/image?path=")) return value;
   if (/^https?:\/\//i.test(value)) return value;
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
   if (value.split("/").includes("..")) return null;
