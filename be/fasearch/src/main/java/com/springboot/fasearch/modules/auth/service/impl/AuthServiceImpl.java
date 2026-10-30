@@ -139,7 +139,12 @@ public class AuthServiceImpl implements AuthService {
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        return accountMapper.toAccountInfoResponse(account);
+        AccountInfoRes res = accountMapper.toAccountInfoResponse(account);
+        // Bổ sung id hồ sơ khách hàng để client tự tra cứu chính mình mà không phải
+        // đoán/hay dùng id tài khoản (hai id khác nhau).
+        res.setCustomerId(userRepository.findByAccount_Username(username)
+                .map(com.springboot.fasearch.modules.user.entity.Customer::getId).orElse(null));
+        return res;
     }
 
     @Override
