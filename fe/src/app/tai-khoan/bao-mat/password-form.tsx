@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { validateNewPasswordInput } from "@/lib/account-contract";
-import { fetchCsrf, readOwnProfile } from "@/components/account/account-session";
+import { authChangePassword } from "@/lib/customer-account-client";
+import { readOwnProfile } from "@/components/account/account-session";
 import styles from "@/components/account/account.module.css";
 
 export function PasswordForm() {
@@ -63,41 +64,22 @@ export function PasswordForm() {
     setBusy(true);
     setError("");
     try {
-      const csrf = await fetchCsrf();
-      const response = await fetch("/api/auth/password", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          [csrf.header]: csrf.token,
-        },
-        body: JSON.stringify({ currentPassword: current, newPassword: next }),
-      });
-      if (response.status === 401) {
-        router.replace("/dang-nhap?next=/tai-khoan/bao-mat");
-        return;
-      }
-      if (response.status === 400) {
-        const payload = (await response.json().catch(() => null)) as {
-          errors?: Array<{ field: string; reason: string }>;
-        } | null;
-        const field = payload?.errors?.[0]?.field;
-        if (field === "currentPassword") {
-          setCurrentIssue("Mật khẩu hiện tại chưa đúng.");
-        } else {
-          setNextIssue("Mật khẩu mới chưa đạt yêu cầu: 15–64 ký tự, tối đa 72 byte UTF-8.");
-        }
-
-        return;
-      }
-      if (!response.ok) throw new Error("Đổi mật khẩu chưa thành công. Hãy thử lại.");
-      // Success clears secrets, returns to login for a fresh session + CSRF.
+      await authChangePassword(current, next);
       setCurrent("");
       setNext("");
       setConfirm("");
       router.replace("/dang-nhap?password=changed");
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Đổi mật khẩu không hoàn tất.");
-
+      const status = (failure as { status?: number })?.status ?? 0;
+      if (status === 401) {
+        router.replace("/dang-nhap?next=/tai-khoan/bao-mat");
+        return;
+      }
+      if (status === 400) {
+        setCurrentIssue("Mật khẩu hiện tại chưa đúng hoặc mật khẩu mới chưa đạt yêu cầu.");
+        return;
+      }
+      setError(failure instanceof Error ? failure.message : "Đổi mật khẩu chưa thành công. Hãy thử lại.");
     } finally {
       busyRef.current = false;
       setBusy(false);

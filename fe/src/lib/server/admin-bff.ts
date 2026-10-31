@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authCookie, fetchMyInfo } from "@/lib/server/customer-auth";
 
-const BE = "http://127.0.0.1:18126";
+const BE = process.env.FASEARCH_BACKEND_URL?.replace(/\/+$/, "") || "http://127.0.0.1:18126";
 type Identity = { id: number; role: string; status: string };
 
 function headers(token: string): Record<string, string> {

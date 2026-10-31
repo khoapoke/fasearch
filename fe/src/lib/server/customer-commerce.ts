@@ -3,7 +3,7 @@ import { authCookie } from "@/lib/server/customer-auth";
 
 // Narrow same-origin commerce transport. The JWT stays server-side and is sent
 // as Bearer only to the fixed candidate BE; no legacy session/cookie fallback.
-const COMMERCE_BASE = "http://127.0.0.1:18126";
+const COMMERCE_BASE = process.env.FASEARCH_BACKEND_URL?.replace(/\/+$/, "") || "http://127.0.0.1:18126";
 
 function timeoutSignal(signal: AbortSignal): AbortSignal {
   return AbortSignal.any([signal, AbortSignal.timeout(12000)]);

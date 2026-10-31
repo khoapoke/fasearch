@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { authMe, type AuthIdentity } from "@/lib/customer-auth-client";
+import { recordSearchHistory } from "@/lib/customer-account-client";
 import { searchAi, type AiSearchMode } from "@/lib/ai-client";
 import { parseAiResults, validateQuery, type AiHit } from "@/lib/ai-search";
 import {
@@ -482,6 +483,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     let body: BodyInit | undefined = undefined;
     let decodeFile: File | null = null;
     const limit = 5; // Reference không có control limit; API 1–5 giữ nguyên, mặc định 5.
+    let recordedQuery = "";
 
     setFieldError(null);
 
@@ -490,6 +492,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       let q: string;
       try {
         q = validateQuery(query);
+        recordedQuery = q;
       } catch (error) {
         setFieldError({ message: error instanceof Error ? error.message : "Mô tả chưa hợp lệ.", target: "query" });
         focusField("query");
@@ -512,6 +515,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       decodeFile = file;
       label = `Ảnh tham chiếu “${file.name}”`;
       searchMode = "image";
+      recordedQuery = file.name;
       const form = new FormData();
       form.append("file", file);
       form.append("limit", String(limit));
@@ -530,6 +534,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       let q = "";
       try {
         q = validateComposed(query, file).q;
+        recordedQuery = q;
       } catch (error) {
         setFieldError({ message: error instanceof Error ? error.message : "Từ khóa chưa hợp lệ.", target: "query" });
         focusField("query");
@@ -595,6 +600,17 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       const hits = parseAiResults(payload);
       if (!isOwner(owner)) return;
       setState({ kind: "done", hits, label });
+      // Record successful real search to per-account history (fire-and-forget).
+      // Only SUCCESS is recorded here; failures/cancellations are not faked.
+      const modeMap: Record<string, "TEXT" | "IMAGE" | "MULTIMODAL"> = { text: "TEXT", image: "IMAGE", multimodal: "MULTIMODAL" };
+      const refs = hits.map((h) => h.maSpLienKet).filter((v): v is number => typeof v === "number").slice(0, 50);
+      void recordSearchHistory({
+        mode: modeMap[searchMode] ?? "TEXT",
+        query: recordedQuery || undefined,
+        resultCount: hits.length,
+        resultRefs: JSON.stringify(refs),
+        status: "SUCCESS",
+      }).catch(() => { /* history recording is best-effort; never blocks search */ });
     } catch (error) {
       if (!isOwner(owner) || controller.signal.aborted) return;
       if (stage === "decode") {

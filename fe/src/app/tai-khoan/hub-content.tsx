@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
 import { fetchOwnOrders, withSessionRetry } from "@/lib/commerce-client";
 import { orderStatusLabel } from "@/lib/commerce";
-import { useFavs } from "@/components/storefront/storefront-client";
+import { fetchFavorites } from "@/lib/customer-account-client";
 import "@/components/storefront/listing.css";
 
 type OwnOrder = {
@@ -26,7 +26,7 @@ type OrdersState =
 // không dựng thẻ đơn giả lập.
 export function HubContent() {
   const [state, setState] = useState<OrdersState>({ kind: "loading" });
-  const favs = useFavs();
+  const [savedCount, setSavedCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -49,7 +49,12 @@ export function HubContent() {
     };
   }, []);
 
-  const savedProductCount = favs.filter((f) => f.startsWith("sp:")).length;
+  useEffect(() => {
+    let active = true;
+    fetchFavorites(0, 1).then((pg) => { if (active) setSavedCount(pg.totalElements); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const savedProductCount = savedCount;
   const latest = state.kind === "ready" ? state.orders[0] ?? null : null;
 
   return (
