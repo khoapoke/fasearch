@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { validateNewPasswordInput } from "@/lib/account-contract";
 import { authChangePassword } from "@/lib/customer-account-client";
-import { readOwnProfile } from "@/components/account/account-session";
+import { authMe } from "@/lib/customer-auth-client";
+
 import styles from "@/components/account/account.module.css";
 
 export function PasswordForm() {
@@ -26,17 +27,12 @@ export function PasswordForm() {
 
   useEffect(() => {
     let active = true;
-    readOwnProfile()
-      .then((result) => {
-        if (!active) return;
-        if (!result) {
-          router.replace("/dang-nhap?next=/tai-khoan/bao-mat");
-          return;
-        }
-        setReady(true);
+    authMe()
+      .then(() => {
+        if (active) setReady(true);
       })
       .catch(() => {
-        if (active) setError("Không thể kiểm tra phiên. Hãy thử lại.");
+        if (active) router.replace("/dang-nhap?next=/tai-khoan/bao-mat");
       });
     return () => {
       active = false;
