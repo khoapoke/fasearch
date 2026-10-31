@@ -3,7 +3,7 @@ import { authCookie } from "@/lib/server/customer-auth";
 
 // Narrow same-origin commerce transport. The JWT stays server-side and is sent
 // as Bearer only to the fixed candidate BE; no legacy session/cookie fallback.
-const COMMERCE_BASE = "http://127.0.0.1:18124";
+const COMMERCE_BASE = "http://127.0.0.1:18126";
 
 function timeoutSignal(signal: AbortSignal): AbortSignal {
   return AbortSignal.any([signal, AbortSignal.timeout(12000)]);
@@ -35,9 +35,15 @@ export async function commerceUpstream(
   }
   if (init.safeErrors && !upstream.ok) {
     let code: number | string = upstream.status;
+    let errors: Array<{ field: string; reason: string }> | undefined;
     try {
-      const payload = await upstream.json() as { code?: unknown };
+      const payload = await upstream.json() as { code?: unknown; errors?: unknown };
       if (typeof payload.code === "number" && Number.isSafeInteger(payload.code)) code = payload.code;
+      if (Array.isArray(payload.errors)) errors = payload.errors.flatMap((entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const item = entry as Record<string, unknown>;
+        return typeof item.field === "string" && typeof item.reason === "string" ? [{ field: item.field, reason: item.reason }] : [];
+      });
     } catch { /* use the status-only fallback */ }
     const messages: Record<number, string> = {
       4101: "Mã voucher không tồn tại.", 4102: "Chiến dịch hoặc mã voucher đang tạm dừng.",
@@ -46,6 +52,14 @@ export async function commerceUpstream(
       4107: "Giá hoặc ưu đãi đã thay đổi. Hãy báo giá lại trước khi đặt hàng.",
       4108: "Yêu cầu đặt hàng đã thay đổi. Hãy tải lại giỏ hàng.",
       4109: "Chiến dịch đã được cập nhật. Hãy tải lại trước khi sửa tiếp.",
+      4201: "Số dư điểm cũ chưa được ghi nhận mở đầu.",
+      4202: "Chưa có chính sách điểm để đổi.",
+      4203: "Chính sách điểm đang tắt; số dư vẫn được giữ.",
+      4204: "Điểm vượt quá số dư hoặc mức giảm tối đa hiện tại.",
+      4205: "Số dư khách đã được ghi nhận mở đầu trước đó.",
+      4206: "Chính sách đã đổi. Tải lại rồi thử lại.",
+      4207: "Ngưỡng hạng đã đổi. Tải lại rồi thử lại.",
+      4208: "Trạng thái điểm đã thay đổi đồng thời. Tải lại báo giá.",
     };
     const message = typeof code === "number" && messages[code] ? messages[code]
       : upstream.status === 401 ? "Vui lòng đăng nhập lại."
@@ -54,7 +68,7 @@ export async function commerceUpstream(
             : upstream.status === 409 ? "Dữ liệu đã thay đổi. Tải lại rồi thử lại."
               : upstream.status >= 500 ? "Dịch vụ đang bận. Thử lại sau."
                 : "Yêu cầu chưa thể xử lý.";
-    return Response.json({ success: false, code, message, result: null }, { status: upstream.status, headers: { "cache-control": "no-store" } });
+    return Response.json({ success: false, code, message, ...(errors?.length ? { errors } : {}), result: null }, { status: upstream.status, headers: { "cache-control": "no-store" } });
   }
   const out = new Headers({ "cache-control": "no-store" });
   const type = upstream.headers.get("content-type");

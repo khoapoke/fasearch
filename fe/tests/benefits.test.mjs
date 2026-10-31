@@ -34,12 +34,13 @@ describe("validatePointsInput (hand arithmetic: 20pts x 1000 on 150000 remaining
 });
 
 describe("loyaltySignedPoints (ledger stores positive both sides)", () => {
-  it("spend/hold show minus, earn/release show plus", () => {
-    assert.equal(loyaltySignedPoints("TIEU", 5), -5);
-    assert.equal(loyaltySignedPoints("GIU", 5), -5);
-    assert.equal(loyaltySignedPoints("TICH", 5), 5);
-    assert.equal(loyaltySignedPoints("NHA_GIU", 5), 5);
-    assert.equal(loyaltyActionLabel("NHA_GIU"), "Nhả giữ");
+  it("contract ledger types show net spends/holds and keep opening as baseline", () => {
+    assert.equal(loyaltySignedPoints("REDEEM", 5), -5);
+    assert.equal(loyaltySignedPoints("HOLD", 5), -5);
+    assert.equal(loyaltySignedPoints("EARN", 5), 5);
+    assert.equal(loyaltySignedPoints("RELEASE", 5), 5);
+    assert.equal(loyaltySignedPoints("OPENING", 5), 0);
+    assert.equal(loyaltyActionLabel("RELEASE"), "Nhả giữ");
   });
 });
 
@@ -51,13 +52,16 @@ describe("splitPayable + labels + errors", () => {
   it("labels cover kinds/actions", () => {
     assert.equal(discountKindLabel("PHAN_TRAM"), "theo đơn");
     assert.equal(discountKindLabel("SO_TIEN"), "cố định");
-    assert.equal(loyaltyActionLabel("NHA"), "Nhả giữ");
+    assert.equal(loyaltyActionLabel("OPENING"), "Số dư mở đầu");
   });
   it("maps expired/disabled/mismatch/insufficient/409 honestly", () => {
     assert.match(benefitErrorMessage(400, "VOUCHER_EXPIRED", "x"), /hết hạn/);
     assert.match(benefitErrorMessage(400, "POLICY_DISABLED", "x"), /tắt/);
     assert.match(benefitErrorMessage(400, "VOUCHER_MISMATCH", "x"), /không áp dụng/);
-    assert.match(benefitErrorMessage(400, "POINTS_INSUFFICIENT", "x"), /không đủ/);
+    assert.match(benefitErrorMessage(409, "INSUFFICIENT_POINTS", "x"), /vượt quá/);
+    assert.match(benefitErrorMessage(409, "4204", "x"), /vượt quá/);
+    assert.match(benefitErrorMessage(409, "4206", "x"), /Chính sách đã đổi/);
+    assert.match(benefitErrorMessage(409, "4208", "x"), /thay đổi đồng thời/);
     assert.match(benefitErrorMessage(409, null, "x"), /Tải lại báo giá/);
   });
 });

@@ -1,14 +1,16 @@
 import {
   CommerceError, normalizeCart, normalizeOrderDetail, normalizeOrderPage, normalizeCartQuote,
-  normalizeShipping, normalizeOrder, type CustomerCart, type CustomerOrder, type CustomerCartQuote,
+  normalizeShipping, normalizeCheckoutOrder, type CustomerCart, type CustomerOrder, type CustomerCartQuote,
   type CustomerOrderDetail, type CustomerOrderPage, type ShippingQuote,
-} from "./customer-commerce";
+} from "./customer-commerce.ts";
 
 async function read<T>(response: Response, normalize: (raw: unknown) => T): Promise<T> {
-  let body: { success?: boolean; message?: string; code?: string | number; result?: unknown } | null = null;
+  let body: { success?: boolean; message?: string; code?: string | number; result?: unknown; errors?: Array<{ reason?: string }> } | null = null;
   try { body = await response.json(); } catch { /* non-json */ }
   if (!response.ok || body?.success !== true || body.result === undefined) {
-    throw new CommerceError(body?.message || "Không thể kết nối máy chủ giỏ hàng.", response.status || 502, body?.code === undefined ? undefined : String(body.code));
+    const reasons = body?.errors?.map((error) => error.reason).filter((reason): reason is string => Boolean(reason));
+    const message = body?.message || "Không thể kết nối máy chủ giỏ hàng.";
+    throw new CommerceError(reasons?.length ? `${message}: ${reasons.join("; ")}` : message, response.status || 502, body?.code === undefined ? undefined : String(body.code));
   }
   return normalize(body.result);
 }
@@ -41,12 +43,12 @@ export async function clearCustomerCart(signal?: AbortSignal): Promise<void> {
 export const fetchShippingQuote = (province: string, district: string, totalWeightGram: number, signal?: AbortSignal): Promise<ShippingQuote> =>
   call("/api/customer-commerce/shipping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ province, district, totalWeightGram }), signal }, normalizeShipping);
 
-export type CheckoutInput = { deliveryAddress: string; receiverName: string; receiverPhone: string; paymentMethod: string; shippingFee: number; note?: string; voucherCode?: string; quoteFingerprint: string; expectedMerchandiseAmountDue: number; checkoutKey: string };
+export type CheckoutInput = { deliveryAddress: string; receiverName: string; receiverPhone: string; paymentMethod: string; shippingFee: number; note?: string; voucherCode?: string; redeemedPoints?: number; quoteFingerprint: string; expectedMerchandiseAmountDue: number; checkoutKey: string };
 export const createCustomerOrder = (input: CheckoutInput, signal?: AbortSignal): Promise<CustomerOrder> =>
-  call("/api/customer-commerce/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal }, normalizeOrder);
+  call("/api/customer-commerce/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal }, (raw) => normalizeCheckoutOrder(raw, input.voucherCode));
 
-export const quoteCustomerCart = (voucherCode: string | null, signal?: AbortSignal): Promise<CustomerCartQuote> =>
-  call("/api/customer-commerce/cart/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ voucherCode }), signal }, normalizeCartQuote);
+export const quoteCustomerCart = (voucherCode: string | null, redeemedPoints = 0, signal?: AbortSignal): Promise<CustomerCartQuote> =>
+  call("/api/customer-commerce/cart/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ voucherCode, redeemedPoints }), signal }, normalizeCartQuote);
 
 export const fetchCustomerOrders = (query: string, signal?: AbortSignal): Promise<CustomerOrderPage> =>
   call(`/api/customer-commerce/orders?${query}`, { method: "GET", signal }, normalizeOrderPage);

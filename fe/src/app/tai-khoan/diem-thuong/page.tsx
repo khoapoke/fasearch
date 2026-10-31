@@ -23,22 +23,15 @@ export default function LoyaltyPage() {
     setState({ kind: "loading" });
     try {
       const data = await fetchOwnLoyalty();
-      let history: LoyaltyHistoryEntry[] = [];
-      try {
-        const pg = await fetchOwnLoyaltyHistory("page=0&size=20");
-        history = pg.data;
-      } catch (he) {
-        const st = (he as { status?: number })?.status ?? 0;
-        if (st !== 404) throw he;
-      }
-      setState({ kind: "ready", data, history });
+      const pg = await fetchOwnLoyaltyHistory("page=0&size=20");
+      setState({ kind: "ready", data, history: pg.data });
     } catch (e) {
       const st = (e as { status?: number })?.status ?? 0;
       if (st === 401) {
         router.replace("/dang-nhap?next=/tai-khoan/diem-thuong");
         return;
       }
-      setState({ kind: "error", message: benefitErrorMessage(st, null, e instanceof Error ? e.message : "Không tải được điểm thưởng."), status: st });
+      setState({ kind: "error", message: benefitErrorMessage(st, (e as { code?: string })?.code ?? null, e instanceof Error ? e.message : "Không tải được điểm thưởng."), status: st });
       setTimeout(() => errorRef.current?.focus(), 0);
     }
   }, [router]);
@@ -62,13 +55,15 @@ export default function LoyaltyPage() {
         <>
           <section className="sfSideCard" aria-label="Số dư điểm">
             <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-              <div><b style={{ fontSize: 22 }}>{state.data.balance.khaDung.toLocaleString("vi-VN")}</b><p className="sfIdentitySub">điểm khả dụng</p></div>
-              <div><b style={{ fontSize: 22 }}>{state.data.balance.soDu.toLocaleString("vi-VN")}</b><p className="sfIdentitySub">tổng số dư</p></div>
-              <div><b style={{ fontSize: 22 }}>{state.data.balance.dangGiu.toLocaleString("vi-VN")}</b><p className="sfIdentitySub">đang giữ (đơn chưa xong)</p></div>
+              <div><b style={{ fontSize: 22 }}>{state.data.balance.availablePoints?.toLocaleString("vi-VN") ?? "—"}</b><p className="sfIdentitySub">điểm khả dụng</p></div>
+              <div><b style={{ fontSize: 22 }}>{state.data.balance.balancePoints.toLocaleString("vi-VN")}</b><p className="sfIdentitySub">tổng số dư</p></div>
+              <div><b style={{ fontSize: 22 }}>{state.data.balance.heldPoints.toLocaleString("vi-VN")}</b><p className="sfIdentitySub">đang giữ (đơn chưa xong)</p></div>
             </div>
             <p className="sfIdentitySub" style={{ marginTop: 8 }}>
-              Hạng: <b>{state.data.balance.tierName ?? "Chưa xếp hạng"}</b> · Chi tiêu tích lũy: <b>{state.data.balance.tongChiTieu.toLocaleString("vi-VN")}₫</b>
-              {state.data.balance.daMoDau === false ? " · Chưa ghi nhận số dư ban đầu." : ""}
+              Hạng: <b>{state.data.balance.salesTierName ?? (state.data.balance.salesTierStatus === "HISTORY_UNKNOWN" ? "Chưa đủ dữ liệu" : "Chưa xếp hạng")}</b> · Chi tiêu tích lũy: <b>{state.data.balance.cumulativePaidSales === null ? "Chưa đủ dữ liệu" : `${state.data.balance.cumulativePaidSales.toLocaleString("vi-VN")}₫`}</b>
+              {!state.data.balance.openingRecorded ? " · Số dư cũ chưa ghi nhận mở đầu; hiện chưa thể đổi điểm." : ""}
+              {state.data.balance.policyStatus === "DISABLED" ? " · Chính sách điểm đang tắt; số dư vẫn được giữ." : ""}
+              {state.data.balance.policyStatus === "UNCONFIGURED" ? " · Chưa cấu hình chính sách điểm." : ""}
             </p>
           </section>
           <section className="sfSideCard" aria-label="Lịch sử điểm" style={{ marginTop: 14 }}>
@@ -77,10 +72,10 @@ export default function LoyaltyPage() {
               <p className="sfIdentitySub" style={{ marginTop: 6 }}>Chưa có biến động điểm nào cho tài khoản này.</p>
             ) : (
               state.history.map((h) => (
-                <div className="pvRow" key={String(h.id)}>
+                <div className="pvRow" key={String(h.entryId)}>
                   <div style={{ flex: 1 }}>
-                    <b className="name">{loyaltyActionLabel(h.loai)} {loyaltySignedPoints(h.loai, h.diem) > 0 ? `+${h.diem}` : `−${Math.abs(h.diem)}`} điểm</b>
-                    <small>{h.thoiGian}{h.maDonHang ? ` · Đơn #${h.maDonHang}` : ""}</small>
+                    <b className="name">{loyaltyActionLabel(h.type)} {h.type === "OPENING" ? `${h.points} điểm (số dư nền)` : `${loyaltySignedPoints(h.type, h.points) > 0 ? "+" : "−"}${Math.abs(h.points)} điểm`}</b>
+                    <small>{h.occurredAt}{h.orderId ? ` · Đơn #${h.orderId}` : ""}</small>
                   </div>
                 </div>
               ))

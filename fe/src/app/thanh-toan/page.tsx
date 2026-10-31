@@ -7,6 +7,7 @@ import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
 import { CommerceError, formatMoney, type CustomerCartQuote } from "@/lib/customer-commerce";
+import { validatePointsInput } from "@/lib/benefits";
 import { newOperationKey } from "@/lib/commerce";
 import "@/components/customer-commerce/commerce.css";
 
@@ -34,6 +35,7 @@ function CheckoutPageContent() {
   const [quoteError, setQuoteError] = useState("");
   const initialVoucher = useSearchParams().get("voucher") ?? "";
   const [voucherCode, setVoucherCode] = useState(initialVoucher);
+  const [pointsRaw, setPointsRaw] = useState("0");
   const [cartQuote, setCartQuote] = useState<{ quote: CustomerCartQuote; cartSignature: string } | null>(null);
   const [voucherBusy, setVoucherBusy] = useState(false);
   const [voucherError, setVoucherError] = useState("");
@@ -50,15 +52,18 @@ function CheckoutPageContent() {
   const weight = Math.max(1, (cart?.totalItems ?? 0) * WEIGHT_PER_ITEM_GRAM);
   const key = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weight}`;
   const cartSignature = JSON.stringify(cart?.items.map(({ skuId, quantity, unitPrice, totalPrice }) => [skuId, quantity, unitPrice, totalPrice]) ?? []);
-  const currentCartQuote = cartQuote?.cartSignature === cartSignature && (cartQuote.quote.voucherCode ?? "") === voucherCode.trim().toUpperCase() ? cartQuote.quote : null;
+  const pointsRequested = pointsRaw.trim() === "" ? 0 : /^\d+$/.test(pointsRaw.trim()) && Number.isSafeInteger(Number(pointsRaw)) ? Number(pointsRaw) : null;
+  const currentCartQuote = cartQuote?.cartSignature === cartSignature
+    && (cartQuote.quote.voucherCode ?? "") === voucherCode.trim().toUpperCase()
+    && pointsRequested !== null && cartQuote.quote.redeemedPoints === pointsRequested ? cartQuote.quote : null;
   const quoteIsCurrent = Boolean(currentCartQuote);
 
-  const applyQuote = useCallback(async (code: string | null) => {
+  const applyQuote = useCallback(async (code: string | null, redeemedPoints: number) => {
     if (!cart?.items.length) return null;
     const my = ++voucherReq.current;
     setVoucherBusy(true); setVoucherError(""); setCartQuote(null);
     try {
-      const result = await quoteCustomerCart(code);
+      const result = await quoteCustomerCart(code, redeemedPoints);
       if (voucherReq.current !== my) return null;
       setCartQuote({ quote: result, cartSignature }); checkoutAttempt.current = null; setError("");
       return result;
@@ -95,7 +100,7 @@ function CheckoutPageContent() {
     if (!cart?.items.length) { initialQuoteRequested.current = false; return; }
     if (!initialQuoteRequested.current) {
       initialQuoteRequested.current = true;
-      void applyQuote(null);
+      void applyQuote(null, 0);
     }
     void Promise.resolve().then(() => calculate());
   }, [applyQuote, calculate, cart?.items.length, cartSignature]);
@@ -123,6 +128,7 @@ function CheckoutPageContent() {
         deliveryAddress: address.trim(), receiverName: name.trim(), receiverPhone: phone.trim(),
         paymentMethod: "COD", shippingFee: current.shippingFee, ...(note.trim() ? { note: note.trim() } : {}),
         ...(currentCartQuote.voucherCode ? { voucherCode: currentCartQuote.voucherCode } : {}),
+        redeemedPoints: currentCartQuote.redeemedPoints,
         quoteFingerprint: currentCartQuote.quoteFingerprint, expectedMerchandiseAmountDue: currentCartQuote.merchandiseAmountDue,
       };
       const signature = JSON.stringify(checkout);
@@ -173,7 +179,13 @@ function CheckoutPageContent() {
                   <div className="checkout-field"><label htmlFor="checkout-district">Quận/Huyện</label><input id="checkout-district" className="checkout-input" value={district} onChange={(e) => setDistrict(e.target.value)} /></div>
                 </div>
                 <div className="checkout-field"><label htmlFor="checkout-note">Ghi chú (không bắt buộc)</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} /></div>
-                <div className="checkout-field"><label htmlFor="checkout-voucher">Mã voucher (không bắt buộc)</label><div style={{ display: "flex", gap: 8 }}><input id="checkout-voucher" className="checkout-input" value={voucherCode} onChange={(e) => { setVoucherCode(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} maxLength={50} autoComplete="off" /><button className="commerce-ghost" type="button" disabled={voucherBusy} onClick={() => { setError(""); void applyQuote(voucherCode.trim() || null); }}>{voucherBusy ? "Đang báo giá…" : voucherCode.trim() ? "Áp dụng mã" : "Bỏ mã / báo giá lại"}</button></div></div>
+                <div className="checkout-field"><label htmlFor="checkout-voucher">Mã voucher (không bắt buộc)</label><input id="checkout-voucher" className="checkout-input" value={voucherCode} onChange={(e) => { setVoucherCode(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} maxLength={50} autoComplete="off" /></div>
+                <div className="checkout-field"><label htmlFor="checkout-points">Điểm muốn đổi (không bắt buộc)</label><input id="checkout-points" className="checkout-input" value={pointsRaw} onChange={(e) => { setPointsRaw(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} inputMode="numeric" /></div>
+                <button className="commerce-ghost" type="button" disabled={voucherBusy} onClick={() => {
+                  setError("");
+                  try { void applyQuote(voucherCode.trim() || null, validatePointsInput(pointsRaw, Number.MAX_SAFE_INTEGER)); }
+                  catch (e) { setVoucherError(e instanceof Error ? e.message : "Điểm sử dụng chưa hợp lệ."); }
+                }}>{voucherBusy ? "Đang báo giá…" : "Áp dụng ưu đãi / báo giá lại"}</button>
                 <p className="checkout-test-note">Đơn thử nghiệm. Phí giao hàng lấy từ API BE với giả định {WEIGHT_PER_ITEM_GRAM}g/món vì DTO sản phẩm công khai chưa có trọng lượng; đây không phải metadata sản xuất.</p>
                 {voucherError ? <p ref={voucherErrorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{voucherError}</p> : null}
                 {cartQuote && !quoteIsCurrent && !voucherBusy ? <p className="commerce-status" role="status">Giỏ hàng hoặc mã voucher đã thay đổi. Báo giá lại trước khi đặt đơn.</p> : null}
@@ -188,6 +200,8 @@ function CheckoutPageContent() {
                 <ul className="checkout-lines">{cart.items.map((line) => { const quoted = currentCartQuote?.items.find((item) => item.skuId === line.skuId); return <li className="checkout-summary-line" key={line.skuId}><span>{line.productName} · {[line.color, line.size].filter(Boolean).join(" · ")} × {line.quantity}{quoted?.discountAmount ? <small style={{ display: "block" }}>Giảm theo voucher: {formatMoney(quoted.discountAmount)}</small> : null}</span><strong>{formatMoney(quoted?.totalPrice ?? line.totalPrice)}</strong></li>; })}</ul>
                 <div className="checkout-summary-line"><span>Tạm tính hàng hóa</span><strong>{formatMoney(currentCartQuote?.subTotal ?? cart.subTotal)}</strong></div>
                 {currentCartQuote?.voucherCode ? <div className="checkout-summary-line"><span>Voucher {currentCartQuote.voucherCode}</span><strong>−{formatMoney(currentCartQuote.voucherDiscount)}</strong></div> : null}
+                {currentCartQuote && currentCartQuote.pointsDiscount > 0 ? <div className="checkout-summary-line"><span>Đổi {currentCartQuote.redeemedPoints} điểm</span><strong>−{formatMoney(currentCartQuote.pointsDiscount)}</strong></div> : null}
+                {currentCartQuote && currentCartQuote.allowedRedeemedPoints > 0 ? <p className="commerce-note">Tối đa {currentCartQuote.allowedRedeemedPoints.toLocaleString("vi-VN")} điểm theo báo giá máy chủ.</p> : null}
                 <div className="checkout-summary-line"><span>Tiền hàng sau ưu đãi</span><strong>{currentCartQuote ? formatMoney(currentCartQuote.merchandiseAmountDue) : "—"}</strong></div>
                 <div className="checkout-summary-line"><span>Phí giao hàng {quote ? `(${quote.estimatedDays})` : ""}</span><strong>{quote ? formatMoney(quote.shippingFee) : quoteBusy ? "Đang tính…" : "—"}</strong></div>
                 <div className="checkout-total"><span>Tổng tạm tính</span><strong>{currentCartQuote && quote ? formatMoney(currentCartQuote.merchandiseAmountDue + quote.shippingFee) : "—"}</strong></div>

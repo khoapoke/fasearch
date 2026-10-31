@@ -35,6 +35,12 @@ export type CustomerOrder = {
   voucherCode: string | null;
   voucherCampaignName: string | null;
   voucherCampaignVersion: number | null;
+  redeemedPoints: number | null;
+  pointsDiscount: number | null;
+  loyaltyPolicyId: number | null;
+  loyaltyPolicyVersion: number | null;
+  redeemCurrencyPerPointSnapshot: number | null;
+  earnedPoints: number | null;
   replayed: boolean;
   createdAt: string;
 };
@@ -49,10 +55,17 @@ export type CustomerOrderItem = {
   unitPrice: number;
   totalPrice: number;
   discountAmount: number;
+  pointsDiscountAmount: number | null;
 };
 
-export type CartQuoteLine = { skuId: number; productName: string; quantity: number; unitPrice: number; totalPrice: number; discountAmount: number };
-export type CustomerCartQuote = { items: CartQuoteLine[]; subTotal: number; voucherCode: string | null; voucherDiscount: number; merchandiseAmountDue: number; quoteFingerprint: string };
+export type CartQuoteLine = { skuId: number; productName: string; quantity: number; unitPrice: number; totalPrice: number; discountAmount: number; pointsDiscountAmount: number };
+export type CustomerCartQuote = {
+  items: CartQuoteLine[]; subTotal: number; voucherCode: string | null; voucherDiscount: number;
+  remainingMerchandiseAmount: number; redeemedPoints: number; pointsDiscount: number; allowedRedeemedPoints: number;
+  availablePoints: number | null; policyStatus: "UNCONFIGURED" | "DISABLED" | "ENABLED";
+  loyaltyPolicyId: number | null; loyaltyPolicyVersion: number | null; redeemCurrencyPerPoint: number | null;
+  merchandiseAmountDue: number; quoteFingerprint: string;
+};
 
 export type CustomerOrderDetail = CustomerOrder & {
   note: string | null;
@@ -88,7 +101,7 @@ const finite = (v: unknown, min = 0): number => {
   return v;
 };
 const integer = (v: unknown, min = 0): number => {
-  if (typeof v !== "number" || !Number.isInteger(v) || v < min) throw new CommerceError(INVALID, 502);
+  if (typeof v !== "number" || !Number.isSafeInteger(v) || v < min) throw new CommerceError(INVALID, 502);
   return v;
 };
 const text = (v: unknown): string | null => typeof v === "string" ? v : null;
@@ -132,21 +145,47 @@ export function normalizeOrder(raw: unknown): CustomerOrder {
     customerPhone: text(v.customerPhone), deliveryAddress: text(v.deliveryAddress),
     subTotal: finite(v.subTotal), discountAmount: finite(v.discountAmount ?? 0), shippingFee: finite(v.shippingFee ?? 0),
     totalAmount: finite(v.totalAmount), voucherId, voucherCode, voucherCampaignName, voucherCampaignVersion,
+    redeemedPoints: v.redeemedPoints === null || v.redeemedPoints === undefined ? null : integer(v.redeemedPoints),
+    pointsDiscount: v.pointsDiscount === null || v.pointsDiscount === undefined ? null : finite(v.pointsDiscount),
+    loyaltyPolicyId: v.loyaltyPolicyId === null || v.loyaltyPolicyId === undefined ? null : integer(v.loyaltyPolicyId, 1),
+    loyaltyPolicyVersion: v.loyaltyPolicyVersion === null || v.loyaltyPolicyVersion === undefined ? null : integer(v.loyaltyPolicyVersion, 1),
+    redeemCurrencyPerPointSnapshot: v.redeemCurrencyPerPointSnapshot === null || v.redeemCurrencyPerPointSnapshot === undefined ? null : finite(v.redeemCurrencyPerPointSnapshot),
+    earnedPoints: v.earnedPoints === null || v.earnedPoints === undefined ? null : integer(v.earnedPoints),
     replayed: v.replayed === true, createdAt: typeof v.createdAt === "string" ? v.createdAt : "",
   };
 }
 
+export function normalizeCheckoutOrder(raw: unknown, requestedVoucherCode?: string): CustomerOrder {
+  const order = normalizeOrder(raw);
+  const code = requestedVoucherCode?.trim().toUpperCase();
+  if (code && (order.voucherId === null || order.voucherCode?.trim().toUpperCase() !== code || !order.voucherCampaignName || order.voucherCampaignVersion === null)) throw new CommerceError(INVALID, 502);
+  return order;
+}
+
 export function normalizeCartQuote(raw: unknown): CustomerCartQuote {
   const v = record(raw);
-  if (!Array.isArray(v.items) || typeof v.quoteFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(v.quoteFingerprint)) throw new CommerceError(INVALID, 502);
-  return {
+  if (!Array.isArray(v.items) || (v.voucherCode !== null && typeof v.voucherCode !== "string")
+    || typeof v.quoteFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(v.quoteFingerprint)
+    || !["UNCONFIGURED", "DISABLED", "ENABLED"].includes(String(v.policyStatus))) throw new CommerceError(INVALID, 502);
+  const quote = {
     items: v.items.map((rawItem) => {
       const item = record(rawItem);
-      return { skuId: integer(item.skuId, 1), productName: typeof item.productName === "string" ? item.productName : "", quantity: integer(item.quantity, 1), unitPrice: finite(item.unitPrice), totalPrice: finite(item.totalPrice), discountAmount: finite(item.discountAmount) };
+      return { skuId: integer(item.skuId, 1), productName: typeof item.productName === "string" ? item.productName : "", quantity: integer(item.quantity, 1), unitPrice: finite(item.unitPrice), totalPrice: finite(item.totalPrice), discountAmount: finite(item.discountAmount), pointsDiscountAmount: finite(item.pointsDiscountAmount) };
     }),
     subTotal: finite(v.subTotal), voucherCode: text(v.voucherCode), voucherDiscount: finite(v.voucherDiscount),
+    remainingMerchandiseAmount: finite(v.remainingMerchandiseAmount), redeemedPoints: integer(v.redeemedPoints),
+    pointsDiscount: finite(v.pointsDiscount), allowedRedeemedPoints: integer(v.allowedRedeemedPoints),
+    availablePoints: v.availablePoints === null ? null : integer(v.availablePoints),
+    policyStatus: v.policyStatus as CustomerCartQuote["policyStatus"],
+    loyaltyPolicyId: v.loyaltyPolicyId === null ? null : integer(v.loyaltyPolicyId, 1),
+    loyaltyPolicyVersion: v.loyaltyPolicyVersion === null ? null : integer(v.loyaltyPolicyVersion, 1),
+    redeemCurrencyPerPoint: v.redeemCurrencyPerPoint === null ? null : finite(v.redeemCurrencyPerPoint),
     merchandiseAmountDue: finite(v.merchandiseAmountDue), quoteFingerprint: v.quoteFingerprint,
   };
+  if (Math.abs(quote.remainingMerchandiseAmount - (quote.subTotal - quote.voucherDiscount)) > 0.01
+    || Math.abs(quote.merchandiseAmountDue - (quote.remainingMerchandiseAmount - quote.pointsDiscount)) > 0.01
+    || quote.pointsDiscount > quote.remainingMerchandiseAmount) throw new CommerceError(INVALID, 502);
+  return quote;
 }
 
 export function normalizeOrderDetail(raw: unknown): CustomerOrderDetail {
@@ -161,7 +200,7 @@ export function normalizeOrderDetail(raw: unknown): CustomerOrderDetail {
     items: v.items.map((x) => {
       const i = record(x);
       if (base.voucherCode && (i.discountAmount === undefined || i.discountAmount === null)) throw new CommerceError(INVALID, 502);
-      return { skuId: integer(i.skuId, 1), productName: typeof i.productName === "string" ? i.productName : "", color: text(i.color), size: text(i.size), imageUrl: text(i.imageUrl), quantity: integer(i.quantity, 1), unitPrice: finite(i.unitPrice), totalPrice: finite(i.totalPrice), discountAmount: finite(i.discountAmount ?? 0) };
+      return { skuId: integer(i.skuId, 1), productName: typeof i.productName === "string" ? i.productName : "", color: text(i.color), size: text(i.size), imageUrl: text(i.imageUrl), quantity: integer(i.quantity, 1), unitPrice: finite(i.unitPrice), totalPrice: finite(i.totalPrice), discountAmount: finite(i.discountAmount ?? 0), pointsDiscountAmount: i.pointsDiscountAmount === null || i.pointsDiscountAmount === undefined ? null : finite(i.pointsDiscountAmount) };
     }),
   };
 }

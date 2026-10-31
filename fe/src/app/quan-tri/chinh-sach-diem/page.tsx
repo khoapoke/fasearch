@@ -13,9 +13,9 @@ export default function LoyaltyPolicyPage() {
   const [missing, setMissing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tyLeTich, setTyLeTich] = useState("");
-  const [giaTriDiem, setGiaTriDiem] = useState("");
-  const [trangThai, setTrangThai] = useState<PolicyState>("TAT");
+  const [earnCurrencyPerPoint, setEarnCurrencyPerPoint] = useState("");
+  const [redeemCurrencyPerPoint, setRedeemCurrencyPerPoint] = useState("");
+  const [status, setStatus] = useState<PolicyState>("DISABLED");
   const [maKh, setMaKh] = useState("");
   const [tiers, setTiers] = useState<TierInfo[]>([]);
   const [maHang, setMaHang] = useState("");
@@ -32,16 +32,16 @@ export default function LoyaltyPolicyPage() {
     setMissing(false);
     try {
       const list = await fetchLoyaltyPolicy();
-      const current = list.find((p) => p.trangThai === "BAT") ?? list[0] ?? null;
+      const current = list.find((p) => p.status === "ENABLED") ?? list[0] ?? null;
       if (!current) {
         setMissing(true);
         setPolicy(null);
-        setTrangThai("TAT");
+        setStatus("DISABLED");
       } else {
         setPolicy(current);
-        setTrangThai((current.trangThai as PolicyState) ?? "TAT");
-        setTyLeTich(current.tyLeTich?.toString() ?? "");
-        setGiaTriDiem(current.giaTriDiem?.toString() ?? "");
+        setStatus(current.status);
+        setEarnCurrencyPerPoint(String(current.earnCurrencyPerPoint));
+        setRedeemCurrencyPerPoint(String(current.redeemCurrencyPerPoint));
       }
     } catch (e) {
       const st = (e as { status?: number })?.status ?? 0;
@@ -66,18 +66,19 @@ export default function LoyaltyPolicyPage() {
     void Promise.resolve().then(() => load());
   }, [load]);
 
-  function parseRates(): { tyLeTich: number; giaTriDiem: number } | null {
-    const tyLe = Number(tyLeTich);
-    const giaTri = Number(giaTriDiem);
-    if (!Number.isFinite(tyLe) || tyLe <= 0) {
-      setIssue("Tỉ lệ tích phải là số dương (VNĐ cho 1 điểm).");
+  function parseRates(): { earnCurrencyPerPoint: number; redeemCurrencyPerPoint: number } | null {
+    const earn = Number(earnCurrencyPerPoint);
+    const redeem = Number(redeemCurrencyPerPoint);
+    const validMoney = (value: number, raw: string) => Number.isFinite(value) && value > 0 && value <= 1e17 && /^\d+(?:\.\d{1,2})?$/.test(raw.trim());
+    if (!validMoney(earn, earnCurrencyPerPoint)) {
+      setIssue("Mức chi tiêu để tích điểm phải là số dương, tối đa 2 chữ số thập phân.");
       return null;
     }
-    if (!Number.isFinite(giaTri) || giaTri <= 0) {
-      setIssue("Giá trị điểm phải là số dương (VNĐ cho 1 điểm).");
+    if (!validMoney(redeem, redeemCurrencyPerPoint)) {
+      setIssue("Giá trị đổi mỗi điểm phải là số dương, tối đa 2 chữ số thập phân.");
       return null;
     }
-    return { tyLeTich: tyLe, giaTriDiem: giaTri };
+    return { earnCurrencyPerPoint: earn, redeemCurrencyPerPoint: redeem };
   }
 
   async function submitCreate() {
@@ -87,10 +88,10 @@ export default function LoyaltyPolicyPage() {
     setIssue("");
     setNotice("");
     try {
-      const p = await createLoyaltyPolicy({ ...rates, trangThai });
+      const p = await createLoyaltyPolicy({ ...rates, status });
       setPolicy(p);
       setMissing(false);
-      setNotice(`Đã tạo chính sách #${policyId(p)} (${p.trangThai}).`);
+      setNotice(`Đã tạo chính sách #${policyId(p)} (${p.status}).`);
       load();
     } catch (e) {
       const st = (e as { status?: number })?.status ?? 0;
@@ -109,10 +110,10 @@ export default function LoyaltyPolicyPage() {
     setNotice("");
     try {
       const updated = await updateLoyaltyPolicy(policyId(policy), {
-        phienBan: policy.phienBan, ...rates, trangThai,
+        version: policy.version, ...rates, status,
       });
       setPolicy(updated);
-      setNotice(`Đã lưu phiên bản ${updated.phienBan} (${updated.trangThai}). Áp dụng cho quote/order mới; receipt cũ giữ nguyên.`);
+      setNotice(`Đã lưu phiên bản ${updated.version} (${updated.status}). Áp dụng cho quote/order mới; receipt cũ giữ nguyên.`);
       load();
     } catch (e) {
       const st = (e as { status?: number })?.status ?? 0;
@@ -150,7 +151,8 @@ export default function LoyaltyPolicyPage() {
     if (busy) return;
     const id = Number(maHang);
     const n = Number(nguong);
-    if (tiers.length > 0 && !tiers.some((t) => t.maHang === id)) {
+    const selectedTier = tiers.find((tier) => tier.tierId === id);
+    if (!selectedTier) {
       setIssue("Chọn hạng trong danh sách máy chủ — không đặt ngưỡng cho mã hạng ngoài danh sách.");
       return;
     }
@@ -158,15 +160,15 @@ export default function LoyaltyPolicyPage() {
       setIssue("Chọn hạng trong danh sách trước khi đặt ngưỡng.");
       return;
     }
-    if (!Number.isInteger(n) || n < 0) {
-      setIssue("Ngưỡng doanh số tích lũy phải là số nguyên ≥ 0 (VNĐ).");
+    if (!Number.isFinite(n) || n < 0 || n > 1e17 || !/^\d+(?:\.\d{1,2})?$/.test(nguong.trim())) {
+      setIssue("Ngưỡng doanh số tích lũy phải là số không âm, tối đa 2 chữ số thập phân (VNĐ).");
       return;
     }
     setBusy(true);
     setIssue("");
     setNotice("");
     try {
-      await updateTierThreshold(id, n);
+      await updateTierThreshold(id, selectedTier.version, n);
       setNotice(`Đã đặt ngưỡng doanh số tích lũy hạng #${id} = ${n.toLocaleString("vi-VN")}₫.`);
       setMaHang("");
       setNguong("");
@@ -183,7 +185,7 @@ export default function LoyaltyPolicyPage() {
       active="loyalty"
       crumbs={[{ label: "Quản trị", href: "/quan-tri/tai-khoan" }, { label: "Chính sách điểm" }]}
       title="Chính sách điểm & Hạng"
-      lede="Tỉ lệ tích/đổi và công tắc BAT/TAT theo phiên bản. Mặc định TAT khi chưa hợp lệ."
+      lede="Cấu hình mức chi tiêu tích điểm, giá trị đổi điểm và chính sách theo phiên bản. Chính sách mới mặc định DISABLED."
     >
       {loading ? <p className="adState" role="status">Đang tải chính sách…</p> : null}
       {error ? (
@@ -192,26 +194,26 @@ export default function LoyaltyPolicyPage() {
           <button className="adBtn" type="button" onClick={load}>Thử lại</button>
         </div>
       ) : null}
-      {!loading && !error && (missing || policy?.trangThai === "TAT") ? (
+      {!loading && !error && (missing || policy?.status === "DISABLED") ? (
         <p className="adNote" role="note" style={{ borderLeft: "4px solid #ba1a1a", paddingLeft: 10 }}>
-          {missing ? "Chưa có chính sách nào — tạo mới ở trạng thái TAT rồi kiểm tra trước khi bật." : "Chính sách đang TẮT — số dư khách chỉ để xem, chưa tích/đổi điểm mới."}
+          {missing ? "Chưa có chính sách nào — chính sách mới mặc định DISABLED; cần bật rõ ràng sau khi kiểm tra." : "Chính sách đang DISABLED — số dư khách vẫn được giữ; điểm mới chưa được đổi."}
         </p>
       ) : null}
       {!loading && !error ? (
         <>
           <section className="adCard" aria-label="Cấu hình chính sách">
-            {policy ? <p className="adNote">Phiên bản {policy.phienBan} · trạng thái {policy.trangThai}{policy.maChinhSach ? ` · #${policyId(policy)}` : ""}.</p> : null}
+            {policy ? <p className="adNote">Phiên bản {policy.version} · trạng thái {policy.status} · #{policyId(policy)}.</p> : null}
             <div className="adFilters">
-              <label>Tỉ lệ tích (VNĐ/điểm)
-                <input value={tyLeTich} onChange={(e) => setTyLeTich(e.target.value)} inputMode="numeric" style={{ width: 140, marginLeft: 6 }} />
+              <label>Chi tiêu để tích 1 điểm (VNĐ)
+                <input value={earnCurrencyPerPoint} onChange={(e) => setEarnCurrencyPerPoint(e.target.value)} inputMode="decimal" style={{ width: 160, marginLeft: 6 }} />
               </label>
-              <label>Giá trị điểm (VNĐ/điểm)
-                <input value={giaTriDiem} onChange={(e) => setGiaTriDiem(e.target.value)} inputMode="numeric" style={{ width: 140, marginLeft: 6 }} />
+              <label>Giá trị đổi 1 điểm (VNĐ)
+                <input value={redeemCurrencyPerPoint} onChange={(e) => setRedeemCurrencyPerPoint(e.target.value)} inputMode="decimal" style={{ width: 160, marginLeft: 6 }} />
               </label>
               <label>Trạng thái
-                <select value={trangThai} onChange={(e) => setTrangThai(e.target.value as PolicyState)} style={{ marginLeft: 6 }}>
-                  <option value="TAT">TAT (mặc định)</option>
-                  <option value="BAT">BAT</option>
+                <select value={status} onChange={(e) => setStatus(e.target.value as PolicyState)} style={{ marginLeft: 6 }}>
+                  <option value="DISABLED">DISABLED</option>
+                  <option value="ENABLED">ENABLED</option>
                 </select>
               </label>
               {policy ? (
@@ -232,18 +234,18 @@ export default function LoyaltyPolicyPage() {
           </section>
           <section className="adCard" aria-label="Ngưỡng hạng">
             <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>Ngưỡng hạng (chọn hạng + ngưỡng doanh số tích lũy VNĐ)</h2>
-            <p className="adNote">PUT đặt <b>nguongDoanhSo</b> (tiền tệ tích lũy, theo OpenAPI BE v2). Danh sách hạng tải trực tiếp từ máy chủ — không nhập mã mù.</p>
+            <p className="adNote">Ngưỡng là doanh số đã thanh toán tích lũy, dùng phiên bản mới nhất của từng hạng; dữ liệu thiếu vẫn hiển thị là chưa xác định.</p>
             {tiersIssue ? <p className="adNote" role="alert">{tiersIssue} Không thể đặt ngưỡng khi chưa thấy danh sách hạng.</p> : null}
             <div className="adFilters">
               <select value={maHang} onChange={(e) => setMaHang(e.target.value)} aria-label="Hạng" style={{ maxWidth: 320 }}>
                 <option value="">— Chọn hạng —</option>
                 {tiers.map((t) => (
-                  <option key={t.maHang} value={t.maHang}>
-                    #{t.maHang} {t.tenHang} · hiện tại: {t.nguongDoanhSo === null || t.nguongDoanhSo === undefined ? "chưa cấu hình" : `${Number(t.nguongDoanhSo).toLocaleString("vi-VN")}₫`}
+                  <option key={t.tierId} value={t.tierId}>
+                    #{t.tierId} {t.name} · hiện tại: {t.minimumCumulativePaidSales === null ? "chưa cấu hình" : `${t.minimumCumulativePaidSales.toLocaleString("vi-VN")}₫`}
                   </option>
                 ))}
               </select>
-              <input value={nguong} onChange={(e) => setNguong(e.target.value)} placeholder="Ngưỡng mới (số nguyên ≥ 0)" aria-label="Ngưỡng" inputMode="numeric" style={{ width: 200 }} />
+              <input value={nguong} onChange={(e) => setNguong(e.target.value)} placeholder="Ngưỡng mới (≥ 0; tối đa 2 số lẻ)" aria-label="Ngưỡng" inputMode="decimal" style={{ width: 230 }} />
               <button className="adBtn" type="button" disabled={busy || tiers.length === 0} onClick={submitTier}>Đặt ngưỡng</button>
             </div>
           </section>

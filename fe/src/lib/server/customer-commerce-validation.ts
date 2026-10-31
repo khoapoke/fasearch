@@ -23,10 +23,13 @@ export function checkoutBody(body: Record<string, unknown>): CheckoutBodyResult 
   if (rawCode !== undefined && rawCode !== null && typeof rawCode !== "string") return invalid("Mã voucher chưa hợp lệ.");
   const voucherCode = typeof rawCode === "string" ? rawCode.trim().toUpperCase() : null;
   if (voucherCode && voucherCode.length > 50) return invalid("Mã voucher phải tối đa 50 ký tự.");
+  const redeemedPoints = body.redeemedPoints;
+  if (redeemedPoints !== undefined && (!Number.isSafeInteger(redeemedPoints) || (redeemedPoints as number) < 0 || (redeemedPoints as number) > 2_147_483_647)) return invalid("Điểm sử dụng phải là số nguyên không âm trong giới hạn cho phép.", "INVALID_REDEEMED_POINTS");
   const hasFreshness = ["quoteFingerprint", "expectedMerchandiseAmountDue", "checkoutKey"].some((key) => body[key] !== undefined);
   const hasVoucher = Boolean(voucherCode);
+  const hasBenefits = hasVoucher || (typeof redeemedPoints === "number" && redeemedPoints > 0);
   let confirmation: Record<string, unknown> = {};
-  if (hasFreshness || hasVoucher) {
+  if (hasFreshness || hasBenefits) {
     const fingerprint = body.quoteFingerprint;
     const due = body.expectedMerchandiseAmountDue;
     const key = body.checkoutKey;
@@ -42,6 +45,7 @@ export function checkoutBody(body: Record<string, unknown>): CheckoutBodyResult 
       deliveryAddress, receiverName, receiverPhone, paymentMethod, shippingFee,
       ...(note ? { note } : {}),
       ...(voucherCode ? { voucherCode } : rawCode !== undefined ? { voucherCode: null } : {}),
+      ...(redeemedPoints !== undefined ? { redeemedPoints } : {}),
       ...confirmation,
     },
   };

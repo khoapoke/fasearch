@@ -1,37 +1,45 @@
-// Run: node --test tests/pos-receipt.test.mjs (from fe/)
-// Red-capable: BE pay result may be nested {donHang, maHoaDon, tienThua}
-// (observed live 18/10) or flat {...order, maHoaDon, tienThua}.
-// FE must never crash render on receipt.items.
-
-import { describe, it } from "node:test";
+// The POS payment response is an InvoiceRes; line allocations come from the order-detail route.
 import assert from "node:assert/strict";
-import { normalizePosReceipt } from "../src/lib/commerce-client.ts";
+import test from "node:test";
+import { normalizePosReceipt } from "../src/lib/pos-client.ts";
 
-const line = { maSku: 2, maSp: 1, tenSpSnapshot: "Áo", mauSacSnapshot: "Đen", kichCoSnapshot: "L", soLuong: 1, donGia: 150000, tongDong: 150000 };
+const invoice = {
+  invoiceId: 10, orderId: 14, totalActualPaid: 150000, cashChange: 50000,
+  redeemedPoints: 3, pointsDiscount: 3000, earnedPoints: 2,
+  loyaltyPolicyId: 4, loyaltyPolicyVersion: 2, redeemCurrencyPerPointSnapshot: 1000,
+};
 const order = {
-  maDonHang: 14, kenhBan: "POS", trangThai: "HOAN_THANH", phienBan: 2, maKho: 1,
-  items: [line], tongTienHang: 150000, giamGia: 0, phiVanChuyen: 0, tongThanhToan: 150000,
-  trangThaiThanhToan: "DA_THANH_TOAN", phuongThucThanhToan: "TIEN_MAT",
-  maHoaDon: 10, lichSu: [], hanhDongChoPhep: [],
+  orderId: 14, totalAmount: 150000, discountAmount: 30000, voucherId: 5,
+  redeemedPoints: 3, pointsDiscount: 3000, earnedPoints: 2,
+  loyaltyPolicyId: 4, loyaltyPolicyVersion: 2, redeemCurrencyPerPointSnapshot: 1000,
+  items: [{ skuId: 2, productName: "Áo", quantity: 1, totalPrice: 150000, discountAmount: 30000, pointsDiscountAmount: 3000 }],
 };
 
-describe("normalizePosReceipt", () => {
-  it("nested {donHang, maHoaDon, tienThua} -> flat with items (no render crash)", () => {
-    const r = normalizePosReceipt({ donHang: { ...order, maHoaDon: undefined }, maHoaDon: 10, tienThua: 50000 });
-    assert.equal(r.maDonHang, 14);
-    assert.equal(r.maHoaDon, 10);
-    assert.equal(r.tienThua, 50000);
-    assert.deepEqual(r.items, [line]);
-  });
+test("joins the contract invoice with its order snapshot and preserves voucher/points allocations", () => {
+  const receipt = normalizePosReceipt(invoice, order);
+  assert.equal(receipt.maDonHang, 14);
+  assert.equal(receipt.maHoaDon, 10);
+  assert.equal(receipt.tienThua, 50000);
+  assert.equal(receipt.giamVoucher, 30000);
+  assert.equal(receipt.giamDiem, 3000);
+  assert.equal(receipt.earnedPoints, 2);
+  assert.equal(receipt.loyaltyPolicyId, 4);
+  assert.deepEqual(receipt.items, [{ maSku: 2, tenSpSnapshot: "Áo", soLuong: 1, tongDong: 150000, tienGiamGia: 30000, diemGiam: 3000 }]);
+});
 
-  it("flat shape keeps working", () => {
-    const r = normalizePosReceipt({ ...order, tienThua: 50000 });
-    assert.equal(r.maDonHang, 14);
-    assert.equal(r.items.length, 1);
-  });
+test("rejects an invoice/order mismatch and incomplete line snapshots", () => {
+  assert.throws(() => normalizePosReceipt({ ...invoice, orderId: 15 }, order), /không khớp đơn hàng/);
+  assert.throws(() => normalizePosReceipt(invoice, { ...order, items: undefined }), /không khớp đơn hàng/);
+  assert.throws(() => normalizePosReceipt({ ...invoice, pointsDiscount: 1 }, order), /không khớp đơn/);
+  assert.throws(() => normalizePosReceipt({ ...invoice, earnedPoints: 3 }, order), /không khớp đơn/);
+  assert.throws(() => normalizePosReceipt(invoice, { ...order, items: [{ ...order.items[0], pointsDiscountAmount: null }] }), /Phân bổ điểm/);
+});
 
-  it("missing items throws honest error instead of render crash", () => {
-    assert.throws(() => normalizePosReceipt({ maHoaDon: 1 }), /thiếu dòng hàng/);
-    assert.throws(() => normalizePosReceipt(null), /thiếu dòng hàng/);
-  });
+test("legacy cash receipt without an S2 loyalty snapshot remains readable", () => {
+  const receipt = normalizePosReceipt(
+    { invoiceId: 11, orderId: 14, totalActualPaid: 150000, cashChange: 0 },
+    { orderId: 14, totalAmount: 150000, discountAmount: 0, items: [{ skuId: 2, productName: "Áo", quantity: 1, totalPrice: 150000, discountAmount: 0 }] },
+  );
+  assert.equal(receipt.earnedPoints, null);
+  assert.equal(receipt.diemSuDung, null);
 });

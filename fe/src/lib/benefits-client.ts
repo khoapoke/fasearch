@@ -5,7 +5,7 @@
 
 import { beFetch, beWrite, unwrap } from "./mgmt-client.ts";
 import type {
-  LoyaltyBalance, LoyaltyHistoryEntry, LoyaltyPolicy, VoucherOffer,
+  LoyaltyBalance, LoyaltyHistoryEntry, LoyaltyPolicy, PolicyState, VoucherOffer,
 } from "./benefits.ts";
 
 export type Paged<T> = {
@@ -16,6 +16,62 @@ export type Paged<T> = {
   totalPages: number;
 };
 
+type LoyaltyEnvelope<T> = { success?: boolean; code?: number | string; message?: string; result?: T; errors?: Array<{ reason?: string }> };
+
+async function loyaltyRequest<T>(path: string, method: "GET" | "POST" | "PUT" = "GET", body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (method !== "GET") {
+    const csrfResponse = await fetch("/api/auth/csrf", { cache: "no-store" });
+    const csrf = await csrfResponse.json().catch(() => null) as { success?: boolean; result?: { headerName?: unknown; token?: unknown } } | null;
+    if (!csrfResponse.ok || csrf?.success !== true || typeof csrf.result?.headerName !== "string" || typeof csrf.result.token !== "string") {
+      throw Object.assign(new Error("Phiên đăng nhập đã hết hoặc mã CSRF không hợp lệ."), { status: csrfResponse.status || 401 });
+    }
+    headers[csrf.result.headerName] = csrf.result.token;
+    headers["content-type"] = "application/json";
+  }
+  const response = await fetch(path, {
+    method,
+    headers,
+    ...(method !== "GET" ? { body: JSON.stringify(body) } : {}),
+    cache: "no-store",
+  });
+  const payload = await response.json().catch(() => null) as LoyaltyEnvelope<T> | null;
+  if (!response.ok || payload?.success !== true || !payload.result) {
+    const message = payload?.message || `Yêu cầu thất bại (HTTP ${response.status}).`;
+    const reasons = payload?.errors?.map((error) => error.reason).filter((reason): reason is string => Boolean(reason));
+    throw Object.assign(new Error(reasons?.length ? `${message}: ${reasons.join("; ")}` : message), {
+      status: response.status,
+      code: payload?.code === undefined ? "" : String(payload.code),
+    });
+  }
+  return payload.result;
+}
+
+function balance(value: unknown): LoyaltyBalance {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Phản hồi số dư điểm không hợp lệ.");
+  const v = value as Record<string, unknown>;
+  const isSafeInt = (value: unknown, min = 0) => typeof value === "number" && Number.isSafeInteger(value) && value >= min;
+  const nullableSafeInt = (field: string, min = 0) => v[field] === null || isSafeInt(v[field], min);
+  const nullableMoney = (field: string) => v[field] === null || (typeof v[field] === "number" && Number.isFinite(v[field]) && v[field] >= 0);
+  if (!isSafeInt(v.customerId, 1) || !isSafeInt(v.balancePoints) || !isSafeInt(v.heldPoints) || !nullableSafeInt("availablePoints")
+    || !nullableMoney("cumulativePaidSales") || !nullableSafeInt("salesTierId", 1)
+    || !(v.salesTierName === null || typeof v.salesTierName === "string")
+    || !["KNOWN", "NO_CONFIGURED_THRESHOLDS", "HISTORY_UNKNOWN"].includes(String(v.salesTierStatus))
+    || typeof v.openingRecorded !== "boolean" || !["UNCONFIGURED", "DISABLED", "ENABLED"].includes(String(v.policyStatus))
+    || !nullableSafeInt("currentPolicyId", 1) || !nullableSafeInt("currentPolicyVersion", 1)) throw new Error("Phản hồi số dư điểm không hợp lệ.");
+  return v as unknown as LoyaltyBalance;
+}
+
+function pageResult<T>(value: unknown, map: (item: unknown) => T): Paged<T> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Phản hồi trang không hợp lệ.");
+  const v = value as Record<string, unknown>;
+  if (!Array.isArray(v.content) || !Number.isSafeInteger(v.pageNumber) || (v.pageNumber as number) < 0
+    || !Number.isSafeInteger(v.pageSize) || (v.pageSize as number) < 1 || (v.pageSize as number) > 100
+    || !Number.isSafeInteger(v.totalElements) || (v.totalElements as number) < 0
+    || !Number.isSafeInteger(v.totalPages) || (v.totalPages as number) < 0 || typeof v.last !== "boolean") throw new Error("Phản hồi trang không hợp lệ.");
+  return { data: v.content.map(map), page: v.pageNumber as number, size: v.pageSize as number, totalElements: v.totalElements as number, totalPages: v.totalPages as number };
+}
+
 // ---- Published offers (customer-safe) ----
 
 export async function fetchPublishedOffers(): Promise<VoucherOffer[]> {
@@ -23,44 +79,30 @@ export async function fetchPublishedOffers(): Promise<VoucherOffer[]> {
   return unwrap<VoucherOffer[]>(r);
 }
 
-// ---- Own loyalty (BE trả phẳng LoyaltyBalanceResponse) ----
+// ---- Contract v1.3 loyalty reads ----
 
-export type FlatLoyalty = {
-  maKh: number; soDu: number; khaDung: number; dangGiu: number;
-  tongChiTieu: number; tenHang?: string | null; daMoDau?: boolean | null;
-};
-
-export type OwnLoyalty = {
-  balance: LoyaltyBalance;
-  maKh: number;
-};
+export type OwnLoyalty = { balance: LoyaltyBalance; customerId: number };
 
 export async function fetchOwnLoyalty(): Promise<OwnLoyalty> {
-  const r = await beFetch("v1/thanh-vien");
-  const flat = await unwrap<FlatLoyalty>(r);
-  return {
-    maKh: flat.maKh,
-    balance: {
-      soDu: flat.soDu, khaDung: flat.khaDung, dangGiu: flat.dangGiu,
-      tongChiTieu: flat.tongChiTieu, tierName: flat.tenHang ?? null, daMoDau: flat.daMoDau ?? null,
-    },
-  };
+  const result = balance(await loyaltyRequest<unknown>("/api/customer-commerce/loyalty"));
+  return { customerId: result.customerId, balance: result };
 }
-
-type RawLedger = { maGd: number | string; loai: string; soDiem: number; maDonHang?: number | string | null; thoiGian: string };
 
 export async function fetchOwnLoyaltyHistory(query: string): Promise<Paged<LoyaltyHistoryEntry>> {
-  const r = await beFetch(`v1/thanh-vien/lich-su?${query}`);
-  const pg = await unwrap<Paged<RawLedger>>(r);
-  return {
-    ...pg,
-    data: pg.data.map((h) => ({ id: h.maGd, loai: h.loai, diem: h.soDiem, thoiGian: h.thoiGian, maDonHang: h.maDonHang ?? null })),
-  };
+  const params = new URLSearchParams(query);
+  const result = await loyaltyRequest<unknown>(`/api/customer-commerce/loyalty/history?${params}`);
+  return pageResult(result, (raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Dòng lịch sử điểm không hợp lệ.");
+    const h = raw as Record<string, unknown>;
+    if (!Number.isSafeInteger(h.entryId) || (h.entryId as number) < 1 || !["OPENING", "HOLD", "RELEASE", "REDEEM", "EARN"].includes(String(h.type))
+      || !Number.isSafeInteger(h.points) || (h.points as number) < (h.type === "OPENING" ? 0 : 1) || typeof h.occurredAt !== "string"
+      || !(h.orderId === null || (Number.isSafeInteger(h.orderId) && (h.orderId as number) > 0))) throw new Error("Dòng lịch sử điểm không hợp lệ.");
+    return h as unknown as LoyaltyHistoryEntry;
+  });
 }
 
-export async function fetchStaffCustomerLoyalty(maKh: number | string): Promise<LoyaltyBalance> {
-  const r = await beFetch(`v1/thanh-vien/khach-hang/${encodeURIComponent(String(maKh))}`);
-  return unwrap<LoyaltyBalance>(r);
+export async function fetchStaffCustomerLoyalty(customerId: number | string): Promise<LoyaltyBalance> {
+  return balance(await loyaltyRequest<unknown>(`/api/staff/loyalty/customers/${encodeURIComponent(String(customerId))}`));
 }
 
 // ---- ADMIN campaigns ----
@@ -120,61 +162,59 @@ export async function updateCampaign(id: number | string, body: CampaignUpdate):
   return unwrap<Campaign>(r);
 }
 
-// ---- ADMIN loyalty policy (BAT duy nhất, default TAT) ----
+// ---- ADMIN loyalty policy and monetary tiers (contract v1.3) ----
 
-export type LoyaltyPolicyAdmin = LoyaltyPolicy & {
-  id?: number | string | null;
-  maChinhSach?: number | string | null;
-  phienBan: number;
-};
+export type LoyaltyPolicyAdmin = LoyaltyPolicy;
 
-export function policyId(p: LoyaltyPolicyAdmin): string {
-  const id = p.id ?? p.maChinhSach ?? p.phienBan;
-  if (id === undefined || id === null || String(id).trim() === "") {
-    throw new Error("Phản hồi chính sách thiếu id — không gọi cập nhật mù.");
-  }
-  return String(id);
+export function policyId(policy: LoyaltyPolicyAdmin): string {
+  if (!Number.isSafeInteger(policy.policyId) || policy.policyId < 1) throw new Error("Phản hồi chính sách thiếu mã hợp lệ.");
+  return String(policy.policyId);
 }
 
 export async function fetchLoyaltyPolicy(): Promise<LoyaltyPolicyAdmin[]> {
-  const r = await beFetch("v1/thanh-vien/chinh-sach?page=0&size=20");
-  if (r.status === 404) return [];
-  const pg = await unwrap<Paged<LoyaltyPolicyAdmin>>(r);
-  return pg.data;
+  const result = await loyaltyRequest<unknown>("/api/admin/loyalty/policies?page=0&size=20");
+  return pageResult(result, (raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Dòng chính sách không hợp lệ.");
+    const p = raw as Record<string, unknown>;
+    if (!Number.isSafeInteger(p.policyId) || (p.policyId as number) < 1 || !Number.isSafeInteger(p.version) || (p.version as number) < 1
+      || typeof p.earnCurrencyPerPoint !== "number" || !Number.isFinite(p.earnCurrencyPerPoint)
+      || typeof p.redeemCurrencyPerPoint !== "number" || !Number.isFinite(p.redeemCurrencyPerPoint)
+      || !["ENABLED", "DISABLED"].includes(String(p.status)) || typeof p.createdAt !== "string") throw new Error("Dòng chính sách không hợp lệ.");
+    return p as unknown as LoyaltyPolicyAdmin;
+  }).data;
 }
 
 export async function createLoyaltyPolicy(body: {
-  tyLeTich: number; giaTriDiem: number; trangThai?: "BAT" | "TAT";
+  earnCurrencyPerPoint: number; redeemCurrencyPerPoint: number; status: PolicyState;
 }): Promise<LoyaltyPolicyAdmin> {
-  const r = await beWrite("v1/thanh-vien/chinh-sach", "POST", body);
-  return unwrap<LoyaltyPolicyAdmin>(r);
+  return loyaltyRequest<LoyaltyPolicyAdmin>("/api/admin/loyalty/policies", "POST", body);
 }
 
-export async function updateLoyaltyPolicy(id: number | string, body: {
-  phienBan: number; tyLeTich?: number; giaTriDiem?: number; trangThai?: "BAT" | "TAT";
+export async function updateLoyaltyPolicy(policyId: number | string, body: {
+  version: number; earnCurrencyPerPoint: number; redeemCurrencyPerPoint: number; status: PolicyState;
 }): Promise<LoyaltyPolicyAdmin> {
-  const r = await beWrite(`v1/thanh-vien/chinh-sach/${encodeURIComponent(String(id))}`, "PUT", body);
-  return unwrap<LoyaltyPolicyAdmin>(r);
+  return loyaltyRequest<LoyaltyPolicyAdmin>(`/api/admin/loyalty/policies/${encodeURIComponent(String(policyId))}`, "PUT", body);
 }
 
-export async function updateTierThreshold(maHang: number | string, nguongDoanhSo: number): Promise<unknown> {
-  const r = await beWrite(`v1/thanh-vien/chinh-sach/hang/${encodeURIComponent(String(maHang))}`, "PUT", { nguongDoanhSo });
-  return unwrap<unknown>(r);
+export type TierInfo = { tierId: number; name: string; minimumCumulativePaidSales: number | null; version: number };
+
+export async function updateTierThreshold(tierId: number | string, version: number, minimumCumulativePaidSales: number): Promise<TierInfo> {
+  return loyaltyRequest<TierInfo>(`/api/admin/loyalty/tiers/${encodeURIComponent(String(tierId))}`, "PUT", { version, minimumCumulativePaidSales });
 }
 
-export type TierInfo = {
-  maHang: number; tenHang: string; nguongDiem?: number | null;
-  nguongDoanhSo?: number | null; quyenLoi?: string | null;
-};
-
-// Danh sách hạng ADMIN (BE v2 discovery — thay nhập mã hạng mù, Q2 đã trả lời).
-// Lỗi 401/403/mạng ném trung thực để caller hiện trạng thái, không đoán danh sách.
 export async function fetchTierList(): Promise<TierInfo[]> {
-  const r = await beFetch("v1/thanh-vien/chinh-sach/hang");
-  return unwrap<TierInfo[]>(r);
+  const rows = await loyaltyRequest<unknown>("/api/admin/loyalty/tiers");
+  if (!Array.isArray(rows)) throw new Error("Danh sách hạng không hợp lệ.");
+  return rows.map((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Dòng hạng không hợp lệ.");
+    const t = raw as Record<string, unknown>;
+    if (!Number.isSafeInteger(t.tierId) || (t.tierId as number) < 1 || typeof t.name !== "string"
+      || !(t.minimumCumulativePaidSales === null || (typeof t.minimumCumulativePaidSales === "number" && Number.isFinite(t.minimumCumulativePaidSales)))
+      || !Number.isSafeInteger(t.version) || (t.version as number) < 1) throw new Error("Dòng hạng không hợp lệ.");
+    return t as unknown as TierInfo;
+  });
 }
 
-export async function openLegacyBalance(maKh: number | string): Promise<unknown> {
-  const r = await beWrite("v1/quan-tri/thanh-vien/mo-dau", "POST", { maKh });
-  return unwrap<unknown>(r);
+export async function openLegacyBalance(customerId: number | string): Promise<unknown> {
+  return loyaltyRequest<unknown>("/api/admin/loyalty/opening", "POST", { customerId: Number(customerId) });
 }

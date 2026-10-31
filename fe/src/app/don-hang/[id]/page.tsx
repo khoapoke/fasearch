@@ -72,7 +72,7 @@ export default function OrderDetailPage() {
                       // eslint-disable-next-line @next/next/no-img-element -- image from candidate BE
                       <img className="commerce-line-image" src={line.imageUrl} alt="" referrerPolicy="no-referrer" />
                     ) : <span className="commerce-line-image" aria-hidden="true" />}
-                    <div><p className="commerce-line-name">{line.productName}</p><p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · SL {line.quantity} · Đơn giá {formatMoney(line.unitPrice)}{order.voucherCode && line.discountAmount > 0 ? ` · Giảm phân bổ ${formatMoney(line.discountAmount)}` : ""}</p></div>
+                    <div><p className="commerce-line-name">{line.productName}</p><p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · SL {line.quantity} · Đơn giá {formatMoney(line.unitPrice)}{order.voucherCode && line.discountAmount > 0 ? ` · Giảm voucher ${formatMoney(line.discountAmount)}` : ""}{(line.pointsDiscountAmount ?? 0) > 0 ? ` · Giảm điểm ${formatMoney(line.pointsDiscountAmount ?? 0)}` : ""}</p></div>
                     <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
                   </li>
                 ))}
@@ -95,9 +95,11 @@ export default function OrderDetailPage() {
             <aside className="commerce-summary" aria-label="Tổng đơn">
               <h2>Tổng đơn</h2>
               <div className="commerce-summary-row"><span>Tạm tính</span><strong>{formatMoney(order.subTotal)}</strong></div>
-              {order.voucherCode ? <div className="commerce-summary-row"><span>Voucher {order.voucherCode} · {order.voucherCampaignName} (phiên bản {order.voucherCampaignVersion})</span><strong>−{formatMoney(order.discountAmount)}</strong></div> : discountLines({ giamGia: order.discountAmount }).map((line) => (
+              {order.voucherCode ? <div className="commerce-summary-row"><span>Voucher {order.voucherCode} · {order.voucherCampaignName} (phiên bản {order.voucherCampaignVersion})</span><strong>−{formatMoney(order.discountAmount)}</strong></div> : null}
+              {(order.redeemedPoints ?? 0) > 0 || (order.pointsDiscount ?? 0) > 0 ? <div className="commerce-summary-row"><span>Đổi {order.redeemedPoints ?? 0} điểm</span><strong>−{order.pointsDiscount === null ? "—" : formatMoney(order.pointsDiscount)}</strong></div> : null}
+              {!order.voucherCode && (order.redeemedPoints ?? 0) === 0 && !order.pointsDiscount ? discountLines({ giamGia: order.discountAmount }).map((line) => (
                 <div className="commerce-summary-row" key={line.label}><span>{line.label}</span><strong>{line.amount === null ? "—" : formatMoney(line.amount)}</strong></div>
-              ))}
+              )) : null}
               <div className="commerce-summary-row"><span>Phí giao hàng</span><strong>{formatMoney(order.shippingFee)}</strong></div>
               <div className="commerce-summary-total"><span>Tổng cộng</span><strong>{formatMoney(order.totalAmount)}</strong></div>
               <p className="commerce-note">Trạng thái: {orderStatusText(order.status)} · Thanh toán COD, thu khi nhận. Không có trạng thái “đã thanh toán” giả.</p>

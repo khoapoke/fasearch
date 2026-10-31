@@ -22,16 +22,16 @@ const TEST_FIXTURE_OFFER = {
   giaTriGiam: 10, ngayKetThuc: "2026-11-18T00:00:00", conLai: 99,
 };
 
-const TEST_FIXTURE_LOYALTY_FLAT = {
-  __testFixture: true,
-  maKh: 1, soDu: 120, khaDung: 100, dangGiu: 20,
-  tongChiTieu: 1500000, tenHang: "Bạc", daMoDau: true,
+const TEST_FIXTURE_LOYALTY = {
+  __testFixture: true, customerId: 1, balancePoints: 120, heldPoints: 20, availablePoints: 100,
+  cumulativePaidSales: 1500000, salesTierId: 2, salesTierName: "Bạc", salesTierStatus: "KNOWN",
+  openingRecorded: true, policyStatus: "ENABLED", currentPolicyId: 7, currentPolicyVersion: 2,
 };
 
 const TEST_FIXTURE_HISTORY_PAGE = {
   __testFixture: true,
-  data: [{ maGd: 1, loai: "TICH", soDiem: 120, maDonHang: 9, thoiGian: "2026-10-18T00:00:00" }],
-  page: 0, size: 20, totalElements: 1, totalPages: 1,
+  content: [{ entryId: 1, type: "EARN", points: 120, orderId: 9, occurredAt: "2026-10-18T00:00:00" }],
+  pageNumber: 0, pageSize: 20, totalElements: 1, totalPages: 1, last: true,
 };
 
 let realFetch;
@@ -63,31 +63,36 @@ describe("benefits adapters hit contract paths with envelope", () => {
     assert.equal(calls[0].method, "GET");
   });
 
-  it("own loyalty flat shape maps to balance (red-capable: no .balance crash)", async () => {
+  it("own loyalty maps the exact contract balance without replacing unknown values", async () => {
     const { fetchOwnLoyalty } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("GET /api/be/v1/thanh-vien", jsonResponse(200, envelope(TEST_FIXTURE_LOYALTY_FLAT)));
+    fixtures.set("GET /api/customer-commerce/loyalty", jsonResponse(200, envelope(TEST_FIXTURE_LOYALTY)));
     const me = await fetchOwnLoyalty();
-    assert.equal(me.maKh, 1);
-    assert.equal(me.balance.khaDung, 100);
-    assert.equal(me.balance.soDu, 120);
-    assert.equal(me.balance.dangGiu, 20);
-    assert.equal(me.balance.tongChiTieu, 1500000);
-    assert.equal(me.balance.tierName, "Bạc");
-    assert.equal(me.balance.daMoDau, true);
+    assert.equal(me.customerId, 1);
+    assert.equal(me.balance.availablePoints, 100);
+    assert.equal(me.balance.cumulativePaidSales, 1500000);
+    assert.equal(me.balance.policyStatus, "ENABLED");
   });
 
-  it("history maps ledger maGd/soDiem (no moTa assumption)", async () => {
-    const { fetchOwnLoyaltyHistory } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("GET /api/be/v1/thanh-vien/lich-su", jsonResponse(200, envelope(TEST_FIXTURE_HISTORY_PAGE)));
-    const pg = await fetchOwnLoyaltyHistory("page=0&size=20");
-    assert.deepEqual(pg.data, [{ id: 1, loai: "TICH", diem: 120, thoiGian: "2026-10-18T00:00:00", maDonHang: 9 }]);
+  it("own loyalty preserves null opening/history coverage rather than converting them to zero", async () => {
+    const { fetchOwnLoyalty } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("GET /api/customer-commerce/loyalty", jsonResponse(200, envelope({ ...TEST_FIXTURE_LOYALTY, availablePoints: null, cumulativePaidSales: null, salesTierId: null, salesTierName: null, salesTierStatus: "HISTORY_UNKNOWN", openingRecorded: false, policyStatus: "UNCONFIGURED", currentPolicyId: null, currentPolicyVersion: null })));
+    const me = await fetchOwnLoyalty();
+    assert.equal(me.balance.availablePoints, null);
+    assert.equal(me.balance.cumulativePaidSales, null);
+    assert.equal(me.balance.salesTierStatus, "HISTORY_UNKNOWN");
   });
 
-  it("history GET v1/thanh-vien/lich-su with paging", async () => {
+  it("history maps ledger entries using the current PageResponse wire names", async () => {
     const { fetchOwnLoyaltyHistory } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("GET /api/be/v1/thanh-vien/lich-su", jsonResponse(200, envelope({ data: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })));
+    fixtures.set("GET /api/customer-commerce/loyalty/history", jsonResponse(200, envelope(TEST_FIXTURE_HISTORY_PAGE)));
     const pg = await fetchOwnLoyaltyHistory("page=0&size=20");
-    assert.deepEqual(pg.data, []);
+    assert.deepEqual(pg.data, [{ entryId: 1, type: "EARN", points: 120, orderId: 9, occurredAt: "2026-10-18T00:00:00" }]);
+  });
+
+  it("empty history remains an empty successful page", async () => {
+    const { fetchOwnLoyaltyHistory } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("GET /api/customer-commerce/loyalty/history", jsonResponse(200, envelope({ content: [], pageNumber: 0, pageSize: 20, totalElements: 0, totalPages: 0, last: true })));
+    assert.deepEqual((await fetchOwnLoyaltyHistory("page=0&size=20")).data, []);
   });
 
   it("campaign PUT {phienBan, trangThai} (+field edit uses same shape)", async () => {
@@ -110,38 +115,52 @@ describe("benefits adapters hit contract paths with envelope", () => {
     assert.match(post.body, /"maCode":"TEST10"/);
   });
 
-  it("policy PUT {phienBan, tyLeTich, giaTriDiem, trangThai}", async () => {
+  it("policy PUT sends the contract version and full new money/status values", async () => {
     const { updateLoyaltyPolicy } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("PUT /api/be/v1/thanh-vien/chinh-sach/3", jsonResponse(200, envelope({ maChinhSach: 3, tyLeTich: 50000, giaTriDiem: 1000, trangThai: "BAT", phienBan: 4 })));
-    const p = await updateLoyaltyPolicy(3, { phienBan: 3, tyLeTich: 50000, giaTriDiem: 1000, trangThai: "BAT" });
-    assert.equal(p.trangThai, "BAT");
-    assert.equal(p.maChinhSach, 3);
+    fixtures.set("PUT /api/admin/loyalty/policies/3", jsonResponse(200, envelope({ policyId: 3, version: 4, earnCurrencyPerPoint: 50000, redeemCurrencyPerPoint: 1000, status: "ENABLED", createdAt: "2026-10-18T00:00:00" })));
+    const p = await updateLoyaltyPolicy(3, { version: 3, earnCurrencyPerPoint: 50000, redeemCurrencyPerPoint: 1000, status: "ENABLED" });
+    assert.equal(p.status, "ENABLED");
+    const put = calls.find((x) => x.method === "PUT");
+    assert.match(put.body, /"version":3/);
+    assert.match(put.body, /"earnCurrencyPerPoint":50000/);
+    assert.match(put.body, /"redeemCurrencyPerPoint":1000/);
+    assert.match(put.body, /"status":"ENABLED"/);
   });
 
-  it("policy 404 -> [] (create flow)", async () => {
+  it("policy GET accepts an empty successful PageResponse but does not swallow endpoint errors", async () => {
     const { fetchLoyaltyPolicy } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("GET /api/be/v1/thanh-vien/chinh-sach", jsonResponse(404, { success: false, code: 404, message: "none", result: null }));
+    fixtures.set("GET /api/admin/loyalty/policies", jsonResponse(200, envelope({ content: [], pageNumber: 0, pageSize: 20, totalElements: 0, totalPages: 0, last: true })));
     assert.deepEqual(await fetchLoyaltyPolicy(), []);
+    fixtures.set("GET /api/admin/loyalty/policies", jsonResponse(404, { success: false, code: 404, message: "missing", result: null }));
+    await assert.rejects(fetchLoyaltyPolicy(), /missing/);
   });
-  it("tier PUT sends {nguongDoanhSo} (cumulative-money per OpenAPI HangUpdateRequest)", async () => {    const { updateTierThreshold } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("PUT /api/be/v1/thanh-vien/chinh-sach/hang/2", jsonResponse(200, envelope({ maHang: 2 })));
-    await updateTierThreshold(2, 5000000);
-    const put = calls.find((x) => x.method === "PUT" && x.url.includes("/hang/2"));
+  it("tier update sends optimistic version and currency threshold", async () => {
+    const { updateTierThreshold } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("PUT /api/admin/loyalty/tiers/2", jsonResponse(200, envelope({ tierId: 2, name: "Bạc", minimumCumulativePaidSales: 5000000, version: 2 })));
+    await updateTierThreshold(2, 1, 5000000);
+    const put = calls.find((x) => x.method === "PUT" && x.url.includes("/tiers/2"));
     assert.ok(put);
-    assert.match(put.body, /"nguongDoanhSo":5000000/);
-    assert.doesNotMatch(put.body, /"nguong"[^D]/);
+    assert.match(put.body, /"version":1/);
+    assert.match(put.body, /"minimumCumulativePaidSales":5000000/);
   });
 
-  it("tier list GET v1/thanh-vien/chinh-sach/hang (BE v2 discovery, no blind IDs)", async () => {
+  it("tier discovery uses contract-native ids and field names", async () => {
     const { fetchTierList } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("GET /api/be/v1/thanh-vien/chinh-sach/hang", jsonResponse(200, envelope([
-      { maHang: 1, tenHang: "Đồng", nguongDiem: 0, nguongDoanhSo: null, quyenLoi: "Không có đặc quyền" },
-      { maHang: 2, tenHang: "Bạc", nguongDiem: 1000, nguongDoanhSo: null, quyenLoi: "Giảm 5%" },
+    fixtures.set("GET /api/admin/loyalty/tiers", jsonResponse(200, envelope([
+      { tierId: 1, name: "Đồng", minimumCumulativePaidSales: null, version: 1 },
+      { tierId: 2, name: "Bạc", minimumCumulativePaidSales: 2500000, version: 4 },
     ])));
     const tiers = await fetchTierList();
     assert.equal(tiers.length, 2);
-    assert.equal(tiers[0].tenHang, "Đồng");
-    assert.equal(tiers[1].maHang, 2);
+    assert.equal(tiers[0].name, "Đồng");
+    assert.equal(tiers[1].tierId, 2);
+  });
+
+  it("opening writes the exact customerId field", async () => {
+    const { openLegacyBalance } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("POST /api/admin/loyalty/opening", jsonResponse(200, envelope({ customerId: 5, openingRecorded: true, openingPoints: 120, entryId: 9, occurredAt: "2026-10-18T00:00:00" })));
+    await openLegacyBalance(5);
+    assert.match(calls.find((x) => x.method === "POST").body, /"customerId":5/);
   });
 });
 
@@ -168,42 +187,7 @@ describe("benefit submit pins applied inputs + policy snapshot (R2F1: no quote e
     assert.match(post.body, /"tongThanhToanDuKien":133000/);
   });
 
-  it("POS pay sends applied voucher/points + policy version", async () => {
-    const { posPay } = await import("../src/lib/commerce-client.ts");
-    fixtures.set("POST /api/be/v1/pos/don-hang/15/thanh-toan", jsonResponse(200, envelope({
-      maDonHang: 15, maHoaDon: 9, tienThua: 19000, items: [{ maSku: 2, soLuong: 1 }],
-    })));
-    const receipt = await posPay(15, {
-      khoaTam: "op-pos", phienBan: 3, tongThanhToanDuKien: 131000, tienKhachDua: 150000,
-      voucherCode: "FEE2E10", diemSuDung: 4, maChinhSach: 4, phienBanChinhSach: 1,
-    });
-    assert.equal(receipt.maHoaDon, 9);
-    const post = calls.find((x) => x.method === "POST" && x.url.includes("/thanh-toan"));
-    assert.ok(post);
-    assert.match(post.body, /"voucherCode":"FEE2E10"/);
-    assert.match(post.body, /"diemSuDung":4/);
-    assert.match(post.body, /"maChinhSach":4/);
-  });
 });
-describe("pos customer lookup maps array shape (red-capable: no undefined hoTen)", () => {
-  it("array result -> first entry with maKh from id", async () => {
-    const { posFindCustomer } = await import("../src/lib/commerce-client.ts");
-    fixtures.set("GET /api/be/v1/pos/khach-hang", jsonResponse(200, envelope([
-      { id: 1, hoTen: "Lê Khách Hàng", sdt: "0922222222", diemTichLuy: 10, diemGiuCho: null, tongChiTieu: null, tenHang: "Đồng" },
-    ])));
-    const c = await posFindCustomer("0922222222");
-    assert.equal(c.maKh, 1);
-    assert.equal(c.hoTen, "Lê Khách Hàng");
-    assert.equal(c.tenHang, "Đồng");
-  });
-
-  it("empty array -> null (walk-in honesty)", async () => {
-    const { posFindCustomer } = await import("../src/lib/commerce-client.ts");
-    fixtures.set("GET /api/be/v1/pos/khach-hang", jsonResponse(200, envelope([])));
-    assert.equal(await posFindCustomer("0900000000"), null);
-  });
-});
-
 describe("reports adapters", () => {
   it("revenue GET rows + coverage note (no invented summaries)", async () => {
     const { fetchRevenue } = await import("../src/lib/reports-client.ts");

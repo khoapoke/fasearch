@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authCookie, requireJsonPost } from "@/lib/server/customer-auth";
 import { adminIdentity } from "@/lib/server/admin-bff";
-const BE = "http://127.0.0.1:18124";
+const BE = "http://127.0.0.1:18126";
 function headers(token: string, json = true): Record<string, string> {
   return { accept: json ? "application/json" : "*/*", authorization: `Bearer ${token}` };
 }

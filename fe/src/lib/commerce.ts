@@ -92,30 +92,52 @@ export type OrderDetail = {
 export type PosDraft = {
   maDonHang: number;
   trangThai: string;
-  phienBan: number;
-  maKho: number;
-  maKh?: number | null;
+  maKh: number | null;
+  customerName: string | null;
+  customerPhone: string | null;
   items: Array<{ maSku: number; maSp?: number; tenSp?: string; soLuong: number; donGia?: number }>;
 };
 
 export type PosQuote = {
-  phienBan: number;
+  orderId: number;
+  items: Array<{ skuId: number; productName: string; quantity: number; unitPrice: number; totalPrice: number; discountAmount: number; pointsDiscountAmount: number }>;
   tongTienHang: number;
   giamGia: number;
   phiVanChuyen: number;
   tongThanhToan: number;
-  // Ưu đãi (optional — server authoritative).
-  voucherCode?: string | null;
-  diemSuDung?: number | null;
-  giamVoucher?: number | null;
-  giamDiem?: number | null;
-  diemDuocPhep?: number | null;
-  maChinhSach?: number | null;
-  phienBanChinhSach?: number | null;
+  voucherCode: string | null;
+  diemSuDung: number;
+  giamVoucher: number;
+  giamDiem: number;
+  diemDuocPhep: number;
+  maChinhSach: number | null;
+  phienBanChinhSach: number | null;
+  availablePoints: number | null;
+  allowedRedeemedPoints: number;
+  policyStatus: "UNCONFIGURED" | "DISABLED" | "ENABLED";
+  remainingMerchandiseAmount: number;
+  redeemCurrencyPerPoint: number | null;
+  quoteFingerprint: string;
   quoteId?: string | null;
 };
 
-export type PosReceipt = OrderDetail & { maHoaDon: number | string; tienThua: number };
+export type PosReceipt = {
+  maHoaDon: number | string;
+  maDonHang: number;
+  tongThanhToan: number;
+  tienThua: number;
+  giamGia: number;
+  maVoucher: number | null;
+  diemSuDung: number | null;
+  giamVoucher: number | null;
+  giamDiem: number | null;
+  earnedPoints: number | null;
+  loyaltyPolicyId: number | null;
+  loyaltyPolicyVersion: number | null;
+  redeemCurrencyPerPointSnapshot: number | null;
+  phanBoGiamXacDinh: boolean;
+  items: Array<{ maSku: number; tenSpSnapshot: string; soLuong: number; tongDong: number; tienGiamGia: number | null; diemGiam: number | null }>;
+};
 
 /** Operation key mới cho mỗi payload mới; retry/timeout giữ nguyên key. */
 export function newOperationKey(): string {
