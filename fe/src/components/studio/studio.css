@@ -1,0 +1,895 @@
+/* Search-studio pilot — lớp theme giới hạn cho bề mặt pilot (P1).
+ *
+ * Token lấy từ .agent/tasks/ui-ux-style-grill/DESIGN.md §2 (Ultramarine #3730D8,
+ * Citron #D6EF72, canvas/surface/ink/divider + trạng thái success/warning/
+ * error/info). Áp dụng BẰNG CÁCH alias token sẵn có (--ink, --surface, --line,
+ * --brand, --accent, --ok, --danger…) nên không sinh theme engine riêng.
+ *
+ * Phạm vi: chỉ phần tử có class `.studio` (bề mặt pilot) mang token mới. Các
+ * route family khác giữ nguyên biến gốc trong :root → không bị recolor.
+ */
+
+:root {
+  /* Bảng màu search-studio (chỉ dùng qua .studio) */
+  --st-canvas: #f6f7fc;
+  --st-surface: #ffffff;
+  --st-raised: #ffffff;
+  --st-ink: #181b30;
+  --st-ink-soft: #5a6076;
+  --st-line: #d8dced;
+  --st-line-soft: #e4e7f5;
+  --st-brand: #3730d8;
+  --st-brand-hover: #2d28b5;
+  --st-brand-text: #3730d8;
+  --st-select: #e9ebff;
+  --st-citron: #d6ef72;
+  --st-citron-ink: #252b0c;
+  --st-focus: #3730d8;
+  --st-control-border: #7d9098;
+  --st-ok-text: #256d3d;
+  --st-ok-bg: #eaf5ee;
+  --st-ok-border: #b6dec4;
+  --st-warn-text: #815800;
+  --st-warn-bg: #fff4db;
+  --st-warn-border: #e7ce8e;
+  --st-err-text: #b12c3c;
+  --st-err-bg: #fcecef;
+  --st-err-border: #e7b3ba;
+  --st-info-text: #2e4b9b;
+  --st-info-bg: #edf2ff;
+  --st-info-border: #c7d6f5;
+}
+
+html[data-theme="dark"] {
+  --st-canvas: #11131c;
+  --st-surface: #1a1d2b;
+  --st-raised: #23273a;
+  --st-ink: #f0f1fa;
+  --st-ink-soft: #b8bed3;
+  --st-line: #444d6b;
+  --st-line-soft: #2c3147;
+  --st-brand: #3730d8;
+  --st-brand-hover: #4a43e6;
+  --st-brand-text: #b4afff;
+  --st-select: #282750;
+  --st-citron: #d6ef72;
+  --st-citron-ink: #252b0c;
+  --st-focus: #d6ef72;
+  --st-control-border: #7b929d;
+  --st-ok-text: #8bd7a3;
+  --st-ok-bg: #153326;
+  --st-ok-border: #2c5a41;
+  --st-warn-text: #efcb7d;
+  --st-warn-bg: #382c16;
+  --st-warn-border: #5d4a24;
+  --st-err-text: #ffacb5;
+  --st-err-bg: #3a1f29;
+  --st-err-border: #6b3441;
+  --st-info-text: #a8c4ff;
+  --st-info-bg: #1b2b47;
+  --st-info-border: #2c4674;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --st-canvas: #11131c;
+    --st-surface: #1a1d2b;
+    --st-raised: #23273a;
+    --st-ink: #f0f1fa;
+    --st-ink-soft: #b8bed3;
+    --st-line: #444d6b;
+    --st-line-soft: #2c3147;
+    --st-brand: #3730d8;
+    --st-brand-hover: #4a43e6;
+    --st-brand-text: #b4afff;
+    --st-select: #282750;
+    --st-citron: #d6ef72;
+    --st-citron-ink: #252b0c;
+    --st-focus: #d6ef72;
+    --st-control-border: #7b929d;
+    --st-ok-text: #8bd7a3;
+    --st-ok-bg: #153326;
+    --st-ok-border: #2c5a41;
+    --st-warn-text: #efcb7d;
+    --st-warn-bg: #382c16;
+    --st-warn-border: #5d4a24;
+    --st-err-text: #ffacb5;
+    --st-err-bg: #3a1f29;
+    --st-err-border: #6b3441;
+    --st-info-text: #a8c4ff;
+    --st-info-bg: #1b2b47;
+    --st-info-border: #2c4674;
+  }
+}
+
+/* Bề mặt pilot: alias token sẵn có sang bảng màu search-studio. */
+.studio {
+  --surface: var(--st-surface);
+  --surface-subtle: var(--st-canvas);
+  --surface-tint: var(--st-select);
+  --ink: var(--st-ink);
+  --ink-soft: var(--st-ink-soft);
+  --brand: var(--st-brand);
+  --brand-ink: var(--st-brand-hover);
+  --brand-text: var(--st-brand-text);
+  --accent: var(--st-brand);
+  --accent-deep: var(--st-brand-hover);
+  --line: var(--st-line);
+  --line-soft: var(--st-line-soft);
+  --danger: var(--st-err-text);
+  --badge-discount: var(--st-err-text);
+  --ok: var(--st-ok-text);
+  --control-border: var(--st-control-border);
+  --border-soft: var(--st-line);
+  --surface-alt: var(--st-canvas);
+  --price-text: var(--st-ok-text);
+  --meta-text: var(--st-ink-soft);
+  --muted-text: var(--st-ink-soft);
+  --chip-bg: var(--st-canvas);
+  --chip-border: var(--st-line);
+  --badge-ok-bg: var(--st-ok-bg);
+  --badge-ok-border: var(--st-ok-border);
+  --badge-ok-text: var(--st-ok-text);
+  --badge-warn-bg: var(--st-warn-bg);
+  --badge-warn-border: var(--st-warn-border);
+  --badge-warn-text: var(--st-warn-text);
+  --badge-muted-bg: var(--st-canvas);
+  --badge-muted-border: var(--st-line);
+  --danger-border: var(--st-err-border);
+  --danger-text: var(--st-err-text);
+  --pill-ok-bg: var(--st-ok-bg);
+  --pill-ok-border: var(--st-ok-border);
+  --pill-ok-text: var(--st-ok-text);
+  --pill-warn-bg: var(--st-warn-bg);
+  --pill-warn-border: var(--st-warn-border);
+  --pill-warn-text: var(--st-warn-text);
+  --warn-bg: var(--st-warn-bg);
+  --warn-border: var(--st-warn-border);
+  --warn-text: var(--st-warn-text);
+  --notice-bg: var(--st-err-bg);
+  --notice-ok-bg: var(--st-ok-bg);
+  --tip-bg: var(--st-info-bg);
+  --tip-border: var(--st-info-border);
+  --tip-text: var(--st-info-text);
+  --media-bg: var(--st-raised);
+  --media-warm: var(--st-raised);
+  --media-soft: var(--st-canvas);
+  --placeholder-from: var(--st-raised);
+  --placeholder-to: var(--st-canvas);
+  --thumb-bg: var(--st-raised);
+  --avatar-bg: var(--st-select);
+  --avatar-text: var(--st-brand-text);
+  --accent-border: var(--st-citron);
+  --fav-bg: color-mix(in srgb, var(--st-surface) 92%, transparent);
+  --header-bg: color-mix(in srgb, var(--st-surface) 96%, transparent);
+
+  background: var(--st-canvas);
+  color: var(--st-ink);
+  min-height: 100dvh;
+  color-scheme: light;
+}
+
+html[data-theme="dark"] .studio,
+html:not([data-theme="light"]) .studio {
+  color-scheme: dark;
+}
+
+/* Khi trang có bề mặt pilot, nền trang đi theo theme (tránh viền trắng khi cuộn
+   quá đáy). Route không có `.studio` giữ nền gốc -> không bị recolor. */
+body:has(.studio) {
+  background: var(--st-canvas);
+}
+
+/* Vòng tiêu điểm: 2px + lệch 3px, không bị container cắt. */
+.studio :focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Chữ/đường dẫn màu thương hiệu trên nền tối cần bản sáng hơn (vai trò brand-text). */
+.studio .pPrice { color: var(--st-brand-text); }
+.studio .mpNav a[aria-current="page"] { color: var(--st-brand-text); }
+.studio .mpNode b { color: var(--st-ink); }
+.studio .pgCheck input { accent-color: var(--st-brand-text); }
+
+/* Nền lấp đủ cho brand mark (gradient vẽ bên trên) để đo tương phản được. */
+.studio .sfBrandMark { background-color: var(--st-brand); }
+
+/* Dải banner/promo không được cắt control giao diện ở bề rộng hẹp. */
+.studio .mpBanner div,
+.studio .sfPromoInner {
+  white-space: normal;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.studio a.pgChip[href="/tim-kiem-ai"] {
+  border-color: var(--accent-border);
+  color: var(--st-brand-text);
+}
+.studio .sfBrandAi,
+.studio .pCardName:hover,
+.studio .sfNav a:hover,
+.studio .sfNav a[aria-current="page"],
+.studio .sfIconBtn:hover,
+.studio .pFav[aria-pressed="true"],
+.studio .mpTopBtn:hover,
+.studio .pgSize[aria-pressed="true"] {
+  color: var(--st-brand-text);
+}
+
+/* Nút "Tìm bằng AI" trong điều hướng: nhấn mạnh cục bộ bằng Citron. */
+.studio .sfNavAi {
+  border-color: var(--st-citron);
+  background: color-mix(in srgb, var(--st-citron) 22%, transparent);
+}
+
+/* Ảnh sản phẩm: khung 4:5, contain (không cắt quần áo), nền trung tính. */
+.studio .pCardMedia img {
+  object-fit: contain;
+  background: var(--media-soft);
+}
+
+/* ---------- Control giao diện ---------- */
+.stTheme {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--st-ink-soft);
+}
+
+.stThemeLabel {
+  white-space: nowrap;
+}
+
+/* Nhãn nằm trên dải màu thương hiệu (promo/banner) → chữ sáng để đủ tương phản. */
+.studio .sfPromo .stThemeLabel,
+.studio .mpBanner .stThemeLabel {
+  color: rgb(255 255 255 / 0.9);
+}
+
+.stThemeSelect {
+  font: inherit;
+  font-size: 14px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  border: 1px solid var(--st-control-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+/* Sàn điện thoại / chạm: control đủ 44px và chữ 16px (DESIGN §3). */
+@media (max-width: 900px), (pointer: coarse) {
+  .stThemeSelect {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .stThemeLabel {
+    font-size: 16px;
+  }
+
+  /* Nhãn của mọi control do pilot thêm vào cũng 16px khi chạm. */
+  .stFiltersToggle,
+  .stOpsNavToggle,
+  .stStudioMode,
+  .stPosBtn,
+  .stStudioBtn {
+    font-size: 16px;
+  }
+}
+
+/* ---------- Studio tìm kiếm AI ---------- */
+.stStudio {
+  display: grid;
+  gap: 20px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.stStudioHead {
+  display: grid;
+  gap: 8px;
+}
+
+.stStudioKicker {
+  color: var(--st-brand-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Nút chọn ảnh: nhãn tiếng Việt thay nút file gốc của trình duyệt. */
+.stFilePick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--st-control-border);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stFilePick:hover {
+  border-color: var(--st-brand);
+}
+
+.stFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stStudioTitle {
+  font-size: clamp(24px, 3.4vw, 32px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.stStudioLede {
+  color: var(--st-ink-soft);
+  line-height: 1.6;
+  max-width: 70ch;
+}
+
+.stStudioPanel {
+  background: var(--st-surface);
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.stStudioModes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stStudioMode {
+  border: 1px solid var(--st-line);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.stStudioMode[aria-pressed="true"] {
+  background: var(--st-select);
+  border-color: var(--st-brand);
+  color: var(--st-brand-text);
+}
+
+.stStudioForm {
+  display: grid;
+  gap: 12px;
+}
+
+.stStudioFields {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.stStudioField {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--st-ink-soft);
+}
+
+.stStudioField input,
+.stStudioField select {
+  font: inherit;
+  font-size: 16px; /* tránh zoom iOS khi focus */
+  color: var(--st-ink);
+  background: var(--st-surface);
+  border: 1px solid var(--st-control-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 44px;
+  width: 100%;
+}
+
+.stStudioActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stStudioBtn {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: top; /* nút cao hơn line-height không được tràn lên dòng trên */
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 11px 18px;
+  min-height: 44px;
+  cursor: pointer;
+  border: 1px solid var(--st-brand);
+  background: var(--st-brand);
+  color: #fff;
+}
+
+.stStudioBtn:hover:not(:disabled) {
+  background: var(--st-brand-hover);
+  border-color: var(--st-brand-hover);
+}
+
+.stStudioBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.stStudioBtnGhost {
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border-color: var(--st-control-border);
+}
+
+.stStudioBtnGhost:hover:not(:disabled) {
+  background: var(--st-canvas);
+  color: var(--st-ink);
+  border-color: var(--st-brand);
+}
+
+.stStudioNote {
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.stStudioGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.stStudioCard {
+  background: var(--st-surface);
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.stStudioCardMedia {
+  aspect-ratio: 4 / 5;
+  background: var(--media-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+}
+
+.stStudioCardMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stStudioCardBody {
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.stStudioCardTitle {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.stStudioCardMeta {
+  color: var(--st-ink-soft);
+  font-size: 12px;
+}
+
+.stStudioProvenance {
+  border-top: 1px dashed var(--st-line);
+  padding-top: 8px;
+  color: var(--st-ink-soft);
+  font-size: 12px;
+}
+
+.stStudioState {
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  padding: 22px;
+  background: var(--st-surface);
+  color: var(--st-ink-soft);
+}
+
+.stStudioError {
+  border-color: var(--st-err-border);
+  background: var(--st-err-bg);
+  color: var(--st-err-text);
+}
+
+.stStudioError strong {
+  color: var(--st-err-text);
+}
+
+/* ---------- Danh sách sản phẩm: bộ lọc thu gọn trên điện thoại ---------- */
+.stFiltersToggle {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--st-line);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.stFiltersSummary {
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.stFiltersPanel {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .stFiltersToggle {
+    display: flex;
+  }
+
+  .stFiltersPanel {
+    display: none;
+    margin-top: 10px;
+  }
+
+  .stFiltersPanel[data-open="true"] {
+    display: block;
+  }
+}
+
+/* ---------- POS: dòng tiền và trạng thái commit ---------- */
+.stMoney {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--st-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--st-surface);
+  margin-top: 12px;
+}
+
+.stMoneyRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--st-ink-soft);
+}
+
+.stMoneyRowTotal {
+  border-top: 1px solid var(--st-line);
+  padding-top: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--st-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stMoneyRow span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.stPosGrid {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 1100px) {
+  .stPosGrid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    align-items: start;
+  }
+}
+
+.stPosCol {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.stPosCard {
+  background: var(--st-surface);
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.stPosTitle {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.stPosHint {
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+}
+
+.stPosRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stPosInput {
+  font: inherit;
+  font-size: 16px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  border: 1px solid var(--st-control-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+
+.stPosBtn {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: top;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  border: 1px solid var(--st-control-border);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.stPosBtn:hover:not(:disabled) {
+  border-color: var(--st-brand);
+  color: var(--st-brand-text);
+}
+
+.stPosBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.stPosBtnPrimary {
+  background: var(--st-brand);
+  border-color: var(--st-brand);
+  color: #fff;
+}
+
+.stPosBtnPrimary:hover:not(:disabled) {
+  background: var(--st-brand-hover);
+  border-color: var(--st-brand-hover);
+  color: #fff;
+}
+
+/* Cảnh báo lỗi dùng chung (POS, chi tiết sản phẩm). */
+.stAlert {
+  border: 1px solid var(--st-err-border);
+  background: var(--st-err-bg);
+  color: var(--st-err-text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.stPosStatus {
+  border: 1px solid var(--st-ok-border);
+  background: var(--st-ok-bg);
+  color: var(--st-ok-text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+/* Dải kêu gọi cuối danh sách: trên điện thoại không bóp chữ (CTA luôn thấy). */
+.studio .pgState {
+  flex-wrap: wrap;
+}
+
+.studio .pgState > div {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+/* ---------- Ảnh sản phẩm ở trang chi tiết ---------- */
+.stDetailGrid {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 900px) {
+  .stDetailGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.stDetailMedia {
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--media-soft);
+}
+
+.stDetailMedia img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  display: block;
+}
+
+.stDetailPanel {
+  background: var(--st-surface);
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.stDetailPrice {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Điều hướng kênh bán thu gọn trên màn hẹp (pilot POS) ---------- */
+.studio .stOpsNavToggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .studio .stOpsNavToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 12px;
+    border: 1px solid var(--st-control-border);
+    background: var(--st-surface);
+    color: var(--st-ink);
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .studio .stOpsNav {
+    display: none;
+  }
+
+  .studio .stOpsNav[data-open="true"] {
+    display: flex;
+  }
+}
+
+/* Mật độ riêng cho bề mặt vận hành (DESIGN §3): chữ 14–15px, control ≥40px,
+   chữ trong ô nhập ≥16px trên sàn chạm — gọn hơn bề mặt khách nhưng vẫn đọc được. */
+body:has(.studio.studio-ops) {
+  font-size: 15px;
+}
+
+.studio.studio-ops {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.studio.studio-ops .mpTopBtn,
+.studio.studio-ops .mpNav a,
+.studio.studio-ops .stThemeSelect,
+.studio.studio-ops .stPosBtn {
+  font-size: 14px;
+}
+
+.studio.studio-ops .mpTopBtn,
+.studio.studio-ops .stPosBtn {
+  min-height: 40px;
+}
+
+.studio.studio-ops .mpNav a {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.studio.studio-ops .mpSearch input {
+  font-size: 14px;
+  min-height: 40px;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .studio.studio-ops .mpSearch input,
+  .studio.studio-ops .stPosInput,
+  .studio.studio-ops .stThemeSelect {
+    font-size: 16px;
+  }
+}
+
+.studio.studio-ops .stPosTitle {
+  font-size: 14.5px;
+}
+
+.studio.studio-ops .stPosHint {
+  font-size: 12px;
+}
+
+/* Tiện ích bố cục (thay cho style nội tuyến rải rác). */
+.stFlex1 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Sàn chạm (đặt CUỐI để thắng mọi quy tắc mật độ trước đó): nhãn control của pilot
+   ≥16px và chiều cao ≥44px theo DESIGN §3. */
+@media (max-width: 900px), (pointer: coarse) {
+  .studio .stFiltersToggle,
+  .studio .stOpsNavToggle,
+  .studio .stStudioMode,
+  .studio .stPosBtn,
+  .studio .stStudioBtn,
+  .studio.studio-ops .stPosBtn,
+  .studio.studio-ops .mpTopBtn,
+  .studio.studio-ops .stThemeSelect {
+    font-size: 16px;
+  }
+
+  .studio .stFiltersToggle,
+  .studio .stOpsNavToggle,
+  .studio .stStudioMode,
+  .studio .stPosBtn,
+  .studio .stStudioBtn,
+  .studio.studio-ops .stPosBtn,
+  .studio.studio-ops .mpTopBtn {
+    min-height: 44px;
+  }
+}

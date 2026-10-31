@@ -1,0 +1,834 @@
+/* Customer AI page — port 1:1 từ frozen 6fdbcee styles.css (AI block 177-259,
+ * responsive 510-560, signature motif 833/843, dialog 489-496). Mọi selector
+ * được scope dưới `.aiPage`; không có rule global cho header/body/route khác.
+ * Không transition/animation/shimmer. */
+
+.aiPage {
+  min-width: 0;
+  color: var(--st-ink);
+  background: var(--st-canvas);
+}
+
+/* Left Ultramarine mass / right neutral output. */
+.aiPage .ai-shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 392px) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: calc(100svh - 88px);
+}
+.aiPage .ai-input {
+  --panel-bg: #3730d8;
+  --panel-text: #ffffff;
+  --panel-muted: #cbc9f6;
+  --panel-placeholder: #d6d5f8;
+  --panel-line: rgba(255, 255, 255, 0.55);
+  --panel-field-border: #ffffff;
+  --panel-field-bg: rgba(255, 255, 255, 0.1);
+  --panel-error: #ffd7db;
+  --panel-focus: #ffffff;
+  position: relative;
+  min-width: 0;
+  padding: 44px 36px 56px;
+  color: var(--panel-text);
+  background: var(--panel-bg);
+}
+html[data-theme="dark"] .aiPage .ai-input {
+  --panel-bg: #241f72;
+  --panel-muted: #c2bff2;
+  --panel-placeholder: #ceccf6;
+  --panel-line: rgba(255, 255, 255, 0.5);
+  --panel-field-bg: rgba(255, 255, 255, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .aiPage .ai-input {
+    --panel-bg: #241f72;
+    --panel-muted: #c2bff2;
+    --panel-placeholder: #ceccf6;
+    --panel-line: rgba(255, 255, 255, 0.5);
+    --panel-field-bg: rgba(255, 255, 255, 0.08);
+  }
+}
+.aiPage .ai-input h1 {
+  margin: 0 0 26px;
+  color: var(--panel-text);
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+}
+.aiPage .ai-input .field label,
+.aiPage .ai-input .field-label {
+  color: var(--panel-muted);
+  font-size: 13px;
+}
+.aiPage .ai-input .textarea {
+  min-height: 138px;
+  border-color: var(--panel-field-border);
+  color: var(--panel-text);
+  background: var(--panel-field-bg);
+}
+.aiPage .ai-input .textarea::placeholder {
+  color: var(--panel-placeholder);
+}
+.aiPage .ai-input :focus-visible {
+  outline-color: var(--panel-focus);
+}
+
+.aiPage .field {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+.aiPage .textarea {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid var(--st-control-border, #6f766c);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.aiPage .textarea::placeholder {
+  color: var(--st-ink-soft);
+  opacity: 1;
+}
+
+.aiPage .mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--panel-line);
+}
+.aiPage .mode-switch button {
+  min-height: 42px;
+  margin-bottom: -1px;
+  padding: 6px 2px 11px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--panel-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.aiPage .mode-switch button[aria-pressed="true"] {
+  border-bottom-color: var(--panel-text);
+  color: var(--panel-text);
+}
+.aiPage .mode-hint {
+  margin: 0 0 18px;
+  color: var(--panel-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.aiPage .query-field {
+  margin-bottom: 0;
+}
+.aiPage .upload-field {
+  margin-top: 22px;
+  margin-bottom: 0;
+}
+.aiPage .upload-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 66px;
+  border: 1px solid var(--panel-field-border);
+  border-radius: 7px;
+  color: var(--panel-text);
+  background: var(--panel-field-bg);
+  cursor: pointer;
+}
+.aiPage .upload-select:focus-within {
+  outline: 2px solid var(--panel-focus);
+  outline-offset: 3px;
+}
+.aiPage .upload-select span {
+  font-size: 14px;
+}
+.aiPage .reference-compact {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-areas: "thumb meta" "thumb actions";
+  gap: 8px 11px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid var(--panel-line);
+  border-radius: 7px;
+}
+.aiPage .reference-compact:focus-within {
+  outline: 2px solid var(--panel-focus);
+  outline-offset: 3px;
+}
+.aiPage .reference-thumb {
+  grid-area: thumb;
+  width: 52px;
+  height: 66px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: var(--panel-field-bg);
+}
+.aiPage .reference-thumb-fail {
+  display: grid;
+  place-items: center;
+  color: var(--panel-muted);
+  font-size: 9px;
+  text-align: center;
+}
+.aiPage .reference-meta {
+  grid-area: meta;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.aiPage .reference-meta .file-name {
+  color: var(--panel-text);
+  overflow-wrap: anywhere;
+}
+.aiPage .reference-hint {
+  color: var(--panel-muted);
+  font-size: 11px;
+}
+.aiPage .reference-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 6px;
+}
+.aiPage .mini-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--panel-line);
+  border-radius: 5px;
+  color: var(--panel-text);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.aiPage .mini-button:hover {
+  background: var(--panel-field-bg);
+}
+.aiPage .panel-error {
+  margin: 16px 0 0;
+  color: var(--panel-error);
+  font-size: 13px;
+}
+.aiPage .search-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 26px;
+  min-height: 50px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--st-citron-ink, #252b0c);
+  background: var(--st-citron, #d6ef72);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.aiPage .search-submit:hover {
+  background: #c8e35f;
+}
+.aiPage .search-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.aiPage .panel-note {
+  margin: 12px 0 0;
+  color: var(--panel-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.aiPage .panel-link {
+  color: var(--panel-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Signature motif: 48px open corner, top-right, below the CTA flow. */
+.aiPage .ai-motif {
+  position: absolute;
+  z-index: 0;
+  top: 12px;
+  right: 12px;
+  width: 48px;
+  height: 48px;
+  color: var(--panel-text);
+  opacity: 0.7;
+  pointer-events: none;
+  overflow: hidden;
+}
+.aiPage .ai-motif svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Right output. */
+.aiPage .ai-output {
+  min-width: 0;
+  padding: 44px clamp(20px, 4vw, 64px) 72px;
+}
+.aiPage .examples-heading,
+.aiPage .results-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+}
+.aiPage .examples-heading h2,
+.aiPage .results-head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.aiPage .examples-heading p {
+  margin: 0;
+  color: var(--st-ink-soft);
+  font-size: 12px;
+}
+.aiPage .examples-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.85fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  height: 540px;
+}
+.aiPage .search-example {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: var(--st-ink);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.aiPage .example-main {
+  grid-row: 1 / span 2;
+}
+.aiPage .example-image {
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--st-select);
+}
+.aiPage .example-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.aiPage .example-portrait .example-image img {
+  object-fit: cover;
+  object-position: center 34%;
+}
+.aiPage .example-image .ai-img-fail {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  padding: 12px;
+  color: var(--st-ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+.aiPage .example-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.aiPage .example-main .example-caption {
+  font-size: 22px;
+}
+.aiPage .example-use {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--st-ink-soft);
+}
+.aiPage .use-verb {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.aiPage .example-use svg {
+  width: 17px;
+  height: 17px;
+}
+.aiPage .search-example[aria-pressed="true"] .example-caption {
+  color: var(--st-brand-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.aiPage .results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.aiPage .result-card {
+  min-width: 0;
+}
+.aiPage .result-image-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: var(--st-select);
+  cursor: zoom-in;
+}
+.aiPage .result-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+}
+.aiPage .result-image-fail {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  padding: 16px;
+  color: var(--st-ink-soft);
+  font-size: 13px;
+  text-align: center;
+}
+.aiPage .image-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14);
+}
+.aiPage .image-zoom svg {
+  width: 17px;
+  height: 17px;
+}
+.aiPage .result-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  padding: 14px 0 6px;
+}
+.aiPage .result-copy h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.aiPage .raw-score {
+  color: var(--st-ink-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.aiPage .raw-score strong {
+  margin-left: 4px;
+  color: var(--st-ink);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.aiPage .results-query {
+  margin: -2px 0 20px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.aiPage .result-count {
+  color: var(--st-ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.aiPage .result-provenance {
+  max-width: 65ch;
+  margin-top: 24px;
+  color: var(--st-ink-soft);
+  font-size: 12px;
+}
+.aiPage .result-details {
+  margin-top: 6px;
+}
+.aiPage .result-details summary,
+.aiPage .source-disclosure summary {
+  width: fit-content;
+  min-height: 32px;
+  padding: 6px 0;
+  color: var(--st-ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+}
+.aiPage .result-details > div {
+  padding: 3px 0 10px;
+  color: var(--st-ink-soft);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.aiPage .source-disclosure {
+  margin-top: 17px;
+}
+.aiPage .source-disclosure > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+}
+.aiPage .photo-credit {
+  display: inline-block;
+  color: var(--st-ink-soft);
+  font-size: 11px;
+  text-decoration: underline;
+}
+.aiPage .skeleton-card {
+  min-height: 300px;
+  aspect-ratio: 4 / 5;
+  border-radius: 4px;
+  background: var(--st-select);
+}
+/* Final frozen correction (styles.css:848): placeholders follow result columns,
+ * không tràn ở 320/390; không dùng overflow clipping để che lỗi. */
+.aiPage .ai-output .skeleton-card {
+  min-width: 0;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 4 / 5;
+}
+.aiPage .search-status {
+  margin: 0 0 14px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+}
+.aiPage .status {
+  padding: 14px 16px;
+  border-radius: 7px;
+  font-size: 14px;
+}
+.aiPage .status.error {
+  color: var(--st-err-text);
+  background: var(--st-err-bg);
+}
+.aiPage .status.info {
+  color: var(--st-info-text, #3348a3);
+  background: var(--st-info-bg, #ecedf9);
+}
+.aiPage .empty-state {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 9px;
+  min-height: 250px;
+  padding: 28px;
+  border-radius: 6px;
+  color: var(--st-ink-soft);
+  background: var(--st-select);
+}
+.aiPage .empty-state h3 {
+  margin: 0;
+  color: var(--st-ink);
+  font-size: 22px;
+  font-weight: 500;
+}
+.aiPage .empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+.aiPage .text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 0;
+  border: 0;
+  color: var(--st-ink-soft);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.aiPage .text-button:hover {
+  color: var(--st-ink);
+  text-decoration: underline;
+}
+.aiPage .state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+.aiPage .preview-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 5px 9px;
+  border: 1px dashed var(--st-line);
+  border-radius: 5px;
+  color: var(--st-ink-soft);
+  font-size: 11px;
+}
+.aiPage .ai-sr-only,
+.aiPage .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Image zoom dialog — native focus trap/Escape, no custom motion. */
+.aiPage .ai-dialog {
+  width: min(920px, calc(100vw - 28px));
+  max-height: calc(100svh - 28px);
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 10px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  box-shadow: 0 24px 100px rgba(0, 0, 0, 0.4);
+}
+.aiPage .ai-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.74);
+}
+.aiPage .ai-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+.aiPage .ai-dialog-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+.aiPage .ai-dialog-close {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--st-ink-soft);
+  background: transparent;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+.aiPage .ai-dialog-close:hover {
+  background: var(--st-select);
+}
+.aiPage .ai-dialog-media {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  background: var(--st-select);
+}
+.aiPage .ai-dialog-media img {
+  display: block;
+  width: 100%;
+  max-height: 70svh;
+  object-fit: contain;
+}
+.aiPage .ai-dialog-fail {
+  padding: 28px;
+  color: var(--st-ink-soft);
+  font-size: 13px;
+  text-align: center;
+}
+.aiPage .ai-dialog-caption {
+  margin: 0;
+  padding: 14px 20px 20px;
+  color: var(--st-ink-soft);
+  font-size: 12px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .aiPage .search-example:hover .example-caption {
+    color: var(--st-brand-text);
+  }
+}
+
+@media (max-width: 1100px) {
+  .aiPage .ai-shell {
+    grid-template-columns: 330px minmax(0, 1fr);
+  }
+  .aiPage .ai-input {
+    padding-inline: 28px;
+  }
+  .aiPage .examples-board {
+    height: 480px;
+    gap: 16px;
+  }
+  .aiPage .examples-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .aiPage .ai-shell {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .aiPage .ai-input {
+    padding: 30px 20px 36px;
+  }
+  .aiPage .ai-input h1 {
+    margin-bottom: 20px;
+    font-size: 34px;
+  }
+  .aiPage .ai-motif {
+    top: 10px;
+    right: 10px;
+    width: 48px;
+    height: 48px;
+  }
+  .aiPage .ai-output {
+    padding: 26px 20px 44px;
+  }
+  .aiPage .mode-switch {
+    margin-bottom: 18px;
+  }
+  .aiPage .textarea {
+    min-height: 108px;
+  }
+  .aiPage .search-submit {
+    margin-top: 20px;
+  }
+  .aiPage .examples-heading {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+  .aiPage .examples-board {
+    height: 460px;
+    gap: 18px;
+  }
+  .aiPage .results-grid {
+    gap: 16px;
+  }
+}
+
+/* Frozen styles.css:599-621 — full <=480 refinements (not approximated). */
+@media (max-width: 480px) {
+  .aiPage .ai-input {
+    padding-inline: 16px;
+  }
+  .aiPage .ai-output {
+    padding-inline: 16px;
+  }
+  .aiPage .examples-heading h2,
+  .aiPage .results-head h2 {
+    font-size: 22px;
+  }
+  .aiPage .examples-heading p {
+    font-size: 10px;
+  }
+  .aiPage .examples-board {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr);
+    gap: 14px;
+    height: 360px;
+  }
+  .aiPage .example-main .example-caption {
+    font-size: 16px;
+  }
+  .aiPage .example-caption {
+    gap: 4px;
+    font-size: 13px;
+  }
+  .aiPage .example-use svg {
+    width: 14px;
+    height: 14px;
+  }
+  .aiPage .results-grid {
+    gap: 14px;
+  }
+  .aiPage .result-copy {
+    display: block;
+    padding-top: 11px;
+  }
+  .aiPage .result-copy h3 {
+    font-size: 14px;
+  }
+  .aiPage .raw-score {
+    display: block;
+    margin-top: 4px;
+  }
+  .aiPage .image-zoom {
+    right: 8px;
+    bottom: 8px;
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* Final source order: short-height board override after width rules (styles.css:764-766). */
+@media (max-height: 800px) {
+  .aiPage .examples-board {
+    height: 480px;
+  }
+}
+
+/* Final frozen caption refinement (styles.css:776-779) — after <=480/height rules. */
+@media (max-width: 1100px) {
+  .aiPage .example-caption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .aiPage .example-use {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}

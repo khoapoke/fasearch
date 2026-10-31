@@ -1,0 +1,22 @@
+"use client";
+import { useEffect, useState } from "react";
+import { AdminShellB } from "@/components/admin-b/admin-shell";
+import { useAdminRole } from "@/components/admin-b/use-admin-role";
+import { createCategory, getCategories, updateCategory, type Category } from "@/lib/admin-catalog-client";
+export default function AdminCategoriesPage() {
+  const role = useAdminRole();
+  const [rows, setRows] = useState<Category[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [name, setName] = useState(""); const [busy, setBusy] = useState(false); const [editing, setEditing] = useState<number | null>(null); const [editName, setEditName] = useState("");
+  async function load() { setLoading(true); setError(""); try { setRows(await getCategories()); } catch (e) { setError(e instanceof Error ? e.message : "Không tải được danh mục."); } finally { setLoading(false); } }
+  useEffect(() => { const c = new AbortController(); getCategories(c.signal).then(setRows).catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được danh mục."); }).finally(() => { if (!c.signal.aborted) setLoading(false); }); return () => c.abort(); }, []);
+  async function create(e: React.FormEvent) { e.preventDefault(); if (busy) return; setBusy(true); setError(""); try { await createCategory(name.trim()); setName(""); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Không tạo được danh mục."); } finally { setBusy(false); } }
+  async function save(id: number) { if (busy) return; setBusy(true); setError(""); try { await updateCategory(id, editName.trim()); setEditing(null); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Không sửa được danh mục."); } finally { setBusy(false); } }
+  return <AdminShellB active="categories" title="Danh mục" eyebrow="Vận hành · catalog thật từ BE"><div className="page-heading"><div><h1>Danh mục</h1><p className="meta">{role === "ADMIN" ? "ADMIN có quyền tạo/sửa; không có xóa" : "STAFF chỉ đọc; không có quyền tạo/sửa"}</p></div></div>
+    {error ? <p className="catalog-error" role="alert">{error}</p> : null}
+    {role === "ADMIN" ? <form className="catalog-toolbar" onSubmit={create}><div className="catalog-field"><label htmlFor="category-name">Tên danh mục mới (≤150)</label><input id="category-name" className="catalog-input" value={name} maxLength={150} onChange={(e) => setName(e.target.value)} /></div><button className="primary" type="submit" disabled={busy}>{busy ? "Đang lưu…" : "Tạo danh mục"}</button></form> : null}
+    {loading ? <p className="meta" role="status">Đang tải danh mục…</p> : null}
+    {!loading && rows.length === 0 ? <div className="order-empty"><strong>Chưa có danh mục</strong></div> : null}
+    {rows.length > 0 ? <div className="table-scroll review-table-scroll" tabIndex={0} aria-label="Danh sách danh mục"><table className="review-orders-table"><caption>{rows.length} danh mục · dữ liệu BE candidate · không có nút xóa</caption><thead><tr><th>Mã</th><th>Tên danh mục</th><th>Hành động</th></tr></thead><tbody>{rows.map((c) => <tr key={c.id}><td>{c.id}</td><td>{editing === c.id ? <input className="catalog-input" value={editName} maxLength={150} onChange={(e) => setEditName(e.target.value)} aria-label="Tên danh mục" /> : c.categoryName}</td><td className="catalog-inline">{editing === c.id ? <><button className="primary" type="button" disabled={busy} onClick={() => save(c.id)}>Lưu</button><button className="text-link" type="button" onClick={() => setEditing(null)}>Hủy</button></> : role === "ADMIN" ? <button className="text-link" type="button" onClick={() => { setEditing(c.id); setEditName(c.categoryName); }}>Sửa</button> : <span className="meta">Chỉ đọc</span>}</td></tr>)}</tbody></table></div> : null}
+    <p className="meta" style={{ marginTop: 16 }}>Tên danh mục được BE trim và kiểm tra trùng; lỗi trùng hiển thị nguyên văn. Không có xóa danh mục trong pilot.</p>
+  </AdminShellB>;
+}

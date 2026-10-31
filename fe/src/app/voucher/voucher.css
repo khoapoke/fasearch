@@ -1,0 +1,11 @@
+.vcHero { border-radius: 16px; padding: 26px; color: #fff; background: linear-gradient(135deg, #1c1917, #431407 60%, #9a3412); margin-bottom: 14px; }
+.vcHero h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 6px; }
+.vcHero p { font-size: 13px; color: #fed7aa; max-width: 60ch; }
+.vcHero .hmKicker { background: rgb(255 255 255 / 0.14); color: #fdba74; }
+.vcGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.vcCard { border: 1px solid var(--line-soft); border-radius: 14px; background: #fff; padding: 16px; }
+.vcCard b { display: block; font-size: 14.5px; margin: 6px 0 2px; }
+.vcCard small { font-size: 12.5px; color: var(--ink-soft); display: block; }
+.vcExp { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.vcCodeRow { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+@media (max-width: 640px) { .vcGrid { grid-template-columns: 1fr; } }

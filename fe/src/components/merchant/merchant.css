@@ -1,0 +1,149 @@
+/* Merchant portal shell — white/orange + left sidebar (Stitch #8/#16). */
+
+.mpBanner {
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mpBanner div {
+  max-width: none;
+  margin: 0;
+  padding: 7px 22px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mpBanner a { text-decoration: underline; font-weight: 700; }
+.mpFrame { display: grid; grid-template-columns: 264px 1fr; min-height: 100vh; background: var(--shell-canvas); }
+.mpSide {
+  background: var(--surface);
+  border-right: 1px solid var(--line-soft);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.mpBrand { display: flex; gap: 10px; align-items: center; padding: 2px 8px 14px; }
+.mpBrandMark {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), var(--brand));
+  color: #fff; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;
+}
+.mpBrand b { display: block; font-size: 14.5px; }
+.mpBrand small { font-size: 10px; letter-spacing: 0.12em; color: var(--ink-soft); font-weight: 700; }
+.mpCta {
+  border: 0; cursor: pointer; text-decoration: none; text-align: center;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: 14px;
+  border-radius: 12px; padding: 12px; display: flex; gap: 8px; align-items: center; justify-content: center;
+  margin: 2px 2px 12px;
+}
+.mpCta:hover { background: var(--accent-deep); }
+.mpNav { display: flex; flex-direction: column; gap: 2px; }
+.mpNav a {
+  display: flex; align-items: center; gap: 11px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink);
+  padding: 10px 12px; border-radius: 11px; border-left: 3px solid transparent;
+}
+.mpNav a:hover { background: var(--surface-subtle); }
+.mpNav a[aria-current="page"] { background: var(--surface-tint); color: var(--brand); border-left-color: var(--accent); }
+.mpNav .cnt {
+  margin-left: auto; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800;
+  border-radius: 999px; padding: 2px 8px;
+}
+.mpSection { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: var(--ink-soft); padding: 14px 12px 4px; }
+.mpFoot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; }
+.mpNode {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600;
+  border: 1px solid var(--line-soft); border-radius: 11px; padding: 9px 12px; color: var(--ink-soft);
+}
+.mpNode b { color: var(--accent-deep); margin-left: auto; }
+.mpUser { display: flex; gap: 10px; align-items: center; padding: 6px 8px; }
+.mpUserAvatar {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--avatar-bg); color: var(--avatar-text);
+  font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mpUser b { display: block; font-size: 13px; }
+.mpUser small { font-size: 11.5px; color: var(--ink-soft); display: block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.mpMain { min-width: 0; padding: 18px 24px 40px; }
+.mpTopbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.mpSearch {
+  flex: 1; min-width: 200px; display: flex; align-items: center; gap: 9px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px;
+}
+.mpSearch input { flex: 1; border: 0; outline: none; background: transparent; font-size: 13.5px; min-width: 0; }
+.mpTopBtn {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 14px; cursor: pointer; color: var(--ink);
+}
+.mpTopBtn:hover { border-color: var(--accent); color: var(--brand-text); }
+.mpTopBtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mpTopBtn.primary:hover { background: var(--accent-deep); }
+
+.mpCard {
+  background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px;
+  padding: 20px; box-shadow: var(--shadow-card); margin-bottom: 18px;
+}
+.mpCard h2 { font-size: 16px; font-weight: 800; }
+.mpMuted { color: var(--ink-soft); font-size: 13px; }
+.mpTableWrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+table.mpTable { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 760px; }
+.mpTable th {
+  text-align: left; font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--ink-soft); padding: 10px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap;
+}
+.mpTable td { padding: 13px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+.mpTable tr:last-child td { border-bottom: 0; }
+.mpThumb {
+  width: 52px; height: 52px; border-radius: 10px; object-fit: cover; display: block;
+  background: linear-gradient(160deg, var(--media-bg), var(--media-warm));
+}
+.mpPill {
+  display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 5px 11px;
+  background: var(--surface-subtle); border: 1px solid var(--line); white-space: nowrap;
+}
+.mpPillLive { background: var(--pill-ok-bg); border-color: var(--pill-ok-border); color: var(--pill-ok-text); }
+.mpPillWarn { background: var(--pill-warn-bg); border-color: var(--pill-warn-border); color: var(--pill-warn-text); }
+.mpRowBtns { display: flex; gap: 4px; flex-wrap: wrap; }
+.mpIconBtn {
+  border: 0; background: transparent; cursor: pointer; color: var(--ink-soft);
+  width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+}
+.mpIconBtn:hover { background: var(--surface-subtle); color: var(--brand); }
+.mpPreviewBar {
+  background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); font-size: 12.5px;
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center;
+}
+.mpStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.mpStat { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 14px; padding: 16px; }
+.mpStat p { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
+.mpStat b { font-size: 23px; font-weight: 800; letter-spacing: -0.02em; display: block; margin-top: 4px; }
+.mpStat small { font-size: 12px; color: var(--ink-soft); }
+
+@media (max-width: 1024px) {
+  .mpFrame { grid-template-columns: 1fr; }
+  .mpSide { position: static; height: auto; }
+  .mpStats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .mpMain { padding: 14px 14px 32px; }
+  .mpStats { grid-template-columns: 1fr; }
+}
+/* Màn hình hẹp: dải thông báo kênh bán xuống dòng thay vì tràn ngang (VIS-6). */
+@media (max-width: 460px) {
+  .mpBanner div {
+    white-space: normal;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding: 8px 14px;
+  }
+  .mpBanner span { min-width: 0; }
+}
