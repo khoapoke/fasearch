@@ -96,7 +96,12 @@ function normalizeProduct(raw: unknown): CatalogProduct {
     material: typeof p.material === "string" ? p.material : null,
     style: typeof p.style === "string" ? p.style : null,
     price: requireFinite(p.price),
-    imageUrl: typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : null,
+    imageUrl: (() => {
+      const raw = typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : null;
+      if (!raw) return null;
+      const m = raw.match(/^\/api\/v1\/products\/images\/(.+)$/);
+      return m ? `/api/catalog/product-images/${m[1]}` : raw;
+    })(),
     status: typeof p.status === "string" ? p.status : null,
   };
 }

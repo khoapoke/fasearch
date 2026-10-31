@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireJsonPost, authError, readJsonObject } from "@/lib/server/customer-auth";
-import { catalogRead, catalogWrite, idOf } from "@/lib/server/admin-catalog";
+import { catalogRead, catalogWrite, catalogDelete, idOf } from "@/lib/server/admin-catalog";
 const STATUS = new Set(["DRAFT", "ACTIVE", "OUT_OF_STOCK", "DISCONTINUED"]);
 export const dynamic = "force-dynamic"; export const runtime = "nodejs";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const { id } = await params; const n = idOf(id); return n ? catalogRead(request, `/api/v1/products/${n}`) : Response.json({ success: false, code: 400, message: "Mã sản phẩm chưa hợp lệ.", result: null }, { status: 400 }); }
@@ -18,3 +18,4 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!Object.keys(body).length) return authError("Không có trường metadata để cập nhật.", 400);
   return catalogWrite(request, `/api/v1/products/${n}`, "PATCH", body);
 }
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const { id } = await params; const n = idOf(id); return n ? catalogDelete(request, `/api/v1/products/${n}`) : Response.json({ success: false, code: 400, message: "Mã sản phẩm chưa hợp lệ.", result: null }, { status: 400 }); }

@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { createProduct, updateProduct, type Category, type Product } from "@/lib/admin-catalog-client";
+import { createProduct, updateProduct, uploadProductImage, type Category, type Product } from "@/lib/admin-catalog-client";
 const STATUS: Array<[string, string]> = [["DRAFT", "Nháp"], ["ACTIVE", "Đang bán"], ["OUT_OF_STOCK", "Tạm hết hàng"], ["DISCONTINUED", "Ngừng kinh doanh"]];
 export function ProductForm({ mode, product, categories }: { mode: "create" | "edit"; product?: Product; categories: Category[] }) {
   const router = useRouter();
@@ -37,6 +37,7 @@ export function ProductForm({ mode, product, categories }: { mode: "create" | "e
     <div className="catalog-field"><label htmlFor="pf-material">Chất liệu</label><input id="pf-material" className="catalog-input" value={values.material} maxLength={100} onChange={(e) => set("material", e.target.value)} /></div>
     <div className="catalog-field"><label htmlFor="pf-style">Kiểu dáng</label><input id="pf-style" className="catalog-input" value={values.style} maxLength={100} onChange={(e) => set("style", e.target.value)} /></div>
     <div className="catalog-field"><label htmlFor="pf-image">URL ảnh (không phải upload)</label><input id="pf-image" className="catalog-input" value={values.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} placeholder="https://…" /></div>
+    {mode === "edit" && product ? <div className="catalog-field"><label htmlFor="pf-file">Tải ảnh (PNG/JPG/WEBP, tối đa 5MB)</label><input id="pf-file" type="file" accept="image/png,image/jpeg,image/webp" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBusy(true); setError(""); try { const url = await uploadProductImage(String(product.id), f); set("imageUrl", url); } catch (failure) { setError(failure instanceof Error ? failure.message : "Không tải được ảnh."); } finally { setBusy(false); e.target.value = ""; } }} disabled={busy} /><button type="button" className="text-link" onClick={() => set("imageUrl", "")} disabled={busy}>Xóa ảnh</button>{values.imageUrl ? <p className="meta" style={{ marginTop: 4 }}>Ảnh hiện tại: {values.imageUrl}</p> : null}</div> : null}
     <div className="catalog-field"><label htmlFor="pf-description">Mô tả</label><textarea id="pf-description" className="catalog-input" value={values.description} onChange={(e) => set("description", e.target.value)} /></div>
     <div className="catalog-field"><label htmlFor="pf-status">Trạng thái</label><select id="pf-status" className="catalog-input" value={values.status} onChange={(e) => set("status", e.target.value)}>{STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
     {error ? <p className="catalog-error" role="alert">{error}</p> : null}

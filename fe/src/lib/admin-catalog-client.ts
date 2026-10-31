@@ -10,9 +10,26 @@ export async function getProductPage(q: string, signal?: AbortSignal): Promise<P
 export async function getProduct(id: string, signal?: AbortSignal): Promise<Product> { return parse<Product>(await fetch(`/api/admin/catalog/products/${id}`, { cache: "no-store", signal })); }
 export async function createProduct(body: Record<string, unknown>): Promise<Product> { return parse<Product>(await fetch("/api/admin/catalog/products", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
 export async function updateProduct(id: string, body: Record<string, unknown>): Promise<Product> { return parse<Product>(await fetch(`/api/admin/catalog/products/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
+export async function deleteProduct(id: string): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/products/${id}`, { method: "DELETE" })); }
 export async function createVariant(productId: string, body: Record<string, unknown>): Promise<Variant> { return parse<Variant>(await fetch(`/api/admin/catalog/products/${productId}/variants`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
 export async function updateVariant(skuId: number, body: Record<string, unknown>): Promise<Variant> { return parse<Variant>(await fetch(`/api/admin/catalog/variants/${skuId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
 export async function getBarcode(skuId: number): Promise<{ skuId: number; barcode: string | null; barcodeBase64: string | null; productName: string }> { return parse(await fetch(`/api/admin/catalog/variants/${skuId}/barcode`, { cache: "no-store" })); }
 export async function createCategory(name: string): Promise<Category> { return parse<Category>(await fetch("/api/admin/catalog/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ categoryName: name }) })); }
 export async function updateCategory(id: number, name: string): Promise<Category> { return parse<Category>(await fetch(`/api/admin/catalog/categories/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ categoryName: name }) })); }
+export async function deleteCategory(id: number): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/categories/${id}`, { method: "DELETE" })); }
+export async function uploadProductImage(id: string, file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const r = await fetch(`/api/admin/catalog/products/${id}/image`, { method: "POST", body: form });
+  return parse<string>(r);
+}
+
+/** Map a BE-relative image URL (/api/v1/products/images/...) to the same-origin BFF path. */
+export function toCatalogImageUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  const m = raw.match(/^\/api\/v1\/products\/images\/(.+)$/);
+  if (m) return `/api/catalog/product-images/${m[1]}`;
+  return raw;
+}
+
 export { CatalogAdminError as CatalogError };
