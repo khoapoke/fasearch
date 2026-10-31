@@ -107,7 +107,7 @@ class PromotionsCheckoutApiIntegrationTest {
                 .status(AccountStatus.ACTIVE).isDeleted(false).build());
         Customer customer = customerRepository.saveAndFlush(Customer.builder().firstName("API")
                 .lastName("Probe").phoneNumber("09" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000L)))
-                .address("Test delivery address").accumulatePoint(0).account(customerAccount).isDeleted(false).build());
+                .address("Test delivery address").accumulatePoint(1000).account(customerAccount).isDeleted(false).build());
         customerId = customer.getId();
         customerToken = jwtProvider.generateToken(customerAccount.getUsername(), "CUSTOMER", customerAccount.getId());
         Account otherAccount = accountRepository.saveAndFlush(Account.builder()
@@ -200,6 +200,10 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(order.get("totalAmount").decimalValue()).isEqualByComparingTo("185000.00");
         assertThat(order.get("status").asText()).isEqualTo("PENDING");
         assertThat(order.get("replayed").asBoolean()).isFalse();
+        Resp pointCalculation = call("POST", "/api/v1/payments/calculate",
+                "{\"orderId\":" + orderId + ",\"voucherCode\":\"" + voucherCode + "\",\"redeemedPoints\":1}",
+                customerToken);
+        assertThat(pointCalculation.status()).as("S1 voucher due cannot be reduced by request-only points").isEqualTo(400);
 
         Resp replay = call("POST", "/api/v1/orders/checkout", body, customerToken);
         assertThat(replay.status()).isEqualTo(200);
@@ -269,7 +273,7 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(result(settledCampaign).get("codes").get(0).get("soLuongGiuCho").asInt()).isZero();
         assertThat(result(settledCampaign).get("codes").get(0).get("daSuDung").asInt()).isEqualTo(1);
         assertThat(usageStatus(settlementOrderId)).isEqualTo("CONSUMED");
-        assertThat(customerRepository.findById(customerId).orElseThrow().getAccumulatePoint()).isZero();
+        assertThat(customerRepository.findById(customerId).orElseThrow().getAccumulatePoint()).isEqualTo(1000);
 
         assertThat(call("POST", "/api/v1/cart/items", "{\"skuId\":" + skuId + ",\"quantity\":1}", customerToken).status()).isEqualTo(200);
         Resp legacyCheckout = call("POST", "/api/v1/orders/checkout",

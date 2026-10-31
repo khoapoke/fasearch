@@ -9,12 +9,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -23,7 +20,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.springboot.fasearch.common.enums.AccountStatus;
 import com.springboot.fasearch.common.enums.OrderStatus;
+import com.springboot.fasearch.common.enums.RoleType;
 import com.springboot.fasearch.common.enums.PaymentMethodType;
 import com.springboot.fasearch.common.enums.PaymentStatus;
 import com.springboot.fasearch.exception.AppException;
@@ -35,15 +34,26 @@ import com.springboot.fasearch.modules.khuyenmai.repository.KhuyenMaiRepository;
 import com.springboot.fasearch.modules.khuyenmai.repository.MaGiamGiaRepository;
 import com.springboot.fasearch.modules.khuyenmai.repository.VoucherUsageRepository;
 import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
+import com.springboot.fasearch.modules.auth.entity.Account;
+import com.springboot.fasearch.modules.auth.entity.Role;
+import com.springboot.fasearch.modules.auth.repository.AccountRepository;
+import com.springboot.fasearch.modules.auth.repository.RoleRepository;
+import com.springboot.fasearch.modules.order.dto.request.CartItemUpdateReq;
+import com.springboot.fasearch.modules.order.entity.Cart;
 import com.springboot.fasearch.modules.order.entity.CartItem;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.entity.OrderDetail;
 import com.springboot.fasearch.modules.order.entity.OrderDetailId;
+import com.springboot.fasearch.modules.order.repository.CartItemRepository;
+import com.springboot.fasearch.modules.order.repository.CartRepository;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;
+import com.springboot.fasearch.modules.order.service.interfaces.CartService;
 import com.springboot.fasearch.modules.payment.dto.request.PaymentProcessReq;
 import com.springboot.fasearch.modules.payment.repository.InvoiceRepository;
 import com.springboot.fasearch.modules.payment.repository.PaymentRepository;
 import com.springboot.fasearch.modules.payment.service.interfaces.PaymentService;
+import com.springboot.fasearch.modules.inventory.entity.Inventory;
+import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 import com.springboot.fasearch.modules.product.entity.Category;
@@ -82,11 +92,16 @@ class PromotionsCheckoutPostgresIntegrationTest {
     @Autowired private ProductRepository productRepository;
     @Autowired private ProductVariantRepository variantRepository;
     @Autowired private PlatformTransactionManager transactionManager;
-    @Autowired private JdbcTemplate jdbc;
     @Autowired private PaymentService paymentService;
     @Autowired private InvoiceRepository invoiceRepository;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private AccountRepository accountRepository;
+    @Autowired private RoleRepository roleRepository;
+    @Autowired private CartRepository cartRepository;
+    @Autowired private CartItemRepository cartItemRepository;
+    @Autowired private CartService cartService;
+    @Autowired private InventoryRepository inventoryRepository;
 
     @Test
     void lastQuotaRaceAndRepeatedReleaseAreAtomicOnPostgres() throws Exception {
@@ -221,6 +236,67 @@ class PromotionsCheckoutPostgresIntegrationTest {
         assertThat(invoice.getTotalActualPaid()).isEqualByComparingTo("0.00");
         assertThat(paymentRepository.findByInvoiceId(invoice.getId())).isEmpty();
         assertThat(codeRepository.findById(fixture.voucher().getId()).orElseThrow().getUsed()).isEqualTo(1);
+    }
+
+    @Test
+    void cartMutationWaitsForCheckoutCartLockBeforeTouchingItems() throws Exception {
+        Fixture fixture = fixture(1);
+        String suffix = Long.toString(System.nanoTime(), 36);
+        Role customerRole = roleRepository.findByName(RoleType.CUSTOMER).orElseThrow();
+        Account account = accountRepository.saveAndFlush(Account.builder().username("cart-lock-" + suffix)
+                .password("not-used-in-test").email("cart-lock-" + suffix + "@example.invalid").role(customerRole)
+                .status(AccountStatus.ACTIVE).isDeleted(false).build());
+        Customer customer = userRepository.saveAndFlush(Customer.builder().firstName("Cart").lastName("Lock")
+                .phoneNumber("08" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000L)))
+                .address("Synthetic test address").accumulatePoint(0).account(account).isDeleted(false).build());
+        Cart cart = cartRepository.saveAndFlush(Cart.builder().customer(customer).totalItems(1).build());
+        cartItemRepository.saveAndFlush(CartItem.builder().cart(cart).variant(fixture.variant()).quantity(1).build());
+        inventoryRepository.saveAndFlush(Inventory.builder().variant(fixture.variant()).physicalStock(5)
+                .reservedStock(0).availableStock(5).minThreshold(1).isDeleted(false).build());
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        CountDownLatch cartLocked = new CountDownLatch(1);
+        CountDownLatch mutationStarted = new CountDownLatch(1);
+        CountDownLatch finishCheckout = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var checkout = pool.submit(() -> tx.executeWithoutResult(status -> {
+                Cart locked = cartRepository.findByCustomerIdForUpdate(customer.getId()).orElseThrow();
+                cartLocked.countDown();
+                try {
+                    if (!finishCheckout.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("checkout lock test timed out");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+                cartItemRepository.deleteAllByCartId(locked.getId());
+                locked.setTotalItems(0);
+            }));
+            assertThat(cartLocked.await(10, TimeUnit.SECONDS)).isTrue();
+            var mutation = pool.submit(() -> {
+                mutationStarted.countDown();
+                SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                        account.getUsername(), null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+                try {
+                    cartService.updateItemQuantity(fixture.variant().getId(), CartItemUpdateReq.builder().quantity(2).build());
+                    return "UPDATED";
+                } catch (AppException e) {
+                    return e.getErrorCode().name();
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            });
+
+            assertThat(mutationStarted.await(10, TimeUnit.SECONDS)).isTrue();
+            Thread.sleep(300);
+            assertThat(mutation.isDone()).as("cart mutation waits on the checkout parent-row lock").isFalse();
+            finishCheckout.countDown();
+            checkout.get(10, TimeUnit.SECONDS);
+            assertThat(mutation.get(10, TimeUnit.SECONDS)).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND.name());
+        } finally {
+            finishCheckout.countDown();
+            pool.shutdownNow();
+        }
     }
 
     private String settle(Long orderId, BigDecimal amount, CountDownLatch start) {

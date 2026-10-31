@@ -105,6 +105,11 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher must be applied during checkout");
         }
 
+        // S1 vouchers do not combine with the legacy request-only points calculation.
+        if (order.getVoucherCode() != null && req.getRedeemedPoints() != null && req.getRedeemedPoints() > 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Loyalty points are not supported for voucher orders");
+        }
+
         // 6. Tính giảm giá điểm thưởng (1 điểm = 1.000 VNĐ)
         BigDecimal pointDiscount = BigDecimal.ZERO;
         if (req.getRedeemedPoints() != null && req.getRedeemedPoints() > 0) {

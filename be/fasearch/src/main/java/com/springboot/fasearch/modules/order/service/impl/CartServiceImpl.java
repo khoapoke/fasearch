@@ -56,7 +56,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private Cart getOrCreateCart(Customer customer) {
-        return cartRepository.findByCustomerId(customer.getId())
+        return cartRepository.findByCustomerIdForUpdate(customer.getId())
                 .orElseGet(() -> cartRepository.save(Cart.builder()
                         .customer(customer)
                         .totalItems(0)
