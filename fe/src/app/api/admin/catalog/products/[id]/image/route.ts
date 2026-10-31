@@ -15,9 +15,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (who.identity.role !== "ADMIN") return Response.json({ success: false, code: 403, message: "Chỉ ADMIN được tải ảnh sản phẩm.", result: null }, { status: 403, headers: { "cache-control": "no-store" } });
   const token = authCookie(request);
   if (!token) return Response.json({ success: false, code: 401, message: "Thiếu phiên quản trị.", result: null }, { status: 401, headers: { "cache-control": "no-store" } });
+  const contentType = request.headers.get("content-type");
+  if (!contentType || !contentType.toLowerCase().includes("multipart/form-data")) {
+    return Response.json({ success: false, code: 400, message: "Yêu cầu phải là multipart/form-data.", result: null }, { status: 400, headers: { "cache-control": "no-store" } });
+  }
   try {
-    const form = await request.formData();
-    const upstream = await fetch(`${BE}/api/v1/products/${n}/image`, { method: "POST", headers: { authorization: `Bearer ${token}`, accept: "application/json" }, body: form, cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(30000)]) });
+    const body = await request.arrayBuffer();
+    const upstream = await fetch(`${BE}/api/v1/products/${n}/image`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, accept: "application/json", "content-type": contentType },
+      body,
+      cache: "no-store",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(30000)]),
+    });
     const type = upstream.headers.get("content-type");
     const headers = new Headers({ "cache-control": "no-store" });
     if (type) headers.set("content-type", type);
