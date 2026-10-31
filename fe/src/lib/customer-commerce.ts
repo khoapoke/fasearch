@@ -159,6 +159,8 @@ export function normalizeCheckoutOrder(raw: unknown, requestedVoucherCode?: stri
   const order = normalizeOrder(raw);
   const code = requestedVoucherCode?.trim().toUpperCase();
   if (code && (order.voucherId === null || order.voucherCode?.trim().toUpperCase() !== code || !order.voucherCampaignName || order.voucherCampaignVersion === null)) throw new CommerceError(INVALID, 502);
+  // ID-only voucher compatibility is for persisted reads, never a new checkout response.
+  if (!code && (order.voucherId !== null || order.voucherCode !== null || order.voucherCampaignName !== null || order.voucherCampaignVersion !== null)) throw new CommerceError(INVALID, 502);
   return order;
 }
 

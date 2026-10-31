@@ -59,6 +59,44 @@ test("checkout with a requested voucher requires the matching complete persisted
   }
 });
 
+test("checkout create response rejects an unexpected voucher but preserves no-voucher, points-only and requested-voucher orders", async () => {
+  const plainNoVoucher = {
+    ...baseOrder, discountAmount: 0, totalAmount: 115000, voucherId: null, voucherCode: null,
+    voucherCampaignName: null, voucherCampaignVersion: null, redeemedPoints: 0, pointsDiscount: 0,
+    loyaltyPolicyId: null, loyaltyPolicyVersion: null, redeemCurrencyPerPointSnapshot: null,
+  };
+  const pointsOnly = {
+    ...plainNoVoucher, discountAmount: 2000, totalAmount: 113000, redeemedPoints: 2,
+    pointsDiscount: 2000, loyaltyPolicyId: 7, loyaltyPolicyVersion: 2,
+    redeemCurrencyPerPointSnapshot: 1000,
+  };
+  const input = {
+    deliveryAddress: "HCM", receiverName: "Synthetic", receiverPhone: "0900000000",
+    paymentMethod: "COD", shippingFee: 15000, quoteFingerprint: "a".repeat(64),
+    expectedMerchandiseAmountDue: 100000, checkoutKey: "checkout-test",
+  };
+  const realFetch = globalThis.fetch;
+  let responseOrder = plainNoVoucher;
+  globalThis.fetch = async () => new Response(JSON.stringify({ success: true, result: responseOrder }), { status: 200, headers: { "content-type": "application/json" } });
+  try {
+    assert.equal((await createCustomerOrder(input)).voucherId, null);
+
+    responseOrder = pointsOnly;
+    const pointsOrder = await createCustomerOrder({ ...input, redeemedPoints: 2 });
+    assert.equal(pointsOrder.voucherId, null);
+    assert.equal(pointsOrder.pointsDiscount, 2000);
+    assert.equal(pointsOrder.discountAmount, 2000);
+
+    responseOrder = baseOrder;
+    assert.equal((await createCustomerOrder({ ...input, voucherCode: "SAVE10" })).voucherCode, "SAVE10");
+
+    responseOrder = { ...legacyVoucherIdOnlyOrder, orderId: 10, status: "PENDING", voucherId: 73, discountAmount: 10 };
+    await assert.rejects(createCustomerOrder(input), (error) => error instanceof CommerceError && error.status === 502);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test("legacy no-code order preserves supplied fields but rejects blank code and unknown discount", () => {
   const withLegacyFields = normalizeOrderDetail({ ...legacyVoucherIdOnlyOrder, voucherCampaignName: "Historical name", voucherCampaignVersion: 0 });
   assert.equal(withLegacyFields.voucherCampaignName, "Historical name");
