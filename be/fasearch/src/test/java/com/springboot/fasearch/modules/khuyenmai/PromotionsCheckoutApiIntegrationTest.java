@@ -280,6 +280,11 @@ class PromotionsCheckoutApiIntegrationTest {
                 "{\"deliveryAddress\":\"Legacy no-voucher order\",\"shippingFee\":5000,\"paymentMethod\":\"COD\"}", customerToken);
         assertThat(legacyCheckout.status()).isEqualTo(201);
         long legacyOrderId = result(legacyCheckout).get("orderId").asLong();
+        Resp legacyPointCalculation = call("POST", "/api/v1/payments/calculate",
+                "{\"orderId\":" + legacyOrderId + ",\"redeemedPoints\":1}", customerToken);
+        assertThat(legacyPointCalculation.status()).isEqualTo(200);
+        assertThat(result(legacyPointCalculation).get("pointDiscount").decimalValue()).isEqualByComparingTo("1000.00");
+        assertThat(customerRepository.findById(customerId).orElseThrow().getAccumulatePoint()).isEqualTo(1000);
         Order legacyOrder = orderRepository.findById(legacyOrderId).orElseThrow();
         legacyOrder.setVoucherId(30L); // Existing V8 orders can have a voucher FK without the new S1 code snapshot.
         orderRepository.saveAndFlush(legacyOrder);
