@@ -46,9 +46,9 @@ async function call<T>(path: string, method = "GET", body?: unknown): Promise<T>
 }
 
 export async function fetchCampaigns(query: string): Promise<CampaignPage> {
-  const page = await call<{ content: Campaign[]; pageNumber: number; pageSize: number; totalElements: number; totalPages: number; isLast: boolean }>(`/api/admin/promotions?${query}`);
-  if (!Array.isArray(page.content) || !Number.isInteger(page.pageNumber) || !Number.isInteger(page.pageSize) || !Number.isInteger(page.totalElements) || !Number.isInteger(page.totalPages) || typeof page.isLast !== "boolean") throw new PromotionError("Phản hồi danh sách khuyến mãi không đúng định dạng.", 502, "INVALID_RESPONSE");
-  return { data: page.content.map(normalizeCampaign), page: page.pageNumber, size: page.pageSize, totalElements: page.totalElements, totalPages: page.totalPages, isLast: page.isLast };
+  const page = await call<{ content: Campaign[]; pageNumber: number; pageSize: number; totalElements: number; totalPages: number; last: boolean }>(`/api/admin/promotions?${query}`);
+  if (!Array.isArray(page.content) || !Number.isInteger(page.pageNumber) || !Number.isInteger(page.pageSize) || !Number.isInteger(page.totalElements) || !Number.isInteger(page.totalPages) || typeof page.last !== "boolean") throw new PromotionError("Phản hồi danh sách khuyến mãi không đúng định dạng.", 502, "INVALID_RESPONSE");
+  return { data: page.content.map(normalizeCampaign), page: page.pageNumber, size: page.pageSize, totalElements: page.totalElements, totalPages: page.totalPages, isLast: page.last };
 }
 
 export async function fetchCampaign(id: number): Promise<Campaign> { return normalizeCampaign(await call(`/api/admin/promotions/${id}`)); }

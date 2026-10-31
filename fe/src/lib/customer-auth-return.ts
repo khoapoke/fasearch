@@ -1,8 +1,7 @@
-// New-auth-only return targets. Legacy /tai-khoan/*, /kenh-ban/* and /quan-tri/*
-// still depend on the old FASEARCH_SESSION and would bounce a new-JWT user
-// back to login, so they are deliberately outside this allowlist.
+// Legacy /tai-khoan/*, /kenh-ban/* and /quan-tri/* routes depend on the old
+// FASEARCH_SESSION; this exact promotions route has its own ADMIN-only JWT BFF.
 const FALLBACK = "/tai-khoan";
-const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi", "/quan-tri/phieu-xuat", "/quan-tri/kiem-ke", "/quan-tri/kiem-ke/moi", "/tim-kiem-ai", "/nam", "/quan-tri/khach-hang", "/quan-tri/khach-hang/moi", "/quan-tri/nhan-vien", "/quan-tri/nhan-vien/moi", "/quan-tri/tai-khoan-noi-bo"]);
+const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/khuyen-mai", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi", "/quan-tri/phieu-xuat", "/quan-tri/kiem-ke", "/quan-tri/kiem-ke/moi", "/tim-kiem-ai", "/nam", "/quan-tri/khach-hang", "/quan-tri/khach-hang/moi", "/quan-tri/nhan-vien", "/quan-tri/nhan-vien/moi", "/quan-tri/tai-khoan-noi-bo"]);
 
 function hasControlChar(value: string): boolean {
   for (const char of value) {
