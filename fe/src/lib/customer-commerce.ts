@@ -122,7 +122,10 @@ export function normalizeOrder(raw: unknown): CustomerOrder {
   const voucherCode = text(v.voucherCode);
   const voucherCampaignName = text(v.voucherCampaignName);
   const voucherCampaignVersion = v.voucherCampaignVersion === null || v.voucherCampaignVersion === undefined ? null : integer(v.voucherCampaignVersion, 0);
-  if ((voucherCode && (!voucherId || !voucherCampaignName || voucherCampaignVersion === null || v.discountAmount === undefined || v.discountAmount === null)) || (voucherId !== null && !voucherCode)) throw new CommerceError(INVALID, 502);
+  const legacyVoucherReference = voucherId !== null
+    && (v.voucherCode === null || v.voucherCode === undefined)
+    && v.discountAmount !== null && v.discountAmount !== undefined;
+  if ((voucherCode && (!voucherId || !voucherCampaignName || voucherCampaignVersion === null || v.discountAmount === undefined || v.discountAmount === null)) || (voucherId !== null && !voucherCode && !legacyVoucherReference)) throw new CommerceError(INVALID, 502);
   return {
     orderId: integer(v.orderId, 1), orderCode: typeof v.orderCode === "string" ? v.orderCode : "",
     status: typeof v.status === "string" ? v.status : "", customerName: text(v.customerName),
