@@ -832,3 +832,6 @@ html[data-theme="dark"] .aiPage .ai-input {
     white-space: nowrap;
   }
 }
+
+.result-card.is-selected { outline: 2px solid var(--accent, #2563eb); }
+.result-selection-bar { display:flex; gap:12px; align-items:center; margin:8px 0; }

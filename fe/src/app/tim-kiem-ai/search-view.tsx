@@ -331,6 +331,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [state, setState] = useState<SearchState>(() => previewSearchState(preview));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [fieldError, setFieldError] = useState<FieldError>(null);
   const [selectedExample, setSelectedExample] = useState("");
   const [viewer, setViewer] = useState<{ src: string; alt: string; caption: string; trigger: HTMLButtonElement } | null>(null);
@@ -562,6 +563,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     const controller = new AbortController();
     abortRef.current = controller;
     setState({ kind: "loading" });
+    setSelectedIds(new Set());
     let stage: "decode" | "request" | "json" = "decode";
 
     try {
@@ -708,8 +710,21 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
             {state.hits.map((hit) => {
               const photo = state.photos?.[hit.sourceId];
               const title = hit.tenHienThi ?? hit.fileName;
+              const isSelected = selectedIds.has(hit.sourceId);
+              const toggleSelect = () => setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(hit.sourceId)) next.delete(hit.sourceId); else next.add(hit.sourceId);
+                return next;
+              });
               return (
-                <article className="result-card" key={hit.sourceId}>
+                <article
+                  className={"result-card" + (isSelected ? " is-selected" : "")}
+                  key={hit.sourceId}
+                  aria-pressed={isSelected}
+                  tabIndex={0}
+                  onClick={toggleSelect}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSelect(); } if (e.key === "Escape") setSelectedIds(new Set()); }}
+                >
                   <ResultMedia hit={hit} photo={photo} failImages={state.failImages} onZoom={(trigger) => openZoom(hit, trigger, photo, state.mock)} />
                   <div className="result-copy">
                     <h3>{title}</h3>
@@ -745,6 +760,12 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
               );
             })}
           </div>
+          {selectedIds.size > 0 ? (
+            <div className="result-selection-bar" role="status" aria-live="polite">
+              <span>Đã chọn {selectedIds.size} kết quả</span>
+              <button type="button" className="text-button" onClick={() => setSelectedIds(new Set())}>Bỏ chọn tất cả</button>
+            </div>
+          ) : null}
           <p className="result-provenance">
             {state.mock
               ? "Kết quả mẫu dùng cho kiểm tra giao diện; ảnh minh họa, không phải kết quả AI thật."
