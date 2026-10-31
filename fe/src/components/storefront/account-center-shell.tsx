@@ -6,10 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon, type UiIcon } from "@/components/ui/icon";
 import { StorefrontShell } from "./storefront-shell";
 import {
-  logout,
-  readOwnProfile,
-  type OwnProfile,
-} from "@/components/account/account-session";
+  AuthApiError,
+  authLogout,
+  authMe,
+  type AuthIdentity,
+} from "@/lib/customer-auth-client";
 
 const NAV: Array<{ href: string; label: string; icon: UiIcon }> = [
   { href: "/don-hang", label: "Đơn hàng", icon: "bag" },
@@ -41,30 +42,33 @@ export function AccountCenterShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [profile, setProfile] = useState<OwnProfile | null>(null);
+  const [profile, setProfile] = useState<AuthIdentity | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "signedout">("loading");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let live = true;
-    readOwnProfile()
+    // Candidate JWT identity gate: the same /me the login flow uses. The legacy
+    // FASEARCH_SESSION profile call redirects even for a valid candidate login.
+    authMe()
       .then((result) => {
         if (!live) return;
-        if (!result) {
-          setState("signedout");
-          router.replace(`/dang-nhap?next=${encodeURIComponent(pathname)}`);
-          return;
-        }
         setProfile(result);
         setState("ready");
       })
-      .catch(() => live && setState("signedout"));
+      .catch((error) => {
+        if (!live) return;
+        setState("signedout");
+        if (error instanceof AuthApiError && error.status === 401) {
+          router.replace(`/dang-nhap?next=${encodeURIComponent(pathname)}`);
+        }
+      });
     return () => {
       live = false;
     };
   }, [router, pathname]);
 
-  const displayName = profile?.customer?.hoTen || profile?.account.username || "Tài khoản";
+  const displayName = profile?.username || "Tài khoản";
 
   return (
     <StorefrontShell active="/tai-khoan">
@@ -86,7 +90,7 @@ export function AccountCenterShell({
                   <span className="sfIdentityAvatar" aria-hidden="true">{initials(displayName)}</span>
                   <div>
                     <p className="sfIdentityName">{displayName}</p>
-                    <p className="sfIdentitySub">{profile.account.username}</p>
+                    <p className="sfIdentitySub">{profile.username}</p>
                     
                   </div>
                 </div>
@@ -107,7 +111,7 @@ export function AccountCenterShell({
                 onClick={async () => {
                   setBusy(true);
                   try {
-                    await logout();
+                    await authLogout();
                     router.replace("/dang-nhap");
                     router.refresh();
                   } catch {

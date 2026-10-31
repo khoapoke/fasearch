@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authBackendUrl } from "@/lib/server/be-upstream";
 
 // Candidate-only D060 transport: JWT stays server-side in an HttpOnly cookie.
 // No token/password logging, no generic proxy, no legacy auth fallback.
@@ -25,12 +26,6 @@ export type SafeIdentity = {
 };
 
 type Envelope<T> = { success?: boolean; code?: number; message?: string; result?: T; errors?: Array<{ field?: string; reason?: string }> };
-
-function backendUrl(): string {
-  const value = process.env.FASEARCH_CUSTOMER_AUTH_BACKEND_URL;
-  if (!value) throw new Error("auth backend not configured");
-  return value.replace(/\/+$/, "");
-}
 
 function trustedOrigin(): string {
   const value = process.env.FASEARCH_AUTH_PILOT_ORIGIN;
@@ -119,7 +114,7 @@ function requestSignal(signal?: AbortSignal): AbortSignal {
 }
 
 export async function forwardAuth(path: string, body: unknown, signal?: AbortSignal): Promise<{ response: Response; payload: Envelope<{ accessToken?: unknown; tokenType?: unknown; expiresIn?: unknown; username?: unknown; role?: unknown }> | null }> {
-  const response = await fetch(`${backendUrl()}${path}`, {
+  const response = await fetch(`${authBackendUrl()}${path}`, {
     method: "POST",
     cache: "no-store",
     headers: { ...upstreamHeaders(), "content-type": "application/json" },
@@ -130,7 +125,7 @@ export async function forwardAuth(path: string, body: unknown, signal?: AbortSig
 }
 
 export async function fetchMyInfo(token: string, signal?: AbortSignal): Promise<{ response: Response; payload: Envelope<Record<string, unknown>> | null }> {
-  const response = await fetch(`${backendUrl()}/api/v1/auth/my-info`, {
+  const response = await fetch(`${authBackendUrl()}/api/v1/auth/my-info`, {
     method: "GET",
     cache: "no-store",
     headers: upstreamHeaders(token),

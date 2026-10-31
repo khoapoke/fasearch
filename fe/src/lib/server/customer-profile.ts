@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { authCookie, authError, fetchMyInfo, readJsonObject, requireJsonPost } from "@/lib/server/customer-auth";
-const BE = "http://127.0.0.1:18122";
+import { authBackendUrl } from "@/lib/server/be-upstream";
+// Profile rides the same paired BE as login/my-info; the upstream is configured,
+// never a per-module literal.
 const GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
 const PHONE = /^(0|\+84)[0-9]{9}$/;
 function out(up: Response): Response { const h = new Headers({ "cache-control": "no-store" }); const t = up.headers.get("content-type"); if (t) h.set("content-type", t); return new Response(up.body, { status: up.status, headers: h }); }
@@ -17,7 +19,7 @@ async function own(request: NextRequest): Promise<{ token: string; customerId: n
 }
 export async function getSelfProfile(request: NextRequest): Promise<Response> {
   const who = await own(request); if ("response" in who) return who.response;
-  try { return out(await fetch(`${BE}/api/v1/users/customers/${who.customerId}`, { method: "GET", headers: { accept: "application/json", authorization: `Bearer ${who.token}` }, cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) })); }
+  try { return out(await fetch(`${authBackendUrl()}/api/v1/users/customers/${who.customerId}`, { method: "GET", headers: { accept: "application/json", authorization: `Bearer ${who.token}` }, cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) })); }
   catch { return authError("Không kết nối được máy chủ hồ sơ.", 503, "PROFILE_UNAVAILABLE"); }
 }
 export async function updateSelfProfile(request: NextRequest): Promise<Response> {
@@ -33,6 +35,6 @@ export async function updateSelfProfile(request: NextRequest): Promise<Response>
   if (address !== undefined && address.length > 255) return authError("Địa chỉ tối đa 255 ký tự.", 400, "INVALID_ADDRESS");
   const body: Record<string, unknown> = {};
   if (firstName !== undefined) body.firstName = firstName; if (lastName !== undefined) body.lastName = lastName; if (phoneNumber !== undefined) body.phoneNumber = phoneNumber; if (gender !== undefined && gender !== "") body.gender = gender; if (dob !== undefined && dob !== "") body.dob = dob; if (address !== undefined) body.address = address;
-  try { return out(await fetch(`${BE}/api/v1/users/customers/${who.customerId}`, { method: "PATCH", headers: { accept: "application/json", authorization: `Bearer ${who.token}`, "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) })); }
+  try { return out(await fetch(`${authBackendUrl()}/api/v1/users/customers/${who.customerId}`, { method: "PATCH", headers: { accept: "application/json", authorization: `Bearer ${who.token}`, "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) })); }
   catch { return authError("Không kết nối được máy chủ hồ sơ.", 503, "PROFILE_UNAVAILABLE"); }
 }
