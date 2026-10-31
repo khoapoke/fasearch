@@ -156,6 +156,7 @@ class PromotionsCheckoutApiIntegrationTest {
                 "{\"maCode\":\"  " + voucherCode.toLowerCase(java.util.Locale.ROOT) + "  \",\"soLuongPhatHanh\":3}", adminToken);
         assertThat(issued.status()).isEqualTo(201);
         assertThat(result(issued).get("maCode").asText()).isEqualTo(voucherCode);
+        long voucherId = result(issued).get("maVoucher").asLong();
 
         Resp searched = call("GET", "/api/v1/khuyen-mai?q=" + URLEncoder.encode(campaignName, StandardCharsets.UTF_8)
                 + "&page=0&size=10", null, adminToken);
@@ -164,6 +165,9 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(page.get("content").size()).isEqualTo(1);
         assertThat(page.get("pageNumber").asInt()).isZero();
         assertThat(page.get("pageSize").asInt()).isEqualTo(10);
+        assertThat(page.has("last")).isTrue();
+        assertThat(page.get("last").isBoolean()).isTrue();
+        assertThat(page.has("isLast")).isFalse();
         assertThat(page.get("content").get(0).get("codes").isEmpty()).isTrue();
         String forbiddenCampaign = "{\"tenCtkm\":\"Forbidden " + suffix
                 + "\",\"loaiGiam\":\"PHAN_TRAM\",\"giaTriGiam\":10,\"ngayBatDau\":\"" + start
@@ -280,6 +284,7 @@ class PromotionsCheckoutApiIntegrationTest {
                 "{\"deliveryAddress\":\"Legacy no-voucher order\",\"shippingFee\":5000,\"paymentMethod\":\"COD\"}", customerToken);
         assertThat(legacyCheckout.status()).isEqualTo(201);
         long legacyOrderId = result(legacyCheckout).get("orderId").asLong();
+        assertOrderListDetailParity(legacyOrderId, null, null, null, null);
         Resp legacyPointCalculation = call("POST", "/api/v1/payments/calculate",
                 "{\"orderId\":" + legacyOrderId + ",\"redeemedPoints\":1}", customerToken);
         assertThat(legacyPointCalculation.status()).isEqualTo(200);
@@ -314,6 +319,43 @@ class PromotionsCheckoutApiIntegrationTest {
                 paymentBody(legacyPayOrderId, legacyDue.add(BigDecimal.valueOf(5000))), customerToken);
         assertThat(legacyCustomerPayment.status()).as("Legacy V8 voucher FK without S1 code snapshot remains payable: %s", legacyCustomerPayment.body()).isEqualTo(201);
         assertThat(result(legacyCustomerPayment).get("paymentStatus").asText()).isEqualTo("PAID");
+
+        Resp editedCampaign = call("PUT", "/api/v1/khuyen-mai/" + campaignId,
+                "{\"phienBan\":1,\"tenCtkm\":\"Changed " + suffix + "\"}", adminToken);
+        assertThat(editedCampaign.status()).isEqualTo(200);
+        assertThat(result(editedCampaign).get("phienBan").asLong()).isEqualTo(2);
+        assertOrderListDetailParity(orderId, voucherId, voucherCode, campaignName, 1L);
+    }
+
+    private void assertOrderListDetailParity(long orderId, Long voucherId, String code, String campaignName,
+            Long campaignVersion) throws Exception {
+        Resp detailResponse = call("GET", "/api/v1/orders/" + orderId, null, customerToken);
+        assertThat(detailResponse.status()).isEqualTo(200);
+        JsonNode detail = result(detailResponse);
+        String orderCode = URLEncoder.encode(detail.get("orderCode").asText(), StandardCharsets.UTF_8);
+        Resp listResponse = call("GET", "/api/v1/orders?page=0&size=50&orderCode=" + orderCode, null, customerToken);
+        assertThat(listResponse.status()).isEqualTo(200);
+        JsonNode content = result(listResponse).get("content");
+        assertThat(content).hasSize(1);
+        JsonNode listOrder = content.get(0);
+        assertThat(listOrder.get("orderId").asLong()).isEqualTo(orderId);
+        assertThat(listOrder.get("voucherId")).isEqualTo(detail.get("voucherId"));
+        assertThat(listOrder.get("voucherCode")).isEqualTo(detail.get("voucherCode"));
+        assertThat(listOrder.get("voucherCampaignName")).isEqualTo(detail.get("voucherCampaignName"));
+        assertThat(listOrder.get("voucherCampaignVersion")).isEqualTo(detail.get("voucherCampaignVersion"));
+        assertThat(listOrder.get("totalAmount")).isEqualTo(detail.get("totalAmount"));
+        assertThat(listOrder.get("discountAmount")).isEqualTo(detail.get("discountAmount"));
+        if (voucherId == null) {
+            assertThat(listOrder.get("voucherId").isNull()).isTrue();
+            assertThat(listOrder.get("voucherCode").isNull()).isTrue();
+            assertThat(listOrder.get("voucherCampaignName").isNull()).isTrue();
+            assertThat(listOrder.get("voucherCampaignVersion").isNull()).isTrue();
+        } else {
+            assertThat(listOrder.get("voucherId").asLong()).isEqualTo(voucherId);
+            assertThat(listOrder.get("voucherCode").asText()).isEqualTo(code);
+            assertThat(listOrder.get("voucherCampaignName").asText()).isEqualTo(campaignName);
+            assertThat(listOrder.get("voucherCampaignVersion").asLong()).isEqualTo(campaignVersion);
+        }
     }
 
     private Resp updateStatus(long orderId, String status) {
