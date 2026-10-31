@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
-import { readFavs, toggleFav } from "@/components/storefront/storefront-client";
+import { loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
 import { ChevronDownIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
 import {
   CatalogError,
@@ -43,22 +43,29 @@ function CatalogImage({ src, alt }: { src: string | null; alt: string }) {
 }
 
 function FavoriteButton({ id, name }: { id: number; name: string }) {
-  const [loved, setLoved] = useState(false);
+  const [loved, setLoved] = useState<boolean | null>(null);
   useEffect(() => {
-    const sync = () => setLoved(readFavs().includes(`sp:${id}`));
-    sync();
-    window.addEventListener("fasearch-favs", sync);
-    return () => window.removeEventListener("fasearch-favs", sync);
+    let active = true;
+    loadFavoriteIds().then((ids) => { if (active) setLoved(ids.has(id)); }).catch(() => { if (active) setLoved(false); });
+    return () => { active = false; };
   }, [id]);
+  const isLoved = loved ?? false;
   return (
     <button
       className="cat-favorite"
       type="button"
-      aria-pressed={loved}
-      aria-label={`${loved ? "Bỏ yêu thích" : "Yêu thích"} ${name}`}
-      onClick={() => setLoved(toggleFav(`sp:${id}`))}
+      aria-pressed={isLoved}
+      aria-label={`${isLoved ? "Bỏ yêu thích" : "Yêu thích"} ${name}`}
+      onClick={async () => {
+        try {
+          const next = await toggleFavoriteServer(id);
+          setLoved(next);
+        } catch {
+          window.location.href = "/dang-nhap?next=" + encodeURIComponent(window.location.pathname);
+        }
+      }}
     >
-      <HeartIcon filled={loved} />
+      <HeartIcon filled={isLoved} />
     </button>
   );
 }

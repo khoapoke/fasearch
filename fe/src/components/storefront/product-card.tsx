@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { readFavs, toggleFav } from "./storefront-client";
+import { clearFavoriteCache, isFavoriteCached, loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
 import { Icon } from "@/components/ui/icon";
 import { StitchImage } from "@/components/ui/stitch-image";
 import "./listing.css";
@@ -27,14 +27,12 @@ export function formatVnd(value: number): string {
 }
 
 export function ProductCard({ product }: { product: CardProduct }) {
-  const key = `sp:${product.id}`;
   const [loved, setLoved] = useState<boolean | null>(null);
   useEffect(() => {
-    const sync = () => setLoved(readFavs().includes(key));
-    sync();
-    window.addEventListener("fasearch-favs", sync);
-    return () => window.removeEventListener("fasearch-favs", sync);
-  }, [key]);
+    let active = true;
+    loadFavoriteIds().then((ids) => { if (active) setLoved(ids.has(product.id)); }).catch(() => { if (active) setLoved(false); });
+    return () => { active = false; };
+  }, [product.id]);
   const isLoved = loved ?? false;
   return (
     <article className="pCard">
@@ -60,7 +58,14 @@ export function ProductCard({ product }: { product: CardProduct }) {
         type="button"
         aria-pressed={isLoved}
         aria-label={isLoved ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
-        onClick={() => setLoved(toggleFav(key))}
+        onClick={async () => {
+          try {
+            const next = await toggleFavoriteServer(product.id);
+            setLoved(next);
+          } catch {
+            window.location.href = "/dang-nhap?next=" + encodeURIComponent(window.location.pathname);
+          }
+        }}
       >
         <Icon name="heart" size={17} filled={isLoved} />
       </button>

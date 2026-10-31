@@ -81,7 +81,13 @@ export async function authLogin(username: string, password: string, signal?: Abo
     body: JSON.stringify({ username, password }),
     signal,
   });
-  return parse<AuthIdentity>(response);
+  const result = parse<AuthIdentity>(response);
+  const { clearFavoriteCache } = await import("./favorites-store");
+  clearFavoriteCache();
+  // prefetch favorite ids for the new session (best-effort)
+  const { loadFavoriteIds } = await import("./favorites-store");
+  void loadFavoriteIds().catch(() => {});
+  return result;
 }
 
 export async function authRegister(input: {
@@ -111,6 +117,8 @@ export async function authMe(signal?: AbortSignal): Promise<AuthIdentity> {
 
 export async function authLogout(signal?: AbortSignal): Promise<void> {
   ensureAuthAttempt();
+  const { clearFavoriteCache } = await import("./favorites-store");
+  clearFavoriteCache();
   const response = await fetch("/api/customer-auth/logout", {
     method: "POST",
     headers: { "content-type": "application/json" },
