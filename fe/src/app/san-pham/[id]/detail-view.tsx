@@ -156,6 +156,8 @@ export function DetailView({ id }: { id: string }) {
           : [...current, { id: product?.id ?? Number(id), name: product?.name ?? "Sản phẩm", price, image: product?.imageUrl ?? undefined, qty: quantity, meta, skuId: selected.skuId, color, size }];
         writeCart(next);
         setAddNotice("Đã lưu nháp trên trình duyệt. Đăng nhập để đồng bộ giỏ máy chủ; món chỉ được gửi khi bạn đăng nhập.");
+      } else if (failure instanceof CommerceError && failure.status === 403) {
+        setAddError("Tài khoản của bạn có vai trò Quản trị viên/Nhân viên. Chức năng mua hàng trực tuyến chỉ dành cho tài khoản Khách hàng. Vui lòng chuyển sang tài khoản Khách hàng để đặt đơn.");
       } else {
         setAddError(failure instanceof Error ? failure.message : "Không thêm được vào giỏ. Thử lại.");
       }

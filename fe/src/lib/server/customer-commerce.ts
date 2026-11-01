@@ -33,12 +33,14 @@ export async function commerceUpstream(
   } catch {
     return Response.json({ success: false, code: 503, message: "Không kết nối được máy chủ giỏ hàng.", result: null }, { status: 503, headers: { "cache-control": "no-store" } });
   }
-  if (init.safeErrors && !upstream.ok) {
+  if (!upstream.ok) {
     let code: number | string = upstream.status;
+    let upstreamMessage = "";
     let errors: Array<{ field: string; reason: string }> | undefined;
     try {
-      const payload = await upstream.json() as { code?: unknown; errors?: unknown };
+      const payload = await upstream.json() as { code?: unknown; message?: unknown; errors?: unknown };
       if (typeof payload.code === "number" && Number.isSafeInteger(payload.code)) code = payload.code;
+      if (typeof payload.message === "string") upstreamMessage = payload.message;
       if (Array.isArray(payload.errors)) errors = payload.errors.flatMap((entry) => {
         if (!entry || typeof entry !== "object") return [];
         const item = entry as Record<string, unknown>;
@@ -61,13 +63,32 @@ export async function commerceUpstream(
       4207: "Ngưỡng hạng đã đổi. Tải lại rồi thử lại.",
       4208: "Trạng thái điểm đã thay đổi đồng thời. Tải lại báo giá.",
     };
-    const message = typeof code === "number" && messages[code] ? messages[code]
-      : upstream.status === 401 ? "Vui lòng đăng nhập lại."
+    let message = typeof code === "number" && messages[code] ? messages[code] : "";
+    if (!message && upstreamMessage) {
+      if (/insufficient.*stock|hết hàng|tồn kho/i.test(upstreamMessage)) {
+        message = "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.";
+      } else if (/cart.*empty|giỏ hàng.*trống/i.test(upstreamMessage)) {
+        message = "Giỏ hàng hiện đang trống.";
+      } else if (/access denied|forbidden|không có quyền|permission/i.test(upstreamMessage)) {
+        message = "Tài khoản không có quyền thực hiện thao tác này.";
+      } else if (/unauthenticated|unauthorized|hết phiên/i.test(upstreamMessage)) {
+        message = "Vui lòng đăng nhập lại để tiếp tục.";
+      } else if (/not found|không tìm thấy/i.test(upstreamMessage)) {
+        message = "Không tìm thấy dữ liệu yêu cầu.";
+      } else if (/already paid|đã thanh toán/i.test(upstreamMessage)) {
+        message = "Đơn hàng đã được thanh toán.";
+      } else if (/invoice before completion/i.test(upstreamMessage)) {
+        message = "Đơn hàng cần được ghi nhận thu tiền (hóa đơn) trước khi hoàn tất.";
+      }
+    }
+    if (!message) {
+      message = upstream.status === 401 ? "Vui lòng đăng nhập lại."
         : upstream.status === 403 ? "Bạn không có quyền thực hiện thao tác này."
           : upstream.status === 404 ? "Không tìm thấy dữ liệu yêu cầu."
             : upstream.status === 409 ? "Dữ liệu đã thay đổi. Tải lại rồi thử lại."
               : upstream.status >= 500 ? "Dịch vụ đang bận. Thử lại sau."
-                : "Yêu cầu chưa thể xử lý.";
+                : "Yêu cầu chưa thể xử lý. Kiểm tra lại dữ liệu.";
+    }
     return Response.json({ success: false, code, message, ...(errors?.length ? { errors } : {}), result: null }, { status: upstream.status, headers: { "cache-control": "no-store" } });
   }
   const out = new Headers({ "cache-control": "no-store" });

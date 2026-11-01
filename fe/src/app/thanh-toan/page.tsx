@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
+import { getSelfProfile } from "@/lib/customer-profile-client";
 import { CommerceError, formatMoney, type CustomerCartQuote } from "@/lib/customer-commerce";
 import { validatePointsInput } from "@/lib/benefits";
 import { newOperationKey } from "@/lib/commerce";
@@ -97,6 +98,26 @@ function CheckoutPageContent() {
   }, [cart?.items.length, district, province, weight]);
 
   useEffect(() => {
+    if (authState !== "authenticated") return;
+    const c = new AbortController();
+    getSelfProfile(c.signal)
+      .then((p) => {
+        if (c.signal.aborted || !p) return;
+        const fullName = [p.lastName, p.firstName].filter(Boolean).join(" ").trim();
+        if (fullName) setName((prev) => (prev ? prev : fullName));
+        if (p.phoneNumber) setPhone((prev) => (prev ? prev : p.phoneNumber));
+        if (p.address) {
+          const addr = p.address;
+          setAddress((prev) => (prev ? prev : addr));
+        }
+      })
+      .catch(() => {
+        /* Best-effort prefill; never blocks checkout */
+      });
+    return () => c.abort();
+  }, [authState]);
+
+  useEffect(() => {
     if (!cart?.items.length) { initialQuoteRequested.current = false; return; }
     if (!initialQuoteRequested.current) {
       initialQuoteRequested.current = true;
@@ -164,7 +185,24 @@ function CheckoutPageContent() {
             <div className="commerce-empty"><h2>Cần đăng nhập</h2><p>Đăng nhập để dùng giỏ máy chủ và tạo đơn thử nghiệm.</p><Link className="commerce-primary" href="/dang-nhap?next=%2Fthanh-toan">Đăng nhập →</Link></div>
           ) : null}
           {authState === "checking" || (authState === "authenticated" && loading && !cart) ? <p className="commerce-status" role="status">Đang tải giỏ hàng…</p> : null}
-          {authState === "error" ? <p className="commerce-status is-error" role="alert">{cartError}</p> : null}
+          {authState === "error" ? (
+            <div className="commerce-empty" role="alert">
+              <h2>{cartError.includes("quyền") ? "Khu vực mua sắm dành cho khách hàng" : "Không tải được giỏ hàng"}</h2>
+              <p>{cartError.includes("quyền")
+                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Nhân viên nên không thể tạo đơn hàng mua sắm. Vui lòng đăng nhập bằng tài khoản Khách hàng để thanh toán hoặc quay lại trang Quản trị."
+                : cartError}</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+                {cartError.includes("quyền") ? (
+                  <>
+                    <Link className="commerce-primary" href="/quan-tri">Đến trang Quản trị →</Link>
+                    <Link className="commerce-ghost" href="/dang-nhap?next=%2Fthanh-toan">Đăng nhập tài khoản Khách hàng</Link>
+                  </>
+                ) : (
+                  <Link className="commerce-ghost" href="/gio-hang">Quay lại giỏ hàng</Link>
+                )}
+              </div>
+            </div>
+          ) : null}
           {empty ? <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Thêm sản phẩm trước khi thanh toán.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div> : null}
 
           {authState === "authenticated" && cart && cart.items.length > 0 ? (

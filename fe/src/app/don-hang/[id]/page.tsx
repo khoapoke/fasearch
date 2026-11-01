@@ -148,11 +148,22 @@ export default function OrderDetailPage() {
 
           {error ? (
             <div ref={errorRef} tabIndex={-1} className="commerce-empty" role="alert">
-              <h2>Không tải được đơn hàng</h2>
-              <p>{error}</p>
-              <button className="commerce-primary" type="button" onClick={load} style={{ width: "auto" }}>
-                Thử lại
-              </button>
+              <h2>{errorStatus === 403 ? "Không có quyền truy cập đơn hàng này" : "Không tải được đơn hàng"}</h2>
+              <p>{errorStatus === 403
+                ? "Đơn hàng này thuộc về khách hàng khác hoặc vai trò tài khoản hiện tại không được phép truy cập."
+                : error}</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+                {errorStatus === 403 ? (
+                  <>
+                    <Link className="commerce-primary" href="/don-hang">Về danh sách đơn của bạn</Link>
+                    <Link className="commerce-ghost" href="/quan-tri/don-hang">Mở quản trị đơn hàng</Link>
+                  </>
+                ) : (
+                  <button className="commerce-primary" type="button" onClick={load} style={{ width: "auto" }}>
+                    Thử lại
+                  </button>
+                )}
+              </div>
             </div>
           ) : null}
 

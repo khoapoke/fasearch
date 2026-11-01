@@ -102,11 +102,22 @@ export default function OrdersPage() {
           {loading ? <p className="commerce-status" role="status">Đang tải đơn hàng…</p> : null}
           {error ? (
             <div className="commerce-empty" role="alert">
-              <h2>Không tải được đơn hàng</h2>
-              <p>{error}</p>
-              <button className="commerce-primary" type="button" onClick={() => load(page, status)} style={{ width: "auto" }}>
-                Thử lại
-              </button>
+              <h2>{errorStatus === 403 ? "Khu vực này dành cho khách hàng mua sắm" : "Không tải được đơn hàng"}</h2>
+              <p>{errorStatus === 403
+                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Nhân viên. Đơn mua hàng trực tuyến cá nhân chỉ hiển thị cho tài khoản Khách hàng. Bạn có thể mở trang Quản trị đơn hàng để quản lý toàn bộ đơn trong hệ thống."
+                : error}</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+                {errorStatus === 403 ? (
+                  <>
+                    <Link className="commerce-primary" href="/quan-tri/don-hang">Đến Quản trị đơn hàng →</Link>
+                    <Link className="commerce-ghost" href="/dang-nhap?next=%2Fdon-hang">Đăng nhập tài khoản Khách hàng</Link>
+                  </>
+                ) : (
+                  <button className="commerce-primary" type="button" onClick={() => load(page, status)} style={{ width: "auto" }}>
+                    Thử lại
+                  </button>
+                )}
+              </div>
             </div>
           ) : null}
           {!loading && !error && rows.length === 0 ? (

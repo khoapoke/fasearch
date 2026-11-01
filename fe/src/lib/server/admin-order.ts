@@ -17,7 +17,7 @@ async function out(upstream: Response): Promise<Response> {
   const type = upstream.headers.get("content-type"); if (type) h.set("content-type", type);
   return new Response(upstream.body, { status: upstream.status, headers: h });
 }
-async function adminOrderWrite(request: NextRequest, path: string, body: Record<string, unknown>, voucherOrderId?: number): Promise<Response> {
+async function adminOrderWrite(request: NextRequest, path: string, body: Record<string, unknown>, shippingOrderId?: number): Promise<Response> {
   const guard = requireJsonPost(request);
   if (guard) return new Response(guard.body, { status: guard.status, headers: { "cache-control": "no-store" } });
   const who = await adminIdentity(request);
@@ -25,11 +25,11 @@ async function adminOrderWrite(request: NextRequest, path: string, body: Record<
   const token = authCookie(request);
   if (!token) return bad("Thiếu phiên quản trị.", 401, "AUTH_REQUIRED");
   try {
-    if (voucherOrderId !== undefined) {
-      const check = await fetch(`${BE}/api/v1/orders/${voucherOrderId}`, { method: "GET", headers: { accept: "application/json", authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) });
+    if (shippingOrderId !== undefined) {
+      const check = await fetch(`${BE}/api/v1/orders/${shippingOrderId}`, { method: "GET", headers: { accept: "application/json", authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) });
       if (!check.ok) return out(check);
-      const envelope = await check.json() as { success?: boolean; result?: { voucherCode?: unknown; status?: unknown } };
-      if (!envelope.success || typeof envelope.result?.voucherCode !== "string" || envelope.result.status !== "SHIPPING") return bad("Chỉ ghi nhận thu COD cho đơn voucher đang giao.", 409, "NOT_ELIGIBLE");
+      const envelope = await check.json() as { success?: boolean; result?: { status?: unknown } };
+      if (!envelope.success || envelope.result?.status !== "SHIPPING") return bad("Chỉ ghi nhận thu COD cho đơn đang giao.", 409, "NOT_ELIGIBLE");
     }
     return await out(await fetch(`${BE}${path}`, { method: "POST", headers: { accept: "application/json", authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) }));
   } catch {
