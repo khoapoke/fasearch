@@ -6,11 +6,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  return commerceUpstream(request, "/api/v1/cart", { method: "GET" });
+  return commerceUpstream(request, "/api/v1/cart", { method: "GET", safeErrors: true });
 }
 
 export async function DELETE(request: NextRequest) {
   const guard = requireJsonPost(request);
   if (guard) return guard;
-  return commerceUpstream(request, "/api/v1/cart", { method: "DELETE", body: {} });
+  return commerceUpstream(request, "/api/v1/cart", { method: "DELETE", body: {}, safeErrors: true });
 }

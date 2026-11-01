@@ -14,5 +14,5 @@ export async function POST(request: NextRequest) {
   const quantity = parsed.body.quantity;
   if (typeof skuId !== "number" || !Number.isSafeInteger(skuId) || skuId < 1) return authError("SKU chưa hợp lệ.", 400, "INVALID_SKU");
   if (typeof quantity !== "number" || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999) return authError("Số lượng phải từ 1 đến 999.", 400, "INVALID_QUANTITY");
-  return commerceUpstream(request, "/api/v1/cart/items", { method: "POST", body: { skuId, quantity } });
+  return commerceUpstream(request, "/api/v1/cart/items", { method: "POST", body: { skuId, quantity }, safeErrors: true });
 }

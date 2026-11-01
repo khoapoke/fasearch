@@ -1,19 +1,23 @@
 import {
-  CommerceError, normalizeCart, normalizeOrderDetail, normalizeOrderPage, normalizeCartQuote,
+  CommerceError, isCustomerSafeReason, normalizeCart, normalizeOrderDetail, normalizeOrderPage, normalizeCartQuote,
   normalizeShipping, normalizeCheckoutOrder, type CustomerCart, type CustomerOrder, type CustomerCartQuote,
   type CustomerOrderDetail, type CustomerOrderPage, type ShippingQuote,
 } from "./customer-commerce.ts";
 
-async function read<T>(response: Response, normalize: (raw: unknown) => T): Promise<T> {
+export async function readCommerceResponse<T>(response: Response, normalize: (raw: unknown) => T): Promise<T> {
   let body: { success?: boolean; message?: string; code?: string | number; result?: unknown; errors?: Array<{ reason?: string }> } | null = null;
   try { body = await response.json(); } catch { /* non-json */ }
   if (!response.ok || body?.success !== true || body.result === undefined) {
-    const reasons = body?.errors?.map((error) => error.reason).filter((reason): reason is string => Boolean(reason));
+    const reasons = body?.errors
+      ?.map((error) => error.reason)
+      .filter((reason): reason is string => Boolean(reason && isCustomerSafeReason(reason)));
     const message = body?.message || "Không thể kết nối máy chủ giỏ hàng.";
     throw new CommerceError(reasons?.length ? `${message}: ${reasons.join("; ")}` : message, response.status || 502, body?.code === undefined ? undefined : String(body.code));
   }
   return normalize(body.result);
 }
+
+const read = readCommerceResponse;
 
 async function call<T>(url: string, init: RequestInit, normalize: (raw: unknown) => T): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init });

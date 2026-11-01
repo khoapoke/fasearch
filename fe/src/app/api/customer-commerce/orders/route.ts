@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const q = new URLSearchParams({ page: String(page), size: String(size) });
   if (status) q.set("status", status);
   if (orderCode) q.set("orderCode", orderCode);
-  return commerceUpstream(request, `/api/v1/orders?${q.toString()}`, { method: "GET" });
+  return commerceUpstream(request, `/api/v1/orders?${q.toString()}`, { method: "GET", safeErrors: true });
 }
 
 export async function POST(request: NextRequest) {

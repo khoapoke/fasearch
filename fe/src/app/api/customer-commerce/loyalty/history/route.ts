@@ -11,5 +11,5 @@ export function GET(request: NextRequest) {
   if (!/^\d+$/.test(page) || Number(page) > 2_147_483_647 || !/^\d+$/.test(size) || Number(size) < 1 || Number(size) > 100) {
     return Response.json({ success: false, code: 400, message: "Trang lịch sử chưa hợp lệ.", result: null }, { status: 400, headers: { "cache-control": "no-store" } });
   }
-  return commerceUpstream(request, `/api/v1/thanh-vien/lich-su?page=${page}&size=${size}`, { method: "GET" });
+  return commerceUpstream(request, `/api/v1/thanh-vien/lich-su?page=${page}&size=${size}`, { method: "GET", safeErrors: true });
 }

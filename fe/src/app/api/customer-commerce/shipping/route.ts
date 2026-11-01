@@ -15,5 +15,5 @@ export async function POST(request: NextRequest) {
   const totalWeightGram = parsed.body.totalWeightGram;
   if (!province || province.length > 100 || !district || district.length > 100) return authError("Tỉnh/quận chưa hợp lệ.", 400, "INVALID_SHIPPING_ADDRESS");
   if (typeof totalWeightGram !== "number" || !Number.isInteger(totalWeightGram) || totalWeightGram < 1 || totalWeightGram > 100000) return authError("Tổng trọng lượng chưa hợp lệ.", 400, "INVALID_WEIGHT");
-  return commerceUpstream(request, "/api/v1/orders/calculate-shipping-fee", { method: "POST", body: { province, district, totalWeightGram } });
+  return commerceUpstream(request, "/api/v1/orders/calculate-shipping-fee", { method: "POST", body: { province, district, totalWeightGram }, safeErrors: true });
 }

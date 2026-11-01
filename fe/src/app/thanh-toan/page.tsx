@@ -7,12 +7,12 @@ import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
 import { getSelfProfile } from "@/lib/customer-profile-client";
-import { CommerceError, formatMoney, type CustomerCartQuote } from "@/lib/customer-commerce";
+import { CommerceError, formatMoney, DEFAULT_WEIGHT_PER_ITEM_GRAM, calculateCartWeightGram, type CustomerCartQuote } from "@/lib/customer-commerce";
 import { validatePointsInput } from "@/lib/benefits";
 import { newOperationKey } from "@/lib/commerce";
 import "@/components/customer-commerce/commerce.css";
 
-const WEIGHT_PER_ITEM_GRAM = 500;
+const WEIGHT_PER_ITEM_GRAM = DEFAULT_WEIGHT_PER_ITEM_GRAM;
 const DEFAULT_PROVINCE = "TP. Hồ Chí Minh";
 const DEFAULT_DISTRICT = "Quận 1";
 
@@ -50,7 +50,7 @@ function CheckoutPageContent() {
   const initialQuoteRequested = useRef(false);
   const checkoutAttempt = useRef<{ signature: string; key: string } | null>(null);
 
-  const weight = Math.max(1, (cart?.totalItems ?? 0) * WEIGHT_PER_ITEM_GRAM);
+  const weight = calculateCartWeightGram(cart?.totalItems ?? 0);
   const key = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weight}`;
   const cartSignature = JSON.stringify(cart?.items.map(({ skuId, quantity, unitPrice, totalPrice }) => [skuId, quantity, unitPrice, totalPrice]) ?? []);
   const pointsRequested = pointsRaw.trim() === "" ? 0 : /^\d+$/.test(pointsRaw.trim()) && Number.isSafeInteger(Number(pointsRaw)) ? Number(pointsRaw) : null;

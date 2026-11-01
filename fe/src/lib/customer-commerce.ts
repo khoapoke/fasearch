@@ -84,6 +84,123 @@ export type CustomerOrderPage = {
 
 export type ShippingQuote = { shippingFee: number; estimatedDays: string };
 
+export const DEFAULT_WEIGHT_PER_ITEM_GRAM = 300;
+
+export function calculateCartWeightGram(totalItems: number): number {
+  return Math.max(1, (Number.isFinite(totalItems) && totalItems > 0 ? totalItems : 0) * DEFAULT_WEIGHT_PER_ITEM_GRAM);
+}
+
+export function isCustomerSafeReason(reason: unknown): reason is string {
+  if (typeof reason !== "string") return false;
+  const trimmed = reason.trim();
+  if (!trimmed) return false;
+  // Reject pure English / technical / raw BE strings
+  if (/[a-zA-Z]/.test(trimmed) && !/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ]/.test(trimmed)) {
+    return false;
+  }
+  // Reject internal backend markers
+  if (/sku|sql|null|undefined|exception|dto|stack|trace|500|400|403|404|entity|table|column|insufficient/i.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
+export function formatCommerceUpstreamError(
+  status: number,
+  payload: { code?: unknown; message?: unknown; errors?: unknown } | null,
+  safeErrors = false,
+): { status: number; body: { success: false; code: number | string; message: string; errors?: Array<{ field: string; reason: string }>; result: null } } {
+  let code: number | string = status;
+  let upstreamMessage = "";
+  let errors: Array<{ field: string; reason: string }> | undefined;
+  if (payload && typeof payload === "object") {
+    if (typeof payload.code === "number" && Number.isSafeInteger(payload.code)) code = payload.code;
+    if (typeof payload.message === "string") upstreamMessage = payload.message;
+    if (Array.isArray(payload.errors)) {
+      errors = payload.errors.flatMap((entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const item = entry as Record<string, unknown>;
+        return typeof item.field === "string" && typeof item.reason === "string" ? [{ field: item.field, reason: item.reason }] : [];
+      });
+    }
+  }
+
+  const messages: Record<number, string> = {
+    4101: "Mã voucher không tồn tại.", 4102: "Chiến dịch hoặc mã voucher đang tạm dừng.",
+    4103: "Voucher chưa đến thời gian sử dụng.", 4104: "Voucher đã hết hạn.",
+    4105: "Voucher đã hết lượt sử dụng.", 4106: "Voucher không áp dụng cho giỏ hàng này.",
+    4107: "Giá hoặc ưu đãi đã thay đổi. Hãy báo giá lại trước khi đặt hàng.",
+    4108: "Yêu cầu đặt hàng đã thay đổi. Hãy tải lại giỏ hàng.",
+    4109: "Chiến dịch đã được cập nhật. Hãy tải lại trước khi sửa tiếp.",
+    4201: "Số dư điểm cũ chưa được ghi nhận mở đầu.",
+    4202: "Chưa có chính sách điểm để đổi.",
+    4203: "Chính sách điểm đang tắt; số dư vẫn được giữ.",
+    4204: "Điểm vượt quá số dư hoặc mức giảm tối đa hiện tại.",
+    4205: "Số dư khách đã được ghi nhận mở đầu trước đó.",
+    4206: "Chính sách đã đổi. Tải lại rồi thử lại.",
+    4207: "Ngưỡng hạng đã đổi. Tải lại rồi thử lại.",
+    4208: "Trạng thái điểm đã thay đổi đồng thời. Tải lại báo giá.",
+  };
+
+  let message = typeof code === "number" && messages[code] ? messages[code] : "";
+  if (!message && upstreamMessage) {
+    if (/insufficient.*stock|hết hàng|tồn kho/i.test(upstreamMessage)) {
+      message = "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.";
+    } else if (/cart.*empty|giỏ hàng.*trống/i.test(upstreamMessage)) {
+      message = "Giỏ hàng hiện đang trống.";
+    } else if (/access denied|forbidden|không có quyền|permission/i.test(upstreamMessage)) {
+      message = "Tài khoản không có quyền thực hiện thao tác này.";
+    } else if (/unauthenticated|unauthorized|hết phiên/i.test(upstreamMessage)) {
+      message = "Vui lòng đăng nhập lại để tiếp tục.";
+    } else if (/not found|không tìm thấy/i.test(upstreamMessage)) {
+      message = "Không tìm thấy dữ liệu yêu cầu.";
+    } else if (/already paid|đã thanh toán/i.test(upstreamMessage)) {
+      message = "Đơn hàng đã được thanh toán.";
+    } else if (/invoice before completion/i.test(upstreamMessage)) {
+      message = "Đơn hàng cần được ghi nhận thu tiền (hóa đơn) trước khi hoàn tất.";
+    }
+  }
+
+  if (!message && errors?.length) {
+    for (const err of errors) {
+      if (/insufficient.*stock|hết hàng|tồn kho/i.test(err.reason)) {
+        message = "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.";
+        break;
+      } else if (/cart.*empty|giỏ hàng.*trống/i.test(err.reason)) {
+        message = "Giỏ hàng hiện đang trống.";
+        break;
+      } else if (/access denied|forbidden|không có quyền|permission/i.test(err.reason)) {
+        message = "Tài khoản không có quyền thực hiện thao tác này.";
+        break;
+      } else if (/not found|không tìm thấy/i.test(err.reason)) {
+        message = "Không tìm thấy dữ liệu yêu cầu.";
+        break;
+      }
+    }
+  }
+
+  if (!message) {
+    message = status === 401 ? "Vui lòng đăng nhập lại."
+      : status === 403 ? "Bạn không có quyền thực hiện thao tác này."
+        : status === 404 ? "Không tìm thấy dữ liệu yêu cầu."
+          : status === 409 ? "Dữ liệu đã thay đổi. Tải lại rồi thử lại."
+            : status >= 500 ? "Dịch vụ đang bận. Thử lại sau."
+              : "Yêu cầu chưa thể xử lý. Kiểm tra lại dữ liệu.";
+  }
+
+  const forwardedErrors = safeErrors ? undefined : (errors?.length ? errors : undefined);
+  return {
+    status,
+    body: {
+      success: false,
+      code,
+      message,
+      ...(forwardedErrors ? { errors: forwardedErrors } : {}),
+      result: null,
+    },
+  };
+}
+
 export class CommerceError extends Error {
   status: number;
   code: string;

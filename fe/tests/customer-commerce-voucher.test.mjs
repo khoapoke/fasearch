@@ -128,7 +128,7 @@ test("cart quote requires complete S2 loyalty fields, consistent server totals a
   assert.throws(() => normalizeCartQuote({ ...raw, pointsDiscount: 1 }), /định dạng/);
 });
 
-test("customer commerce surfaces the v1.4 business code and field reason from a quote error", async () => {
+test("customer commerce surfaces the v1.4 business code and localized safe message from a quote error without raw upstream reasons", async () => {
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
     success: false, code: 4204, message: "Điểm vượt quá giới hạn.", result: null,
@@ -139,7 +139,8 @@ test("customer commerce surfaces the v1.4 business code and field reason from a 
       assert.ok(error instanceof CommerceError);
       assert.equal(error.status, 409);
       assert.equal(error.code, "4204");
-      assert.match(error.message, /Allowed maximum: 4/);
+      assert.match(error.message, /Điểm vượt quá/);
+      assert.equal(error.message.includes("Allowed maximum"), false);
       return true;
     });
   } finally {

@@ -9,5 +9,5 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const { id: raw } = await context.params;
   const id = commerceId(raw);
   if (id === null) return authError("Mã đơn chưa hợp lệ.", 400, "INVALID_ORDER_ID");
-  return commerceUpstream(request, `/api/v1/orders/${id}`, { method: "GET" });
+  return commerceUpstream(request, `/api/v1/orders/${id}`, { method: "GET", safeErrors: true });
 }
