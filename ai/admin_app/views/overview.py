@@ -192,7 +192,7 @@ def render_overview():
                     try:
                         from scripts.seed_data import seed_data
                         seed_data(subfolder=target_sub, batch_size=batch_size_choice)
-                        st.success("Nạp dữ liệu hoàn tất thành công!", icon="")
+                        st.success("Nạp dữ liệu hoàn tất thành công!", icon=":material/check:")
                         st.rerun()
                     except Exception as ex:
                         st.error(f"Lỗi trong quá trình nạp dữ liệu: {ex}")
