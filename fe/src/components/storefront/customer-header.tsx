@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCart } from "./storefront-client";
-import { authMe, type AuthIdentity } from "@/lib/customer-auth-client";
+import { authMe, AuthApiError, isAuthAbort } from "@/lib/customer-auth-client";
+import { resolveHeaderAccountNav, type CustomerHeaderAuthState } from "@/lib/customer-header-nav";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-header.css";
 import { ThemeControl } from "@/components/studio/theme-control";
@@ -96,24 +97,43 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
     ? customerCart.cart?.totalItems ?? 0
     : customerCart.authState === "guest" ? guestCount : 0;
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
-  const [identity, setIdentity] = useState<AuthIdentity | null>(null);
-  const [identityLoading, setIdentityLoading] = useState(true);
+  const mountedRef = useRef(true);
+  const [authState, setAuthState] = useState<CustomerHeaderAuthState>({ status: "loading" });
+
+  const load = useCallback(() => {
+    // Clear previous identity immediately during account switch/reloads so stale identities are never shown
+    setAuthState({ status: "loading" });
+    authMe()
+      .then((identity) => {
+        if (mountedRef.current) setAuthState({ status: "authenticated", identity });
+      })
+      .catch((err) => {
+        if (!mountedRef.current || isAuthAbort(err)) return;
+        if (err instanceof AuthApiError) {
+          if (err.status === 401) {
+            setAuthState({ status: "guest" });
+            return;
+          }
+          if (err.status === 403) {
+            setAuthState({ status: "forbidden", message: err.message });
+            return;
+          }
+        }
+        setAuthState({ status: "error", message: err instanceof Error ? err.message : String(err) });
+      });
+  }, []);
+
   useEffect(() => {
-    let active = true;
-    const load = () => {
-      authMe()
-        .then((r) => { if (active) { setIdentity(r); setIdentityLoading(false); } })
-        .catch(() => { if (active) { setIdentity(null); setIdentityLoading(false); } });
-    };
+    mountedRef.current = true;
     load();
     window.addEventListener("fasearch-auth-change", load);
     window.addEventListener("focus", load);
     return () => {
-      active = false;
+      mountedRef.current = false;
       window.removeEventListener("fasearch-auth-change", load);
       window.removeEventListener("focus", load);
     };
-  }, []);
+  }, [load]);
 
   // Details tự lo Enter/Space; thêm Escape/click-ngoài/điều hướng để menu đóng
   // đúng như một disclosure (không phải dialog, không bẫy tiêu điểm).
@@ -157,6 +177,8 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
     );
   }
 
+  const navModel = resolveHeaderAccountNav(authState);
+
   return (
     <header className="chHeader">
       <Link className="chBrand" href="/" aria-label="FaSearch, trang chủ">
@@ -183,22 +205,20 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
                 </Link>
               );
             }
-            const accountHref = identity
-              ? "/tai-khoan"
-              : (identityLoading ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`);
-            const accountLabel = identity ? (identity.username || "Tài khoản") : (identityLoading ? "Tài khoản" : "Đăng nhập");
             return (
               <Link
                 key={item.key}
-                href={accountHref}
+                href={navModel.href}
                 aria-current={currentFor(item.key, active)}
-                className={undefined}
+                aria-label={navModel.ariaLabel}
+                title={navModel.title}
+                onClick={navModel.status === "error" ? () => { load(); } : undefined}
               >
-                {accountLabel}
+                {navModel.label}
               </Link>
             );
           })}
-          {identity && (identity.role === "ADMIN" || identity.role === "STAFF") ? (
+          {navModel.showAdminEntry ? (
             <Link href="/quan-tri" className="chAdminEntry">Quản trị</Link>
           ) : null}
         </nav>
@@ -245,23 +265,23 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
                   </Link>
                 );
               }
-              const accountHref = identity
-                ? "/tai-khoan"
-                : (identityLoading ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`);
-              const accountLabel = identity ? (identity.username || "Tài khoản") : (identityLoading ? "Tài khoản" : "Đăng nhập");
               return (
                 <Link
                   key={item.key}
-                  href={accountHref}
+                  href={navModel.href}
                   aria-current={currentFor(item.key, active)}
-                  className={undefined}
-                  onClick={closeMenu}
+                  aria-label={navModel.ariaLabel}
+                  title={navModel.title}
+                  onClick={() => {
+                    closeMenu();
+                    if (navModel.status === "error") load();
+                  }}
                 >
-                  {accountLabel}
+                  {navModel.label}
                 </Link>
               );
             })}
-            {identity && (identity.role === "ADMIN" || identity.role === "STAFF") ? (
+            {navModel.showAdminEntry ? (
               <Link href="/quan-tri" className="chAdminEntry" onClick={closeMenu}>Quản trị</Link>
             ) : null}
           </nav>

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test, { describe, it } from "node:test";
 import { safeCustomerAuthReturn } from "../src/lib/customer-auth-return.ts";
 import { formatMoney, orderStatusText } from "../src/lib/customer-commerce.ts";
+import { resolveHeaderAccountNav } from "../src/lib/customer-header-nav.ts";
 
 describe("UI02 Auth-aware navigation & safe return", () => {
   it("permits standard internal destinations", () => {
@@ -36,6 +37,136 @@ describe("UI02 Auth-aware navigation & safe return", () => {
     assert.equal(getConvergenceUrl(401, "/don-hang/42"), "/dang-nhap?next=%2Fdon-hang%2F42");
     assert.equal(getConvergenceUrl(403, "/tai-khoan"), null);
     assert.equal(getConvergenceUrl(500, "/tai-khoan"), null);
+  });
+
+  describe("UI-P2-CUSTOMER-HEADER-403-AS-GUEST Header nav state resolution", () => {
+    it("distinguishes 401 guest from 403 forbidden and 500 server error", () => {
+      const guestNav = resolveHeaderAccountNav({ status: "guest" });
+      assert.equal(guestNav.label, "Đăng nhập");
+      assert.equal(guestNav.href, "/dang-nhap?next=%2Ftai-khoan");
+      assert.equal(guestNav.isGuest, true);
+      assert.equal(guestNav.showAdminEntry, false);
+
+      const forbiddenNav = resolveHeaderAccountNav({
+        status: "forbidden",
+        message: "Tài khoản không có quyền truy cập khu vực này.",
+      });
+      assert.equal(forbiddenNav.label, "Tài khoản");
+      assert.equal(forbiddenNav.href, "/tai-khoan");
+      assert.equal(forbiddenNav.isGuest, false);
+      assert.equal(forbiddenNav.showAdminEntry, false);
+      assert.match(forbiddenNav.title, /quyền/i);
+      // Must not redirect to login or show guest login
+      assert.notEqual(forbiddenNav.label, "Đăng nhập");
+      assert.doesNotMatch(forbiddenNav.href, /dang-nhap/);
+
+      const errorNav = resolveHeaderAccountNav({
+        status: "error",
+        message: "Không tải được tài khoản lúc này.",
+      });
+      assert.equal(errorNav.label, "Tài khoản");
+      assert.equal(errorNav.href, "/tai-khoan");
+      assert.equal(errorNav.isGuest, false);
+      assert.equal(errorNav.showAdminEntry, false);
+      assert.match(errorNav.title, /thử lại/i);
+      // Must not redirect to login or show guest login
+      assert.notEqual(errorNav.label, "Đăng nhập");
+      assert.doesNotMatch(errorNav.href, /dang-nhap/);
+    });
+
+    it("handles initial and transient loading without guest flash or redirect", () => {
+      const loadingNav = resolveHeaderAccountNav({ status: "loading" });
+      assert.equal(loadingNav.label, "Tài khoản");
+      assert.equal(loadingNav.href, "/tai-khoan");
+      assert.equal(loadingNav.isGuest, false);
+      assert.equal(loadingNav.showAdminEntry, false);
+      assert.doesNotMatch(loadingNav.href, /dang-nhap/);
+    });
+
+    it("displays username and preserves role entry once authenticated", () => {
+      const customerNav = resolveHeaderAccountNav({
+        status: "authenticated",
+        identity: {
+          id: 10,
+          username: "customer1",
+          email: "customer1@example.com",
+          role: "CUSTOMER",
+          status: "ACTIVE",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      });
+      assert.equal(customerNav.label, "customer1");
+      assert.equal(customerNav.href, "/tai-khoan");
+      assert.equal(customerNav.showAdminEntry, false);
+      assert.equal(customerNav.isGuest, false);
+
+      const adminNav = resolveHeaderAccountNav({
+        status: "authenticated",
+        identity: {
+          id: 1,
+          username: "admin",
+          email: "admin@example.com",
+          role: "ADMIN",
+          status: "ACTIVE",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      });
+      assert.equal(adminNav.label, "admin");
+      assert.equal(adminNav.href, "/tai-khoan");
+      assert.equal(adminNav.showAdminEntry, true);
+      assert.equal(adminNav.isGuest, false);
+
+      const staffNav = resolveHeaderAccountNav({
+        status: "authenticated",
+        identity: {
+          id: 2,
+          username: "staff_warehouse",
+          email: "staff@example.com",
+          role: "STAFF",
+          status: "ACTIVE",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      });
+      assert.equal(staffNav.label, "staff_warehouse");
+      assert.equal(staffNav.showAdminEntry, true);
+    });
+
+    it("simulates account switch and clears stale identity during transitions", () => {
+      // Step 1: Logged in as admin
+      let state = {
+        status: "authenticated",
+        identity: { id: 1, username: "admin", email: "admin@example.com", role: "ADMIN", status: "ACTIVE", createdAt: "2026-01-01T00:00:00Z" },
+      };
+      let nav = resolveHeaderAccountNav(state);
+      assert.equal(nav.label, "admin");
+      assert.equal(nav.showAdminEntry, true);
+
+      // Step 2: Account switch event occurs -> reset to loading (no stale identity displayed)
+      state = { status: "loading" };
+      nav = resolveHeaderAccountNav(state);
+      assert.equal(nav.label, "Tài khoản");
+      assert.equal(nav.showAdminEntry, false);
+      assert.notEqual(nav.label, "admin");
+
+      // Step 3: Switched to regular customer
+      state = {
+        status: "authenticated",
+        identity: { id: 10, username: "customer1", email: "customer1@example.com", role: "CUSTOMER", status: "ACTIVE", createdAt: "2026-01-01T00:00:00Z" },
+      };
+      nav = resolveHeaderAccountNav(state);
+      assert.equal(nav.label, "customer1");
+      assert.equal(nav.showAdminEntry, false);
+
+      // Step 4: Logout / 401 transition -> reset to loading then guest
+      state = { status: "loading" };
+      nav = resolveHeaderAccountNav(state);
+      assert.notEqual(nav.label, "customer1");
+
+      state = { status: "guest" };
+      nav = resolveHeaderAccountNav(state);
+      assert.equal(nav.label, "Đăng nhập");
+      assert.equal(nav.isGuest, true);
+    });
   });
 });
 
