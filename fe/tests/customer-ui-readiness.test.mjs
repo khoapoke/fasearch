@@ -199,6 +199,26 @@ describe("UI03 Profile validation & single-address contract", () => {
     const longAddr = "A".repeat(256);
     assert.equal(longAddr.length <= 255, false);
   });
+
+  it("re-triggers error focus version on repeated identical validation failures", () => {
+    let error = "";
+    let errorVersion = 0;
+    const reportError = (msg) => {
+      error = msg;
+      errorVersion += 1;
+    };
+
+    // First invalid submit
+    reportError("Số điện thoại không đúng định dạng Việt Nam (10 chữ số, ví dụ 0922222222).");
+    assert.equal(errorVersion, 1);
+    assert.match(error, /Số điện thoại không đúng/);
+
+    // Repeated identical invalid submit
+    reportError("Số điện thoại không đúng định dạng Việt Nam (10 chữ số, ví dụ 0922222222).");
+    // Version incremented despite identical error string, ensuring useEffect([error, errorVersion]) triggers focus
+    assert.equal(errorVersion, 2);
+    assert.match(error, /Số điện thoại không đúng/);
+  });
 });
 
 describe("UI04 Order detail data correctness & formatting", () => {

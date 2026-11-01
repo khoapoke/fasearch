@@ -34,6 +34,7 @@ export function ProfileEditor() {
   const [values, setValues] = useState<Values | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [errorVersion, setErrorVersion] = useState(0);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -41,6 +42,14 @@ export function ProfileEditor() {
   const busyRef = useRef(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
+
+  const reportError = useCallback((message: string) => {
+    setError(message);
+    setErrorVersion((v) => v + 1);
+    if (errorRef.current) {
+      errorRef.current.focus();
+    }
+  }, []);
 
   const load = useCallback(() => {
     setError("");
@@ -52,11 +61,11 @@ export function ProfileEditor() {
       })
       .catch((e) => {
         if (!controller.signal.aborted) {
-          setError(e instanceof Error ? e.message : "Không tải được hồ sơ khách hàng.");
+          reportError(e instanceof Error ? e.message : "Không tải được hồ sơ khách hàng.");
         }
       });
     return () => controller.abort();
-  }, []);
+  }, [reportError]);
 
   useEffect(() => {
     return load();
@@ -66,7 +75,7 @@ export function ProfileEditor() {
     if (error && errorRef.current) {
       errorRef.current.focus();
     }
-  }, [error]);
+  }, [error, errorVersion]);
 
   useEffect(() => {
     if (notice && noticeRef.current) {
@@ -83,19 +92,19 @@ export function ProfileEditor() {
     if (!values || busyRef.current) return;
 
     if (!values.lastName.trim()) {
-      setError("Vui lòng nhập tên.");
+      reportError("Vui lòng nhập tên.");
       return;
     }
     if (!/^(0|\+84)[0-9]{9}$/.test(values.phoneNumber.trim())) {
-      setError("Số điện thoại không đúng định dạng Việt Nam (10 chữ số, ví dụ 0922222222).");
+      reportError("Số điện thoại không đúng định dạng Việt Nam (10 chữ số, ví dụ 0922222222).");
       return;
     }
     if (values.dob && !/^\d{4}-\d{2}-\d{2}$/.test(values.dob)) {
-      setError("Ngày sinh phải có định dạng YYYY-MM-DD.");
+      reportError("Ngày sinh phải có định dạng YYYY-MM-DD.");
       return;
     }
     if (values.address.trim().length > 255) {
-      setError("Địa chỉ tối đa 255 ký tự.");
+      reportError("Địa chỉ tối đa 255 ký tự.");
       return;
     }
 
@@ -121,7 +130,7 @@ export function ProfileEditor() {
         window.dispatchEvent(new CustomEvent("fasearch-auth-change"));
       }
     } catch (failure) {
-      setError(failure instanceof ProfileError ? failure.message : "Không lưu được thông tin hồ sơ.");
+      reportError(failure instanceof ProfileError ? failure.message : "Không lưu được thông tin hồ sơ.");
     } finally {
       busyRef.current = false;
       setBusy(false);
