@@ -12,6 +12,7 @@ import { ProfileEditor } from "./profile-editor";
 type State =
   | { kind: "loading" }
   | { kind: "guest" }
+  | { kind: "forbidden"; message: string }
   | { kind: "ready"; identity: AuthIdentity }
   | { kind: "error"; message: string };
 
@@ -46,8 +47,15 @@ export function AccountPanel() {
       })
       .catch((failure) => {
         if (controller.signal.aborted) return;
-        if (failure instanceof AuthApiError && failure.status === 401) setState({ kind: "guest" });
-        else setState({ kind: "error", message: failure instanceof Error ? failure.message : "Không tải được tài khoản." });
+        if (failure instanceof AuthApiError && failure.status === 401) {
+          router.replace(`/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`);
+          return;
+        }
+        if (failure instanceof AuthApiError && failure.status === 403) {
+          setState({ kind: "forbidden", message: failure.message || "Tài khoản không có quyền truy cập khu vực này." });
+          return;
+        }
+        setState({ kind: "error", message: failure instanceof Error ? failure.message : "Không tải được tài khoản." });
       });
     return () => {
       controller.abort();
@@ -84,6 +92,9 @@ export function AccountPanel() {
     try {
       await authLogout(controller.signal);
       if (controller.signal.aborted || logoutRef.current !== controller) return;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("fasearch-auth-change"));
+      }
       router.replace("/");
     } catch (failure) {
       if (controller.signal.aborted || logoutRef.current !== controller || isAuthAbort(failure)) return;
@@ -122,7 +133,7 @@ export function AccountPanel() {
             <div className="acct-row"><dt>Trạng thái</dt><dd>{STATUS_LABEL[identity.status] ?? identity.status}</dd></div>
             <div className="acct-row"><dt>Ngày tạo</dt><dd>{formatAuthDate(identity.createdAt)}</dd></div>
           </dl><p className="acct-note">Tài khoản quản trị không có hồ sơ khách hàng để sửa tại đây.</p></> : null}
-          {identity.role === "CUSTOMER" ? <p className="acct-note">Hồ sơ liên hệ lấy trực tiếp từ BE. Hạng/điểm chỉ đọc; không có email/mật khẩu hay nhiều địa chỉ.</p> : null}
+          {identity.role === "CUSTOMER" ? <p className="acct-note">Thông tin liên hệ và địa chỉ nhận hàng của bạn.</p> : null}
         </section>
       );
     }
@@ -153,30 +164,98 @@ export function AccountPanel() {
   }
 
   if (state.kind === "loading") {
-    return <div className="acctPage"><div className="acct-content"><p className="acct-note" role="status">Đang tải tài khoản…</p></div></div>;
+    return (
+      <div className="acctPage">
+        <div className="acct-content">
+          <p className="acct-note" role="status">Đang tải tài khoản…</p>
+        </div>
+      </div>
+    );
   }
   if (state.kind === "guest") {
     return (
-      <div className="acctPage"><div className="acct-content">
-        <div className="acct-head"><h1>Tài khoản</h1></div>
-        <div className="acct-state">
-          <h2>Cần đăng nhập</h2>
-          <p>Đăng nhập để xem thông tin tài khoản thật từ máy chủ.</p>
-          <Link className="auth-button is-primary" href="/dang-nhap?next=%2Ftai-khoan" style={{ width: "auto" }}>Đăng nhập</Link>
+      <div className="acctPage">
+        <div className="acct-content">
+          <p className="acct-note" role="status">Đang chuyển tới trang đăng nhập…</p>
         </div>
-      </div></div>
+      </div>
+    );
+  }
+  if (state.kind === "forbidden") {
+    return (
+      <div className="acctPage">
+        <div className="acct-content">
+          <div className="acct-head"><h1>Tài khoản</h1></div>
+          <div className="acct-state" role="alert">
+            <h2>Quyền truy cập bị từ chối</h2>
+            <p>{state.message}</p>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 14 }}>
+              <Link className="auth-button is-primary" href="/" style={{ width: "auto" }}>
+                Về trang chủ
+              </Link>
+              <button className="acct-logout" type="button" onClick={logout}>
+                Đăng xuất tài khoản
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
   if (state.kind === "error") {
     return (
-      <div className="acctPage"><div className="acct-content">
-        <div className="acct-head"><h1>Tài khoản</h1></div>
-        <div className="acct-state">
-          <h2>Không tải được tài khoản</h2>
-          <p>{state.message}</p>
-          <button className="auth-button" type="button" onClick={() => { setState({ kind: "loading" }); setRetry((n) => n + 1); }}>Thử lại</button>
+      <div className="acctPage">
+        <div className="acct-content">
+          <div className="acct-head"><h1>Tài khoản</h1></div>
+          <div className="acct-state" role="alert">
+            <h2>Không tải được tài khoản</h2>
+            <p>{state.message}</p>
+            <button className="auth-button" type="button" onClick={() => { setState({ kind: "loading" }); setRetry((n) => n + 1); }}>
+              Thử lại
+            </button>
+          </div>
         </div>
-      </div></div>
+      </div>
+    );
+  }
+
+  if (state.identity.role === "ADMIN" || state.identity.role === "STAFF") {
+    return (
+      <div className="acctPage">
+        <div className="acct-content">
+          <div className="acct-head"><h1>Tài khoản</h1></div>
+          <div className="acct-main" style={{ maxWidth: 640 }}>
+            <div className="acct-identity">
+              <strong>{state.identity.username}</strong>
+              <span>{ROLE_LABEL[state.identity.role] ?? state.identity.role} · {STATUS_LABEL[state.identity.status] ?? state.identity.status}</span>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+                <Link className="auth-button is-primary" href="/quan-tri" style={{ width: "auto", display: "inline-flex" }}>
+                  Đến trang quản trị →
+                </Link>
+                <button className="acct-logout" type="button" onClick={logout} disabled={loggingOut}>
+                  {loggingOut ? "Đang đăng xuất…" : "Đăng xuất tài khoản"}
+                </button>
+              </div>
+            </div>
+            <section aria-labelledby="account-admin-info-title">
+              <div className="acct-section-head">
+                <h2 id="account-admin-info-title">Thông tin tài khoản {ROLE_LABEL[state.identity.role] ?? state.identity.role}</h2>
+              </div>
+              <dl className="acct-profile">
+                <div className="acct-row"><dt>Mã tài khoản</dt><dd>{state.identity.id}</dd></div>
+                <div className="acct-row"><dt>Tên đăng nhập</dt><dd>{state.identity.username}</dd></div>
+                <div className="acct-row"><dt>Email</dt><dd>{state.identity.email || "—"}</dd></div>
+                <div className="acct-row"><dt>Vai trò</dt><dd>{ROLE_LABEL[state.identity.role] ?? state.identity.role}</dd></div>
+                <div className="acct-row"><dt>Trạng thái</dt><dd>{STATUS_LABEL[state.identity.status] ?? state.identity.status}</dd></div>
+                <div className="acct-row"><dt>Ngày tạo</dt><dd>{formatAuthDate(state.identity.createdAt)}</dd></div>
+              </dl>
+              <p className="acct-note">
+                Tài khoản của bạn có quyền quản lý và vận hành hệ thống. Để thực hiện các nghiệp vụ quản trị, vui lòng truy cập khu vực Quản trị.
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
     );
   }
 

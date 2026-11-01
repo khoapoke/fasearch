@@ -16,7 +16,6 @@ const NAV: Array<{ href: string; label: string; icon: UiIcon }> = [
   { href: "/don-hang", label: "Đơn hàng", icon: "bag" },
   { href: "/yeu-thich", label: "Sản phẩm yêu thích", icon: "heart" },
   { href: "/lich-su-ai", label: "Lịch sử tìm kiếm AI", icon: "camera" },
-  { href: "/tai-khoan/dia-chi", label: "Sổ địa chỉ", icon: "pin" },
   { href: "/voucher", label: "Voucher & ưu đãi", icon: "ticket" },
   { href: "/tai-khoan/diem-thuong", label: "Điểm thưởng & hạng", icon: "spark" },
   { href: "/tai-khoan/thong-tin", label: "Thông tin cá nhân", icon: "user" },

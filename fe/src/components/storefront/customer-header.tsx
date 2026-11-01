@@ -100,8 +100,19 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
   const [identityLoading, setIdentityLoading] = useState(true);
   useEffect(() => {
     let active = true;
-    authMe().then((r) => { if (active) { setIdentity(r); setIdentityLoading(false); } }).catch(() => { if (active) { setIdentity(null); setIdentityLoading(false); } });
-    return () => { active = false; };
+    const load = () => {
+      authMe()
+        .then((r) => { if (active) { setIdentity(r); setIdentityLoading(false); } })
+        .catch(() => { if (active) { setIdentity(null); setIdentityLoading(false); } });
+    };
+    load();
+    window.addEventListener("fasearch-auth-change", load);
+    window.addEventListener("focus", load);
+    return () => {
+      active = false;
+      window.removeEventListener("fasearch-auth-change", load);
+      window.removeEventListener("focus", load);
+    };
   }, []);
 
   // Details tự lo Enter/Space; thêm Escape/click-ngoài/điều hướng để menu đóng
@@ -172,8 +183,10 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
                 </Link>
               );
             }
-            const accountHref = identity ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`;
-            const accountLabel = identity ? (identity.username || "Tài khoản") : "Đăng nhập";
+            const accountHref = identity
+              ? "/tai-khoan"
+              : (identityLoading ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`);
+            const accountLabel = identity ? (identity.username || "Tài khoản") : (identityLoading ? "Tài khoản" : "Đăng nhập");
             return (
               <Link
                 key={item.key}
@@ -232,8 +245,10 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
                   </Link>
                 );
               }
-              const accountHref = identity ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`;
-              const accountLabel = identity ? (identity.username || "Tài khoản") : "Đăng nhập";
+              const accountHref = identity
+                ? "/tai-khoan"
+                : (identityLoading ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`);
+              const accountLabel = identity ? (identity.username || "Tài khoản") : (identityLoading ? "Tài khoản" : "Đăng nhập");
               return (
                 <Link
                   key={item.key}

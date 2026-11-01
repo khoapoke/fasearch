@@ -224,3 +224,7 @@
 .acct-field input,.acct-field select,.acct-field textarea{min-height:40px;padding:8px 10px;border:1px solid var(--auth-line,#d8dee8);border-radius:4px;background:var(--auth-surface,#fff);color:var(--auth-ink,#1b2030);font:inherit;}
 .acct-field textarea{min-height:88px;resize:vertical;}
 .acct-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.acct-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:600px){.acct-form-grid{grid-template-columns:1fr;gap:12px;}}
+.acct-loading-wrap{padding:24px 0;}
+.acct-profile-view{max-width:640px;}

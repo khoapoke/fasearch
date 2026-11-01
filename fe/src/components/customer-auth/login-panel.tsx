@@ -61,6 +61,9 @@ export function LoginPanel({ next }: { next: string }) {
       await authLogin(username.trim(), password, controller.signal);
       if (!liveRef.current || controller.signal.aborted || submitRef.current !== controller) return;
       setPassword("");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("fasearch-auth-change"));
+      }
       router.replace(returnTo);
     } catch (failure) {
       if (!liveRef.current || controller.signal.aborted || isAuthAbort(failure)) return;

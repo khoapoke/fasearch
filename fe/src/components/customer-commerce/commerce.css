@@ -98,3 +98,78 @@
   .commercePage .checkout-grid-2 { grid-template-columns: 1fr; }
   .commercePage .checkout-summary-panel { padding: 18px; }
 }
+
+/* Customer Order detail enhanced styling */
+.commercePage .commerce-card {
+  padding: 22px;
+  border: 1px solid var(--st-line);
+  border-radius: 8px;
+  background: var(--st-surface);
+}
+
+.commercePage .commerce-card h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.commercePage .commerce-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.commercePage .commerce-badge.pending { background: #fef3c7; color: #92400e; }
+.commercePage .commerce-badge.confirmed { background: #dbeafe; color: #1e40af; }
+.commercePage .commerce-badge.shipping { background: #e0e7ff; color: #3730a3; }
+.commercePage .commerce-badge.completed { background: #dcfce7; color: #166534; }
+.commercePage .commerce-badge.cancelled { background: #fee2e2; color: #991b1b; }
+
+html[data-theme="dark"] .commercePage .commerce-badge.pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+html[data-theme="dark"] .commercePage .commerce-badge.confirmed { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+html[data-theme="dark"] .commercePage .commerce-badge.shipping { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+html[data-theme="dark"] .commercePage .commerce-badge.completed { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+html[data-theme="dark"] .commercePage .commerce-badge.cancelled { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+.commercePage .commerce-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  color: var(--st-ink-soft);
+  font-size: 13px;
+  text-decoration: none;
+}
+.commercePage .commerce-back-link:hover {
+  color: var(--st-ink);
+  text-decoration: underline;
+}
+
+.commercePage .commerce-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--st-ink-soft);
+}
+
+.commercePage .commerce-value {
+  margin: 0;
+  font-size: 14px;
+  color: var(--st-ink);
+}
+
+.commercePage .commerce-prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.commercePage .commerce-summary-row span {
+  overflow-wrap: anywhere;
+}
+

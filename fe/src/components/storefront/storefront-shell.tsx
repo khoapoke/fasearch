@@ -139,7 +139,7 @@ export function StorefrontShell({
             <h3>Khách hàng</h3>
             <Link href="/don-hang">Tra cứu đơn hàng</Link>
             <Link href="/voucher">Ưu đãi &amp; voucher</Link>
-            <Link href="/tai-khoan/dia-chi">Sổ địa chỉ nhận hàng</Link>
+            <Link href="/tai-khoan">Thông tin &amp; địa chỉ</Link>
           </nav>
           <nav aria-label="Hỗ trợ">
             <h3>Hỗ trợ &amp; hướng dẫn</h3>

@@ -326,3 +326,65 @@ html[data-theme="dark"] .chHeader {
   .chAuthBack { font-size: 12px; }
   .chAuthBack svg { width: 14px; height: 14px; }
 }
+
+/* Compact theme control and admin entry in Customer header */
+.chThemeCompact {
+  display: inline-flex;
+  align-items: center;
+}
+
+.chThemeControl.stTheme {
+  font-size: 13px;
+  gap: 6px;
+  color: var(--st-ink-soft);
+}
+
+.chThemeControl .stThemeLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--st-ink-soft);
+  white-space: nowrap;
+}
+
+.chThemeControl .stThemeSelect {
+  min-height: 32px;
+  height: 32px;
+  padding: 3px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--st-line);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  cursor: pointer;
+}
+
+.chAdminEntry {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--st-select);
+  color: var(--st-brand-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chAdminEntry:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .chThemeControl .stThemeLabel {
+    display: none;
+  }
+  .chThemeControl .stThemeSelect {
+    min-height: 30px;
+    height: 30px;
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+}
+
