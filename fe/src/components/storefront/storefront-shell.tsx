@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
-import { ThemeControl } from "@/components/studio/theme-control";
 import { CartCount, HeaderAccount } from "./storefront-client";
 import { CustomerHeader } from "./customer-header";
+import { ThemeControl } from "@/components/studio/theme-control";
 import { CustomerCartProvider } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-palette.css";
 import "./storefront.css";
@@ -47,16 +47,6 @@ export function StorefrontShell({
     <div className={rootClass || undefined}>
       {header === "customer" || header === "customer-focused" ? (
         <>
-          {/* Preview-only: giữ control giao diện cho review, ngoài header sản phẩm. */}
-          <div
-            className="chPreviewBar"
-            role="note"
-            aria-label="Công cụ xem thử — không thuộc giao diện khách hàng"
-            data-preview-only="true"
-          >
-            <span className="chPreviewLabel">Xem thử</span>
-            <ThemeControl />
-          </div>
           <CustomerHeader active={active} focused={header === "customer-focused"} />
         </>
       ) : (

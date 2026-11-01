@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "./storefront-client";
+import { authMe, type AuthIdentity } from "@/lib/customer-auth-client";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-header.css";
+import { ThemeControl } from "@/components/studio/theme-control";
 
 /**
  * CONTROL-HEADER-04 — header Customer đã duyệt (6fdbcee), dùng lại được nhưng
@@ -94,6 +96,13 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
     ? customerCart.cart?.totalItems ?? 0
     : customerCart.authState === "guest" ? guestCount : 0;
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const [identity, setIdentity] = useState<AuthIdentity | null>(null);
+  const [identityLoading, setIdentityLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    authMe().then((r) => { if (active) { setIdentity(r); setIdentityLoading(false); } }).catch(() => { if (active) { setIdentity(null); setIdentityLoading(false); } });
+    return () => { active = false; };
+  }, []);
 
   // Details tự lo Enter/Space; thêm Escape/click-ngoài/điều hướng để menu đóng
   // đúng như một disclosure (không phải dialog, không bẫy tiêu điểm).
@@ -145,22 +154,44 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
       </Link>
       <div className="chActions">
         <nav className="chNav" aria-label="Điều hướng chính">
-          {NAV.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              aria-current={currentFor(item.key, active)}
-              className={item.key === "ai" ? "chAi" : undefined}
-            >
-              {item.key === "ai" ? (
-                <span className="chAiIcon" aria-hidden="true">
-                  <AiViewfinder />
-                </span>
-              ) : null}
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            if (item.key !== "account") {
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  aria-current={currentFor(item.key, active)}
+                  className={item.key === "ai" ? "chAi" : undefined}
+                >
+                  {item.key === "ai" ? (
+                    <span className="chAiIcon" aria-hidden="true">
+                      <AiViewfinder />
+                    </span>
+                  ) : null}
+                  {item.label}
+                </Link>
+              );
+            }
+            const accountHref = identity ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`;
+            const accountLabel = identity ? (identity.username || "Tài khoản") : "Đăng nhập";
+            return (
+              <Link
+                key={item.key}
+                href={accountHref}
+                aria-current={currentFor(item.key, active)}
+                className={undefined}
+              >
+                {accountLabel}
+              </Link>
+            );
+          })}
+          {identity && (identity.role === "ADMIN" || identity.role === "STAFF") ? (
+            <Link href="/quan-tri" className="chAdminEntry">Quản trị</Link>
+          ) : null}
         </nav>
+        <div className="chThemeCompact">
+          <ThemeControl className="chThemeControl" />
+        </div>
         <details
           className="chMobile"
           ref={detailsRef}
@@ -182,22 +213,42 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
             </svg>
           </summary>
           <nav aria-label="Điều hướng chính">
-            {NAV.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                aria-current={currentFor(item.key, active)}
-                className={item.key === "ai" ? "chAi" : undefined}
-                onClick={closeMenu}
-              >
-                {item.key === "ai" ? (
-                  <span className="chAiIcon" aria-hidden="true">
-                    <AiViewfinder />
-                  </span>
-                ) : null}
-                {item.label}
-              </Link>
-            ))}
+            {NAV.map((item) => {
+              if (item.key !== "account") {
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    aria-current={currentFor(item.key, active)}
+                    className={item.key === "ai" ? "chAi" : undefined}
+                    onClick={closeMenu}
+                  >
+                    {item.key === "ai" ? (
+                      <span className="chAiIcon" aria-hidden="true">
+                        <AiViewfinder />
+                      </span>
+                    ) : null}
+                    {item.label}
+                  </Link>
+                );
+              }
+              const accountHref = identity ? "/tai-khoan" : `/dang-nhap?next=${encodeURIComponent("/tai-khoan")}`;
+              const accountLabel = identity ? (identity.username || "Tài khoản") : "Đăng nhập";
+              return (
+                <Link
+                  key={item.key}
+                  href={accountHref}
+                  aria-current={currentFor(item.key, active)}
+                  className={undefined}
+                  onClick={closeMenu}
+                >
+                  {accountLabel}
+                </Link>
+              );
+            })}
+            {identity && (identity.role === "ADMIN" || identity.role === "STAFF") ? (
+              <Link href="/quan-tri" className="chAdminEntry" onClick={closeMenu}>Quản trị</Link>
+            ) : null}
           </nav>
         </details>
         <Link className="chCart" href="/gio-hang" aria-label={`Giỏ hàng, ${count} sản phẩm`}>
