@@ -1276,3 +1276,27 @@ body[data-motion="off"] .hmResultHalo { animation: none !important; opacity: 0 !
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+
+
+/* R4-I fix: logo raster nền đục giữ nguyên asset gốc trên một "plate" sáng,
+   không bị mask thành khối đặc; cao 26px, rộng tối đa 104px. */
+.hmBrandItem .hmBrandPlate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid var(--st-line);
+}
+.hmBrandItem .hmBrandRaster {
+  display: block;
+  height: 24px;
+  width: auto;
+  max-width: 104px;
+  object-fit: contain;
+  /* Ảnh raster giữ màu gốc: filter brightness(0)/invert của dải mask sẽ biến
+     artwork thành khối trắng trên plate trắng (lỗi Degrey/SWE). */
+  filter: none !important;
+}

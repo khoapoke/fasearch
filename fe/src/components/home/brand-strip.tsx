@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { probeLogoKind } from "@/lib/logo-alpha";
 
 /**
  * Dải logo thương hiệu thời trang (monochrome) — thay cho dải ảnh sản phẩm ở rev1.
@@ -35,6 +36,10 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
   // R4-I: dải logo lấy theo bộ thương hiệu canonical của BE (cùng nguồn với filter),
   // không tự bịa mark. Hãng chưa có asset đã kiểm định → chỉ hiện chữ.
   const [beItems, setBeItems] = useState<BrandItem[] | null>(null);
+  // R4-I fix: biết asset nào có alpha thật để chỉ mask đúng loại đó.
+  // "alpha" chỉ sau khi phân loại dương tính; mọi trạng thái khác (unknown/opaque/lỗi)
+  // dùng <img> trên plate sáng → không bao giờ có khối đặc do mask.
+  const [logoSafeToMask, setLogoSafeToMask] = useState<Record<string, boolean>>({});
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/catalog/brands", { cache: "no-store", signal: controller.signal })
@@ -52,6 +57,11 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
           return [{ slug: b.slug, name: label, logo }];
         });
         setBeItems(mapped);
+        mapped.filter((b) => b.logo).forEach((b) => {
+          void probeLogoKind(b.logo as string).then((kind) => {
+            if (kind === "alpha") setLogoSafeToMask((prev) => ({ ...prev, [b.slug]: true }));
+          });
+        });
       })
       .catch(() => setBeItems(null));
     return () => controller.abort();
@@ -132,7 +142,20 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
     <ul className={`hmBrandTrack${clone ? " hmBrandClone" : ""}`} aria-hidden={clone ? "true" : undefined}>
       {items.map((brand) => (
         <li key={`${clone ? "dup-" : ""}${brand.slug}`} className="hmBrandItem">
-          {brand.logo ? (
+          {brand.logo && !logoSafeToMask[brand.slug] ? (
+            // Ảnh nền đục (PNG trắng/JPEG): mask sẽ thành khối đặc, nên render <img>
+            // trên nền sáng có viền để vẫn đọc được ở dark theme.
+            <span className="hmBrandPlate">
+              {/* eslint-disable-next-line @next/next/no-img-element -- asset thật từ BE */}
+              <img
+                src={brand.logo}
+                alt={clone ? "" : brand.name}
+                title={clone ? undefined : brand.name}
+                loading="eager"
+                className="hmBrandRaster"
+              />
+            </span>
+          ) : brand.logo ? (
             <span
               className="hmBrandMark"
               role="img"
