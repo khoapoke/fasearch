@@ -377,7 +377,15 @@
   border: 1px solid var(--st-control-border);
   border-radius: 7px;
 }
-.catPage .cat-stepper button { width: 38px; height: 46px; padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
+.catPage .cat-stepper button {
+  width: 44px; height: 46px; padding: 0; border: 0; background: transparent; font: inherit;
+  cursor: pointer; transition: transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .catPage .cat-stepper button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+.catPage .cat-stepper button:active:not(:disabled) { transform: scale(0.97); }
+.catPage .cat-stepper button:disabled { transform: none; transition: none; cursor: not-allowed; opacity: 0.55; }
 .catPage .cat-stepper span { min-width: 30px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
 .catPage .cat-buy-row { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
 .catPage .cat-buy-row .cat-button { flex: 1; }
