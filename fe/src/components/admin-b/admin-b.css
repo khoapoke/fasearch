@@ -448,6 +448,7 @@
   margin-top: 4px;
 }
 .admB .primary{
+  transition: background-color 140ms var(--ease-out, ease-out), border-color 140ms var(--ease-out, ease-out), transform 140ms var(--ease-out, ease-out);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -461,8 +462,15 @@
   line-height: var(--control-lh);
   font-weight: 500;
 }
-.admB .primary:hover{
+.admB .primary:hover:not(:disabled){
   background: var(--accent-strong);
+}
+.admB .primary:active:not(:disabled){
+  transform: scale(0.98);
+}
+.admB .primary:disabled{
+  transition: none;
+  transform: none;
 }
 .admB.dark .primary{
   background: #7f6ff2;

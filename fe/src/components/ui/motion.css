@@ -2,19 +2,28 @@
  * Chỉ transform/opacity. Tokens --ease-out/--ease-in-out ở globals.css.
  * Reduced-motion: globals.css đã rút mọi transition/animation về 0.01ms. */
 
-.hmCta, .pgApply, .mpTopBtn, .adBtn, .sfBtn, .pFav, .pgSize, .hmTabs a {
+.hmCta, .pgApply, .mpTopBtn, .adBtn, .sfBtn, .pFav, .pgSize, .hmTabs a,
+.cat-button, .cat-primary {
   transition: transform 160ms var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .hmCta:hover, .pgApply:hover, .mpTopBtn:hover, .adBtn:hover, .sfBtn:hover {
+  .hmCta:hover, .pgApply:hover, .mpTopBtn:hover, .adBtn:hover, .sfBtn:hover,
+  .cat-button:hover:not(:disabled) {
     transform: translateY(-1px);
   }
 }
 
 .hmCta:active, .pgApply:active, .mpTopBtn:active, .adBtn:active, .sfBtn:active,
-.pFav:active, .pgSize:active {
+.pFav:active, .pgSize:active,
+.cat-button:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+/* Disabled controls never animate: no lift, no press, no transform. */
+.cat-button:disabled, .cat-button:disabled:hover, .cat-button:disabled:active {
+  transform: none;
+  transition: none;
 }
 
 /* P2 — modal enter (centered, backdrop fade cùng nhịp) */

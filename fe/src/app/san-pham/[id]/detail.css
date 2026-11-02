@@ -84,3 +84,16 @@
   .pdPerks { grid-template-columns: 1fr 1fr; }
   .pdBuyRow { flex-direction: column; }
 }
+
+/* Source attribution: one quiet line, wraps instead of overflowing on 390px. */
+.cat-source-line {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3, #6b6b6b);
+  overflow-wrap: anywhere;
+}
+.cat-source-line a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

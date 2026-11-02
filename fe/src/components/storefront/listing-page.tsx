@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { ProductCard, type CardProduct } from "@/components/storefront/product-card";
 import { stitchImages } from "@/lib/stitch-assets";
@@ -115,6 +115,19 @@ export function ListingPage({
       first?.focus();
     });
   }
+
+  // Escape must work wherever focus sits inside the panel (not only on the toggle),
+  // and focus returns to the control that opened it.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setFiltersOpen(false);
+      filterToggleRef.current?.focus();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [filtersOpen]);
   const photos = useMemo(() => stitchImages(photoFolder), [photoFolder]);
 
   const filtered = useMemo(() => {

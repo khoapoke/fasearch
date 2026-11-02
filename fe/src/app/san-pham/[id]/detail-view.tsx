@@ -211,6 +211,19 @@ export function DetailView({ id }: { id: string }) {
             <section className="cat-detail-info" aria-label="Thông tin và lựa chọn sản phẩm">
               {product.brandName ? <p className="cat-product-brand">{product.brandName}</p> : null}
               <h1>{product.name}</h1>
+              {product.sourceHost ? (
+                <p className="cat-source-line">
+                  Nguồn dữ liệu:{" "}
+                  {product.sourceUrl ? (
+                    <a href={product.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      {product.sourceHost}
+                    </a>
+                  ) : (
+                    product.sourceHost
+                  )}
+                  {" · "}giá hiển thị là giá demo, không phải giá niêm yết
+                </p>
+              ) : null}
               {product.description ? <p className="cat-product-description">{product.description}</p> : null}
               <p className="cat-detail-price">{formatVnd(price)}</p>
               {selected && selected.additionalPrice > 0 ? (

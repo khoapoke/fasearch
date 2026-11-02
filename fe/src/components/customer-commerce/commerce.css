@@ -26,8 +26,13 @@
 .commercePage .commerce-line-price { margin: 8px 0 0; font-size: 15px; font-weight: 500; }
 .commercePage .commerce-line-side { display: grid; justify-items: end; gap: 9px; }
 .commercePage .commerce-line-total { font-size: 15px; font-weight: 500; white-space: nowrap; }
-.commercePage .commerce-stepper { display: inline-flex; align-items: center; height: 38px; overflow: hidden; border: 1px solid var(--st-control-border); border-radius: 6px; }
-.commercePage .commerce-stepper button { width: 32px; height: 36px; padding: 0; border: 0; color: var(--st-ink); background: transparent; font: inherit; cursor: pointer; }
+.commercePage .commerce-stepper { display: inline-flex; align-items: center; height: 44px; overflow: hidden; border: 1px solid var(--st-control-border); border-radius: 6px; }
+.commercePage .commerce-stepper button { width: 44px; height: 42px; padding: 0; border: 0; color: var(--st-ink); background: transparent; font: inherit; cursor: pointer; transition: transform 140ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .commercePage .commerce-stepper button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+.commercePage .commerce-stepper button:active:not(:disabled) { transform: scale(0.97); }
+.commercePage .commerce-stepper button:disabled { transform: none; transition: none; }
 .commercePage .commerce-stepper button:disabled { cursor: not-allowed; opacity: .45; }
 .commercePage .commerce-stepper span { min-width: 28px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
 .commercePage .commerce-remove { padding: 4px 0; border: 0; color: var(--st-ink-soft); background: transparent; font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
