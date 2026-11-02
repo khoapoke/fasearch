@@ -10,6 +10,7 @@ import {
   publishDraft,
   updateDraft,
   uploadDraftImage,
+  resolveDraftImageUrl,
   CatalogAdminError,
   type AdminDraft,
 } from "@/lib/admin-catalog-client";
@@ -110,9 +111,12 @@ export default function NewDraftPage() {
     if (!draft || busy) return;
     setBusy(true); setMessage(""); setNotice("");
     try {
-      const fresh = await updateDraft(draft.draftId, {
+      // Ảnh vừa tải lên làm tăng version: luôn đọc lại ngay trước khi PUT.
+      const current = await getDraft(draft.draftId);
+      setDraft(current);
+      const fresh = await updateDraft(current.draftId, {
         variants: skus.map((v) => ({ color: v.color, size: v.size })),
-        expectedVersion: draft.version,
+        expectedVersion: current.version,
       });
       setDraft(fresh);
       setSkus(variantsOf(fresh));
@@ -155,7 +159,7 @@ export default function NewDraftPage() {
 
   const name = typeof draft?.productName === "string" ? draft.productName : "Bản nháp";
   const price = typeof draft?.price === "number" ? draft.price : null;
-  const imageUrl = typeof draft?.imageUrl === "string" && draft.imageUrl ? draft.imageUrl : null;
+  const imageUrl = resolveDraftImageUrl(typeof draft?.imageUrl === "string" ? draft.imageUrl : null);
 
   return (
     <AdminShellB active="products" title="Bản nháp sản phẩm" eyebrow="Vận hành · bản nháp chưa công khai">

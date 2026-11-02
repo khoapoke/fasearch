@@ -78,10 +78,19 @@ export async function deleteDraft(draftId: number | string, signal?: AbortSignal
   return parse<unknown>(await fetch(`/api/admin/catalog/drafts/${draftId}`, { method: "DELETE", signal }));
 }
 
+/** BE trả `result` là chuỗi URL ảnh nháp (ADMIN-only), không phải object. */
+export function resolveDraftImageUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const m = raw.match(/^\/api\/v1\/admin\/products\/drafts\/(\d+)\/images\/(.+)$/);
+  return m ? `/api/admin/catalog/drafts/${m[1]}/images/${m[2]}` : raw;
+}
+
 export async function uploadDraftImage(draftId: number | string, file: File, signal?: AbortSignal): Promise<{ imageUrl: string | null }> {
   const form = new FormData();
   form.append("file", file);
-  return parse(await fetch(`/api/admin/catalog/drafts/${draftId}/images`, { method: "POST", body: form, signal }));
+  const result = await parse<unknown>(await fetch(`/api/admin/catalog/drafts/${draftId}/images`, { method: "POST", body: form, signal }));
+  const raw = typeof result === "string" ? result : (result as { imageUrl?: unknown } | null)?.imageUrl;
+  return { imageUrl: resolveDraftImageUrl(typeof raw === "string" ? raw : null) };
 }
 
 export async function publishDraft(draftId: number | string, expectedVersion: number, signal?: AbortSignal): Promise<{ productId: number; version: number; status: string }> {

@@ -166,17 +166,19 @@ export function ProductPublication({ product, onChanged }: { product: Product; o
               Xem bản đang bán
             </Link>
           ) : null}
+          {/* Sản phẩm đang bán vẫn có thể có bản nháp sửa: hiện CẢ hai hành động. */}
+          {draft ? (
+            <button className="primary" type="button" disabled={busy} aria-disabled={busy} onClick={() => void publish()}>
+              {busy ? "Đang xuất bản…" : `Xuất bản bản nháp v${draft.version}`}
+            </button>
+          ) : published ? null : (
+            <span className="meta">Chưa có bản nháp — tạo ở trang sửa metadata</span>
+          )}
           {published ? (
             <button className="text-link" type="button" disabled={busy} aria-disabled={busy} onClick={() => void unpublish()}>
               {busy ? "Đang gỡ…" : "Gỡ xuất bản"}
             </button>
-          ) : draft ? (
-            <button className="primary" type="button" disabled={busy} aria-disabled={busy} onClick={() => void publish()}>
-              {busy ? "Đang xuất bản…" : `Xuất bản bản nháp v${draft.version}`}
-            </button>
-          ) : (
-            <span className="meta">Chưa có bản nháp — tạo ở trang sửa metadata</span>
-          )}
+          ) : null}
         </div>
       </div>
       {issue ? (
