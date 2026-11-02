@@ -33,3 +33,69 @@ export function toCatalogImageUrl(raw: string | null): string | null {
 }
 
 export { CatalogAdminError as CatalogError };
+
+/** ---- Publication draft + AI sync (BE contract v1) ---- */
+
+export type AdminDraft = {
+  draftId: number;
+  productId: number | null;
+  version: number;
+  status: string;
+  updatedAt?: string | null;
+  [k: string]: unknown;
+};
+
+export type AiSyncState = {
+  productId: number;
+  version: number;
+  status: string;
+  attempts: number;
+  updatedAt: string | null;
+  lastError?: string | null;
+};
+
+export async function listDrafts(query = "page=0&size=20", signal?: AbortSignal): Promise<AdminDraft[]> {
+  return parse<AdminDraft[]>(await fetch(`/api/admin/catalog/drafts?${query}`, { cache: "no-store", signal }));
+}
+
+export async function getDraft(draftId: number | string, signal?: AbortSignal): Promise<AdminDraft> {
+  return parse<AdminDraft>(await fetch(`/api/admin/catalog/drafts/${draftId}`, { cache: "no-store", signal }));
+}
+
+export async function createDraft(body: Record<string, unknown>, signal?: AbortSignal): Promise<AdminDraft> {
+  return parse<AdminDraft>(await fetch("/api/admin/catalog/drafts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal }));
+}
+
+export async function updateDraft(draftId: number | string, body: Record<string, unknown>, signal?: AbortSignal): Promise<AdminDraft> {
+  return parse<AdminDraft>(await fetch(`/api/admin/catalog/drafts/${draftId}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal }));
+}
+
+export async function deleteDraft(draftId: number | string, signal?: AbortSignal): Promise<unknown> {
+  return parse<unknown>(await fetch(`/api/admin/catalog/drafts/${draftId}`, { method: "DELETE", signal }));
+}
+
+export async function uploadDraftImage(draftId: number | string, file: File, signal?: AbortSignal): Promise<{ imageUrl: string | null }> {
+  const form = new FormData();
+  form.append("file", file);
+  return parse(await fetch(`/api/admin/catalog/drafts/${draftId}/images`, { method: "POST", body: form, signal }));
+}
+
+export async function publishDraft(draftId: number | string, expectedVersion: number, signal?: AbortSignal): Promise<{ productId: number; version: number; status: string }> {
+  return parse(await fetch(`/api/admin/catalog/drafts/${draftId}/publish`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedVersion }), signal }));
+}
+
+export async function unpublishProduct(productId: number | string, reason?: string, signal?: AbortSignal): Promise<unknown> {
+  return parse<unknown>(await fetch(`/api/admin/catalog/products/${productId}/unpublish`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(reason ? { reason } : {}), signal }));
+}
+
+export async function getAiSync(productId: number | string, signal?: AbortSignal): Promise<AiSyncState> {
+  return parse<AiSyncState>(await fetch(`/api/admin/catalog/products/${productId}/ai-sync`, { cache: "no-store", signal }));
+}
+
+export async function retryAiSync(productId: number | string, signal?: AbortSignal): Promise<unknown> {
+  return parse<unknown>(await fetch(`/api/admin/catalog/products/${productId}/ai-sync/retry`, { method: "POST", signal }));
+}
+
+export async function importUrl(url: string, signal?: AbortSignal): Promise<{ draftId: number }> {
+  return parse<{ draftId: number }>(await fetch("/api/admin/catalog/import-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }), signal }));
+}

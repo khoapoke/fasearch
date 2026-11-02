@@ -23,7 +23,7 @@ export async function catalogRead(request: NextRequest, path: string, binary = f
     return Response.json({ success: false, code: 503, message: "Không kết nối được máy chủ catalog.", result: null }, { status: 503, headers: { "cache-control": "no-store" } });
   }
 }
-export async function catalogWrite(request: NextRequest, path: string, method: "POST" | "PATCH", body: unknown): Promise<Response> {
+export async function catalogWrite(request: NextRequest, path: string, method: "POST" | "PATCH" | "PUT", body: unknown): Promise<Response> {
   const guard = requireJsonPost(request);
   if (guard) return guard;
   const who = await adminIdentity(request);
