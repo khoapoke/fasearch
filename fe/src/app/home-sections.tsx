@@ -360,7 +360,7 @@ export function HomeSections() {
   // khi ngoài khung nhìn hoặc khi tắt/giảm chuyển động. Không bù nhịp khi quay lại.
   useEffect(() => {
     if (!motionOn || manual || autoPaused || stage === "complete" || stage === "result") return;
-    const run: Record<string, number> = { dormant: 1000, tags: 3000, processing: 3400 };
+    const run: Record<string, number> = { dormant: 1200, tags: 3400, processing: 3800 };
     const delay = run[stage];
     if (delay === undefined) return;
     schedule(delay, () => {

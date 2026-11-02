@@ -14,14 +14,16 @@ import { useEffect, useRef, useState } from "react";
  * động hoặc "Tắt chuyển động" → hàng tĩnh.
  */
 
-type Brand = { name: string; src: string };
+// Kích thước quang học: mỗi mark có tỉ lệ khác nhau, nên chuẩn hoá theo
+// "trọng lượng thị giác" (diện tích) thay vì cùng một chiều cao thô.
+type Brand = { name: string; src: string; width: number; height: number };
 
 const BRANDS: Brand[] = [
-  { name: "Nike", src: "/brands/nike.svg" },
-  { name: "Puma", src: "/brands/puma.svg" },
-  { name: "Adidas", src: "/brands/adidas.svg" },
-  { name: "New Balance", src: "/brands/new-balance.svg" },
-  { name: "Vans", src: "/brands/vans.svg" },
+  { name: "Nike", src: "/brands/nike.svg", width: 76, height: 26 },
+  { name: "Puma", src: "/brands/puma.svg", width: 96, height: 22 },
+  { name: "Adidas", src: "/brands/adidas.svg", width: 84, height: 26 },
+  { name: "New Balance", src: "/brands/new-balance.svg", width: 104, height: 20 },
+  { name: "Vans", src: "/brands/vans.svg", width: 80, height: 22 },
 ];
 
 export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
@@ -56,7 +58,15 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
       {items.map((brand) => (
         <li key={`${clone ? "dup-" : ""}${brand.name}`} className="hmBrandItem">
           {/* eslint-disable-next-line @next/next/no-img-element -- SVG thật, phục vụ cục bộ */}
-          <img src={brand.src} alt={clone ? "" : brand.name} title={clone ? undefined : brand.name} loading="eager" />
+          <img
+            src={brand.src}
+            alt={clone ? "" : brand.name}
+            title={clone ? undefined : brand.name}
+            loading="eager"
+            width={brand.width}
+            height={brand.height}
+            style={{ width: `${brand.width}px`, height: `${brand.height}px` }}
+          />
         </li>
       ))}
     </ul>
