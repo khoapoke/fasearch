@@ -35,6 +35,46 @@
   background: color-mix(in srgb, var(--st-canvas) 96%, transparent);
 }
 
+/* R3: cuộn xuống → chỉ còn logo icon ở giữa. Ẩn bằng visibility/opacity (giữ
+   nguyên hình học để không layout jump), và trả lại ngay khi có focus bàn phím
+   hoặc menu mở để không bao giờ giấu control đang được dùng. */
+.chHeader .chLeft,
+.chHeader .chRight,
+.chHeader .chWord {
+  transition: opacity 220ms cubic-bezier(0.23, 1, 0.32, 1), transform 220ms cubic-bezier(0.23, 1, 0.32, 1), visibility 220ms;
+}
+
+/* Ẩn bằng opacity để control vẫn tab tới được (giữ khả năng truy cập bàn phím);
+   `:focus-within` kéo cả cụm trở lại ngay khi có tiêu điểm. */
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chLeft,
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chRight {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+.chHeader[data-compact="true"]:focus-within .chLeft,
+.chHeader[data-compact="true"]:focus-within .chRight,
+.chHeader[data-compact="true"]:focus-within .chWord {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+.chHeader[data-compact="true"]:focus-within .chWord { width: auto; overflow: visible; }
+
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chWord {
+  opacity: 0;
+  transform: translateX(-6px);
+  width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chHeader .chLeft, .chHeader .chRight, .chHeader .chWord { transition: none; }
+}
+
 .chLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .chRight { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .chNavAccount { display: flex; align-items: center; gap: 14px; }

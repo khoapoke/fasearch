@@ -45,7 +45,7 @@ export default function CartPage() {
       }
     }
     if (next) setCart(next);
-    if (ok) setNotice(`Đã đồng bộ ${ok} món đã chọn SKU từ giỏ trình duyệt vào giỏ máy chủ.`);
+    if (ok) setNotice(`Đã thêm ${ok} món vào giỏ của bạn.`);
   }, [authState, cart, setCart]);
 
   useEffect(() => { void Promise.resolve().then(() => importGuest()); }, [importGuest]);
@@ -64,7 +64,7 @@ export default function CartPage() {
     } catch (failure) {
       const status = failure instanceof CommerceError ? failure.status : 0;
       const message = failure instanceof Error ? failure.message : "Không cập nhật được giỏ hàng.";
-      setActionError(message + (status === 409 ? " Giỏ đã thay đổi trên máy chủ; tải lại để xem số lượng thật." : ""));
+      setActionError(message + (status === 409 ? " Giỏ vừa thay đổi; tải lại để xem số lượng mới nhất." : ""));
       if (status === 409) await refresh();
     } finally {
       pending.current = false;
@@ -82,7 +82,7 @@ export default function CartPage() {
       // DELETE success is the server confirmation; render the confirmed empty
       // state directly instead of racing a background cart refetch.
       setCart(cart ? { cartId: cart.cartId, totalItems: 0, subTotal: 0, items: [] } : null);
-      setNotice("Đã xóa toàn bộ giỏ trên máy chủ.");
+      setNotice("Đã xóa toàn bộ giỏ hàng.");
     } catch (failure) {
       setActionError(failure instanceof Error ? failure.message : "Không xóa được giỏ hàng.");
     } finally {
@@ -102,7 +102,7 @@ export default function CartPage() {
             <Link href="/">Trang chủ</Link><span aria-hidden="true">›</span><span aria-current="page">Giỏ hàng</span>
           </nav>
           <h1 className="commerce-title">Giỏ hàng</h1>
-          <p className="commerce-sub">Giá, số lượng và tổng tiền được máy chủ giỏ hàng xác nhận; không dùng tổng do trình duyệt tự tính.</p>
+          <p className="commerce-sub">Giá và tổng tiền được xác nhận khi bạn đăng nhập, đúng theo tồn kho hiện tại.</p>
 
           {notice ? <p className="commerce-status" role="status">{notice}</p> : null}
           {actionError ? <p className="commerce-status is-error" role="alert">{actionError}</p> : null}
@@ -127,13 +127,29 @@ export default function CartPage() {
             </div>
           ) : null}
 
-          {authState === "guest" ? (
+          {authState === "guest" && guest.length === 0 ? (
+            <div className="commerce-empty cart-empty-state">
+              <span className="cart-empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 14h32l-3 22a4 4 0 0 1-4 3.5H15A4 4 0 0 1 11 36L8 14Z" />
+                  <path d="M17 14V10a7 7 0 0 1 14 0v4" />
+                </svg>
+              </span>
+              <h2>Giỏ hàng trống</h2>
+              <p>Chọn một món bạn thích, sau đó thêm vào giỏ để xem lại trước khi thanh toán.</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+                <Link className="commerce-primary" href="/nam">Khám phá sản phẩm</Link>
+                <Link className="commerce-ghost" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập</Link>
+              </div>
+            </div>
+          ) : null}
+
+          {authState === "guest" && guest.length > 0 ? (
             <div className="commerce-layout">
-              <section className="commerce-panel" aria-label="Giỏ nháp trên trình duyệt">
-                <div className="commerce-toolbar"><p>Giỏ nháp trên thiết bị này · chưa phải giỏ máy chủ</p><span>{guestCount(guest)} món</span></div>
-                {guest.length === 0 ? (
-                  <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Chọn màu và kích thước ở trang sản phẩm để thêm món.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div>
-                ) : (
+              <section className="commerce-panel" aria-label="Sản phẩm đã chọn">
+                <div className="commerce-toolbar"><p>Đã chọn trên thiết bị này</p><span>{guestCount(guest)} món</span></div>
+                {(
+
                   <ul className="commerce-lines commerce-guest">
                     {guest.map((line) => (
                       <li className="commerce-line" key={`${line.id}-${line.meta ?? ""}`}>
@@ -143,20 +159,16 @@ export default function CartPage() {
                     ))}
                   </ul>
                 )}
-                <p className="commerce-note">Đăng nhập để chuyển các món đã chọn SKU vào giỏ máy chủ. Món chưa rõ SKU sẽ không tự đoán biến thể.</p>
-                <Link className="commerce-primary" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập để dùng giỏ máy chủ →</Link>
+                <p className="commerce-note">Đăng nhập để giữ các món này trong giỏ của bạn. Món chưa chọn đủ biến thể sẽ không được tự đoán.</p>
+                <Link className="commerce-primary" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập để tiếp tục →</Link>
               </section>
-              <aside className="commerce-summary" aria-label="Tóm tắt giỏ nháp">
-                <h2>Chưa có tổng máy chủ</h2>
-                <p className="commerce-note">Tổng tiền chỉ xuất hiện sau khi đăng nhập và tải giỏ thật. Giỏ nháp không được gửi đi như một đơn hàng.</p>
-              </aside>
             </div>
           ) : null}
 
           {authState === "authenticated" && cart ? (
             <div className="commerce-layout">
               <section className="commerce-panel" aria-label="Sản phẩm trong giỏ máy chủ">
-                <div className="commerce-toolbar"><p>Máy chủ xác nhận · cập nhật theo tồn kho hiện tại</p><span>{cart.totalItems} món</span></div>
+                <div className="commerce-toolbar"><p>Cập nhật theo tồn kho hiện tại</p><span>{cart.totalItems} món</span></div>
                 {lines.length === 0 ? (
                   <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Thêm sản phẩm từ trang chi tiết để bắt đầu.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div>
                 ) : (

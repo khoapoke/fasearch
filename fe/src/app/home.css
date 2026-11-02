@@ -1202,6 +1202,23 @@ html[data-theme="dark"] .hmHome {
 .hmCloseCopy p { margin: 0; color: var(--st-ink-soft); font-size: 15px; }
 .hmCloseActions { display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* R3: CTA phụ trong dải kết Home. `.hmCtaGhost` trước đây dùng chữ trắng trên nền
+   sáng nên gần như vô hình ở dark mode. Dùng token ngữ nghĩa + viền rõ, không
+   override toàn cục. */
+.hmCloseActions .hmCta.hmCtaGhost {
+  color: var(--st-ink);
+  background: var(--st-surface);
+  border: 1px solid var(--st-control-border);
+}
+.hmCloseActions .hmCta.hmCtaGhost:hover {
+  border-color: var(--st-ink);
+  background: var(--st-select);
+}
+.hmCloseActions .hmCta.hmCtaGhost:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 2px;
+}
+
 @media (max-width: 760px) {
   .hmHow { padding-top: 30px; }
   .hmClose { padding: 24px 20px; margin-bottom: 34px; }

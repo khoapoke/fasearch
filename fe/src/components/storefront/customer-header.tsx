@@ -18,11 +18,13 @@ import { useHomeMotion } from "@/lib/home-motion";
  * 599-608,790,834-836. Không dùng router/toolbar/cart minh họa của prototype.
  */
 
-type NavKey = "ai" | "products" | "account";
+type NavKey = "ai" | "products" | "brands" | "offers" | "account";
 
 const NAV: { key: NavKey; href: string; label: string }[] = [
   { key: "ai", href: "/tim-kiem-ai", label: "Tìm bằng AI" },
   { key: "products", href: "/nam", label: "Sản phẩm" },
+  { key: "brands", href: "/#thuong-hieu", label: "Thương hiệu" },
+  { key: "offers", href: "/voucher", label: "Ưu đãi" },
   { key: "account", href: "/tai-khoan", label: "Tài khoản" },
 ];
 
@@ -34,6 +36,8 @@ function currentFor(key: NavKey, active?: string) {
   if (!active) return undefined;
   if (key === "ai") return active === "/tim-kiem-ai" ? "page" : undefined;
   if (key === "products") return PRODUCT_PATHS.includes(active) ? "page" : undefined;
+  if (key === "brands") return active === "/#thuong-hieu" || active === "/thuong-hieu" ? "page" : undefined;
+  if (key === "offers") return active === "/voucher" ? "page" : undefined;
   return active.startsWith("/tai-khoan") ? "page" : undefined;
 }
 
@@ -201,7 +205,10 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
       }}
     >
       <div className="chHeaderInner">
-        {/* Cột trái: hamburger (mobile) + liên kết khám phá (desktop). */}
+        {/* Cột trái: hamburger (mobile) + liên kết khám phá (desktop).
+            Khi cuộn xuống, cả cột và cột phải ẩn khỏi màn hình nhưng vẫn ở DOM
+            (aria-hidden + inert qua CSS visibility) để tiêu điểm bàn phím có thể
+            kéo chúng trở lại thay vì mất hút. */}
         <div className="chLeft">
           <details
             className="chMobile"
@@ -259,8 +266,9 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
           </nav>
         </div>
 
-        {/* Cột giữa: thương hiệu luôn căn giữa hình học ở cả hai trạng thái. */}
-        <Link className="chBrand" href="/" aria-label="FaSearch, trang chủ">
+        {/* Cột giữa: thương hiệu luôn căn giữa hình học. Down-scroll chỉ còn mark;
+            wordmark ẩn bằng opacity/transform (không đổi kích thước hit target). */}
+        <Link className="chBrand" href="/" aria-label="FaSearch, về trang chủ" title="FaSearch">
           <FaSearchMark />
           <span className="chWord">FaSearch</span>
         </Link>

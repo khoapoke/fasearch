@@ -283,10 +283,10 @@ export function HomeSections() {
     const root = heroRef.current;
     if (!root || !motionOn) return;
     const parts: Array<[string, Keyframe[], number, number]> = [
-      [".hmHeroTitle", [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], 500, 0],
-      [".hmHeroLede", [{ opacity: 0.72, transform: "translate3d(0,7px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 320, 100],
-      [".hmHeroActions, .hmHeroSearch", [{ opacity: 0.9, transform: "translate3d(0,5px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 180, 260],
-      [".hmHeroMedia, .hmHeroFigure", [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], 540, 40],
+      [".hmHeroTitle", [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], 650, 0],
+      [".hmHeroLede", [{ opacity: 0.72, transform: "translate3d(0,7px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 420, 140],
+      [".hmHeroActions, .hmHeroSearch", [{ opacity: 0.9, transform: "translate3d(0,5px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 240, 340],
+      [".hmHeroMedia, .hmHeroFigure", [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], 700, 80],
     ];
     const animations: Animation[] = [];
     for (const [selector, frames, duration, delay] of parts) {
@@ -294,7 +294,7 @@ export function HomeSections() {
       if (el) animations.push(el.animate(frames, { duration, delay, easing: "cubic-bezier(0.23,1,0.32,1)", fill: "backwards" }));
     }
     heroAnimations.current = animations;
-    const settle = window.setTimeout(() => { animations.forEach((a) => a.finish()); heroAnimations.current = []; }, 650);
+    const settle = window.setTimeout(() => { animations.forEach((a) => a.finish()); heroAnimations.current = []; }, 840);
     return () => {
       window.clearTimeout(settle);
       animations.forEach((a) => a.cancel());
@@ -597,8 +597,6 @@ export function HomeSections() {
             ) : null}
           </div>
         </div>
-
-        <p className="hmDisclosure">{HOME_DEMO.disclosure}</p>
       </section>
 
       <BrandStrip motionEnabled={motionOn} />

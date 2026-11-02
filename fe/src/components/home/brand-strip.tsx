@@ -77,25 +77,18 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
   );
 
   return (
-    <section className="hmBrands" aria-labelledby="hm-brands-title" ref={rootRef}>
+    <section className="hmBrands" id="thuong-hieu" aria-labelledby="hm-brands-title" ref={rootRef}>
       <div className="hmBrandsHead">
         <h2 className="hmBrandsTitle" id="hm-brands-title">Cảm hứng từ các thương hiệu thời trang</h2>
-        {canLoop ? (
-          <button
-            className="hmBrandsToggle"
-            type="button"
-            aria-pressed={userPaused}
-            onClick={() => setUserPaused((value) => !value)}
-          >
-            {userPaused ? "Tiếp tục" : "Tạm dừng"}
-          </button>
-        ) : null}
+        {/* R3: bỏ nút "Tạm dừng" độc lập. Dải tự dừng khi hover/focus/ẩn tab/ngoài
+            khung nhìn; tắt hẳn bằng "Giao diện → chuyển động" trong menu theme. */}
       </div>
 
       {canLoop ? (
         <div
           className="hmBrandsViewport"
           data-paused={running ? "false" : "true"}
+          aria-label="Dải logo thương hiệu"
           onMouseEnter={() => setHoverPaused(true)}
           onMouseLeave={() => setHoverPaused(false)}
           onFocusCapture={() => setFocusWithin(true)}

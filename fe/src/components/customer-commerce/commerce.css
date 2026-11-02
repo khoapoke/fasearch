@@ -178,3 +178,9 @@ html[data-theme="dark"] .commercePage .commerce-badge.cancelled { background: rg
   overflow-wrap: anywhere;
 }
 
+
+/* R3 — empty guest cart state (real shopping empty, not a fake summary). */
+.commercePage .cart-empty-state { display: grid; justify-items: center; gap: 10px; padding: 56px 24px; text-align: center; }
+.commercePage .cart-empty-state h2 { margin: 0; font-size: clamp(22px, 2.6vw, 28px); letter-spacing: -0.02em; }
+.commercePage .cart-empty-state p { margin: 0; max-width: 44ch; color: var(--st-ink-soft); font-size: 14.5px; line-height: 1.6; }
+.commercePage .cart-empty-icon { color: var(--st-ink-soft); opacity: 0.75; }
