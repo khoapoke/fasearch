@@ -139,6 +139,22 @@
   object-fit: contain;
   flex: 0 0 auto;
 }
+/* R4-I: mark hãng luôn đọc được trên cả nền sáng và tối, không phụ thuộc màu mực
+   gốc của file (Davies/MLB Korea trắng, ClownZ/Teelab đen…). */
+.catPage .cat-detail-brand-mark {
+  width: 100px;
+  height: 26px;
+  flex: 0 0 auto;
+  background-color: var(--st-ink);
+  -webkit-mask-image: var(--brand-logo);
+  mask-image: var(--brand-logo);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  mask-position: left center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
 .catPage .cat-detail-info h1 { max-width: 100%; }
 .catPage .cat-attr-list { display: grid; gap: 8px; margin: 12px 0 0; }
 .catPage .cat-attr-list > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }

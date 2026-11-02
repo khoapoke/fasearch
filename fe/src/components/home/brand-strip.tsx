@@ -18,6 +18,8 @@ import { useEffect, useRef, useState } from "react";
 // "trọng lượng thị giác" (diện tích) thay vì cùng một chiều cao thô.
 type Brand = { name: string; src: string; width: number; height: number; mono?: "ink" | "gray" };
 
+type BrandItem = { slug: string; name: string; logo: string | null };
+
 const BRANDS: Brand[] = [
   { name: "Nike", src: "/brands/nike.svg", width: 76, height: 26 },
   { name: "Puma", src: "/brands/puma.svg", width: 96, height: 22 },
@@ -30,6 +32,30 @@ const BRANDS: Brand[] = [
 ];
 
 export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
+  // R4-I: dải logo lấy theo bộ thương hiệu canonical của BE (cùng nguồn với filter),
+  // không tự bịa mark. Hãng chưa có asset đã kiểm định → chỉ hiện chữ.
+  const [beItems, setBeItems] = useState<BrandItem[] | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/catalog/brands", { cache: "no-store", signal: controller.signal })
+      .then((r) => r.json())
+      .then((payload: { success?: boolean; result?: Array<{ slug?: unknown; name?: unknown; logoUrl?: unknown }> }) => {
+        if (controller.signal.aborted || payload?.success !== true || !Array.isArray(payload.result)) return;
+        const mapped = payload.result.flatMap((b) => {
+          if (typeof b?.slug !== "string" || typeof b?.name !== "string") return [];
+          const logo = typeof b.logoUrl === "string" && b.logoUrl
+            ? `/api/catalog/brands/${b.slug}/logo`
+            : null;
+          // Nhãn hiển thị: phân biệt thời trang Hàn với tham chiếu "MLB League" rỗng,
+          // dựa trên slug canonical (không tự đặt tên hãng mới).
+          const label = b.slug === "mlb-korea" && !/korea/i.test(b.name) ? "MLB Korea" : b.name;
+          return [{ slug: b.slug, name: label, logo }];
+        });
+        setBeItems(mapped);
+      })
+      .catch(() => setBeItems(null));
+    return () => controller.abort();
+  }, []);
   const [userPaused, setUserPaused] = useState(false);
   const [hoverPaused, setHoverPaused] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -53,24 +79,77 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
     return () => observer.disconnect();
   }, []);
 
-  const canLoop = motionEnabled && BRANDS.length >= 3;
+  // R4-I: hiển thị TOÀN BỘ bộ canonical (trừ "mlb" — tham chiếu MLB League rỗng,
+  // không phải thời trang), xếp hãng có logo trước để dải mở đầu bằng artwork thật.
+  // Không cắt bớt hãng VN/global mà người dùng yêu cầu.
+  const canonical = (beItems && beItems.length >= 3 ? beItems : []).filter((b) => b.slug !== "mlb");
+  const strip: BrandItem[] = canonical
+    .slice()
+    .sort((a, b) => Number(Boolean(b.logo)) - Number(Boolean(a.logo)));
+  const usingBe = strip.length >= 3;
+  const canLoop = motionEnabled && (usingBe ? strip.length >= 3 : BRANDS.length >= 3);
   const running = canLoop && !userPaused && !hoverPaused && !hidden && inView && !focusWithin;
 
-  const row = (items: Brand[], clone: boolean) => (
+  const rowFallback = (items: Brand[], clone: boolean) => (
     <ul className={`hmBrandTrack${clone ? " hmBrandClone" : ""}`} aria-hidden={clone ? "true" : undefined}>
       {items.map((brand) => (
         <li key={`${clone ? "dup-" : ""}${brand.name}`} className="hmBrandItem">
           {/* eslint-disable-next-line @next/next/no-img-element -- SVG thật, phục vụ cục bộ */}
-          <img
-            src={brand.src}
-            alt={clone ? "" : brand.name}
-            title={clone ? undefined : brand.name}
-            loading="eager"
-            width={brand.width}
-            height={brand.height}
-            data-mono={brand.mono ?? "ink"}
-            style={{ width: `${brand.width}px`, height: `${brand.height}px` }}
-          />
+          {brand.mono === "gray" ? (
+            // Mark có nền đặc + khoét trắng (MLB, UNIQLO): mask một màu sẽ thành
+            // khối đặc, nên giữ asset gốc ở dạng grayscale.
+            // eslint-disable-next-line @next/next/no-img-element -- asset thật, phục vụ cục bộ
+            <img
+              src={brand.src}
+              alt={clone ? "" : brand.name}
+              title={clone ? undefined : brand.name}
+              loading="eager"
+              width={brand.width}
+              height={brand.height}
+              data-mono="gray"
+              style={{ width: `${brand.width}px`, height: `${brand.height}px` }}
+            />
+          ) : (
+            <span
+              className="hmBrandMark"
+              role="img"
+              aria-label={clone ? undefined : brand.name}
+              aria-hidden={clone ? "true" : undefined}
+              title={clone ? undefined : brand.name}
+              style={{
+                ["--brand-w" as string]: `${brand.width}px`,
+                ["--brand-h" as string]: `${brand.height}px`,
+                ["--brand-logo" as string]: `url("${brand.src}")`,
+              }}
+            />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+
+  const rowBe = (items: BrandItem[], clone: boolean) => (
+    <ul className={`hmBrandTrack${clone ? " hmBrandClone" : ""}`} aria-hidden={clone ? "true" : undefined}>
+      {items.map((brand) => (
+        <li key={`${clone ? "dup-" : ""}${brand.slug}`} className="hmBrandItem">
+          {brand.logo ? (
+            <span
+              className="hmBrandMark"
+              role="img"
+              aria-label={clone ? undefined : brand.name}
+              aria-hidden={clone ? "true" : undefined}
+              title={clone ? undefined : brand.name}
+              style={{
+                ["--brand-w" as string]: "104px",
+                ["--brand-h" as string]: "26px",
+                ["--brand-logo" as string]: `url("${brand.logo}")`,
+              }}
+            />
+          ) : (
+            <span className="hmBrandWord" title={clone ? undefined : brand.name} aria-hidden={clone ? "true" : undefined}>
+              {brand.name}
+            </span>
+          )}
         </li>
       ))}
     </ul>
@@ -96,11 +175,11 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false);
           }}
         >
-          {row(BRANDS, false)}
-          {row(BRANDS, true)}
+          {usingBe ? rowBe(strip, false) : rowFallback(BRANDS, false)}
+          {usingBe ? rowBe(strip, true) : rowFallback(BRANDS, true)}
         </div>
       ) : (
-        <div className="hmBrandsStatic">{row(BRANDS, false)}</div>
+        <div className="hmBrandsStatic">{usingBe ? rowBe(strip, false) : rowFallback(BRANDS, false)}</div>
       )}
 
     </section>

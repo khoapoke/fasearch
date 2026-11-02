@@ -214,8 +214,13 @@ export function DetailView({ id }: { id: string }) {
                   {/* Logo hãng do BE cung cấp, đã kiểm định; FE chỉ hiển thị ở cỡ
                       nhãn nhỏ (24–28px cao). Không có/không tin cậy ⇒ chỉ chữ. */}
                   {product.brandLogoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- logo thật từ BE candidate
-                    <img src={product.brandLogoUrl} alt="" aria-hidden="true" width={100} height={26} loading="lazy" />
+                    // Logo thật từ BE nhưng render qua mask một màu: mực trắng/đen của
+                    // asset không còn quyết định độ tương phản (Control contact sheet).
+                    <span
+                      className="cat-detail-brand-mark"
+                      aria-hidden="true"
+                      style={{ ["--brand-logo" as string]: `url("${product.brandLogoUrl}")` }}
+                    />
                   ) : null}
                   <span>{product.brandName}</span>
                 </p>
