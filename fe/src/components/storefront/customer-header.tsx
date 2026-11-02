@@ -193,6 +193,11 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
 
   const navModel = resolveHeaderAccountNav(authState);
 
+  // Compact chỉ còn logo icon: hai cụm hai bên bị `inert` (không tab, không bấm)
+  // để không có "ô focus vô hình". Logo ở giữa luôn hiện và là cửa vào bàn phím:
+  // focus vào logo (hoặc chạm) mở lại toàn bộ nav TRƯỚC khi người dùng Tab tiếp.
+  const clustersInert = compact && !menuOpen && !focusInside;
+
   return (
     <header
       className="chHeader"
@@ -209,7 +214,7 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
             Khi cuộn xuống, cả cột và cột phải ẩn khỏi màn hình nhưng vẫn ở DOM
             (aria-hidden + inert qua CSS visibility) để tiêu điểm bàn phím có thể
             kéo chúng trở lại thay vì mất hút. */}
-        <div className="chLeft">
+        <div className="chLeft" {...(clustersInert ? { inert: true } : {})}>
           <details
             className="chMobile"
             ref={detailsRef}
@@ -268,13 +273,20 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
 
         {/* Cột giữa: thương hiệu luôn căn giữa hình học. Down-scroll chỉ còn mark;
             wordmark ẩn bằng opacity/transform (không đổi kích thước hit target). */}
-        <Link className="chBrand" href="/" aria-label="FaSearch, về trang chủ" title="FaSearch">
+        <Link
+          className="chBrand"
+          href="/"
+          aria-label="FaSearch, về trang chủ"
+          title="FaSearch"
+          onFocus={() => setFocusInside(true)}
+          onPointerDown={() => setFocusInside(true)}
+        >
           <FaSearchMark />
           <span className="chWord">FaSearch</span>
         </Link>
 
         {/* Cột phải: tài khoản (desktop), giao diện, giỏ hàng. */}
-        <div className="chRight">
+        <div className="chRight" {...(clustersInert ? { inert: true } : {})}>
           <nav className="chNav chNavAccount" aria-label="Tài khoản">
             <Link
               href={navModel.href}
