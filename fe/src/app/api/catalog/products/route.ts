@@ -24,6 +24,9 @@ export async function GET(request: Request) {
   const categoryIdRaw = url.searchParams.get("categoryId");
   const categoryId = categoryIdRaw ? intInRange(categoryIdRaw, 1, Number.MAX_SAFE_INTEGER) : null;
   if (categoryIdRaw && categoryId === null) return jsonError("Danh mục chưa hợp lệ.", 400);
+  const brandRaw = (url.searchParams.get("brand") ?? "").trim();
+  const brand = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(brandRaw) && brandRaw.length <= 64 ? brandRaw : null;
+  if (url.searchParams.get("brand") && brand === null) return jsonError("Thương hiệu chưa hợp lệ.", 400);
   const minPrice = decimalOrNull(url.searchParams.get("minPrice"));
   const maxPrice = decimalOrNull(url.searchParams.get("maxPrice"));
   if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
@@ -41,6 +44,7 @@ export async function GET(request: Request) {
     status: "ACTIVE",
   });
   if (keyword) params.set("keyword", keyword);
+  if (brand) params.set("brand", brand);
   if (categoryId !== null) params.set("categoryId", String(categoryId));
   if (minPrice !== null) params.set("minPrice", String(minPrice));
   if (maxPrice !== null) params.set("maxPrice", String(maxPrice));
