@@ -79,6 +79,39 @@ export async function fetchPublishedOffers(): Promise<VoucherOffer[]> {
   return unwrap<VoucherOffer[]>(r);
 }
 
+// ---- Customer-safe policy projection (không dùng endpoint ADMIN) ----
+
+export type OwnPolicy = {
+  policy: { policyId: number; version: number; status: string; earnCurrencyPerPoint: number; redeemCurrencyPerPoint: number };
+  tiers: Array<{ tierId: number; name: string; minimumCumulativePaidSales: number; version: number }>;
+  balance: LoyaltyBalance;
+};
+
+export async function fetchOwnLoyaltyPolicy(): Promise<OwnPolicy> {
+  const raw = await loyaltyRequest<unknown>("/api/customer-commerce/loyalty/policy");
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Phản hồi chính sách không hợp lệ.");
+  const v = raw as Record<string, unknown>;
+  const policy = v.policy as Record<string, unknown> | undefined;
+  if (!policy || !Number.isSafeInteger(policy.policyId) || !Number.isFinite(policy.earnCurrencyPerPoint) || !Number.isFinite(policy.redeemCurrencyPerPoint)) {
+    throw new Error("Chính sách điểm không hợp lệ.");
+  }
+  const tiers = Array.isArray(v.tiers) ? v.tiers.filter((t): t is Record<string, unknown> => Boolean(t) && typeof t === "object") : [];
+  return {
+    balance: balance(v.balance),
+    policy: {
+      policyId: policy.policyId as number,
+      version: Number(policy.version ?? 0),
+      status: String(policy.status ?? ""),
+      earnCurrencyPerPoint: policy.earnCurrencyPerPoint as number,
+      redeemCurrencyPerPoint: policy.redeemCurrencyPerPoint as number,
+    },
+    tiers: tiers
+      .filter((t) => typeof t.name === "string" && Number.isFinite(t.minimumCumulativePaidSales) && Number.isSafeInteger(t.tierId))
+      .map((t) => ({ tierId: t.tierId as number, name: t.name as string, minimumCumulativePaidSales: t.minimumCumulativePaidSales as number, version: Number(t.version ?? 0) }))
+      .sort((a, b) => a.minimumCumulativePaidSales - b.minimumCumulativePaidSales),
+  };
+}
+
 // ---- Contract v1.3 loyalty reads ----
 
 export type OwnLoyalty = { balance: LoyaltyBalance; customerId: number };

@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
-import { fetchOwnLoyalty, fetchOwnLoyaltyHistory, type OwnLoyalty } from "@/lib/benefits-client";
+import { fetchOwnLoyalty, fetchOwnLoyaltyHistory, fetchOwnLoyaltyPolicy, type OwnLoyalty, type OwnPolicy } from "@/lib/benefits-client";
 import { benefitErrorMessage, loyaltyActionLabel, loyaltySignedPoints, type LoyaltyHistoryEntry } from "@/lib/benefits";
 import "@/components/storefront/preview.css";
 
 type State =
   | { kind: "checking" }
   | { kind: "loading" }
-  | { kind: "ready"; data: OwnLoyalty; history: LoyaltyHistoryEntry[] }
+  | { kind: "ready"; data: OwnLoyalty; history: LoyaltyHistoryEntry[]; policy: OwnPolicy | null }
   | { kind: "error"; message: string; status: number };
 
 export default function LoyaltyPage() {
@@ -24,7 +24,9 @@ export default function LoyaltyPage() {
     try {
       const data = await fetchOwnLoyalty();
       const pg = await fetchOwnLoyaltyHistory("page=0&size=20");
-      setState({ kind: "ready", data, history: pg.data });
+      // Chính sách là phép chiếu customer-safe; lỗi ở đây không chặn số dư/lịch sử.
+      const policy = await fetchOwnLoyaltyPolicy().catch(() => null);
+      setState({ kind: "ready", data, history: pg.data, policy });
     } catch (e) {
       const st = (e as { status?: number })?.status ?? 0;
       if (st === 401) {
@@ -66,6 +68,29 @@ export default function LoyaltyPage() {
               {state.data.balance.policyStatus === "UNCONFIGURED" ? " · Chưa cấu hình chính sách điểm." : ""}
             </p>
           </section>
+          {state.policy ? (
+            <section className="sfSideCard" aria-label="Cách tích và dùng điểm" style={{ marginTop: 14 }}>
+              <b>Cách tích và dùng điểm</b>
+              <p className="sfIdentitySub" style={{ marginTop: 6 }}>
+                {state.policy.policy.status === "ENABLED"
+                  ? `Mỗi ${state.policy.policy.earnCurrencyPerPoint.toLocaleString("vi-VN")}₫ chi tiêu được 1 điểm; ${state.policy.policy.redeemCurrencyPerPoint.toLocaleString("vi-VN")} điểm giảm 1₫ khi thanh toán.`
+                  : "Chính sách điểm hiện chưa bật cho tài khoản này."}
+              </p>
+              {state.policy.tiers.length > 0 ? (
+                <ul className="sfIdentitySub" style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+                  {state.policy.tiers.map((tier) => (
+                    <li key={tier.tierId}>
+                      <b>{tier.name}</b> · từ {tier.minimumCumulativePaidSales.toLocaleString("vi-VN")}₫ chi tiêu tích lũy
+                      {state.data.balance.salesTierName === tier.name ? " · hạng hiện tại" : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="sfIdentitySub" style={{ marginTop: 8 }}>
+                Chính sách phiên bản {state.policy.policy.version}. Điểm chỉ cộng từ đơn đã thanh toán thật.
+              </p>
+            </section>
+          ) : null}
           <section className="sfSideCard" aria-label="Lịch sử điểm" style={{ marginTop: 14 }}>
             <b>Lịch sử điểm (mới nhất trước)</b>
             {state.history.length === 0 ? (

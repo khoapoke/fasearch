@@ -21,7 +21,10 @@ export type MarqueeItem = {
  * - Không đặt số liệu, form hay hành động quan trọng bên trong dải chạy.
  */
 export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; motionEnabled: boolean }) {
-  const [paused, setPaused] = useState(false);
+  // Tạm dừng do người dùng (nút) tách khỏi tạm dừng tạm thời khi hover/focus,
+  // đúng như MOTION-SPEC: hover pause là tạm thời, nút là ý định bền.
+  const [userPaused, setUserPaused] = useState(false);
+  const [hoverPaused, setHoverPaused] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [inView, setInView] = useState(true);
   const [focusWithin, setFocusWithin] = useState(false);
@@ -45,7 +48,7 @@ export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; mo
 
   // Ít hơn 3 ảnh thật thì không đủ để chạy vòng lặp có ý nghĩa → lưới tĩnh.
   const canLoop = motionEnabled && items.length >= 3;
-  const running = canLoop && !paused && !hidden && inView && !focusWithin;
+  const running = canLoop && !userPaused && !hoverPaused && !hidden && inView && !focusWithin;
 
   if (items.length === 0) return null;
 
@@ -55,7 +58,7 @@ export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; mo
         {items.map((item) => (
           <Link key={item.id} className="hmMarqTile" href={item.href}>
             {/* eslint-disable-next-line @next/next/no-img-element -- ảnh thật từ catalog BFF */}
-            <img src={item.image} alt={item.name} loading="lazy" />
+            <img src={item.image} alt={item.name} loading="eager" />
             <span>{item.name}</span>
           </Link>
         ))}
@@ -68,8 +71,8 @@ export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; mo
       className="hmMarq"
       ref={rootRef}
       data-paused={running ? "false" : "true"}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      onMouseEnter={() => setHoverPaused(true)}
+      onMouseLeave={() => setHoverPaused(false)}
       onFocusCapture={() => setFocusWithin(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false);
@@ -80,10 +83,10 @@ export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; mo
         <button
           className="hmMarqToggle"
           type="button"
-          aria-pressed={paused}
-          onClick={() => setPaused((value) => !value)}
+          aria-pressed={userPaused}
+          onClick={() => setUserPaused((value) => !value)}
         >
-          {paused ? "Tiếp tục" : "Tạm dừng"}
+          {userPaused ? "Tiếp tục" : "Tạm dừng"}
         </button>
       </div>
       <div className="hmMarqViewport">
@@ -92,7 +95,7 @@ export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; mo
             <li key={item.id} className="hmMarqItem">
               <Link href={item.href} aria-label={item.name}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- ảnh thật từ catalog BFF */}
-                <img src={item.image} alt="" loading="lazy" />
+                <img src={item.image} alt="" loading="eager" />
               </Link>
             </li>
           ))}
@@ -102,7 +105,7 @@ export function HomeMarquee({ items, motionEnabled }: { items: MarqueeItem[]; mo
           {items.map((item) => (
             <li key={`dup-${item.id}`} className="hmMarqItem">
               {/* eslint-disable-next-line @next/next/no-img-element -- ảnh thật từ catalog BFF */}
-              <img src={item.image} alt="" loading="lazy" />
+              <img src={item.image} alt="" loading="eager" />
             </li>
           ))}
         </ul>
