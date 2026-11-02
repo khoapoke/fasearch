@@ -36,11 +36,14 @@ export function AccountCenterShell({
   kicker,
   title,
   children,
+  allowGuest = false,
 }: {
   active: string;
   kicker?: string;
   title: string;
   children: React.ReactNode;
+  /** Trang công khai (ví dụ danh sách ưu đãi) vẫn xem được khi chưa đăng nhập. */
+  allowGuest?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,14 +64,14 @@ export function AccountCenterShell({
       .catch((error) => {
         if (!live) return;
         setState("signedout");
-        if (error instanceof AuthApiError && error.status === 401) {
+        if (!allowGuest && error instanceof AuthApiError && error.status === 401) {
           router.replace(`/dang-nhap?next=${encodeURIComponent(pathname)}`);
         }
       });
     return () => {
       live = false;
     };
-  }, [router, pathname]);
+  }, [router, pathname, allowGuest]);
 
   const displayName = profile?.username || "Tài khoản";
 
@@ -108,10 +111,11 @@ export function AccountCenterShell({
                 </Link>
               ))}
               </nav>
+              {state === "ready" ? (
               <button
                 className="acct-logout"
                 type="button"
-                disabled={busy || state !== "ready"}
+                disabled={busy}
                 onClick={async () => {
                   setBusy(true);
                   try {
@@ -126,6 +130,11 @@ export function AccountCenterShell({
                 <Icon name="logout" size={18} />
                 {busy ? "Đang đăng xuất…" : "Đăng xuất tài khoản"}
               </button>
+              ) : (
+                <Link className="acct-logout" href={`/dang-nhap?next=${encodeURIComponent(pathname)}`}>
+                  Đăng nhập để dùng ưu đãi của bạn
+                </Link>
+              )}
             </aside>
             <div className="acct-main">{children}</div>
           </div>

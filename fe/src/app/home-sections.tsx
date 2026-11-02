@@ -349,7 +349,7 @@ export function HomeSections() {
   const showTags = stepIndex >= 1;
   const showResult = stage === "result" || stage === "complete";
   const autoPaused = userPaused || focusPaused || docHidden || !demoInView || !motionOn;
-  const pauseUnavailable = manual || stage === "complete" || !motionOn;
+  const pauseUnavailable = manual || stage === "complete" || stage === "result" || !motionOn;
 
   const statusText =
     manual
@@ -369,7 +369,7 @@ export function HomeSections() {
   // Vòng tự chạy hữu hạn; dừng hẳn khi tay chọn, khi tạm dừng, khi ẩn tab,
   // khi ngoài khung nhìn hoặc khi tắt/giảm chuyển động. Không bù nhịp khi quay lại.
   useEffect(() => {
-    if (!motionOn || manual || autoPaused || stage === "complete") return;
+    if (!motionOn || manual || autoPaused || stage === "complete" || stage === "result") return;
     const run: Record<string, number> = { dormant: 220, typing: 700, tags: 900, processing: 1200 };
     const delay = run[stage];
     if (delay === undefined) return;
@@ -377,7 +377,7 @@ export function HomeSections() {
       if (stage === "dormant") { setStage("typing"); setTyped(0); return; }
       if (stage === "typing") { setStage("tags"); setTyped(HOME_DEMO.query.length); return; }
       if (stage === "tags") { setStage("processing"); return; }
-      if (stage === "processing") { setStage("result"); setAttention((n) => n + 1); schedule(60, () => setStage("complete")); }
+      if (stage === "processing") { setStage("result"); setAttention((n) => n + 1); }
     });
     return () => clearDemoTimers();
   }, [stage, motionOn, manual, autoPaused, schedule, clearDemoTimers]);
@@ -394,6 +394,7 @@ export function HomeSections() {
     clearDemoTimers();
     setManual(false);
     setUserPaused(false);
+    setFocusPaused(false);
     setStage(motionOn ? "dormant" : "complete");
     setTyped(motionOn ? 0 : HOME_DEMO.query.length);
   };

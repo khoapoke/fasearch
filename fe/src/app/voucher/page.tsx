@@ -60,7 +60,7 @@ export default function VouchersPage() {
   }
 
   return (
-    <AccountCenterShell active="/voucher" title="Voucher & ưu đãi">
+    <AccountCenterShell active="/voucher" title="Voucher & ưu đãi" allowGuest>
       <section className="vcIntro" aria-label="Ưu đãi đang mở">
         <h2>Ưu đãi đang mở</h2>
         <p>Danh sách dưới đây là các chương trình công khai còn hiệu lực. Mức giảm thực tế được xác nhận lại khi bạn đặt đơn.</p>
