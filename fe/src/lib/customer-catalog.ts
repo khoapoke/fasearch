@@ -13,6 +13,9 @@ export type CatalogProduct = {
   price: number;
   imageUrl: string | null;
   status: string | null;
+  /** Nhãn hiệu là metadata/lexical từ DB; không phải suy luận từ ảnh. */
+  brandName: string | null;
+  brandSlug: string | null;
 };
 
 export type CatalogVariant = {
@@ -39,6 +42,7 @@ export type CatalogPage = {
 
 export type CatalogQuery = {
   keyword?: string;
+  brand?: string;
   categoryId?: number | null;
   minPrice?: number | null;
   maxPrice?: number | null;
@@ -96,6 +100,8 @@ function normalizeProduct(raw: unknown): CatalogProduct {
     material: typeof p.material === "string" ? p.material : null,
     style: typeof p.style === "string" ? p.style : null,
     price: requireFinite(p.price),
+    brandName: typeof p.brandName === "string" && p.brandName ? p.brandName : null,
+    brandSlug: typeof p.brandSlug === "string" && p.brandSlug ? p.brandSlug : null,
     imageUrl: (() => {
       const raw = typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : null;
       if (!raw) return null;
@@ -172,6 +178,7 @@ export async function fetchCatalogCategories(signal?: AbortSignal): Promise<Cata
 export function buildCatalogQuery(query: CatalogQuery): string {
   const params = new URLSearchParams();
   if (query.keyword?.trim()) params.set("keyword", query.keyword.trim());
+  if (query.brand?.trim()) params.set("brand", query.brand.trim());
   if (query.categoryId != null && Number.isFinite(query.categoryId)) params.set("categoryId", String(query.categoryId));
   if (query.minPrice != null && Number.isFinite(query.minPrice)) params.set("minPrice", String(query.minPrice));
   if (query.maxPrice != null && Number.isFinite(query.maxPrice)) params.set("maxPrice", String(query.maxPrice));
@@ -206,4 +213,19 @@ export async function fetchCatalogProduct(id: string, signal?: AbortSignal): Pro
 
 export function formatVnd(value: number): string {
   return Number.isFinite(value) ? `${value.toLocaleString("vi-VN")} ₫` : "—";
+}
+
+
+export type CatalogBrand = { id: number; name: string; slug: string; logoUrl: string | null; country: string | null };
+
+/** `GET /api/v1/brands` — công khai trên catalog candidate; rỗng khi chưa import. */
+export async function fetchCatalogBrands(signal?: AbortSignal): Promise<CatalogBrand[]> {
+  const result = await getJson<unknown>("/api/catalog/brands", signal);
+  const list = Array.isArray(result) ? result : [];
+  return list.flatMap((raw) => {
+    if (!raw || typeof raw !== "object") return [];
+    const b = raw as Record<string, unknown>;
+    if (!Number.isSafeInteger(b.id) || typeof b.name !== "string" || typeof b.slug !== "string") return [];
+    return [{ id: b.id as number, name: b.name, slug: b.slug, logoUrl: typeof b.logoUrl === "string" ? b.logoUrl : null, country: typeof b.country === "string" ? b.country : null }];
+  });
 }

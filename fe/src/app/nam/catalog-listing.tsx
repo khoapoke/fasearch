@@ -13,10 +13,13 @@ import {
   type CatalogCategory,
   type CatalogPage,
   type CatalogProduct,
+  fetchCatalogBrands,
+  type CatalogBrand,
 } from "@/lib/customer-catalog";
 import "@/components/customer-catalog/catalog.css";
 
 type Filters = {
+  brand: string;
   categoryId: string;
   keyword: string;
   minPrice: string;
@@ -24,7 +27,7 @@ type Filters = {
   sort: string;
 };
 
-const EMPTY_FILTERS: Filters = { categoryId: "", keyword: "", minPrice: "", maxPrice: "", sort: "id,desc" };
+const EMPTY_FILTERS: Filters = { brand: "", categoryId: "", keyword: "", minPrice: "", maxPrice: "", sort: "id,desc" };
 const PAGE_SIZE = 6;
 
 function CatalogImage({ src, alt }: { src: string | null; alt: string }) {
@@ -80,6 +83,7 @@ function ProductCard({ product }: { product: CatalogProduct }) {
         <FavoriteButton id={product.id} name={product.name} />
       </div>
       <div className="cat-product-info">
+        {product.brandName ? <span className="cat-product-brand">{product.brandName}</span> : null}
         <h3>
           <Link className="cat-product-name" href={`/san-pham/${product.id}`}>
             {product.name}
@@ -97,6 +101,8 @@ function ProductCard({ product }: { product: CatalogProduct }) {
 function FilterFields({
   prefix,
   filters,
+  brands,
+  onBrand,
   draft,
   categories,
   categoriesLoading,
@@ -116,6 +122,8 @@ function FilterFields({
   categoriesError: string;
   onRetryCategories: () => void;
   onCategory: (value: string) => void;
+  brands: CatalogBrand[];
+  onBrand: (value: string) => void;
   onDraft: (next: { keyword: string; minPrice: string; maxPrice: string }) => void;
   onApply: () => void;
   onReset: () => void;
@@ -124,6 +132,27 @@ function FilterFields({
   return (
     <>
       <h2>Bộ lọc</h2>
+      {brands.length > 0 ? (
+        <fieldset className="cat-filter-group">
+          <legend>Thương hiệu</legend>
+          <label className="cat-filter-option">
+            <input type="radio" name={`${prefix}-brand`} checked={filters.brand === ""} onChange={() => onBrand("")} />
+            <span>Tất cả thương hiệu</span>
+          </label>
+          {brands.map((brand) => (
+            <label className="cat-filter-option" key={brand.slug}>
+              <input
+                type="radio"
+                name={`${prefix}-brand`}
+                checked={filters.brand === brand.slug}
+                onChange={() => onBrand(brand.slug)}
+              />
+              <span>{brand.name}</span>
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+
       <fieldset className="cat-filter-group">
         <legend>Danh mục</legend>
         <label className="cat-filter-option">
@@ -183,6 +212,7 @@ export function CatalogListing() {
   const categories = categorySettled.attempt === categoryAttempt ? categorySettled.list ?? [] : [];
   const categoriesLoading = categorySettled.attempt !== categoryAttempt;
   const categoryError = categorySettled.attempt === categoryAttempt ? categorySettled.error ?? "" : "";
+  const [brands, setBrands] = useState<CatalogBrand[]>([]);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [draft, setDraft] = useState({ keyword: "", minPrice: "", maxPrice: "" });
   const [filterError, setFilterError] = useState("");
@@ -194,6 +224,15 @@ export function CatalogListing() {
   const loading = settled.key !== queryKey;
   const data = settled.key === queryKey ? settled.data ?? null : null;
   const error = settled.key === queryKey ? settled.error ?? "" : "";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // Thương hiệu là metadata thật; danh sách rỗng thì ẩn bộ lọc thay vì bịa.
+    fetchCatalogBrands(controller.signal)
+      .then((list) => { if (!controller.signal.aborted) setBrands(list); })
+      .catch(() => { if (!controller.signal.aborted) setBrands([]); });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -217,6 +256,7 @@ export function CatalogListing() {
     const my = ++reqId.current;
     fetchCatalogProducts(
       {
+        brand: filters.brand || undefined,
         categoryId: filters.categoryId ? Number(filters.categoryId) : null,
         keyword: filters.keyword,
         minPrice: filters.minPrice ? Number(filters.minPrice) : null,
@@ -264,6 +304,7 @@ export function CatalogListing() {
   }
 
   const appliedChips = [
+    filters.brand ? { key: "brand", label: brands.find((b) => b.slug === filters.brand)?.name ?? filters.brand } : null,
     filters.categoryId ? { key: "category", label: categories.find((c) => String(c.id) === filters.categoryId)?.name ?? "Danh mục" } : null,
     filters.keyword ? { key: "keyword", label: `“${filters.keyword}”` } : null,
     filters.minPrice ? { key: "min", label: `Từ ${formatVnd(Number(filters.minPrice))}` } : null,
@@ -272,6 +313,8 @@ export function CatalogListing() {
 
   const filterProps = {
     filters,
+    brands,
+    onBrand: (brand: string) => commit({ ...filters, brand }),
     draft,
     categories,
     categoriesLoading,
@@ -335,7 +378,8 @@ export function CatalogListing() {
                       type="button"
                       key={chip.key}
                       onClick={() => {
-                        if (chip.key === "category") commit({ ...filters, categoryId: "" });
+                        if (chip.key === "brand") commit({ ...filters, brand: "" });
+                        else if (chip.key === "category") commit({ ...filters, categoryId: "" });
                         else if (chip.key === "keyword") { setDraft({ ...draft, keyword: "" }); commit({ ...filters, keyword: "" }); }
                         else if (chip.key === "min") { setDraft({ ...draft, minPrice: "" }); commit({ ...filters, minPrice: "" }); }
                         else { setDraft({ ...draft, maxPrice: "" }); commit({ ...filters, maxPrice: "" }); }

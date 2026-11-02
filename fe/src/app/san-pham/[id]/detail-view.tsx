@@ -209,6 +209,7 @@ export function DetailView({ id }: { id: string }) {
             </figure>
 
             <section className="cat-detail-info" aria-label="Thông tin và lựa chọn sản phẩm">
+              {product.brandName ? <p className="cat-product-brand">{product.brandName}</p> : null}
               <h1>{product.name}</h1>
               {product.description ? <p className="cat-product-description">{product.description}</p> : null}
               <p className="cat-detail-price">{formatVnd(price)}</p>

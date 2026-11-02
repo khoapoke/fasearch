@@ -484,3 +484,6 @@
     padding-right: 6px;
   }
 }
+
+/* Brand label — metadata thật từ DB, không phải suy luận từ ảnh. */
+.cat-product-brand { display: inline-block; margin: 0 0 4px; color: var(--st-ink-soft); font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
