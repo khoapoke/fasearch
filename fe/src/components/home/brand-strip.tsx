@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 
 // Kích thước quang học: mỗi mark có tỉ lệ khác nhau, nên chuẩn hoá theo
 // "trọng lượng thị giác" (diện tích) thay vì cùng một chiều cao thô.
-type Brand = { name: string; src: string; width: number; height: number };
+type Brand = { name: string; src: string; width: number; height: number; mono?: "ink" | "gray" };
 
 const BRANDS: Brand[] = [
   { name: "Nike", src: "/brands/nike.svg", width: 76, height: 26 },
@@ -24,6 +24,9 @@ const BRANDS: Brand[] = [
   { name: "Adidas", src: "/brands/adidas.svg", width: 84, height: 26 },
   { name: "New Balance", src: "/brands/new-balance.svg", width: 104, height: 20 },
   { name: "Vans", src: "/brands/vans.svg", width: 80, height: 22 },
+  { name: "ASICS", src: "/brands/asics.svg", width: 92, height: 26 },
+  { name: "MLB", src: "/brands/mlb.svg", width: 58, height: 30, mono: "gray" },
+  { name: "UNIQLO", src: "/brands/uniqlo.svg", width: 34, height: 34, mono: "gray" },
 ];
 
 export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
@@ -65,6 +68,7 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
             loading="eager"
             width={brand.width}
             height={brand.height}
+            data-mono={brand.mono ?? "ink"}
             style={{ width: `${brand.width}px`, height: `${brand.height}px` }}
           />
         </li>

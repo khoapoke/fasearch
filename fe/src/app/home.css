@@ -1106,7 +1106,11 @@ html[data-theme="dark"] .hmHome {
 .hmBrandItem { display: flex; align-items: center; justify-content: center; height: 34px; flex: 0 0 auto; }
 .hmBrandItem img { flex: 0 0 auto; }
 .hmBrandItem img { display: block; object-fit: contain; filter: brightness(0) opacity(0.62); }
+/* Mark có nền màu/khoét trắng (MLB, UNIQLO) sẽ thành khối đen nếu brightness(0);
+   giữ grayscale để hình khối bên trong vẫn đọc được. */
+.hmBrandItem img[data-mono="gray"] { filter: grayscale(1) opacity(0.72); }
 [data-theme="dark"] .hmBrandItem img { filter: brightness(0) invert(1) opacity(0.7); }
+[data-theme="dark"] .hmBrandItem img[data-mono="gray"] { filter: grayscale(1) invert(0.85) opacity(0.8); }
 @keyframes hmBrandRun { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
 .hmBrandsStatic { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: clamp(28px, 6vw, 72px); }
 .hmBrandsStatic .hmBrandTrack { animation: none; flex-wrap: wrap; justify-content: center; gap: clamp(28px, 6vw, 72px); }
