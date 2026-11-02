@@ -173,7 +173,6 @@ function FilterFields({
       <button className="cat-text-button cat-filter-reset" type="button" onClick={onReset}>
         Xóa bộ lọc
       </button>
-      <p className="cat-filter-note">Bộ lọc màu/kích thước chưa có trong API công khai của pilot này.</p>
     </>
   );
 }

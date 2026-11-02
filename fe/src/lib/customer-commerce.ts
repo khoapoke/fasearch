@@ -319,7 +319,7 @@ export function normalizeOrderDetail(raw: unknown): CustomerOrderDetail {
     items: v.items.map((x) => {
       const i = record(x);
       if (base.voucherCode && (i.discountAmount === undefined || i.discountAmount === null)) throw new CommerceError(INVALID, 502);
-      return { skuId: integer(i.skuId, 1), productName: typeof i.productName === "string" ? i.productName : "", color: text(i.color), size: text(i.size), imageUrl: text(i.imageUrl), quantity: integer(i.quantity, 1), unitPrice: finite(i.unitPrice), totalPrice: finite(i.totalPrice), discountAmount: finite(i.discountAmount ?? 0), pointsDiscountAmount: i.pointsDiscountAmount === null || i.pointsDiscountAmount === undefined ? null : finite(i.pointsDiscountAmount) };
+      return { skuId: integer(i.skuId, 1), productName: typeof i.productName === "string" ? i.productName : "", color: text(i.color), size: text(i.size), imageUrl: sameOriginProductImage(text(i.imageUrl)), quantity: integer(i.quantity, 1), unitPrice: finite(i.unitPrice), totalPrice: finite(i.totalPrice), discountAmount: finite(i.discountAmount ?? 0), pointsDiscountAmount: i.pointsDiscountAmount === null || i.pointsDiscountAmount === undefined ? null : finite(i.pointsDiscountAmount) };
     }),
   };
 }
@@ -336,6 +336,12 @@ export function normalizeOrderPage(raw: unknown): CustomerOrderPage {
 export function normalizeShipping(raw: unknown): ShippingQuote {
   const v = record(raw);
   return { shippingFee: finite(v.shippingFee), estimatedDays: typeof v.estimatedDays === "string" ? v.estimatedDays : "" };
+}
+
+/** BE trả path ảnh dạng /api/v1/products/images/<file>; FE chỉ phục vụ qua BFF catalog. */
+function sameOriginProductImage(raw: string | null): string | null {
+  const m = raw?.match(/^\/api\/v1\/products\/images\/(.+)$/);
+  return m ? `/api/catalog/product-images/${m[1]}` : raw;
 }
 
 export function formatMoney(value: number): string {

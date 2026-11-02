@@ -70,7 +70,7 @@ export function AccountCenterShell({
   const displayName = profile?.username || "Tài khoản";
 
   return (
-    <StorefrontShell active="/tai-khoan">
+    <StorefrontShell active="/tai-khoan" themed palette="customer" header="customer" footer="none">
       <div className="sfAccountWrap">
         <nav className="sfCrumbs" aria-label="Đường dẫn">
           <Link href="/">Trang chủ</Link>

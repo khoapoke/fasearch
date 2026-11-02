@@ -165,7 +165,7 @@ export default function CartPage() {
                       <li className="commerce-line" key={line.skuId}>
                         {line.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- product image comes from the candidate BE
-                          <img className="commerce-line-image" src={line.imageUrl} alt="" referrerPolicy="no-referrer" />
+                          <img className="commerce-line-image" src={line.imageUrl.replace(/^\/api\/v1\/products\/images\//, "/api/catalog/product-images/")} alt="" referrerPolicy="no-referrer" />
                         ) : <span className="commerce-line-image" aria-hidden="true" />}
                         <div>
                           <p className="commerce-line-name">{line.productName}</p>

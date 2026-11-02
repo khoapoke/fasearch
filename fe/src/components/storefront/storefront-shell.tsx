@@ -61,10 +61,10 @@ export function StorefrontShell({
       </div>
       <header className="sfHeader">
         <div className="sfBar">
-          <Link className="sfBrand" href="/" aria-label="FashionSearch AI — trang chủ">
+          <Link className="sfBrand" href="/" aria-label="FaSearch — trang chủ">
             <span className="sfBrandMark" aria-hidden="true">FS</span>
             <span>
-              FashionSearch <span className="sfBrandAi">AI</span>
+              FaSearch
             </span>
           </Link>
           <nav className="sfNav" aria-label="Điều hướng chính">
@@ -130,7 +130,7 @@ export function StorefrontShell({
             <h3>
               <span className="sfBrand" style={{ fontSize: 15 }}>
                 <span className="sfBrandMark" aria-hidden="true">FS</span>
-                FashionSearch <span className="sfBrandAi">AI</span>
+                FaSearch
               </span>
             </h3>
             <p>Danh mục, tồn kho và giá đều lấy từ máy chủ.</p>
@@ -153,7 +153,7 @@ export function StorefrontShell({
           </div>
         </div>
         <div className="sfBottom">
-          <p>© {new Date().getFullYear()} FashionSearch AI.</p>
+          <p>© {new Date().getFullYear()} FaSearch.</p>
           <p>Điều khoản dịch vụ · Quyền riêng tư</p>
         </div>
       </footer>

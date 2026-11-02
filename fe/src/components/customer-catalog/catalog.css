@@ -473,3 +473,14 @@
   .catPage .cat-detail-price { margin-bottom: 28px; }
   .catPage .cat-image-zoom { right: 8px; bottom: 8px; width: 32px; height: 32px; }
 }
+
+
+/* Chapter 5: bound the desktop filter rail so a long category list cannot stretch the page. */
+@media (min-width: 861px) {
+  .catPage .cat-filter-desktop {
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+  }
+}

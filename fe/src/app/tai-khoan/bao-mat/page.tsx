@@ -4,7 +4,7 @@ import { PasswordForm } from "./password-form";
 import { NotifyToggles } from "./notify-toggles";
 
 export const metadata = {
-  title: "Cài Đặt Tài Khoản & Bảo Mật | FashionSearch AI",
+  title: "Cài Đặt Tài Khoản & Bảo Mật | FaSearch",
   description: "Đổi mật khẩu FaSearch. Mọi phiên hết hiệu lực sau khi đổi.",
 };
 

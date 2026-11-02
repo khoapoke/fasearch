@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import "@/components/customer-auth/auth.css";
 import {
   getSelfProfile,
   updateSelfProfile,
