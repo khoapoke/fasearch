@@ -107,7 +107,6 @@
   line-height: 1.18;
   letter-spacing: -0.02em;
   font-weight: 500;
-  max-width: 22ch;
   margin: 6px 0 12px;
   overflow-wrap: anywhere;
 }
@@ -129,4 +128,25 @@
 .catPage .cat-tech-body { line-height: 1.65; }
 @media (max-width: 760px) {
   .catPage .cat-detail-title,   .catPage .cat-detail-info > * + * { margin-top: 16px; }
+}
+
+/* R4-D closure: logo hãng là nhãn nhỏ (24–28px cao, ≤100px rộng), không bao giờ
+   là banner marketing; ảnh thiếu/không đúng thì chỉ còn tên chữ. */
+.catPage .cat-detail-brand img {
+  width: auto;
+  height: 26px;
+  max-width: 100px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.catPage .cat-detail-info h1 { max-width: 100%; }
+.catPage .cat-attr-list { display: grid; gap: 8px; margin: 12px 0 0; }
+.catPage .cat-attr-list > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.catPage .cat-attr-list dt { color: var(--st-ink-soft); font-size: 12.5px; }
+.catPage .cat-attr-list dd { margin: 0; font-size: 13.5px; overflow-wrap: anywhere; }
+.catPage .cat-source-inline { margin: 12px 0 0; color: var(--st-ink-soft); font-size: 12px; }
+.catPage .cat-source-inline a { color: inherit; text-decoration: underline; }
+.catPage .cat-size-hint { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 12.5px; }
+@media (max-width: 760px) {
+  .catPage .cat-attr-list > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }

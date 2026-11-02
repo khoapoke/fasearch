@@ -336,7 +336,6 @@
 .catPage .cat-detail-figure figcaption { margin-top: 12px; color: var(--st-ink-soft); font-size: 11px; }
 .catPage .cat-detail-info { padding-top: 20px; min-width: 0; }
 .catPage .cat-detail-info h1 {
-  max-width: 10ch;
   margin: 0;
   font-size: clamp(28px, 2.4vw, 40px);
   font-weight: 500;

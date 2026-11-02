@@ -211,28 +211,16 @@ export function DetailView({ id }: { id: string }) {
             <section className="cat-detail-info" aria-label="Thông tin và lựa chọn sản phẩm">
               {product.brandName ? (
                 <p className="cat-detail-brand">
+                  {/* Logo hãng do BE cung cấp, đã kiểm định; FE chỉ hiển thị ở cỡ
+                      nhãn nhỏ (24–28px cao). Không có/không tin cậy ⇒ chỉ chữ. */}
                   {product.brandLogoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- logo SVG thật từ BE candidate
-                    <img src={product.brandLogoUrl} alt="" aria-hidden="true" />
+                    // eslint-disable-next-line @next/next/no-img-element -- logo thật từ BE candidate
+                    <img src={product.brandLogoUrl} alt="" aria-hidden="true" width={100} height={26} loading="lazy" />
                   ) : null}
                   <span>{product.brandName}</span>
                 </p>
               ) : null}
               <h1>{product.name}</h1>
-              {product.sourceHost ? (
-                <p className="cat-source-line">
-                  Nguồn dữ liệu:{" "}
-                  {product.sourceUrl ? (
-                    <a href={product.sourceUrl} target="_blank" rel="noopener noreferrer">
-                      {product.sourceHost}
-                    </a>
-                  ) : (
-                    product.sourceHost
-                  )}
-                  {" · "}giá hiển thị là giá demo, không phải giá niêm yết
-                </p>
-              ) : null}
-              {product.description ? <p className="cat-product-description">{product.description}</p> : null}
               <p className="cat-detail-price">{formatVnd(price)}</p>
               {selected && selected.additionalPrice > 0 ? (
                 <p className="cat-price-note">Giá tham khảo theo biến thể đã chọn (giá gốc + phụ thu).</p>
@@ -281,12 +269,11 @@ export function DetailView({ id }: { id: string }) {
                 <p className="cat-readonly-note">Máy chủ chưa trả về lựa chọn màu/kích thước cho sản phẩm này.</p>
               ) : null}
 
-              <details className="cat-size-guide">
-                <summary>Bảng cỡ (tham khảo)</summary>
-                <div className="cat-size-guide-body">
-                  <p>Chưa có số đo thật của từng cỡ trong dữ liệu công khai của pilot.</p>
-                </div>
-              </details>
+              {sizesForColor.length > 0 ? (
+                <p className="cat-size-hint">
+                  Cỡ có sẵn: {sizesForColor.join(" · ")}
+                </p>
+              ) : null}
 
               <div className="cat-buy-row">
                 <div className="cat-stepper" aria-label="Số lượng">
@@ -303,12 +290,22 @@ export function DetailView({ id }: { id: string }) {
 
               <div className="cat-disclosures">
                 <details>
-                  <summary>Sản phẩm</summary>
-                  <div className="cat-tech-body">
-                    {[product.categoryName ? `Danh mục: ${product.categoryName}` : null, product.material ? `Chất liệu: ${product.material}` : null, product.style ? `Kiểu dáng: ${product.style}` : null]
-                      .filter(Boolean)
-                      .join(" · ") || "Chưa có thông tin bổ sung."}
-                  </div>
+                  <summary>Thông tin sản phẩm</summary>
+                  <dl className="cat-attr-list">
+                    {product.categoryName ? (<div><dt>Danh mục</dt><dd>{product.categoryName}</dd></div>) : null}
+                    {product.material ? (<div><dt>Chất liệu</dt><dd>{product.material}</dd></div>) : null}
+                    {product.style ? (<div><dt>Kiểu dáng</dt><dd>{product.style}</dd></div>) : null}
+                    {product.brandName ? (<div><dt>Thương hiệu</dt><dd>{product.brandName}</dd></div>) : null}
+                    {!product.categoryName && !product.material && !product.style && !product.brandName ? (
+                      <div><dt>Thông tin</dt><dd>Chưa có thông tin bổ sung.</dd></div>
+                    ) : null}
+                  </dl>
+                  {product.sourceHost ? (
+                    <p className="cat-source-inline">
+                      Nguồn: {product.sourceUrl ? (<a href={product.sourceUrl} target="_blank" rel="noopener noreferrer">{product.sourceHost}</a>) : product.sourceHost}
+                      {" · "}giá demo
+                    </p>
+                  ) : null}
                 </details>
                 <details>
                   <summary>Giao hàng &amp; đổi trả</summary>
