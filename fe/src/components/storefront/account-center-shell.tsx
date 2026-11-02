@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, type UiIcon } from "@/components/ui/icon";
+// Khung tài khoản dùng token .acctPage trong auth.css; import tại shell để mọi
+// route dùng shell (yêu thích, lịch sử, voucher...) đều có style dù vào trực tiếp.
+import "@/components/customer-auth/auth.css";
 import { StorefrontShell } from "./storefront-shell";
 import {
   AuthApiError,
@@ -91,7 +94,8 @@ export function AccountCenterShell({
               {state === "ready" && profile ? (
                 <div className="acct-identity">
                   <strong>{displayName}</strong>
-                  <span>{profile.username}</span>
+                  {/* Seed accounts use the username as display name; avoid printing it twice. */}
+                  {profile.username && profile.username !== displayName ? <span>{profile.username}</span> : null}
                 </div>
               ) : (
                 <p className="acct-note">{state === "loading" ? "Đang tải…" : "Chưa đăng nhập"}</p>
