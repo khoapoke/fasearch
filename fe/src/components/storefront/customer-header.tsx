@@ -7,11 +7,11 @@ import { authMe, AuthApiError, isAuthAbort } from "@/lib/customer-auth-client";
 import { resolveHeaderAccountNav, type CustomerHeaderAuthState } from "@/lib/customer-header-nav";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-header.css";
-import { ThemeControl } from "@/components/studio/theme-control";
+import { CustomerThemeMenu } from "./customer-theme-menu";
 
 /**
- * CONTROL-HEADER-04 — header Customer đã duyệt (6fdbcee), dùng lại được nhưng
- * chỉ Home bật (`header="customer"`). Port từ app.js appHeader()/brandHTML()/
+ * CONTROL-HEADER-04 — header Customer đã duyệt (6fdbcee), dùng chung cho các
+ * route Customer qua `header="customer"` / `header="customer-focused"`. Port từ app.js appHeader()/brandHTML()/
  * icon("bag")/aiViewfinderIcon() + styles.css:98-113,502-503,525-528,548-550,
  * 599-608,790,834-836. Không dùng router/toolbar/cart minh họa của prototype.
  */
@@ -97,6 +97,8 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
     ? customerCart.cart?.totalItems ?? 0
     : customerCart.authState === "guest" ? guestCount : 0;
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  // Chỉ một menu mở tại một thời điểm: mở popover giao diện sẽ đóng menu mobile.
+  const [themeOpen, setThemeOpen] = useState(false);
   const mountedRef = useRef(true);
   const [authState, setAuthState] = useState<CustomerHeaderAuthState>({ status: "loading" });
 
@@ -223,26 +225,33 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
           ) : null}
         </nav>
         <div className="chThemeCompact">
-          <ThemeControl className="chThemeControl" />
+          <CustomerThemeMenu
+            open={themeOpen}
+            onOpenChange={(next) => {
+              if (next) closeMenu();
+              setThemeOpen(next);
+            }}
+          />
         </div>
         <details
           className="chMobile"
           ref={detailsRef}
+          onToggle={(event) => {
+            if (event.currentTarget.open) setThemeOpen(false);
+          }}
         >
-          <summary>
-            Menu
+          <summary aria-label="Mở menu điều hướng" title="Menu">
             <svg
-              className="chChevron"
+              className="chMenuIcon"
               aria-hidden="true"
               focusable="false"
-              viewBox="0 0 16 16"
+              viewBox="0 0 20 20"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
-              strokeLinejoin="round"
             >
-              <path d="m4 6 4 4 4-4" />
+              <path d="M3 5.5h14M3 10h14M3 14.5h14" />
             </svg>
           </summary>
           <nav aria-label="Điều hướng chính">

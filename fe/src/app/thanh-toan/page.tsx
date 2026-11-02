@@ -224,14 +224,14 @@ function CheckoutPageContent() {
                   try { void applyQuote(voucherCode.trim() || null, validatePointsInput(pointsRaw, Number.MAX_SAFE_INTEGER)); }
                   catch (e) { setVoucherError(e instanceof Error ? e.message : "Điểm sử dụng chưa hợp lệ."); }
                 }}>{voucherBusy ? "Đang báo giá…" : "Áp dụng ưu đãi / báo giá lại"}</button>
-                <p className="checkout-test-note">Đơn thử nghiệm. Phí giao hàng lấy từ API BE với giả định {WEIGHT_PER_ITEM_GRAM}g/món vì DTO sản phẩm công khai chưa có trọng lượng; đây không phải metadata sản xuất.</p>
+                <p className="checkout-test-note">Đơn thử nghiệm trên dữ liệu demo · thanh toán COD khi nhận hàng.</p>
                 {voucherError ? <p ref={voucherErrorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{voucherError}</p> : null}
                 {cartQuote && !quoteIsCurrent && !voucherBusy ? <p className="commerce-status" role="status">Giỏ hàng hoặc mã voucher đã thay đổi. Báo giá lại trước khi đặt đơn.</p> : null}
                 {quoteError ? <p className="commerce-status is-error" role="alert">{quoteError}</p> : null}
                 {error ? <p ref={errorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{error}</p> : null}
                 {uncertain ? <p className="commerce-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href="/don-hang">Mở Đơn hàng để đối soát →</Link></p> : null}
                 <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? "Đang tạo đơn thử nghiệm…" : "Đặt đơn thử nghiệm (COD)"}</button>
-                <p className="commerce-note">Không tự retry khi mất phản hồi; phí giao hàng vẫn theo biên giới legacy chưa được S1 xác thực. Tiền hàng và voucher do BE báo giá; tổng cuối trả về từ đơn đã chốt.</p>
+                <p className="commerce-note">Giá và ưu đãi được xác nhận lại khi bạn đặt đơn.</p>
               </form>
               <aside className="checkout-summary-panel" aria-label="Tóm tắt thanh toán">
                 <h2>Đơn của bạn</h2>
@@ -245,7 +245,7 @@ function CheckoutPageContent() {
                 <div className="checkout-total"><span>Tổng tạm tính</span><strong>{currentCartQuote && quote ? formatMoney(currentCartQuote.merchandiseAmountDue + quote.shippingFee) : "—"}</strong></div>
                 <div className="checkout-cod"><span>Thanh toán</span><strong>COD — thu khi nhận</strong></div>
                 <button className="commerce-ghost" type="button" onClick={() => { setQuote(null); void calculate(); }} disabled={quoteBusy}>{quoteBusy ? "Đang tính phí…" : "Tính lại phí giao hàng"}</button>
-                <p className="commerce-note">Tổng hiển thị là ước tính; BE tính lại tổng khi tạo đơn và trả về tổng thật.</p>
+                <p className="commerce-note">Tổng cuối cùng hiển thị sau khi đơn được xác nhận.</p>
               </aside>
             </div>
           ) : null}
