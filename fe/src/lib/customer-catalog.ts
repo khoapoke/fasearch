@@ -16,6 +16,8 @@ export type CatalogProduct = {
   /** Nhãn hiệu là metadata/lexical từ DB; không phải suy luận từ ảnh. */
   brandName: string | null;
   brandSlug: string | null;
+  /** Logo thật do BE trả (null khi hãng chưa có asset) — FE chỉ render, không bịa mark. */
+  brandLogoUrl: string | null;
   /** First-party provenance snapshot; present only for rows imported from a verified feed. */
   sourceHost: string | null;
   sourceUrl: string | null;
@@ -107,6 +109,13 @@ function normalizeProduct(raw: unknown): CatalogProduct {
     price: requireFinite(p.price),
     brandName: typeof p.brandName === "string" && p.brandName ? p.brandName : null,
     brandSlug: typeof p.brandSlug === "string" && p.brandSlug ? p.brandSlug : null,
+    brandLogoUrl: (() => {
+      const raw = typeof p.brandLogoUrl === "string" && p.brandLogoUrl ? p.brandLogoUrl : null;
+      if (!raw) return null;
+      // BE trả đường dẫn nội bộ; FE phục vụ qua BFF cùng origin.
+      const m = raw.match(/^\/api\/v1\/brands\/([a-z0-9-]+)\/logo$/);
+      return m ? `/api/catalog/brands/${m[1]}/logo` : raw;
+    })(),
     sourceHost: typeof p.sourceHost === "string" && p.sourceHost ? p.sourceHost : null,
     sourceUrl: (() => {
       const raw = typeof p.sourceUrl === "string" ? p.sourceUrl : null;

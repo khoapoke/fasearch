@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCart } from "./storefront-client";
-import { authMe, AuthApiError, isAuthAbort } from "@/lib/customer-auth-client";
+import { authMe, AuthApiError, isAuthAbort, peekAuthMemory } from "@/lib/customer-auth-client";
 import { resolveHeaderAccountNav, type CustomerHeaderAuthState } from "@/lib/customer-header-nav";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-header.css";
@@ -111,12 +111,22 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
   // Menu mở hoặc tiêu điểm bàn phím trong header → không tự mở rộng khi cuộn.
   const compact = useStickyHeader({ frozen: menuOpen || focusInside, enabled: motionOn });
   const headerRef = useRef<HTMLElement | null>(null);
+  const wordRef = useRef<HTMLSpanElement | null>(null);
+  const brandRef = useRef<HTMLAnchorElement | null>(null);
   const mountedRef = useRef(true);
-  const [authState, setAuthState] = useState<CustomerHeaderAuthState>({ status: "loading" });
+  const [authState, setAuthState] = useState<CustomerHeaderAuthState>(() => {
+    // Remount sau điều hướng nội bộ: dùng trạng thái đã biết gần nhất.
+    // known guest → "guest" ngay (không nháy "Đang tải"), known auth → identity.
+    const memory = peekAuthMemory();
+    if (memory.kind === "authenticated") return { status: "authenticated", identity: memory.identity };
+    if (memory.kind === "guest") return { status: "guest" };
+    return { status: "loading" };
+  });
 
   const load = useCallback(() => {
-    // Clear previous identity immediately during account switch/reloads so stale identities are never shown
-    setAuthState({ status: "loading" });
+    // Giữ nhãn đã biết trong lúc revalidate: guest đã biết vẫn là guest, auth đã
+    // biết vẫn là auth; chỉ "unknown" mới hiện loading.
+    if (peekAuthMemory().kind === "unknown") setAuthState({ status: "loading" });
     authMe()
       .then((identity) => {
         if (mountedRef.current) setAuthState({ status: "authenticated", identity });
@@ -198,6 +208,23 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
   // focus vào logo (hoặc chạm) mở lại toàn bộ nav TRƯỚC khi người dùng Tab tiếp.
   const clustersInert = compact && !menuOpen && !focusInside;
 
+  // R4-B: khi chỉ còn logo icon, mark phải nằm giữa viewport. Wordmark vẫn giữ
+  // chỗ trong layout (không animate width/margin), nên bù bằng transform đúng
+  // nửa bề rộng wordmark — đo một lần lúc mount/resize, không render mỗi frame.
+  useEffect(() => {
+    const measure = () => {
+      const brand = brandRef.current;
+      const mark = brand?.querySelector(".chMark");
+      if (!brand || !mark) return;
+      // Mark phải vào giữa viewport: bù đúng nửa phần "dôi ra" của brand so với mark.
+      const shift = (brand.getBoundingClientRect().width - mark.getBoundingClientRect().width) / 2;
+      brand.style.setProperty("--chWordShift", `${Math.round(shift)}px`);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
   return (
     <header
       className="chHeader"
@@ -278,11 +305,12 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
           href="/"
           aria-label="FaSearch, về trang chủ"
           title="FaSearch"
+          ref={brandRef}
           onFocus={() => setFocusInside(true)}
           onPointerDown={() => setFocusInside(true)}
         >
           <FaSearchMark />
-          <span className="chWord">FaSearch</span>
+          <span className="chWord" ref={wordRef}>FaSearch</span>
         </Link>
 
         {/* Cột phải: tài khoản (desktop), giao diện, giỏ hàng. */}

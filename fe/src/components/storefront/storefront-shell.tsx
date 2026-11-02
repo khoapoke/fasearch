@@ -133,7 +133,6 @@ export function StorefrontShell({
                 FaSearch
               </span>
             </h3>
-            <p>Danh mục, tồn kho và giá đều lấy từ máy chủ.</p>
           </div>
           <nav aria-label="Chính sách khách hàng">
             <h3>Khách hàng</h3>

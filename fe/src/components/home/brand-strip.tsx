@@ -103,7 +103,6 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
         <div className="hmBrandsStatic">{row(BRANDS, false)}</div>
       )}
 
-      <p className="hmBrandsNote">Logo thương hiệu dùng làm tham chiếu thời trang; không hàm ý hợp tác hay bán sản phẩm của các hãng.</p>
     </section>
   );
 }

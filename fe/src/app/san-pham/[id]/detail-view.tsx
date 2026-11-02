@@ -126,7 +126,7 @@ export function DetailView({ id }: { id: string }) {
     setViewer({
       src: product.imageUrl,
       alt: product.name,
-      caption: `${product.name} · Ảnh do máy chủ danh mục trả về.`,
+      caption: product.name,
       trigger,
     });
   }
@@ -145,7 +145,7 @@ export function DetailView({ id }: { id: string }) {
     try {
       const next = await addCustomerCartItem(selected.skuId, quantity);
       setCart(next);
-      setAddNotice(`Đã thêm ${quantity} × ${product?.name ?? "sản phẩm"} vào giỏ máy chủ.`);
+      setAddNotice(`Đã thêm ${quantity} × ${product?.name ?? "sản phẩm"} vào giỏ hàng.`);
     } catch (failure) {
       if (failure instanceof CommerceError && failure.status === 401) {
         const current = readCart() as GuestItem[];
@@ -155,7 +155,7 @@ export function DetailView({ id }: { id: string }) {
           ? current.map((line) => line === existing ? { ...line, qty: line.qty + quantity } : line)
           : [...current, { id: product?.id ?? Number(id), name: product?.name ?? "Sản phẩm", price, image: product?.imageUrl ?? undefined, qty: quantity, meta, skuId: selected.skuId, color, size }];
         writeCart(next);
-        setAddNotice("Đã lưu nháp trên trình duyệt. Đăng nhập để đồng bộ giỏ máy chủ; món chỉ được gửi khi bạn đăng nhập.");
+        setAddNotice("Đã lưu món này trên thiết bị. Đăng nhập để giữ giỏ hàng của bạn trên mọi thiết bị.");
       } else if (failure instanceof CommerceError && failure.status === 403) {
         setAddError("Tài khoản của bạn có vai trò Quản trị viên/Nhân viên. Chức năng mua hàng trực tuyến chỉ dành cho tài khoản Khách hàng. Vui lòng chuyển sang tài khoản Khách hàng để đặt đơn.");
       } else {
@@ -205,11 +205,19 @@ export function DetailView({ id }: { id: string }) {
                   Không tải được ảnh sản phẩm
                 </span>
               )}
-              <figcaption>Ảnh sản phẩm do máy chủ danh mục trả về; chưa có metadata tác giả.</figcaption>
+              
             </figure>
 
             <section className="cat-detail-info" aria-label="Thông tin và lựa chọn sản phẩm">
-              {product.brandName ? <p className="cat-product-brand">{product.brandName}</p> : null}
+              {product.brandName ? (
+                <p className="cat-detail-brand">
+                  {product.brandLogoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- logo SVG thật từ BE candidate
+                    <img src={product.brandLogoUrl} alt="" aria-hidden="true" />
+                  ) : null}
+                  <span>{product.brandName}</span>
+                </p>
+              ) : null}
               <h1>{product.name}</h1>
               {product.sourceHost ? (
                 <p className="cat-source-line">
@@ -292,9 +300,6 @@ export function DetailView({ id }: { id: string }) {
               </div>
               {addNotice ? <p className="cat-readonly-note" role="status">{addNotice}{addNotice.includes("Đăng nhập") ? <> <Link className="cat-text-button" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập →</Link></> : null}</p> : null}
               {addError ? <p className="cat-error" role="alert">{addError}</p> : null}
-              <p className="cat-readonly-note" id="cat-buy-note">
-                Giỏ máy chủ xác nhận giá và tồn kho; lỗi hết hàng từ máy chủ sẽ được hiển thị, không tự báo thành công.
-              </p>
 
               <div className="cat-disclosures">
                 <details>
@@ -302,12 +307,12 @@ export function DetailView({ id }: { id: string }) {
                   <div className="cat-tech-body">
                     {[product.categoryName ? `Danh mục: ${product.categoryName}` : null, product.material ? `Chất liệu: ${product.material}` : null, product.style ? `Kiểu dáng: ${product.style}` : null]
                       .filter(Boolean)
-                      .join(" · ") || "Chưa có thông tin bổ sung từ máy chủ."}
+                      .join(" · ") || "Chưa có thông tin bổ sung."}
                   </div>
                 </details>
                 <details>
                   <summary>Giao hàng &amp; đổi trả</summary>
-                  <div className="cat-tech-body">Chưa có chính sách giao hàng/đổi trả trong dữ liệu công khai của pilot này.</div>
+                  <div className="cat-tech-body">Liên hệ cửa hàng để biết chính sách giao hàng và đổi trả hiện hành.</div>
                 </details>
               </div>
             </section>

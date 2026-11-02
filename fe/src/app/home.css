@@ -1240,3 +1240,12 @@ body[data-motion="off"] .hmProcessing,
 body[data-motion="off"] .hmResult { animation: none; }
 body[data-motion="off"] .hmResultMotion,
 body[data-motion="off"] .hmResultHalo { animation: none !important; opacity: 0 !important; }
+
+
+/* R4-A: đích "Thương hiệu" (#thuong-hieu) phải nằm dưới header sticky, cả khi
+   header đang expanded (88px) lẫn compact (~72px) và trên mobile (72px). */
+#thuong-hieu,
+.hmHome [id] { scroll-margin-top: 104px; }
+@media (max-width: 760px) {
+  #thuong-hieu, .hmHome [id] { scroll-margin-top: 88px; }
+}

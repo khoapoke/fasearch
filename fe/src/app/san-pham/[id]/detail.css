@@ -97,3 +97,36 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+
+/* R4-D: tiêu đề sản phẩm có kích thước đọc được thay vì "tường chữ" trên tên dài,
+   nhịp nhóm 24–32px, brand + logo gần tên. */
+.catPage .cat-detail-info h1,
+.catPage .cat-detail-title {
+  font-size: clamp(28px, 2.4vw, 40px);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  max-width: 22ch;
+  margin: 6px 0 12px;
+  overflow-wrap: anywhere;
+}
+.catPage .cat-detail-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.catPage .cat-detail-brand img { width: 22px; height: 22px; object-fit: contain; }
+.catPage .cat-detail-info > * + * { margin-top: 20px; }
+.catPage .cat-detail-buy { margin-top: 28px; }
+.catPage .cat-disclosures { margin-top: 28px; }
+.catPage .cat-tech-body { line-height: 1.65; }
+@media (max-width: 760px) {
+  .catPage .cat-detail-title,   .catPage .cat-detail-info > * + * { margin-top: 16px; }
+}

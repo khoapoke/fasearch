@@ -283,10 +283,13 @@ export function HomeSections() {
     const root = heroRef.current;
     if (!root || !motionOn) return;
     const parts: Array<[string, Keyframe[], number, number]> = [
-      [".hmHeroTitle", [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], 650, 0],
-      [".hmHeroLede", [{ opacity: 0.72, transform: "translate3d(0,7px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 420, 140],
-      [".hmHeroActions, .hmHeroSearch", [{ opacity: 0.9, transform: "translate3d(0,5px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 240, 340],
-      [".hmHeroMedia, .hmHeroFigure", [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], 700, 80],
+      // Khối màu bên trái (panel) vào trước, chữ theo sau — người dùng thấy cả
+      // panel trái và ảnh phải chuyển động, không chỉ dòng tiêu đề.
+      [".hmHeroCopy", [{ opacity: 0.55, transform: "translate3d(0,10px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 1000, 0],
+      [".hmHeroTitle", [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], 900, 140],
+      [".hmHeroLede", [{ opacity: 0.72, transform: "translate3d(0,5px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 600, 260],
+      [".hmHeroActions, .hmHeroSearch", [{ opacity: 0.9, transform: "translate3d(0,4px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 420, 380],
+      [".hmHeroMedia, .hmHeroFigure", [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], 1100, 120],
     ];
     const animations: Animation[] = [];
     for (const [selector, frames, duration, delay] of parts) {
@@ -294,7 +297,7 @@ export function HomeSections() {
       if (el) animations.push(el.animate(frames, { duration, delay, easing: "cubic-bezier(0.23,1,0.32,1)", fill: "backwards" }));
     }
     heroAnimations.current = animations;
-    const settle = window.setTimeout(() => { animations.forEach((a) => a.finish()); heroAnimations.current = []; }, 840);
+    const settle = window.setTimeout(() => { animations.forEach((a) => a.finish()); heroAnimations.current = []; }, 1240);
     return () => {
       window.clearTimeout(settle);
       animations.forEach((a) => a.cancel());
@@ -464,7 +467,6 @@ export function HomeSections() {
             </li>
           ))}
         </ul>
-        <p className="hmNote">Chọn cách tìm ở trang tìm kiếm — Home không tự chọn hay tự gửi thay bạn.</p>
       </section>
 
       <section

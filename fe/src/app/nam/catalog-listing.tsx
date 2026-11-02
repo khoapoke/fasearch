@@ -129,29 +129,12 @@ function FilterFields({
   onReset: () => void;
   error: string;
 }) {
+  const [brandQuery, setBrandQuery] = useState("");
   return (
     <>
       <h2>Bộ lọc</h2>
-      {brands.length > 0 ? (
-        <fieldset className="cat-filter-group">
-          <legend>Thương hiệu</legend>
-          <label className="cat-filter-option">
-            <input type="radio" name={`${prefix}-brand`} checked={filters.brand === ""} onChange={() => onBrand("")} />
-            <span>Tất cả thương hiệu</span>
-          </label>
-          {brands.map((brand) => (
-            <label className="cat-filter-option" key={brand.slug}>
-              <input
-                type="radio"
-                name={`${prefix}-brand`}
-                checked={filters.brand === brand.slug}
-                onChange={() => onBrand(brand.slug)}
-              />
-              <span>{brand.name}</span>
-            </label>
-          ))}
-        </fieldset>
-      ) : null}
+      {/* R4-E: danh mục + giá đứng trước; thương hiệu gọn trong disclosure có ô tìm,
+          để danh sách 27 hãng không đẩy danh mục/giá xuống dưới màn hình. */}
 
       <fieldset className="cat-filter-group">
         <legend>Danh mục</legend>
@@ -195,6 +178,45 @@ function FilterFields({
         <label htmlFor={`${prefix}-keyword`}>Tìm theo tên</label>
         <input id={`${prefix}-keyword`} className="cat-input" value={draft.keyword} maxLength={200} onChange={(e) => onDraft({ ...draft, keyword: e.target.value })} />
       </div>
+      {brands.length > 0 ? (
+        <details className="cat-filter-group cat-brand-group" open={filters.brand !== ""}>
+          <summary>
+            Thương hiệu
+            {filters.brand ? ` · ${brands.find((b) => b.slug === filters.brand)?.name ?? filters.brand}` : ` · ${brands.length}`}
+          </summary>
+          <div className="cat-brand-body">
+            <label className="cat-brand-search">
+              <span className="cat-visually-hidden">Tìm thương hiệu</span>
+              <input
+                className="cat-input"
+                type="search"
+                placeholder="Tìm thương hiệu…"
+                value={brandQuery}
+                onChange={(event) => setBrandQuery(event.target.value)}
+              />
+            </label>
+            <div className="cat-brand-list">
+              <label className="cat-filter-option">
+                <input type="radio" name={`${prefix}-brand`} checked={filters.brand === ""} onChange={() => onBrand("")} />
+                <span>Tất cả thương hiệu</span>
+              </label>
+              {brands
+                .filter((brand) => !brandQuery.trim() || brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()))
+                .map((brand) => (
+                  <label className="cat-filter-option" key={brand.slug}>
+                    <input
+                      type="radio"
+                      name={`${prefix}-brand`}
+                      checked={filters.brand === brand.slug}
+                      onChange={() => onBrand(brand.slug)}
+                    />
+                    <span>{brand.name}</span>
+                  </label>
+                ))}
+            </div>
+          </div>
+        </details>
+      ) : null}
       {error ? <p className="cat-filter-note" role="alert">{error}</p> : null}
       <button className="cat-button cat-filter-apply" type="button" onClick={onApply}>
         Áp dụng

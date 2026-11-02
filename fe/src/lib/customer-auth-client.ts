@@ -106,13 +106,83 @@ export async function authRegister(input: {
     body: JSON.stringify(input),
     signal,
   });
-  return parse<AuthIdentity>(response);
+  const identity = await parse<AuthIdentity>(response);
+  invalidateAuthMemory();
+  memory = { kind: "authenticated", identity };
+  return identity;
+}
+
+// R4-G: trạng thái auth cấp module, ba giá trị: unknown | guest | authenticated.
+// Mỗi trang tự bọc StorefrontShell nên header remount khi điều hướng nội bộ; nếu
+// remount lại luôn bắt đầu ở "unknown" thì nhãn nháy "Đăng nhập" mỗi lần đổi route
+// — đúng lỗi người dùng báo. Vì vậy nhớ cả trường hợp đã biết là guest (401).
+//
+// An toàn:
+// - Chỉ sống trong tab hiện tại (biến module), không SSR cache, không localStorage.
+// - Không dùng để cấp quyền: BE vẫn là nguồn quyết định cho mọi request.
+// - Mỗi lần login/logout/đổi tài khoản tăng `authGeneration`; kết quả /me của
+//   generation cũ bị bỏ, nên một request chậm không thể "hồi sinh" identity cũ.
+type AuthMemory =
+  | { kind: "unknown" }
+  | { kind: "guest" }
+  | { kind: "authenticated"; identity: AuthIdentity };
+
+let memory: AuthMemory = { kind: "unknown" };
+let inflightMe: Promise<AuthIdentity> | null = null;
+let authGeneration = 0;
+
+/** Trạng thái đã biết gần nhất trong tab (unknown khi chưa có kết quả nào). */
+export function peekAuthMemory(): AuthMemory {
+  return memory;
+}
+
+/** Identity đã xác thực gần nhất, hoặc null (dùng cho code cũ). */
+export function peekAuthIdentity(): AuthIdentity | null {
+  return memory.kind === "authenticated" ? memory.identity : null;
+}
+
+/** Gọi sau login/logout/đổi tài khoản: bỏ mọi kết quả /me đang bay của phiên cũ. */
+export function invalidateAuthMemory(): void {
+  authGeneration += 1;
+  memory = { kind: "unknown" };
+  inflightMe = null;
+}
+
+/** Tương thích chỗ gọi cũ. */
+export function clearAuthIdentityCache(): void {
+  invalidateAuthMemory();
 }
 
 export async function authMe(signal?: AbortSignal): Promise<AuthIdentity> {
   ensureAuthAttempt();
-  const response = await fetch("/api/customer-auth/me", { cache: "no-store", signal });
-  return parse<AuthIdentity>(response);
+  const generation = authGeneration;
+  // Gộp các consumer đang chờ cùng một lần /me; KHÔNG truyền AbortSignal của một
+  // caller vào request dùng chung (huỷ của người này sẽ đầu độc người khác).
+  if (!inflightMe) {
+    inflightMe = (async () => {
+      const response = await fetch("/api/customer-auth/me", { cache: "no-store" });
+      if (response.status === 401) {
+        if (generation === authGeneration) memory = { kind: "guest" };
+        throw await parse<AuthIdentity>(response);
+      }
+      const identity = await parse<AuthIdentity>(response);
+      if (generation === authGeneration) memory = { kind: "authenticated", identity };
+      return identity;
+    })().finally(() => {
+      if (inflightMe) inflightMe = null;
+    });
+  }
+  const shared = inflightMe;
+  if (!signal) return shared;
+  // Caller có AbortSignal riêng: chỉ ngắt phần chờ của họ, không huỷ request chung.
+  return Promise.race([
+    shared,
+    new Promise<AuthIdentity>((_, reject) => {
+      const abortError = () => { const e = new Error("Aborted"); e.name = "AbortError"; return e; };
+      if (signal.aborted) reject(abortError());
+      else signal.addEventListener("abort", () => reject(abortError()), { once: true });
+    }),
+  ]);
 }
 
 export async function authLogout(signal?: AbortSignal): Promise<void> {
@@ -125,6 +195,7 @@ export async function authLogout(signal?: AbortSignal): Promise<void> {
     body: "{}",
     signal,
   });
+  invalidateAuthMemory();
   if (!response.ok) {
     let message = "Không thể đăng xuất. Thử lại.";
     try { const payload = (await response.json()) as { message?: string }; if (payload.message) message = payload.message; } catch { /* non-json */ }
