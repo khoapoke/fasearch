@@ -195,6 +195,23 @@
 .acctPage .acct-state h2 { margin: 0; font-size: 22px; font-weight: 500; }
 .acctPage .acct-state p { margin: 0; color: var(--st-ink-soft); font-size: 14px; }
 .acctPage .acct-logout { min-height: 40px; padding: 6px 0; border: 0; color: var(--st-ink-soft); background: transparent; font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* Account center (favorites/history/voucher/profile) reuses the approved
+   account styles but renders links instead of buttons, so mirror the same
+   tokens for anchors and page-level actions. */
+.acctPage .acct-nav a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 10px 12px; border-radius: 6px; color: var(--st-ink-soft); background: transparent; font-size: 14px; line-height: 1.55; text-decoration: none; }
+.acctPage .acct-nav a[aria-current="page"] { color: var(--st-ink); background: var(--st-select); }
+.acctPage .acct-nav a:hover { color: var(--st-ink); }
+.acctPage .acct-nav a:focus-visible,
+.acctPage .acct-nav button:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: -2px; }
+.acctPage .auth-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 10px 18px; border: 1px solid var(--st-control-border); border-radius: 7px; color: var(--st-ink); background: var(--st-surface); font: inherit; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+.acctPage .auth-button.is-primary { color: #fff; border-color: var(--st-brand); background: var(--st-brand); }
+.acctPage .auth-button:hover { border-color: var(--st-line-strong, var(--st-control-border)); }
+.acctPage .auth-button.is-primary:hover { background: var(--st-brand-text); }
+.acctPage .auth-button:disabled { cursor: not-allowed; opacity: 0.6; }
+.acctPage .auth-status { margin: 16px 0 0; padding: 12px 14px; border-radius: 7px; font-size: 14px; }
+.acctPage .auth-status.is-error { color: var(--st-err-text); background: var(--st-err-bg); }
+.acctPage .auth-status.is-info { color: var(--st-info-text, #3348a3); background: var(--st-info-bg, #ecedf9); }
+
 @media (max-width: 1100px) {
   .acctPage .acct-layout { grid-template-columns: 196px minmax(0, 1fr); gap: 32px; }
 }
@@ -202,7 +219,8 @@
   .acctPage .acct-content { padding: 30px 20px 48px; }
   .acctPage .acct-layout { grid-template-columns: minmax(0, 1fr); gap: 22px; }
   .acctPage .acct-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-  .acctPage .acct-nav button { flex: 0 0 auto; min-height: 38px; padding: 8px 12px; border: 1px solid var(--st-line); white-space: nowrap; }
+  .acctPage .acct-nav button,
+  .acctPage .acct-nav a { flex: 0 0 auto; min-height: 38px; padding: 8px 12px; border: 1px solid var(--st-line); white-space: nowrap; }
   .acctPage .acct-hint { display: block; }
   .acctPage .acct-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }

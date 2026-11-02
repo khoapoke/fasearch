@@ -10,13 +10,7 @@ export const metadata = {
 export default function ProfilePage() {
   return (
     <AccountCenterShell active="/tai-khoan/thong-tin" title="Thông tin cá nhân">
-      <section className="sfSideCard" aria-label="Ảnh đại diện">
-        <b>Ảnh đại diện</b>
-        <p className="sfIdentitySub" style={{ marginTop: 6 }}>
-          Tên viết tắt của bạn hiển thị ở bảng thông tin bên cạnh.
-        </p>
-      </section>
-      <section className="sfSideCard" aria-label="Form thông tin cá nhân">
+      <section aria-label="Thông tin cá nhân">
         <ProfileEditor />
       </section>
     </AccountCenterShell>

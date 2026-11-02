@@ -71,40 +71,41 @@ export function AccountCenterShell({
 
   return (
     <StorefrontShell active="/tai-khoan" themed palette="customer" header="customer" footer="none">
-      <div className="sfAccountWrap">
-        <nav className="sfCrumbs" aria-label="Đường dẫn">
-          <Link href="/">Trang chủ</Link>
-          <span aria-hidden="true">›</span>
-          <Link href="/tai-khoan">Tài khoản của tôi</Link>
-          <span aria-hidden="true">›</span>
-          <span aria-current="page">{title}</span>
-        </nav>
-        {kicker ? <p className="hmKicker" style={{ marginBottom: 8 }}>{kicker}</p> : null}
-        <h1 className="pgTitle">{title}</h1>
-        <div className="sfAccountGrid" style={{ marginTop: 16 }}>
-          <aside aria-label="Tài khoản của tôi">
-            <div className="sfSideCard">
+      {/* Dùng đúng khung tài khoản đã duyệt (.acctPage) để nội dung con
+          (hồ sơ, yêu thích, lịch sử, voucher) nhận token/lưới chuẩn. */}
+      <div className="acctPage">
+        <div className="acct-content">
+          <nav className="sfCrumbs" aria-label="Đường dẫn">
+            <Link href="/">Trang chủ</Link>
+            <span aria-hidden="true">›</span>
+            <Link href="/tai-khoan">Tài khoản của tôi</Link>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">{title}</span>
+          </nav>
+          <div className="acct-head">
+            {kicker ? <p className="hmKicker">{kicker}</p> : null}
+            <h1>{title}</h1>
+          </div>
+          <div className="acct-layout">
+            <aside className="acct-nav-wrap" aria-label="Tài khoản của tôi">
               {state === "ready" && profile ? (
-                <div className="sfIdentity">
-                  <span className="sfIdentityAvatar" aria-hidden="true">{initials(displayName)}</span>
-                  <div>
-                    <p className="sfIdentityName">{displayName}</p>
-                    <p className="sfIdentitySub">{profile.username}</p>
-                    
-                  </div>
+                <div className="acct-identity">
+                  <strong>{displayName}</strong>
+                  <span>{profile.username}</span>
                 </div>
               ) : (
-                <p className="sfIdentitySub">{state === "loading" ? "Đang tải…" : "Chưa đăng nhập"}</p>
+                <p className="acct-note">{state === "loading" ? "Đang tải…" : "Chưa đăng nhập"}</p>
               )}
-            </div>
-            <nav className="sfSideCard sfSideNav" aria-label="Quản lý tài khoản">
+              <nav className="acct-nav" aria-label="Quản lý tài khoản">
               {NAV.map((item) => (
                 <Link key={item.href} href={item.href} aria-current={active === item.href ? "page" : undefined}>
                   <Icon name={item.icon} size={18} />
                   <span style={{ flex: 1 }}>{item.label}</span>
                 </Link>
               ))}
+              </nav>
               <button
+                className="acct-logout"
                 type="button"
                 disabled={busy || state !== "ready"}
                 onClick={async () => {
@@ -121,9 +122,9 @@ export function AccountCenterShell({
                 <Icon name="logout" size={18} />
                 {busy ? "Đang đăng xuất…" : "Đăng xuất tài khoản"}
               </button>
-            </nav>
-          </aside>
-          <div>{children}</div>
+            </aside>
+            <div className="acct-main">{children}</div>
+          </div>
         </div>
       </div>
     </StorefrontShell>
