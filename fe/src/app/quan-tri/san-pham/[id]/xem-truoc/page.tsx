@@ -43,13 +43,23 @@ export default function DraftPreviewPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const drafts = await listDrafts("page=0&size=50", controller.signal);
-        const mine = drafts.find((d) => d.productId === productId);
-        if (!mine) {
-          if (!controller.signal.aborted) setState("none");
-          return;
+        // `id` có thể là productId (bản nháp sửa) hoặc draftId (bản nháp mới):
+        // thử đọc trực tiếp như draftId trước, rồi mới tra theo productId.
+        let full: AdminDraft | null = null;
+        try {
+          full = await getDraft(productId, controller.signal);
+        } catch {
+          full = null;
         }
-        const full = await getDraft(mine.draftId, controller.signal);
+        if (!full) {
+          const drafts = await listDrafts("page=0&size=50", controller.signal);
+          const mine = drafts.find((d) => d.productId === productId);
+          if (!mine) {
+            if (!controller.signal.aborted) setState("none");
+            return;
+          }
+          full = await getDraft(mine.draftId, controller.signal);
+        }
         if (!controller.signal.aborted) {
           setDraft(full);
           setState("ready");

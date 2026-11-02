@@ -55,7 +55,11 @@ export type AiSyncState = {
 };
 
 export async function listDrafts(query = "page=0&size=20", signal?: AbortSignal): Promise<AdminDraft[]> {
-  return parse<AdminDraft[]>(await fetch(`/api/admin/catalog/drafts?${query}`, { cache: "no-store", signal }));
+  // BE trả PageResponse {content:[...]}; một số bản cũ trả mảng trần — chấp nhận cả hai.
+  const result = await parse<unknown>(await fetch(`/api/admin/catalog/drafts?${query}`, { cache: "no-store", signal }));
+  if (Array.isArray(result)) return result as AdminDraft[];
+  const page = result as { content?: unknown } | null;
+  return Array.isArray(page?.content) ? (page?.content as AdminDraft[]) : [];
 }
 
 export async function getDraft(draftId: number | string, signal?: AbortSignal): Promise<AdminDraft> {

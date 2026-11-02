@@ -68,7 +68,9 @@ export function ProductForm({ mode, product, categories }: { mode: "create" | "e
     try {
       if (mode === "create") {
         const draft = await createDraft(fields());
-        router.replace(`/quan-tri/san-pham/${draft.productId ?? draft.draftId}`);
+        // Bản nháp mới KHÔNG có productId cho tới khi xuất bản — không bao giờ
+        // dùng draftId như productId (đó là hai không gian ID khác nhau).
+        router.replace(`/quan-tri/san-pham/nhap/${draft.draftId}`);
         return;
       }
       const id = String(product?.id ?? "");
@@ -126,11 +128,11 @@ export function ProductForm({ mode, product, categories }: { mode: "create" | "e
       </div>
       {mode === "edit" && product ? (
         <div className="catalog-field">
-          <label htmlFor="pf-file">Tải ảnh vào bản nháp (PNG/JPG/WEBP, tối đa 5MB)</label>
+          <label htmlFor="pf-file">Tải ảnh vào bản nháp (PNG/JPG, tối đa 5MB)</label>
           <input
             id="pf-file"
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg"
             onChange={async (e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
