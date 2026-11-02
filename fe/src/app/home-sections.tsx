@@ -215,6 +215,7 @@ export function HomeSections() {
   const demoTimers = useRef<number[]>([]);
   const demoRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
+  const heroAnimations = useRef<Animation[]>([]);
   const stepRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
@@ -302,10 +303,12 @@ export function HomeSections() {
       const el = root.querySelector(selector);
       if (el) animations.push(el.animate(frames, { duration, delay, easing: "cubic-bezier(0.23,1,0.32,1)", fill: "backwards" }));
     }
-    const settle = window.setTimeout(() => animations.forEach((a) => a.finish()), 650);
+    heroAnimations.current = animations;
+    const settle = window.setTimeout(() => { animations.forEach((a) => a.finish()); heroAnimations.current = []; }, 650);
     return () => {
       window.clearTimeout(settle);
       animations.forEach((a) => a.cancel());
+      heroAnimations.current = [];
     };
   }, [motionOn]);
 
@@ -346,6 +349,7 @@ export function HomeSections() {
   const showTags = stepIndex >= 1;
   const showResult = stage === "result" || stage === "complete";
   const autoPaused = userPaused || focusPaused || docHidden || !demoInView || !motionOn;
+  const pauseUnavailable = manual || stage === "complete" || !motionOn;
 
   const statusText =
     manual
@@ -399,7 +403,12 @@ export function HomeSections() {
   return (
     <div className="hmHome" data-attention={attention > 0 && motionOn && !manual ? "on" : "off"} data-motion-on={motionOn ? "true" : "false"}>
       <HomeCanvasB2 />
-      <section className="hmHero" aria-labelledby="hm-hero-title" ref={heroRef}>
+      <section
+        className="hmHero"
+        aria-labelledby="hm-hero-title"
+        ref={heroRef}
+        onFocusCapture={() => { heroAnimations.current.forEach((a) => a.finish()); heroAnimations.current = []; }}
+      >
         <div className="hmHeroCopy">
           <h1 className="hmHeroTitle" id="hm-hero-title">Tìm đồ theo ảnh</h1>
           <p className="hmHeroLede">Tìm món đồ hợp gu từ ảnh hoặc vài dòng mô tả.</p>
@@ -479,11 +488,11 @@ export function HomeSections() {
             <button
               className="hmDemoReplay"
               type="button"
-              aria-pressed={!manual && userPaused}
-              aria-disabled={manual || !motionOn}
-              onClick={() => setUserPaused((value) => !value)}
+              aria-pressed={!pauseUnavailable && userPaused}
+              aria-disabled={pauseUnavailable}
+              onClick={() => { if (!pauseUnavailable) setUserPaused((value) => !value); }}
             >
-              {manual || !motionOn ? "Đã tĩnh" : userPaused ? "Tiếp tục" : "Tạm dừng"}
+              {pauseUnavailable ? (manual ? "Đã chọn bước" : "Đã xong") : userPaused ? "Tiếp tục" : "Tạm dừng"}
             </button>
           </div>
         </header>

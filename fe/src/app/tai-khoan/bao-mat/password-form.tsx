@@ -67,8 +67,15 @@ export function PasswordForm() {
       router.replace("/dang-nhap?password=changed");
     } catch (failure) {
       const status = (failure as { status?: number })?.status ?? 0;
-      if (status === 401) {
+      const code = (failure as { code?: string })?.code;
+      // BE trả 401 cho "sai mật khẩu hiện tại" (INVALID_OLD_PASSWORD); 401 không kèm code
+      // mới là phiên hết hạn. Không đăng xuất người dùng chỉ vì gõ sai mật khẩu cũ.
+      if (status === 401 && code !== "INVALID_OLD_PASSWORD") {
         router.replace("/dang-nhap?next=/tai-khoan/bao-mat");
+        return;
+      }
+      if (status === 401 && code === "INVALID_OLD_PASSWORD") {
+        setCurrentIssue("Mật khẩu hiện tại chưa đúng.");
         return;
       }
       if (status === 400) {

@@ -23,9 +23,10 @@ export type Paged<T> = { data: T[]; page: number; size: number; totalElements: n
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { cache: "no-store", ...init });
-  const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string; result?: T } | null;
+  const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string; code?: string; result?: T } | null;
   if (!response.ok || payload?.success !== true) {
-    throw Object.assign(new Error(payload?.message || `Yêu cầu thất bại (HTTP ${response.status}).`), { status: response.status });
+    // `code` giúp phân biệt "sai mật khẩu hiện tại" với "phiên đã hết" cùng HTTP 401.
+    throw Object.assign(new Error(payload?.message || `Yêu cầu thất bại (HTTP ${response.status}).`), { status: response.status, code: payload?.code });
   }
   return payload.result as T;
 }

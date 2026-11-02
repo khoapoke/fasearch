@@ -1,11 +1,48 @@
-.vcHero { border-radius: 16px; padding: 26px; color: #fff; background: linear-gradient(135deg, #1c1917, #431407 60%, #9a3412); margin-bottom: 14px; }
-.vcHero h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 6px; }
-.vcHero p { font-size: 13px; color: #fed7aa; max-width: 60ch; }
-.vcHero .hmKicker { background: rgb(255 255 255 / 0.14); color: #fdba74; }
-.vcGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.vcCard { border: 1px solid var(--line-soft); border-radius: 14px; background: #fff; padding: 16px; }
-.vcCard b { display: block; font-size: 14.5px; margin: 6px 0 2px; }
-.vcCard small { font-size: 12.5px; color: var(--ink-soft); display: block; }
-.vcExp { font-size: 11.5px; font-weight: 700; color: var(--accent); }
-.vcCodeRow { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
-@media (max-width: 640px) { .vcGrid { grid-template-columns: 1fr; } }
+/* Voucher & ưu đãi — bảng màu Customer đã duyệt (token --st-*), không dùng cam legacy. */
+
+.vcIntro { margin-bottom: 18px; }
+.vcIntro h2 { margin: 0 0 6px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 500; letter-spacing: -0.03em; }
+.vcIntro p { margin: 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.6; max-width: 62ch; }
+
+.vcList { list-style: none; margin: 0 0 26px; padding: 0; display: grid; gap: 12px; }
+.vcOffer {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  padding: 18px 20px; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface);
+}
+.vcOfferMain { display: grid; gap: 4px; min-width: 0; }
+.vcOfferDiscount { margin: 0; color: var(--st-brand-text); font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.vcOffer h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.vcOfferCond { margin: 0; color: var(--st-ink-soft); font-size: 13.5px; }
+.vcOfferMeta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 0; color: var(--st-ink-soft); font-size: 13px; }
+.vcCode {
+  padding: 3px 9px; border: 1px dashed var(--st-control-border); border-radius: 6px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 13px; color: var(--st-ink);
+  letter-spacing: 0.04em; background: var(--st-select);
+}
+.vcOfferActions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.vcState { display: grid; gap: 8px; justify-items: start; padding: 20px; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface); margin-bottom: 22px; }
+.vcState strong { font-size: 15px; }
+.vcState p { margin: 0; color: var(--st-ink-soft); font-size: 14px; }
+.vcStateError { border-color: var(--st-err-text, var(--st-line)); }
+
+.vcManual { display: grid; gap: 10px; padding-top: 20px; border-top: 1px solid var(--st-line); }
+.vcManual h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.vcForm { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.vcField { display: grid; gap: 6px; min-width: min(320px, 100%); }
+.vcField span { color: var(--st-ink-soft); font-size: 12.5px; }
+.vcField input {
+  min-height: 44px; padding: 10px 12px; border: 1px solid var(--st-control-border);
+  border-radius: 8px; background: var(--st-surface); color: var(--st-ink); font: inherit;
+}
+.vcField input:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.vcIssue { margin: 0; color: var(--st-err-text, #a12); font-size: 13.5px; }
+.vcNote { margin: 0; color: var(--st-ink-soft); font-size: 13px; }
+.vcNote a { color: var(--st-brand-text); text-decoration: none; }
+.vcNote a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .vcOffer { padding: 16px; }
+  .vcOfferActions { width: 100%; }
+  .vcOfferActions .auth-button { flex: 1 1 auto; }
+}
