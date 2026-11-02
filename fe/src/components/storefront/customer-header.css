@@ -3,16 +3,44 @@
  * (signature viewfinder). Chỉ dùng dưới variant `header="customer"` (Home).
  * Không có rule global cho a/nav/header; mọi selector đều namespace .ch*. */
 
+/* NAV2: thanh dính 3 cột, brand căn giữa hình học ở cả hai trạng thái.
+   Chiều cao header cố định → thu gọn chỉ đổi padding bên trong, không layout shift. */
 .chHeader {
   --ch-shadow: 0 0 0 1px rgba(27, 28, 26, 0.08), 0 6px 20px rgba(27, 28, 26, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  min-height: 88px;
-  padding: 18px clamp(20px, 4.5vw, 68px);
+  --ch-h: 88px;
+  --ch-pad-y: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--ch-h);
   border-bottom: 1px solid var(--st-line);
-  background: transparent;
+  background: color-mix(in srgb, var(--st-canvas) 92%, transparent);
+  backdrop-filter: saturate(120%) blur(6px);
+  transition: box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1), background-color 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.chHeaderInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  height: 100%;
+  padding: var(--ch-pad-y) clamp(20px, 4.5vw, 68px);
+  transition: padding 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.chHeader[data-compact="true"] {
+  --ch-pad-y: 9px;
+  box-shadow: var(--ch-shadow);
+  background: color-mix(in srgb, var(--st-canvas) 96%, transparent);
+}
+
+.chLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.chRight { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+.chNavAccount { display: flex; align-items: center; gap: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chHeader, .chHeaderInner { transition: none; }
 }
 
 html[data-theme="dark"] .chHeader {
@@ -44,6 +72,7 @@ html[data-theme="dark"] .chHeader {
 }
 
 .chBrand {
+  justify-self: center;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -231,22 +260,32 @@ html[data-theme="dark"] .chHeader {
 }
 
 @media (max-width: 900px) {
+  /* Mobile: hamburger trái, brand giữa, giỏ hàng phải; tài khoản vào menu. */
   .chNav {
     display: none;
   }
   .chMobile {
     display: block;
   }
-  .chActions {
-    gap: 10px;
+  .chNavAccount {
+    display: none;
+  }
+  .chRight {
+    gap: 8px;
   }
 }
 
 @media (max-width: 760px) {
   .chHeader {
-    min-height: 72px;
-    padding: 15px 20px;
-    gap: 14px;
+    --ch-h: 72px;
+    --ch-pad-y: 14px;
+  }
+  .chHeader[data-compact="true"] {
+    --ch-pad-y: 8px;
+  }
+  .chHeaderInner {
+    padding-inline: 20px;
+    gap: 12px;
   }
   .chMark {
     width: 32px;
@@ -258,8 +297,8 @@ html[data-theme="dark"] .chHeader {
 }
 
 @media (max-width: 480px) {
-  .chHeader {
-    gap: 8px;
+  .chHeaderInner {
+    gap: 6px;
     padding-inline: 16px;
   }
   .chBrand {
@@ -271,9 +310,6 @@ html[data-theme="dark"] .chHeader {
   }
   .chWord {
     font-size: 21px;
-  }
-  .chActions {
-    gap: 5px;
   }
   .chCart {
     gap: 4px;

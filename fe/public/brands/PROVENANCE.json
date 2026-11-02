@@ -1,0 +1,53 @@
+{
+  "assetSet": "customer-home-benefits brand strip",
+  "retrievedAt": "2026-11-02",
+  "provenance": "Wikimedia Commons file pages listed per asset",
+  "licenseNote": "Trademarks remain property of their owners. Files on Commons are tagged as simple-geometry/text logos; used here as visual reference only.",
+  "assets": [
+    {
+      "file": "fe/public/brands/nike.svg",
+      "brand": "Nike",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Logo_NIKE.svg",
+      "sha256": "54bb728904e14583753fcde786a9901b53ca9c8401ac207fb516841f9863c55a",
+      "bytes": 966,
+      "note": "Authentic mark from Wikimedia Commons; used as monochrome fashion reference, no partnership or endorsement implied. Served locally, no runtime hotlink."
+    },
+    {
+      "file": "fe/public/brands/puma.svg",
+      "brand": "Puma",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Puma-logo-%28text%29.svg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Puma-logo-(text).svg",
+      "sha256": "811720110da8d82dd9a2dd20d04f4a3198f331932aa30c9b88a1f2b71be5d253",
+      "bytes": 1239,
+      "note": "Authentic mark from Wikimedia Commons; used as monochrome fashion reference, no partnership or endorsement implied. Served locally, no runtime hotlink."
+    },
+    {
+      "file": "fe/public/brands/adidas.svg",
+      "brand": "Adidas",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/2/20/Adidas_Logo.svg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Adidas_Logo.svg",
+      "sha256": "2da5bb0ca737257339ff80be3a42f8fe262f2acf467e6b18d210f794b575d023",
+      "bytes": 3608,
+      "note": "Authentic mark from Wikimedia Commons; used as monochrome fashion reference, no partnership or endorsement implied. Served locally, no runtime hotlink."
+    },
+    {
+      "file": "fe/public/brands/new-balance.svg",
+      "brand": "New Balance",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/e/ea/New_Balance_logo.svg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:New_Balance_logo.svg",
+      "sha256": "14b79d066134e5573c8631819869980be1eb09a28a42d0a283d151d1f91f40f4",
+      "bytes": 7732,
+      "note": "Authentic mark from Wikimedia Commons; used as monochrome fashion reference, no partnership or endorsement implied. Served locally, no runtime hotlink."
+    },
+    {
+      "file": "fe/public/brands/vans.svg",
+      "brand": "Vans",
+      "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/9/91/Vans-logo.svg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Vans-logo.svg",
+      "sha256": "6c8e2da3a3b80dfffc65c52649d47ae58de7f3b07fe02be2d366a115537a07cc",
+      "bytes": 6235,
+      "note": "Authentic mark from Wikimedia Commons; used as monochrome fashion reference, no partnership or endorsement implied. Served locally, no runtime hotlink."
+    }
+  ]
+}

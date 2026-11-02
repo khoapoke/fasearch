@@ -8,6 +8,8 @@ import { resolveHeaderAccountNav, type CustomerHeaderAuthState } from "@/lib/cus
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import "./customer-header.css";
 import { CustomerThemeMenu } from "./customer-theme-menu";
+import { useStickyHeader } from "@/lib/sticky-header";
+import { useHomeMotion } from "@/lib/home-motion";
 
 /**
  * CONTROL-HEADER-04 — header Customer đã duyệt (6fdbcee), dùng chung cho các
@@ -99,6 +101,12 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
   // Chỉ một menu mở tại một thời điểm: mở popover giao diện sẽ đóng menu mobile.
   const [themeOpen, setThemeOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [focusInside, setFocusInside] = useState(false);
+  const { enabled: motionOn } = useHomeMotion();
+  // Menu mở hoặc tiêu điểm bàn phím trong header → không tự mở rộng khi cuộn.
+  const compact = useStickyHeader({ frozen: menuOpen || focusInside, enabled: motionOn });
+  const headerRef = useRef<HTMLElement | null>(null);
   const mountedRef = useRef(true);
   const [authState, setAuthState] = useState<CustomerHeaderAuthState>({ status: "loading" });
 
@@ -182,124 +190,112 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
   const navModel = resolveHeaderAccountNav(authState);
 
   return (
-    <header className="chHeader">
-      <Link className="chBrand" href="/" aria-label="FaSearch, trang chủ">
-        <FaSearchMark />
-        <span className="chWord">FaSearch</span>
-      </Link>
-      <div className="chActions">
-        <nav className="chNav" aria-label="Điều hướng chính">
-          {NAV.map((item) => {
-            if (item.key !== "account") {
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  aria-current={currentFor(item.key, active)}
-                  className={item.key === "ai" ? "chAi" : undefined}
-                >
-                  {item.key === "ai" ? (
-                    <span className="chAiIcon" aria-hidden="true">
-                      <AiViewfinder />
-                    </span>
-                  ) : null}
-                  {item.label}
-                </Link>
-              );
-            }
-            return (
-              <Link
-                key={item.key}
-                href={navModel.href}
-                aria-current={currentFor(item.key, active)}
-                aria-label={navModel.ariaLabel}
-                title={navModel.title}
-                onClick={navModel.status === "error" ? () => { load(); } : undefined}
-              >
-                {navModel.label}
-              </Link>
-            );
-          })}
-          {navModel.showAdminEntry ? (
-            <Link href="/quan-tri" className="chAdminEntry">Quản trị</Link>
-          ) : null}
-        </nav>
-        <div className="chThemeCompact">
-          <CustomerThemeMenu
-            open={themeOpen}
-            onOpenChange={(next) => {
-              if (next) closeMenu();
-              setThemeOpen(next);
+    <header
+      className="chHeader"
+      data-compact={compact ? "true" : "false"}
+      data-menu-open={menuOpen ? "true" : "false"}
+      ref={headerRef}
+      onFocusCapture={() => setFocusInside(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusInside(false);
+      }}
+    >
+      <div className="chHeaderInner">
+        {/* Cột trái: hamburger (mobile) + liên kết khám phá (desktop). */}
+        <div className="chLeft">
+          <details
+            className="chMobile"
+            ref={detailsRef}
+            onToggle={(event) => {
+              const open = event.currentTarget.open;
+              setMenuOpen(open);
+              if (open) setThemeOpen(false);
             }}
-          />
-        </div>
-        <details
-          className="chMobile"
-          ref={detailsRef}
-          onToggle={(event) => {
-            if (event.currentTarget.open) setThemeOpen(false);
-          }}
-        >
-          <summary aria-label="Mở menu điều hướng" title="Menu">
-            <svg
-              className="chMenuIcon"
-              aria-hidden="true"
-              focusable="false"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            >
-              <path d="M3 5.5h14M3 10h14M3 14.5h14" />
-            </svg>
-          </summary>
-          <nav aria-label="Điều hướng chính">
-            {NAV.map((item) => {
-              if (item.key !== "account") {
-                return (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    aria-current={currentFor(item.key, active)}
-                    className={item.key === "ai" ? "chAi" : undefined}
-                    onClick={closeMenu}
-                  >
-                    {item.key === "ai" ? (
-                      <span className="chAiIcon" aria-hidden="true">
-                        <AiViewfinder />
-                      </span>
-                    ) : null}
-                    {item.label}
-                  </Link>
-                );
-              }
-              return (
+          >
+            <summary aria-label="Mở menu điều hướng" title="Menu">
+              <svg className="chMenuIcon" aria-hidden="true" focusable="false" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+              </svg>
+            </summary>
+            <nav aria-label="Điều hướng chính">
+              {NAV.map((item) => (
                 <Link
                   key={item.key}
-                  href={navModel.href}
+                  href={item.key === "account" ? navModel.href : item.href}
                   aria-current={currentFor(item.key, active)}
-                  aria-label={navModel.ariaLabel}
-                  title={navModel.title}
+                  aria-label={item.key === "account" ? navModel.ariaLabel : undefined}
+                  className={item.key === "ai" ? "chAi" : undefined}
                   onClick={() => {
                     closeMenu();
-                    if (navModel.status === "error") load();
+                    if (item.key === "account" && navModel.status === "error") load();
                   }}
                 >
-                  {navModel.label}
+                  {item.key === "ai" ? (
+                    <span className="chAiIcon" aria-hidden="true"><AiViewfinder /></span>
+                  ) : null}
+                  {item.key === "account" ? navModel.label : item.label}
                 </Link>
-              );
-            })}
+              ))}
+              {navModel.showAdminEntry ? (
+                <Link href="/quan-tri" className="chAdminEntry" onClick={closeMenu}>Quản trị</Link>
+              ) : null}
+            </nav>
+          </details>
+
+          <nav className="chNav" aria-label="Khám phá">
+            {NAV.filter((item) => item.key !== "account").map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                aria-current={currentFor(item.key, active)}
+                className={item.key === "ai" ? "chAi" : undefined}
+              >
+                {item.key === "ai" ? (
+                  <span className="chAiIcon" aria-hidden="true"><AiViewfinder /></span>
+                ) : null}
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        {/* Cột giữa: thương hiệu luôn căn giữa hình học ở cả hai trạng thái. */}
+        <Link className="chBrand" href="/" aria-label="FaSearch, trang chủ">
+          <FaSearchMark />
+          <span className="chWord">FaSearch</span>
+        </Link>
+
+        {/* Cột phải: tài khoản (desktop), giao diện, giỏ hàng. */}
+        <div className="chRight">
+          <nav className="chNav chNavAccount" aria-label="Tài khoản">
+            <Link
+              href={navModel.href}
+              aria-current={currentFor("account", active)}
+              aria-label={navModel.ariaLabel}
+              title={navModel.title}
+              onClick={navModel.status === "error" ? () => { load(); } : undefined}
+            >
+              {navModel.label}
+            </Link>
             {navModel.showAdminEntry ? (
-              <Link href="/quan-tri" className="chAdminEntry" onClick={closeMenu}>Quản trị</Link>
+              <Link href="/quan-tri" className="chAdminEntry">Quản trị</Link>
             ) : null}
           </nav>
-        </details>
-        <Link className="chCart" href="/gio-hang" aria-label={`Giỏ hàng, ${count} sản phẩm`}>
-          <BagIcon />
-          <span className="chCartLabel">Giỏ hàng</span>
-          <span className="chCartCount">{count}</span>
-        </Link>
+          <div className="chThemeCompact">
+            <CustomerThemeMenu
+              open={themeOpen}
+              onOpenChange={(next) => {
+                if (next) closeMenu();
+                setThemeOpen(next);
+              }}
+            />
+          </div>
+          <Link className="chCart" href="/gio-hang" aria-label={`Giỏ hàng, ${count} sản phẩm`}>
+            <BagIcon />
+            <span className="chCartLabel">Giỏ hàng</span>
+            <span className="chCartCount">{count}</span>
+          </Link>
+        </div>
       </div>
     </header>
   );

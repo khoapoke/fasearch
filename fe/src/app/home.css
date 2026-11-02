@@ -1093,41 +1093,23 @@ html[data-theme="dark"] .hmHome {
    Scope: chỉ trong `.hmHome`. Dùng token --st-* đã duyệt, không tạo palette mới.
    ========================================================================== */
 
-/* --- Marquee: ảnh thật từ catalog, 32s linear như MOTION-SPEC p23-r5 --- */
-.hmMarq { margin: 26px auto 8px; width: min(1320px, 100%); padding: 0 clamp(16px, 4vw, 48px); }
-.hmMarqHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.hmMarqKicker { margin: 0; color: var(--st-ink-soft); font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; }
-.hmMarqToggle {
-  min-height: 36px; padding: 6px 14px; border: 1px solid var(--st-control-border);
-  border-radius: 7px; background: var(--st-surface); color: var(--st-ink);
-  font: inherit; font-size: 13px; cursor: pointer;
-}
-.hmMarqToggle:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
-.hmMarqViewport {
-  position: relative; display: flex; gap: 14px; overflow: hidden;
-  border-radius: 14px; padding-bottom: 4px;
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-}
-.hmMarqTrack {
-  display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; flex: 0 0 auto;
-  animation: hmMarqRun 32s linear infinite;
-}
-.hmMarq[data-paused="true"] .hmMarqTrack { animation-play-state: paused; }
-.hmMarqItem { flex: 0 0 auto; width: clamp(160px, 17vw, 220px); height: clamp(180px, 22vw, 260px); overflow: hidden; border-radius: 12px; background: var(--st-select); }
-.hmMarqItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.hmMarqItem a:focus-visible { outline: 2px solid var(--st-focus); outline-offset: -2px; border-radius: 12px; }
-.hmMarqClone { display: none; }
-@keyframes hmMarqRun { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
-
-@media (min-width: 900px) { .hmMarqClone { display: flex; } }
-
-.hmMarqStatic {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;
-  width: min(1320px, 100%); margin: 26px auto 8px; padding: 0 clamp(16px, 4vw, 48px);
-}
-.hmMarqTile { display: grid; gap: 8px; text-decoration: none; color: var(--st-ink); font-size: 13px; }
-.hmMarqTile img { width: 100%; height: 190px; object-fit: cover; border-radius: 12px; display: block; }
-.hmMarqTile:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; border-radius: 12px; }
+/* --- Brand strip (rev2): logo monochrome thật, phục vụ cục bộ --- */
+.hmBrands { width: min(1320px, 100%); margin: 30px auto 6px; padding: 26px clamp(16px, 4vw, 48px); border-top: 1px solid var(--st-line); border-bottom: 1px solid var(--st-line); }
+.hmBrandsHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.hmBrandsTitle { margin: 0; color: var(--st-ink-soft); font-size: 12.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+.hmBrandsToggle { min-height: 34px; padding: 5px 12px; border: 1px solid var(--st-line); border-radius: 999px; background: transparent; color: var(--st-ink-soft); font: inherit; font-size: 12.5px; cursor: pointer; }
+.hmBrandsToggle:hover { color: var(--st-ink); border-color: var(--st-control-border); }
+.hmBrandsToggle:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.hmBrandsViewport { display: flex; gap: 64px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.hmBrandTrack { display: flex; align-items: center; gap: 64px; margin: 0; padding: 0; list-style: none; flex: 0 0 auto; animation: hmBrandRun 40s linear infinite; }
+.hmBrandsViewport[data-paused="true"] .hmBrandTrack { animation-play-state: paused; }
+.hmBrandItem { display: flex; align-items: center; justify-content: center; height: 34px; flex: 0 0 auto; }
+.hmBrandItem img { display: block; width: auto; max-width: 150px; height: 26px; object-fit: contain; filter: brightness(0) opacity(0.62); }
+[data-theme="dark"] .hmBrandItem img { filter: brightness(0) invert(1) opacity(0.7); }
+@keyframes hmBrandRun { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+.hmBrandsStatic { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: clamp(28px, 6vw, 72px); }
+.hmBrandsStatic .hmBrandTrack { animation: none; flex-wrap: wrap; justify-content: center; gap: clamp(28px, 6vw, 72px); }
+.hmBrandsNote { margin: 16px 0 0; color: var(--st-ink-soft); font-size: 12px; opacity: 0.85; }
 
 /* --- Demo controls + FSM surfaces --- */
 .hmDemoTools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -1216,7 +1198,6 @@ html[data-theme="dark"] .hmHome {
 .hmCloseActions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 @media (max-width: 760px) {
-  .hmMarqItem { width: 150px; height: 176px; }
   .hmHow { padding-top: 30px; }
   .hmClose { padding: 24px 20px; margin-bottom: 34px; }
   .hmCloseActions { width: 100%; }
@@ -1225,12 +1206,12 @@ html[data-theme="dark"] .hmHome {
 
 /* Reduced-motion / Off: dừng mọi hiệu ứng, giữ nguyên bố cục và nội dung. */
 @media (prefers-reduced-motion: reduce) {
-  .hmMarqTrack, .hmTags, .hmProcessing, .hmResult { animation: none; }
+  .hmBrandTrack, .hmTags, .hmProcessing, .hmResult { animation: none; }
   .hmHome[data-attention="on"] .hmResultMotion,
   .hmHome[data-attention="on"] .hmResultHalo { animation: none; }
   .hmQueryCaret { animation: none; opacity: 0; }
 }
-body[data-motion="off"] .hmMarqTrack,
+body[data-motion="off"] .hmBrandTrack,
 body[data-motion="off"] .hmQueryCaret,
 body[data-motion="off"] .hmTags,
 body[data-motion="off"] .hmProcessing,

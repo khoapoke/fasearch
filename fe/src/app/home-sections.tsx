@@ -18,7 +18,7 @@ import {
 } from "./home-data";
 import "./home.css";
 import "@/components/storefront/listing.css";
-import { HomeMarquee, type MarqueeItem } from "@/components/home/home-marquee";
+import { BrandStrip } from "@/components/home/brand-strip";
 import { useHomeMotion } from "@/lib/home-motion";
 
 const DISCOVERY_ERROR = "Không tải được sản phẩm. Vui lòng thử lại.";
@@ -200,7 +200,6 @@ export function HomeSections() {
   const [productsTotal, setProductsTotal] = useState<number | null>(null);
   const [productError, setProductError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [marquee, setMarquee] = useState<MarqueeItem[]>([]);
   const { enabled: motionOn, preference, setPreference } = useHomeMotion();
   // Trạng thái minh họa bám theo MOTION-SPEC p23-r5: dormant → typing → tags →
   // processing → result → complete. Chọn tay thì dừng tự chạy và hiện tĩnh ngay.
@@ -228,15 +227,6 @@ export function HomeSections() {
       .catch(() => {
         if (live) setCategoryError("Không tải được danh mục.");
       });
-    fetchCatalogProducts({ page: 0, size: 14, sort: "id,desc" })
-      .then((page) => {
-        if (!live) return;
-        setMarquee(page.items
-          .filter((p) => Boolean(p.imageUrl))
-          .slice(0, 12)
-          .map((p) => ({ id: p.id, name: p.name, image: p.imageUrl as string, href: `/san-pham/${p.id}` })));
-      })
-      .catch(() => { if (live) setMarquee([]); });
     fetchCatalogProducts({ page: 0, size: 4, sort: "id,desc" })
       .then((page) => {
         if (!live) return;
@@ -370,17 +360,29 @@ export function HomeSections() {
   // khi ngoài khung nhìn hoặc khi tắt/giảm chuyển động. Không bù nhịp khi quay lại.
   useEffect(() => {
     if (!motionOn || manual || autoPaused || stage === "complete" || stage === "result") return;
-    const run: Record<string, number> = { dormant: 220, typing: 700, tags: 900, processing: 1200 };
+    const run: Record<string, number> = { dormant: 1000, tags: 3000, processing: 3400 };
     const delay = run[stage];
     if (delay === undefined) return;
     schedule(delay, () => {
       if (stage === "dormant") { setStage("typing"); setTyped(0); return; }
-      if (stage === "typing") { setStage("tags"); setTyped(HOME_DEMO.query.length); return; }
       if (stage === "tags") { setStage("processing"); return; }
       if (stage === "processing") { setStage("result"); setAttention((n) => n + 1); }
     });
     return () => clearDemoTimers();
   }, [stage, motionOn, manual, autoPaused, schedule, clearDemoTimers]);
+
+  // Gõ chữ theo nhịp đọc được (55ms/ký tự) rồi giữ 400ms trước khi sang bước kế.
+  useEffect(() => {
+    if (stage !== "typing") return;
+    if (!motionOn || manual || autoPaused) return;
+    const total = HOME_DEMO.query.length;
+    if (typed >= total) {
+      const done = window.setTimeout(() => setStage("tags"), 400);
+      return () => window.clearTimeout(done);
+    }
+    const tick = window.setTimeout(() => setTyped((n) => Math.min(total, n + 1)), 55);
+    return () => window.clearTimeout(tick);
+  }, [stage, typed, motionOn, manual, autoPaused]);
 
   // Tắt/giảm chuyển động: về trạng thái đã an tĩnh, không tự chạy lại sau đó.
   useEffect(() => {
@@ -599,7 +601,7 @@ export function HomeSections() {
         <p className="hmDisclosure">{HOME_DEMO.disclosure}</p>
       </section>
 
-      <HomeMarquee items={marquee} motionEnabled={motionOn} />
+      <BrandStrip motionEnabled={motionOn} />
 
       {discovery.status === "ready" || discovery.status === "partial" || discovery.status === "empty" ? (
         discovery.categories.length > 0 ? (
