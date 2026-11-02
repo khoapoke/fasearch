@@ -48,11 +48,11 @@ export default function VouchersPage() {
         </div>
       </section>
       {state === "checking" ? <p className="pgState" role="status"><strong>Đang kiểm tra tài khoản…</strong></p> : null}
-      {state === "error" ? <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert"><p className="sfIdentitySub">Không kiểm tra được tài khoản.</p><button className="hmCta hmCtaGhost" type="button" onClick={load}>Thử lại</button></div> : null}
+      {state === "error" ? <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert"><p className="sfIdentitySub">Không kiểm tra được tài khoản.</p><button className="auth-button" type="button" onClick={load}>Thử lại</button></div> : null}
       {state === "ready" ? <section className="sfSideCard" aria-label="Áp mã voucher tại thanh toán">
         <form className="pvCoupon" onSubmit={continueToCheckout}>
           <input value={code} onChange={(e) => setCode(e.target.value)} maxLength={50} placeholder="Nhập mã voucher…" aria-label="Mã voucher" autoComplete="off" />
-          <button className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }} type="submit">Tiếp tục thanh toán</button>
+          <button className="auth-button is-primary" type="submit">Tiếp tục thanh toán</button>
         </form>
         {issue ? <p className="mpMuted" role="alert">{issue}</p> : null}
         <p className="mpMuted">Mã chỉ được kiểm tra khi có giỏ hàng ở bước thanh toán. S1 chưa cung cấp danh sách voucher công khai.</p>

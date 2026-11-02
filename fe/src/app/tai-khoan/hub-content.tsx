@@ -89,8 +89,8 @@ export function HubContent() {
               {latest.giamGia > 0 ? ` · giảm ${latest.giamGia.toLocaleString("vi-VN")}₫` : ""}
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <Link className="hmCta hmCtaGhost" href={`/don-hang/${latest.maDonHang}`} style={{ padding: "10px 16px", fontSize: 13 }}>Chi tiết đơn</Link>
-              <Link className="hmCta hmCtaPrimary" href="/don-hang" style={{ padding: "10px 16px", fontSize: 13 }}>Theo dõi hành trình</Link>
+              <Link className="auth-button" href={`/don-hang/${latest.maDonHang}`}>Chi tiết đơn</Link>
+              <Link className="auth-button is-primary" href="/don-hang">Theo dõi hành trình</Link>
             </div>
           </div>
         ) : null}

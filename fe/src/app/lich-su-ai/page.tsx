@@ -69,7 +69,7 @@ export default function AiHistoryPage() {
         <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert" style={{ borderLeft: "3px solid #b42318" }}>
           <b>Lỗi tải dữ liệu</b>
           <p className="sfIdentitySub" style={{ color: "#b42318", marginTop: 4 }}>{error}</p>
-          <button className="hmCta hmCtaGhost" type="button" onClick={load} style={{ marginTop: 10 }}>
+          <button className="auth-button" type="button" onClick={load} style={{ marginTop: 10 }}>
             Thử lại
           </button>
         </div>
@@ -81,7 +81,7 @@ export default function AiHistoryPage() {
           <p className="sfIdentitySub" style={{ marginTop: 6, marginBottom: 16 }}>
             Các lượt tìm kiếm bằng mô tả văn bản, hình ảnh hoặc đa phương thức trên máy chủ AI sẽ được lưu trữ tại đây.
           </p>
-          <Link className="hmCta hmCtaPrimary" href="/tim-kiem-ai" style={{ display: "inline-block" }}>
+          <Link className="auth-button is-primary" href="/tim-kiem-ai" style={{ display: "inline-block" }}>
             Trải nghiệm tìm kiếm AI →
           </Link>
         </section>
@@ -135,10 +135,10 @@ export default function AiHistoryPage() {
 
                 <button
                   type="button"
-                  className="hmCta hmCtaGhost"
+                  className="auth-button"
                   disabled={removing === e.id}
                   onClick={() => remove(e.id)}
-                  style={{ padding: "6px 12px", fontSize: 12, flexShrink: 0 }}
+                  style={{ flexShrink: 0 }}
                   aria-label={`Xóa mục lịch sử ${e.query || e.mode}`}
                 >
                   {removing === e.id ? "Đang xóa…" : "Xóa"}

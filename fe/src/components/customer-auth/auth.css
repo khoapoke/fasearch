@@ -203,7 +203,8 @@
 .acctPage .acct-nav a:hover { color: var(--st-ink); }
 .acctPage .acct-nav a:focus-visible,
 .acctPage .acct-nav button:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: -2px; }
-.acctPage .auth-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 10px 18px; border: 1px solid var(--st-control-border); border-radius: 7px; color: var(--st-ink); background: var(--st-surface); font: inherit; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+.acctPage .auth-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--st-control-border); border-radius: 7px; color: var(--st-ink); background: var(--st-surface); font: inherit; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+.acctPage .auth-button:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: 2px; }
 .acctPage .auth-button.is-primary { color: #fff; border-color: var(--st-brand); background: var(--st-brand); }
 .acctPage .auth-button:hover { border-color: var(--st-line-strong, var(--st-control-border)); }
 .acctPage .auth-button.is-primary:hover { background: var(--st-brand-text); }

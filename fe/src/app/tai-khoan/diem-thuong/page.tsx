@@ -48,7 +48,7 @@ export default function LoyaltyPage() {
       {state.kind === "error" ? (
         <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert">
           <p className="sfIdentitySub">{state.message}</p>
-          <button className="hmCta hmCtaGhost" type="button" onClick={load}>Thử lại</button>
+          <button className="auth-button" type="button" onClick={load}>Thử lại</button>
         </div>
       ) : null}
       {state.kind === "ready" ? (

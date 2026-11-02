@@ -40,13 +40,13 @@ export default function AddressesPage() {
             {a.isDefault ? <span className="pMatch">Mặc định</span> : null}
             <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               {!a.isDefault ? (
-                <button type="button" className="hmCta hmCtaGhost" style={{ padding: "7px 12px", fontSize: 12 }} onClick={() => setRows((prev) => prev.map((x) => ({ ...x, isDefault: x.id === a.id })))}>Đặt mặc định</button>
+                <button type="button" className="auth-button" onClick={() => setRows((prev) => prev.map((x) => ({ ...x, isDefault: x.id === a.id })))}>Đặt mặc định</button>
               ) : null}
-              <button type="button" className="hmCta hmCtaGhost" style={{ padding: "7px 12px", fontSize: 12 }} onClick={() => {
+              <button type="button" className="auth-button" onClick={() => {
                 setForm({ name: a.name, phone: a.phone, address: a.address.replace(/ \((Văn phòng|Nhà riêng|Khác)\)$/, ""), kind: (a.address.match(/\((Văn phòng|Nhà riêng|Khác)\)$/) || [])[1] || "Nhà riêng" });
                 setEditing(a.id);
               }}>Sửa</button>
-              <button type="button" className="hmCta hmCtaGhost" style={{ padding: "7px 12px", fontSize: 12 }} onClick={() => setRows((prev) => prev.filter((x) => x.id !== a.id))}>Xóa</button>
+              <button type="button" className="auth-button" onClick={() => setRows((prev) => prev.filter((x) => x.id !== a.id))}>Xóa</button>
             </span>
           </div>
           <p>{a.phone} · {a.address}</p>
@@ -66,7 +66,7 @@ export default function AddressesPage() {
               <option>Khác</option>
             </select>
           </div>
-          <button className="hmCta hmCtaPrimary" style={{ padding: "10px 18px", fontSize: 13 }} type="submit">{editing ? "Lưu sửa đổi" : "Lưu địa chỉ"}</button>
+          <button className="auth-button is-primary" type="submit">{editing ? "Lưu sửa đổi" : "Lưu địa chỉ"}</button>
           {msg ? <p className="mpMuted" role="status" style={{ marginTop: 8 }}>{msg}</p> : null}
         </form>
       </section>

@@ -91,7 +91,7 @@ export default function FavoritesPage() {
         <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert" style={{ borderLeft: "3px solid #b42318" }}>
           <b>Lỗi tải dữ liệu</b>
           <p className="sfIdentitySub" style={{ color: "#b42318", marginTop: 4 }}>{error}</p>
-          <button className="hmCta hmCtaGhost" type="button" onClick={load} style={{ marginTop: 10 }}>
+          <button className="auth-button" type="button" onClick={load} style={{ marginTop: 10 }}>
             Thử lại
           </button>
         </div>
@@ -103,7 +103,7 @@ export default function FavoritesPage() {
           <p className="sfIdentitySub" style={{ marginTop: 6, marginBottom: 16 }}>
             Lưu lại những món đồ bạn quan tâm khi duyệt danh mục để xem lại và mua sắm sau.
           </p>
-          <Link className="hmCta hmCtaPrimary" href="/nam" style={{ display: "inline-block" }}>
+          <Link className="auth-button is-primary" href="/nam" style={{ display: "inline-block" }}>
             Khám phá sản phẩm →
           </Link>
         </section>
@@ -192,10 +192,10 @@ export default function FavoritesPage() {
                 <div style={{ padding: "0 12px 12px", marginTop: "auto" }}>
                   <button
                     type="button"
-                    className="hmCta hmCtaGhost"
+                    className="auth-button"
                     disabled={removing === v.id}
                     onClick={() => removeOne(v.id)}
-                    style={{ width: "100%", padding: "6px 12px", fontSize: 13 }}
+                    style={{ width: "100%" }}
                   >
                     {removing === v.id ? "Đang xóa…" : "Bỏ lưu"}
                   </button>
