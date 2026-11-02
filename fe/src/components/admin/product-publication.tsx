@@ -158,9 +158,14 @@ export function ProductPublication({ product, onChanged }: { product: Product; o
           </p>
         </div>
         <div className="catalog-inline">
-          <Link className="text-link" href={`/san-pham/${product.id}`} aria-label={`Xem trước ${product.productName} với giao diện khách hàng`}>
-            Xem trước (giao diện khách)
+          <Link className="text-link" href={`/quan-tri/san-pham/${product.id}/xem-truoc`} aria-label={`Xem trước bản nháp ${product.productName} với bố cục khách hàng`}>
+            Xem trước bản nháp
           </Link>
+          {published ? (
+            <Link className="text-link" href={`/san-pham/${product.id}`}>
+              Xem bản đang bán
+            </Link>
+          ) : null}
           {published ? (
             <button className="text-link" type="button" disabled={busy} aria-disabled={busy} onClick={() => void unpublish()}>
               {busy ? "Đang gỡ…" : "Gỡ xuất bản"}
