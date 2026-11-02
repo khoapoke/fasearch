@@ -14,9 +14,12 @@ import {
   type HomeDemoStep,
   type HomePhoto,
   type HomeProduct,
+  type DemoStage,
 } from "./home-data";
 import "./home.css";
 import "@/components/storefront/listing.css";
+import { HomeMarquee, type MarqueeItem } from "@/components/home/home-marquee";
+import { useHomeMotion } from "@/lib/home-motion";
 
 const DISCOVERY_ERROR = "Không tải được sản phẩm. Vui lòng thử lại.";
 
@@ -197,8 +200,21 @@ export function HomeSections() {
   const [productsTotal, setProductsTotal] = useState<number | null>(null);
   const [productError, setProductError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  // Bản tĩnh hoàn chỉnh là mặc định: mở Home là thấy ngay kết quả của cả ba bước.
-  const [step, setStep] = useState<HomeDemoStep>("explore");
+  const [marquee, setMarquee] = useState<MarqueeItem[]>([]);
+  const { enabled: motionOn, preference, setPreference } = useHomeMotion();
+  // Trạng thái minh họa bám theo MOTION-SPEC p23-r5: dormant → typing → tags →
+  // processing → result → complete. Chọn tay thì dừng tự chạy và hiện tĩnh ngay.
+  const [stage, setStage] = useState<DemoStage>("dormant");
+  const [manual, setManual] = useState(false);
+  const [userPaused, setUserPaused] = useState(false);
+  const [focusPaused, setFocusPaused] = useState(false);
+  const [demoInView, setDemoInView] = useState(false);
+  const [docHidden, setDocHidden] = useState(false);
+  const [typed, setTyped] = useState(0);
+  const [attention, setAttention] = useState(0);
+  const demoTimers = useRef<number[]>([]);
+  const demoRef = useRef<HTMLElement | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
   const stepRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
@@ -211,6 +227,15 @@ export function HomeSections() {
       .catch(() => {
         if (live) setCategoryError("Không tải được danh mục.");
       });
+    fetchCatalogProducts({ page: 0, size: 14, sort: "id,desc" })
+      .then((page) => {
+        if (!live) return;
+        setMarquee(page.items
+          .filter((p) => Boolean(p.imageUrl))
+          .slice(0, 12)
+          .map((p) => ({ id: p.id, name: p.name, image: p.imageUrl as string, href: `/san-pham/${p.id}` })));
+      })
+      .catch(() => { if (live) setMarquee([]); });
     fetchCatalogProducts({ page: 0, size: 4, sort: "id,desc" })
       .then((page) => {
         if (!live) return;
@@ -230,6 +255,59 @@ export function HomeSections() {
       live = false;
     };
   }, [reloadKey]);
+
+  const clearDemoTimers = useCallback(() => {
+    demoTimers.current.forEach((id) => window.clearTimeout(id));
+    demoTimers.current = [];
+  }, []);
+
+  const schedule = useCallback((ms: number, run: () => void) => {
+    const id = window.setTimeout(() => {
+      demoTimers.current = demoTimers.current.filter((value) => value !== id);
+      run();
+    }, ms);
+    demoTimers.current.push(id);
+  }, []);
+
+  useEffect(() => () => clearDemoTimers(), [clearDemoTimers]);
+
+  useEffect(() => {
+    const onVisibility = () => setDocHidden(document.visibilityState === "hidden");
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    const node = demoRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      setDemoInView(entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.25));
+    }, { threshold: [0, 0.25] });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // Hero entrance: chạy một lần mỗi vòng đời, đúng chuỗi 650ms của bản đã duyệt.
+  useEffect(() => {
+    const root = heroRef.current;
+    if (!root || !motionOn) return;
+    const parts: Array<[string, Keyframe[], number, number]> = [
+      [".hmHeroTitle", [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], 500, 0],
+      [".hmHeroLede", [{ opacity: 0.72, transform: "translate3d(0,7px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 320, 100],
+      [".hmHeroActions, .hmHeroSearch", [{ opacity: 0.9, transform: "translate3d(0,5px,0)" }, { opacity: 1, transform: "translate3d(0,0,0)" }], 180, 260],
+      [".hmHeroMedia, .hmHeroFigure", [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0 0)" }], 540, 40],
+    ];
+    const animations: Animation[] = [];
+    for (const [selector, frames, duration, delay] of parts) {
+      const el = root.querySelector(selector);
+      if (el) animations.push(el.animate(frames, { duration, delay, easing: "cubic-bezier(0.23,1,0.32,1)", fill: "backwards" }));
+    }
+    const settle = window.setTimeout(() => animations.forEach((a) => a.finish()), 650);
+    return () => {
+      window.clearTimeout(settle);
+      animations.forEach((a) => a.cancel());
+    };
+  }, [motionOn]);
 
   const retry = useCallback(() => {
     // Đặt lại trạng thái ở đây (không trong effect) để effect chỉ còn tác dụng phụ mạng.
@@ -257,24 +335,71 @@ export function HomeSections() {
   }));
 
   function selectStep(next: HomeDemoStep) {
-    setStep(next);
-    // Trả tiêu điểm về nút vừa chọn để người dùng bàn phím biết trạng thái đã đổi.
+    clearDemoTimers();
+    setManual(true);
+    setUserPaused(false);
+    setStage(next === "describe" ? "dormant" : next === "suggest" ? "suggest" : "complete");
     stepRefs.current[next]?.focus();
   }
 
-  const stepIndex = HOME_DEMO_STEPS.findIndex((s) => s.id === step);
+  const stepIndex = stage === "complete" || stage === "result" ? 2 : ["dormant", "describe", "typing"].includes(stage) ? 0 : 1;
   const showTags = stepIndex >= 1;
+  const showResult = stage === "result" || stage === "complete";
+  const autoPaused = userPaused || focusPaused || docHidden || !demoInView || !motionOn;
+
   const statusText =
-    step === "describe"
-      ? "Mô tả món đồ bạn muốn tìm."
-      : step === "suggest"
-        ? `Đối chiếu mô tả với danh mục: ${HOME_DEMO.tags.map((t) => t.value).join(" · ")}.`
-        : "Một gợi ý phù hợp trong danh mục mẫu.";
+    manual
+      ? stage === "complete" || stage === "result"
+        ? "Đã chọn bước. Gợi ý hiển thị tĩnh, không tự chạy tiếp."
+        : "Đã chọn bước. Nội dung tĩnh, không có hiệu ứng chờ."
+      : stage === "dormant"
+        ? "Mô tả món đồ bạn muốn tìm."
+        : stage === "typing"
+          ? "Đang nhập mô tả…"
+          : stage === "tags"
+            ? `Đối chiếu mô tả với danh mục: ${HOME_DEMO.tags.map((t) => t.value).join(" · ")}.`
+            : stage === "processing"
+              ? "Đang tìm gợi ý…"
+              : "Một gợi ý phù hợp trong danh mục mẫu.";
+
+  // Vòng tự chạy hữu hạn; dừng hẳn khi tay chọn, khi tạm dừng, khi ẩn tab,
+  // khi ngoài khung nhìn hoặc khi tắt/giảm chuyển động. Không bù nhịp khi quay lại.
+  useEffect(() => {
+    if (!motionOn || manual || autoPaused || stage === "complete") return;
+    const run: Record<string, number> = { dormant: 220, typing: 700, tags: 900, processing: 1200 };
+    const delay = run[stage];
+    if (delay === undefined) return;
+    schedule(delay, () => {
+      if (stage === "dormant") { setStage("typing"); setTyped(0); return; }
+      if (stage === "typing") { setStage("tags"); setTyped(HOME_DEMO.query.length); return; }
+      if (stage === "tags") { setStage("processing"); return; }
+      if (stage === "processing") { setStage("result"); setAttention((n) => n + 1); schedule(60, () => setStage("complete")); }
+    });
+    return () => clearDemoTimers();
+  }, [stage, motionOn, manual, autoPaused, schedule, clearDemoTimers]);
+
+  // Tắt/giảm chuyển động: về trạng thái đã an tĩnh, không tự chạy lại sau đó.
+  useEffect(() => {
+    if (motionOn) return;
+    clearDemoTimers();
+    setStage("complete");
+    setTyped(HOME_DEMO.query.length);
+  }, [motionOn, clearDemoTimers]);
+
+  const replay = () => {
+    clearDemoTimers();
+    setManual(false);
+    setUserPaused(false);
+    setStage(motionOn ? "dormant" : "complete");
+    setTyped(motionOn ? 0 : HOME_DEMO.query.length);
+  };
+
+  const typedQuery = manual && stage !== "typing" && stage !== "dormant" ? HOME_DEMO.query : HOME_DEMO.query.slice(0, typed);
 
   return (
-    <div className="hmHome">
+    <div className="hmHome" data-attention={attention > 0 && motionOn && !manual ? "on" : "off"} data-motion-on={motionOn ? "true" : "false"}>
       <HomeCanvasB2 />
-      <section className="hmHero" aria-labelledby="hm-hero-title">
+      <section className="hmHero" aria-labelledby="hm-hero-title" ref={heroRef}>
         <div className="hmHeroCopy">
           <h1 className="hmHeroTitle" id="hm-hero-title">Tìm đồ theo ảnh</h1>
           <p className="hmHeroLede">Tìm món đồ hợp gu từ ảnh hoặc vài dòng mô tả.</p>
@@ -334,14 +459,33 @@ export function HomeSections() {
         className="hmDemo"
         aria-labelledby="hm-demo-title"
         aria-describedby="hm-demo-note"
-        data-step={step}
+        data-step={stepIndex === 2 ? "explore" : stepIndex === 1 ? "suggest" : "describe"}
+        data-stage={stage}
+        data-manual={manual ? "true" : "false"}
+        data-paused={autoPaused ? "true" : "false"}
+        aria-busy={!manual && motionOn && ["typing", "tags", "processing"].includes(stage) ? true : undefined}
+        ref={demoRef}
+        onFocusCapture={() => setFocusPaused(true)}
+        onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusPaused(false); }}
       >
         <header className="hmDemoHead">
           <div>
             <p className="hmKicker">01 · Tìm bằng AI</p>
             <h2 className="hmSectionTitle" id="hm-demo-title">Tìm món đồ hợp gu.</h2>
           </div>
-          <p className="hmDemoNote" id="hm-demo-note">Ví dụ minh họa</p>
+          <div className="hmDemoTools">
+            <p className="hmDemoNote" id="hm-demo-note">Ví dụ minh họa</p>
+            <button className="hmDemoReplay" type="button" onClick={replay}>Xem lại</button>
+            <button
+              className="hmDemoReplay"
+              type="button"
+              aria-pressed={!manual && userPaused}
+              aria-disabled={manual || !motionOn}
+              onClick={() => setUserPaused((value) => !value)}
+            >
+              {manual || !motionOn ? "Đã tĩnh" : userPaused ? "Tiếp tục" : "Tạm dừng"}
+            </button>
+          </div>
         </header>
 
         <div className="hmDemoSteps" role="group" aria-label="Các bước của ví dụ minh họa">
@@ -351,7 +495,7 @@ export function HomeSections() {
               ref={(el) => { stepRefs.current[s.id] = el; }}
               className="hmDemoStep"
               type="button"
-              aria-pressed={step === s.id}
+              aria-pressed={HOME_DEMO_STEPS[stepIndex]?.id === s.id}
               onClick={() => selectStep(s.id)}
             >
               <span aria-hidden="true">{s.index}</span>
@@ -368,7 +512,7 @@ export function HomeSections() {
             </div>
             <div className="hmQuery">
               <span className="hmQueryIcon" aria-hidden="true">↳</span>
-              <p className="hmQueryCopy">{HOME_DEMO.query}</p>
+              <p className="hmQueryCopy">{typedQuery}<span className="hmQueryCaret" aria-hidden="true" /></p>
             </div>
             {showTags ? (
               <dl className="hmTags">
@@ -384,11 +528,19 @@ export function HomeSections() {
           </div>
 
           <div className="hmDemoOutcome">
-            {step === "describe" ? (
+            {stage === "dormant" || stage === "typing" ? (
               <p className="hmOutcomeIdle">Gợi ý từ mô tả của bạn</p>
             ) : null}
 
-            {step === "suggest" ? (
+            {stage === "processing" ? (
+              <div className="hmProcessing" aria-hidden="true">
+                <span className="hmSkeleton" />
+                <span className="hmSkeletonLine" />
+                <span className="hmSkeletonLine hmSkeletonShort" />
+              </div>
+            ) : null}
+
+            {stage === "tags" || stage === "suggest" ? (
               <div className="hmSuggestion">
                 <svg
                   className="hmSuggestionIcon"
@@ -408,11 +560,16 @@ export function HomeSections() {
               </div>
             ) : null}
 
-            {step === "explore" ? (
+            {showResult ? (
               <div className="hmResult">
                 <p className="hmMiniLabel">1 gợi ý</p>
-                <div className="hmResultCard">
-                  <HomePhotoFrame photo={HOME_DEMO.product.photo} className="hmResultMedia" />
+                <div className="hmResultCard" data-attention={attention} data-manual={manual ? "true" : "false"}>
+                  <span className="hmResultMediaWrap">
+                    <span className="hmResultMotion">
+                      <HomePhotoFrame photo={HOME_DEMO.product.photo} className="hmResultMedia" />
+                    </span>
+                    <span className="hmResultHalo" aria-hidden="true" />
+                  </span>
                   <div className="hmResultCopy">
                     <span className="hmResultOverline">{HOME_DEMO.product.overline}</span>
                     <strong>{HOME_DEMO.product.name}</strong>
@@ -431,6 +588,8 @@ export function HomeSections() {
 
         <p className="hmDisclosure">{HOME_DEMO.disclosure}</p>
       </section>
+
+      <HomeMarquee items={marquee} motionEnabled={motionOn} />
 
       {discovery.status === "ready" || discovery.status === "partial" || discovery.status === "empty" ? (
         discovery.categories.length > 0 ? (
@@ -504,18 +663,90 @@ export function HomeSections() {
         ) : null}
       </section>
 
+      <section className="hmHow" aria-labelledby="hm-how-title">
+        <div className="hmSecHead">
+          <h2 className="hmSectionTitle" id="hm-how-title">Tìm và mua trong ba bước</h2>
+          <Link href="/tim-kiem-ai">Bắt đầu tìm →</Link>
+        </div>
+        <ol className="hmHowSteps">
+          <li>
+            <span aria-hidden="true">01</span>
+            <b>Mô tả hoặc chọn ảnh</b>
+            <p>Gõ vài từ về món đồ bạn cần, hoặc dùng ảnh làm mẫu tham chiếu.</p>
+          </li>
+          <li>
+            <span aria-hidden="true">02</span>
+            <b>So kết quả với nhu cầu</b>
+            <p>Mỗi kết quả mở trang sản phẩm với màu, cỡ và giá hiện có.</p>
+          </li>
+          <li>
+            <span aria-hidden="true">03</span>
+            <b>Thêm vào giỏ và đặt hàng</b>
+            <p>Chọn biến thể, kiểm tra phí giao hàng rồi xác nhận thanh toán khi nhận.</p>
+          </li>
+        </ol>
+        <div className="hmBenefits">
+          <article>
+            <h3>Điểm thưởng theo tài khoản</h3>
+            <p>Số điểm và hạng hiển thị đúng theo tài khoản đang đăng nhập; điểm dùng được ở bước thanh toán khi đủ điều kiện.</p>
+            <Link href="/tai-khoan/diem-thuong">Xem điểm và hạng →</Link>
+          </article>
+          <article>
+            <h3>Voucher kiểm tra lại khi đặt</h3>
+            <p>Mã hợp lệ được xác nhận tại bước thanh toán; điều kiện và mức giảm hiển thị theo báo giá của đơn.</p>
+            <Link href="/voucher">Xem ưu đãi đang mở →</Link>
+          </article>
+        </div>
+      </section>
+
       <section className="hmTrust" aria-label="Điều hệ thống thực thi">
         {[
-          { icon: "check" as UiIcon, t: "Thanh toán khi nhận hàng", d: "Đơn COD, máy chủ ghi nhận khi khách nhận." },
-          { icon: "box" as UiIcon, t: "Tồn kho theo kho phục vụ", d: "Số lượng hiển thị theo kho đang phục vụ đơn." },
-          { icon: "truck" as UiIcon, t: "Phí vận chuyển do máy chủ tính", d: "Hiển thị ở bước thanh toán." },
-          { icon: "ticket" as UiIcon, t: "Voucher tại trang ưu đãi", d: "Nhập mã giảm giá khi thanh toán." },
+          { icon: "check" as UiIcon, t: "Thanh toán khi nhận hàng", d: "Trả tiền mặt cho người giao khi đơn tới." },
+          { icon: "box" as UiIcon, t: "Tồn kho theo kho phục vụ", d: "Số lượng cập nhật theo kho đang giao đơn." },
+          { icon: "truck" as UiIcon, t: "Phí vận chuyển rõ ràng", d: "Tính và hiển thị trước khi bạn đặt đơn." },
+          { icon: "ticket" as UiIcon, t: "Voucher áp dụng khi thanh toán", d: "Mã hợp lệ được kiểm tra lại trên đơn." },
         ].map((b) => (
           <div key={b.t}>
             <span className="hmTrustIco"><Icon name={b.icon} size={20} /></span>
             <div><b>{b.t}</b><small>{b.d}</small></div>
           </div>
         ))}
+      </section>
+
+      <section className="hmFaq" aria-labelledby="hm-faq-title">
+        <div className="hmSecHead">
+          <h2 className="hmSectionTitle" id="hm-faq-title">Câu hỏi thường gặp</h2>
+        </div>
+        <dl className="hmFaqList">
+          <div>
+            <dt>Tìm bằng ảnh khác gì tìm bằng chữ?</dt>
+            <dd>Ảnh cho hệ thống biết dáng, màu và kiểu bạn đang nhìn; chữ diễn tả điều bạn muốn thay đổi. Chế độ kết hợp dùng cả hai.</dd>
+          </div>
+          <div>
+            <dt>Kết quả lấy từ đâu?</dt>
+            <dd>Từ danh mục sản phẩm đang mở trên hệ thống, kèm ảnh và giá hiện có. Kết quả minh họa của AI là ảnh tham chiếu, không phải sản phẩm đang bán.</dd>
+          </div>
+          <div>
+            <dt>Voucher và điểm dùng thế nào?</dt>
+            <dd>Chọn ưu đãi ở trang voucher hoặc nhập mã tại bước thanh toán; điểm thưởng áp dụng theo tài khoản nếu đơn đủ điều kiện.</dd>
+          </div>
+          <div>
+            <dt>Theo dõi đơn ở đâu?</dt>
+            <dd>Mục Đơn hàng trong tài khoản hiển thị trạng thái và chi tiết từng đơn của bạn.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="hmClose" aria-labelledby="hm-close-title">
+        <div className="hmCloseCopy">
+          <p className="hmKicker">Sẵn sàng</p>
+          <h2 id="hm-close-title">Tìm món đồ bạn đang nghĩ tới.</h2>
+          <p>Một tấm ảnh hay vài dòng mô tả là đủ để bắt đầu.</p>
+        </div>
+        <div className="hmCloseActions">
+          <Link className="hmCta hmCtaBrand" href="/tim-kiem-ai">Tìm bằng AI <span aria-hidden="true">↗</span></Link>
+          <Link className="hmCta hmCtaGhost" href="/nam">Xem sản phẩm</Link>
+        </div>
       </section>
     </div>
   );

@@ -1087,3 +1087,147 @@ html[data-theme="dark"] .hmHome {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ==========================================================================
+   Chapter: Home completion (customer-home-benefits-completion r1)
+   Scope: chỉ trong `.hmHome`. Dùng token --st-* đã duyệt, không tạo palette mới.
+   ========================================================================== */
+
+/* --- Marquee: ảnh thật từ catalog, 32s linear như MOTION-SPEC p23-r5 --- */
+.hmMarq { margin: 26px auto 8px; width: min(1320px, 100%); padding: 0 clamp(16px, 4vw, 48px); }
+.hmMarqHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.hmMarqKicker { margin: 0; color: var(--st-ink-soft); font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+.hmMarqToggle {
+  min-height: 36px; padding: 6px 14px; border: 1px solid var(--st-control-border);
+  border-radius: 7px; background: var(--st-surface); color: var(--st-ink);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.hmMarqToggle:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.hmMarqViewport {
+  position: relative; display: flex; gap: 14px; overflow: hidden;
+  border-radius: 14px; padding-bottom: 4px;
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.hmMarqTrack {
+  display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; flex: 0 0 auto;
+  animation: hmMarqRun 32s linear infinite;
+}
+.hmMarq[data-paused="true"] .hmMarqTrack { animation-play-state: paused; }
+.hmMarqItem { flex: 0 0 auto; width: clamp(160px, 17vw, 220px); height: clamp(180px, 22vw, 260px); overflow: hidden; border-radius: 12px; background: var(--st-select); }
+.hmMarqItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hmMarqItem a:focus-visible { outline: 2px solid var(--st-focus); outline-offset: -2px; border-radius: 12px; }
+.hmMarqClone { display: none; }
+@keyframes hmMarqRun { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+
+@media (min-width: 900px) { .hmMarqClone { display: flex; } }
+
+.hmMarqStatic {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;
+  width: min(1320px, 100%); margin: 26px auto 8px; padding: 0 clamp(16px, 4vw, 48px);
+}
+.hmMarqTile { display: grid; gap: 8px; text-decoration: none; color: var(--st-ink); font-size: 13px; }
+.hmMarqTile img { width: 100%; height: 190px; object-fit: cover; border-radius: 12px; display: block; }
+.hmMarqTile:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; border-radius: 12px; }
+
+/* --- Demo controls + FSM surfaces --- */
+.hmDemoTools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hmDemoReplay {
+  min-height: 34px; padding: 5px 12px; border: 1px solid var(--st-line);
+  border-radius: 999px; background: transparent; color: var(--st-ink-soft);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.hmDemoReplay:hover { color: var(--st-ink); border-color: var(--st-control-border); }
+.hmDemoReplay:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.hmQueryCaret {
+  display: inline-block; width: 2px; height: 1em; margin-left: 2px;
+  background: currentColor; vertical-align: -0.12em; opacity: 0;
+  animation: hmCaret 900ms steps(1) infinite;
+}
+.hmDemo[data-stage="typing"] .hmQueryCaret { opacity: 1; }
+@keyframes hmCaret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+.hmProcessing { display: grid; gap: 10px; align-content: start; }
+.hmSkeleton { display: block; width: 140px; height: 176px; border-radius: 12px; background: var(--st-select); }
+.hmSkeletonLine { display: block; width: 100%; height: 12px; border-radius: 6px; background: var(--st-select); }
+.hmSkeletonShort { width: 60%; }
+
+.hmResultMediaWrap { position: relative; display: block; }
+.hmResultMotion { display: block; }
+.hmResultHalo { display: none; }
+
+/* Pop/wiggle 280ms (scale 0.97→1, +1.5→−0.75→0px) + halo 520ms peak 0.34,
+   chỉ trên ảnh; chữ/giá/CTA nằm ngoài node chuyển động. */
+.hmResultCard { position: relative; }
+.hmResultCard .hmResultHalo {
+  display: block; position: absolute; inset: 0; z-index: 2; padding: 3px; border-radius: inherit;
+  pointer-events: none; opacity: 0; filter: blur(2px);
+  background: linear-gradient(130deg, var(--st-brand), var(--st-citron) 62%, var(--st-brand));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.hmHome[data-attention="on"] .hmResultMotion { animation: hmPop 280ms var(--ease-out) both; }
+.hmHome[data-attention="on"] .hmResultHalo { animation: hmHalo 520ms linear both; }
+.hmResultCard[data-manual="true"] .hmResultHalo { animation: none !important; opacity: 0 !important; }
+.hmResultCard[data-manual="true"] .hmResultMotion { animation: none !important; }
+@keyframes hmPop {
+  0% { transform: scale(0.97) translateX(1.5px); }
+  60% { transform: scale(1) translateX(-0.75px); }
+  100% { transform: scale(1) translateX(0); }
+}
+@keyframes hmHalo {
+  0% { opacity: 0; }
+  25% { opacity: 0.34; }
+  40% { opacity: 0.34; }
+  100% { opacity: 0; }
+}
+
+/* --- How-to + benefits --- */
+.hmHow { width: min(1320px, 100%); margin: 0 auto; padding: 40px clamp(16px, 4vw, 48px) 8px; }
+.hmHowSteps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; margin: 18px 0 30px; padding: 0; list-style: none; }
+.hmHowSteps li { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--st-line); }
+.hmHowSteps span { color: var(--st-ink-soft); font-size: 12.5px; letter-spacing: 0.08em; }
+.hmHowSteps b { font-size: 16px; font-weight: 600; }
+.hmHowSteps p { margin: 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.6; max-width: 40ch; }
+.hmBenefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.hmBenefits article { display: grid; gap: 8px; align-content: start; padding: 20px; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface); }
+.hmBenefits h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.hmBenefits p { margin: 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.6; }
+.hmBenefits a { color: var(--st-brand-text); font-size: 13.5px; text-decoration: none; }
+.hmBenefits a:hover { text-decoration: underline; }
+
+/* --- FAQ --- */
+.hmFaq { width: min(1320px, 100%); margin: 0 auto; padding: 34px clamp(16px, 4vw, 48px) 8px; }
+.hmFaqList { margin: 14px 0 0; border-top: 1px solid var(--st-line); }
+.hmFaqList > div { padding: 16px 0; border-bottom: 1px solid var(--st-line); }
+.hmFaqList dt { font-size: 15px; font-weight: 600; }
+.hmFaqList dd { margin: 6px 0 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.65; max-width: 70ch; }
+
+/* --- Closing band --- */
+.hmClose {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  width: min(1320px, 100%); margin: 30px auto 46px; padding: 30px clamp(20px, 4vw, 44px);
+  border-radius: 18px; background: var(--st-select);
+}
+.hmCloseCopy h2 { margin: 4px 0 6px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.03em; }
+.hmCloseCopy p { margin: 0; color: var(--st-ink-soft); font-size: 15px; }
+.hmCloseActions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+@media (max-width: 760px) {
+  .hmMarqItem { width: 150px; height: 176px; }
+  .hmHow { padding-top: 30px; }
+  .hmClose { padding: 24px 20px; margin-bottom: 34px; }
+  .hmCloseActions { width: 100%; }
+  .hmCloseActions .hmCta { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Reduced-motion / Off: dừng mọi hiệu ứng, giữ nguyên bố cục và nội dung. */
+@media (prefers-reduced-motion: reduce) {
+  .hmMarqTrack { animation: none; }
+  .hmHome[data-attention="on"] .hmResultMotion,
+  .hmHome[data-attention="on"] .hmResultHalo { animation: none; }
+  .hmQueryCaret { animation: none; opacity: 0; }
+}
+body[data-motion="off"] .hmMarqTrack,
+body[data-motion="off"] .hmQueryCaret { animation: none; }
+body[data-motion="off"] .hmResultMotion,
+body[data-motion="off"] .hmResultHalo { animation: none !important; opacity: 0 !important; }

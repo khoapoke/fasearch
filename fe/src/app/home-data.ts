@@ -126,3 +126,11 @@ export function homeDiscoveryState(input: HomeDiscoveryInput): HomeDiscovery {
   // Danh mục đã về nhưng sản phẩm còn đang tải: giữ trạng thái tải để không nhấp nháy.
   return { status: "loading" };
 }
+
+
+/**
+ * Trạng thái minh họa theo MOTION-SPEC p23-r5 (home-a-r2):
+ * dormant → typing → tags → processing → result → complete.
+ * Chọn tay đưa thẳng về trạng thái tĩnh tương ứng, không chạy tiếp.
+ */
+export type DemoStage = "dormant" | "typing" | "tags" | "processing" | "result" | "complete" | "suggest";
