@@ -9,7 +9,6 @@ from PIL import Image
 from qdrant_client.models import PointStruct
 
 from src.core.ai_model import get_ai_model
-from src.core.qdrant_client import get_qdrant_client
 from src.core.config import settings
 from src.db.enums import CatalogCategory, PointStatus
 from src.db.models import ImagePointPayload
@@ -24,7 +23,7 @@ VALID_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
 class PointService:
     """
     Dịch vụ quản lý vòng đời và xử lý dữ liệu Vector Point trên Qdrant theo Collection.
-    Hỗ trợ làm việc với nhiều collection độc lập, tự động khởi tạo collection nếu chưa tồn tại.
+    Hoàn toàn độc lập theo từng collection được chỉ định.
     """
 
     def __init__(
@@ -86,7 +85,7 @@ class PointService:
         point_id: Optional[str] = None,
     ) -> str:
         """
-        Tạo mới 1 Vector Point từ file ảnh:
+        Tạo mới 1 Vector Point từ file ảnh trong collection:
         1. Trích xuất vector đặc trưng bằng mô hình CLIP (chuẩn hóa L2).
         2. Đóng gói Entity ImagePointPayload.
         3. Lưu trữ vào collection tương ứng trên Qdrant qua Repository.
@@ -148,8 +147,13 @@ class PointService:
 
     def clear_all_points(self) -> bool:
         """Xóa toàn bộ vector point trong collection và khởi tạo lại collection rỗng."""
-        logger.warning(f"Đang reset toàn bộ collection '{self.collection_name}'...")
+        logger.warning(f"Đang reset toàn bộ dữ liệu trong collection '{self.collection_name}'...")
         return self.repo.reset_collection()
+
+    def delete_collection(self) -> bool:
+        """Xóa sổ vĩnh viễn collection này khỏi Database Qdrant."""
+        logger.warning(f"Đang xóa vĩnh viễn collection '{self.collection_name}'...")
+        return self.repo.delete_this_collection()
 
     def batch_create_from_directory(
         self,
@@ -159,9 +163,7 @@ class PointService:
         status: Union[PointStatus, str] = PointStatus.SEEDED,
     ) -> Tuple[int, int]:
         """
-        Nạp dữ liệu hàng loạt từ thư mục chỉ định vào collection theo batch:
-        - Tối ưu VRAM GPU cho PyTorch.
-        - Tự động bỏ qua các ảnh lỗi/bị hỏng.
+        Nạp dữ liệu hàng loạt từ thư mục chỉ định vào collection theo batch.
         Trả về: (số_ảnh_thành_công, số_ảnh_bị_lỗi)
         """
         device, model, processor = get_ai_model()
@@ -186,7 +188,6 @@ class PointService:
             batch_images = []
             valid_paths = []
 
-            # 1. Mở ảnh an toàn
             for p in chunk_paths:
                 try:
                     with Image.open(p) as img:
@@ -199,14 +200,12 @@ class PointService:
             if not batch_images:
                 continue
 
-            # 2. Xử lý batch qua PyTorch
             inputs = processor(images=batch_images, return_tensors="pt").to(device)
             with torch.no_grad():
                 features = model.get_image_features(**inputs)
                 features = features / features.norm(p=2, dim=-1, keepdim=True)
                 vectors = features.cpu().numpy().tolist()
 
-            # 3. Đóng gói PointStruct
             points: List[PointStruct] = []
             for j, vector in enumerate(vectors):
                 file_abs_path = valid_paths[j]
@@ -227,14 +226,12 @@ class PointService:
                     )
                 )
 
-            # 4. Ghi batch vào Qdrant
             self.repo.upsert_batch(points=points)
             success_count += len(points)
             logger.info(
                 f"Đã nạp lô {i // batch_size + 1}: {len(points)} ảnh (Lũy kế: {success_count}/{total_images})"
             )
 
-            # 5. Dọn dẹp tài nguyên
             del inputs, features, vectors, batch_images, points
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -245,7 +242,7 @@ class PointService:
         return success_count, skipped_count
 
 
-# Instance mặc định dùng collection_name từ database.yaml
+# Instance mặc định dùng collection_name từ database.yaml làm fallback
 point_service = PointService()
 
 # Tương thích ngược cho các module đang gọi dạng hàm
@@ -261,14 +258,11 @@ _extract_image_vector = PointService.extract_image_vector
 if __name__ == "__main__":
     test_img_path = r"dataset/test/images/1855.jpg"
     sys_path = to_system_path(test_img_path)
-    test_payload={
-        "product_id":1001
-    }
+    web_path = to_web_path(test_img_path)
 
-    point_sev=PointService(collection_name="test")
-    get_ai_model()
-    get_qdrant_client()
-    point_sev.clear_all_points()
-    
-    
-    
+    print(f"Collection : {point_service.collection_name}")
+    print(f"System path: {sys_path}")
+    print(f"Web path   : {web_path}")
+
+    point_sev = PointService(collection_name="test")
+    print(f"Custom collection: {point_sev.collection_name}")

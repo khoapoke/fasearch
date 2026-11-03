@@ -5,7 +5,7 @@ import streamlit as st
 from PIL import Image
 
 from src.core.config import BASE_DIR
-from src.services.search_service import search_by_text, search_by_image, search_multimodal
+from src.services.search_service import SearchService
 from admin_app.components.ui_helpers import (
     resolve_image_path,
     get_status_badge,
@@ -13,11 +13,13 @@ from admin_app.components.ui_helpers import (
 )
 
 
-def render_search_tester():
+def render_search_tester(search_srv: SearchService):
     """
     Trang 3: Sân chơi thử nghiệm tìm kiếm đa phương thức (Text-to-Image, Image-to-Image và Multimodal).
+    Thực hiện truy vấn trực tiếp trên collection của search_srv.
     """
-    st.subheader("🔍 Thử nghiệm Tìm kiếm Đa phương thức (Search Playground)")
+    current_col = search_srv.collection_name
+    st.subheader(f"🔍 Thử nghiệm Tìm kiếm — Collection: `{current_col}`")
     st.caption("Kiểm thử tính năng trích xuất vector embedding và truy vấn độ tương đồng Cosine trong Qdrant.")
 
     # ==========================================
@@ -88,10 +90,10 @@ def render_search_tester():
             btn_text_search = True
 
         if btn_text_search and query_text.strip():
-            with st.spinner("Đang trích xuất vector từ text và tìm kiếm trong Qdrant..."):
+            with st.spinner(f"Đang tìm kiếm trong collection '{current_col}'..."):
                 start_t = time.time()
                 try:
-                    results = search_by_text(
+                    results = search_srv.search_by_text(
                         query_text=query_text.strip(),
                         limit=top_k,
                         exclude_deleted=exclude_deleted,
@@ -122,7 +124,7 @@ def render_search_tester():
                 btn_img_search = st.button("🔍 Tìm sản phẩm tương đồng", type="primary")
 
             if btn_img_search:
-                with st.spinner("Đang trích xuất vector từ ảnh mẫu và tìm kiếm..."):
+                with st.spinner(f"Đang tìm kiếm trong collection '{current_col}'..."):
                     temp_dir = BASE_DIR / "storage" / "uploads"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_file = temp_dir / f"test_query_{uuid.uuid4().hex[:8]}.jpg"
@@ -132,7 +134,7 @@ def render_search_tester():
                             f.write(uploaded_query_img.getbuffer())
 
                         start_t = time.time()
-                        results = search_by_image(
+                        results = search_srv.search_by_image(
                             image_path=str(temp_file),
                             limit=top_k,
                             exclude_deleted=exclude_deleted,
@@ -200,7 +202,7 @@ def render_search_tester():
             elif not multi_query_text or not multi_query_text.strip():
                 st.error("Vui lòng nhập văn bản mô tả để kết hợp tìm kiếm.")
             else:
-                with st.spinner("Đang trích xuất và kết hợp vector đặc trưng (Ảnh + Chữ)..."):
+                with st.spinner(f"Đang tìm kiếm đa phương thức trong '{current_col}'..."):
                     temp_dir = BASE_DIR / "storage" / "uploads"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_file = temp_dir / f"test_multi_{uuid.uuid4().hex[:8]}.jpg"
@@ -210,7 +212,7 @@ def render_search_tester():
                             f.write(uploaded_multi_img.getbuffer())
 
                         start_t = time.time()
-                        results = search_multimodal(
+                        results = search_srv.search_multimodal(
                             image_path=str(temp_file),
                             query_text=multi_query_text.strip(),
                             limit=top_k,
@@ -238,7 +240,7 @@ def render_search_tester():
     if results is not None:
         st.divider()
         st.markdown(
-            f"##### 🎯 Kết quả tìm kiếm cho {query_display} "
+            f"##### 🎯 Kết quả tìm kiếm trong `{current_col}` cho {query_display} "
             f"`({len(results)} kết quả trong {elapsed_ms:.1f}ms)`"
         )
 
@@ -247,7 +249,7 @@ def render_search_tester():
         else:
             cols_per_row = 3
             for i in range(0, len(results), cols_per_row):
-                chunk = results[i:i + cols_per_row]
+                chunk = results[i : i + cols_per_row]
                 grid_cols = st.columns(cols_per_row)
 
                 for col, item in zip(grid_cols, chunk):
