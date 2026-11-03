@@ -86,12 +86,17 @@
 }
 .ctaBase[data-state="disabled"], .ctaTactical[data-state="disabled"], .ctaPixel[data-state="disabled"] {
   cursor: not-allowed;
-  opacity: 0.55;
+  /* 0.75: trạng thái khóa vẫn khác biệt rõ (con trỏ + độ mờ) nhưng nhãn
+     đọc được ở cả hai theme (đo được 4.72:1 sáng / 6.12:1 tối cho nút thương hiệu). */
+  opacity: 0.75;
 }
 .ctaBase[aria-busy], .ctaTactical[aria-busy], .ctaPixel[aria-busy] { cursor: progress; }
 
-/* ---- Tactical: four viewfinder corners, small hover displacement ---- */
-.ctaTactical { background: var(--st-ink); border-color: var(--st-ink); }
+/* ---- Tactical: four viewfinder corners, small hover displacement ----
+   CF-03: nền dùng mực chủ đề nên chữ phải là màu canvas (đảo theo theme).
+   Trước đây chữ cố định #fff: trên nền mực SÁNG ở dark theme chỉ còn 1.16:1.
+   Cặp ink/canvas cho 16.39:1 (sáng) và 17.16:1 (tối). */
+.ctaTactical { color: var(--st-canvas); background: var(--st-ink); border-color: var(--st-ink); }
 .ctaTactical .ctaCorner { position: absolute; inset: 4px; pointer-events: none; }
 .ctaTactical .ctaCorner::before,
 .ctaTactical .ctaCorner::after {
