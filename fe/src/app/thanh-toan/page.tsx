@@ -126,8 +126,13 @@ function CheckoutPageContent() {
     void Promise.resolve().then(() => calculate());
   }, [applyQuote, calculate, cart?.items.length, cartSignature]);
 
+  // Ô nhập sai được focus trực tiếp; effect chỉ focus khối lỗi khi lỗi KHÔNG
+  // gắn với một ô cụ thể (nếu không, nó sẽ cướp focus khỏi ô vừa trỏ tới).
+  const fieldFocus = useRef(false);
   useEffect(() => {
-    if (error) errorRef.current?.focus();
+    if (!error) return;
+    if (fieldFocus.current) { fieldFocus.current = false; return; }
+    errorRef.current?.focus();
   }, [error]);
 
   const voucherErrorRef = useRef<HTMLParagraphElement>(null);
@@ -143,6 +148,7 @@ function CheckoutPageContent() {
       : !address.trim() || address.trim().length < 5 ? "checkout-address"
       : null;
     if (firstInvalid) {
+      fieldFocus.current = true;
       setError(
         firstInvalid === "checkout-name" ? "Vui lòng nhập tên người nhận."
         : firstInvalid === "checkout-phone" ? "Số điện thoại phải có 9–11 chữ số."
