@@ -61,19 +61,29 @@ class PointService:
         return vector
 
     @staticmethod
-    def scan_directory_images(target_dir: Union[str, Path]) -> List[str]:
-        """Quét tất cả các file ảnh hợp lệ trong thư mục chỉ định."""
+    def scan_directory_images(target_dir: Union[str, Path], recursive: bool = False) -> List[str]:
+        """
+        Quét các file ảnh hợp lệ trong thư mục chỉ định:
+        - recursive=False (mặc định): Chỉ quét các file ảnh trực tiếp trong thư mục, bỏ qua thư mục con.
+        - recursive=True: Quét đệ quy qua các thư mục con.
+        """
         target_path = Path(target_dir).resolve()
-        if not target_path.exists():
-            logger.error(f"Thư mục không tồn tại: '{target_path}'")
+        if not target_path.exists() or not target_path.is_dir():
+            logger.error(f"Thư mục không tồn tại hoặc không phải là directory: '{target_path}'")
             return []
 
         image_paths: List[str] = []
-        for root, _, files in os.walk(str(target_path)):
-            for f in files:
-                if f.lower().endswith(VALID_IMAGE_EXTENSIONS):
-                    image_paths.append(os.path.join(root, f))
-        return image_paths
+        if recursive:
+            for root, _, files in os.walk(str(target_path)):
+                for f in files:
+                    if f.lower().endswith(VALID_IMAGE_EXTENSIONS):
+                        image_paths.append(os.path.join(root, f))
+        else:
+            for item in target_path.iterdir():
+                if item.is_file() and item.suffix.lower() in VALID_IMAGE_EXTENSIONS:
+                    image_paths.append(str(item.resolve()))
+
+        return sorted(image_paths)
 
     def create_point(
         self,
@@ -161,6 +171,7 @@ class PointService:
         batch_size: int = 32,
         catalog: Union[CatalogCategory, str] = CatalogCategory.FASHION_PRODUCT,
         status: Union[PointStatus, str] = PointStatus.SEEDED,
+        recursive: bool = False,
     ) -> Tuple[int, int]:
         """
         Nạp dữ liệu hàng loạt từ thư mục chỉ định vào collection theo batch.
@@ -168,7 +179,7 @@ class PointService:
         """
         device, model, processor = get_ai_model()
 
-        image_paths = self.scan_directory_images(target_dir)
+        image_paths = self.scan_directory_images(target_dir, recursive=recursive)
         total_images = len(image_paths)
         logger.info(
             f"Bắt đầu nạp hàng loạt {total_images} ảnh từ '{target_dir}' vào collection '{self.collection_name}' theo batch {batch_size}..."

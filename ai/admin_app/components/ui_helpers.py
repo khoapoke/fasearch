@@ -1,8 +1,9 @@
 import re
 import uuid
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from PIL import Image
+
 from src.core.config import BASE_DIR
 from src.db.enums import PointStatus, CatalogCategory
 from src.utils import to_system_path
@@ -82,3 +83,42 @@ def save_admin_uploaded_image(uploaded_file) -> Tuple[str, str, Path]:
 
     web_path = f"/dataset/admin/{file_name}"
     return web_path, file_name, dest_path
+
+
+def open_folder_dialog(initial_dir: Optional[Path] = None) -> Optional[str]:
+    """
+    Mở hộp thoại chọn thư mục chuẩn của Windows (File Explorer).
+    Trả về đường dẫn tuyệt đối của thư mục đã chọn, hoặc None nếu người dùng hủy.
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        start_dir = str(initial_dir or BASE_DIR / "dataset")
+        folder_selected = filedialog.askdirectory(
+            initialdir=start_dir,
+            title="Chọn thư mục chứa ảnh để Seed vào Qdrant",
+        )
+        root.destroy()
+
+        if folder_selected and folder_selected.strip():
+            return str(Path(folder_selected).resolve())
+        return None
+    except Exception:
+        return None
+
+
+def scan_folder_direct_images(folder_path: Union[str, Path]) -> List[Path]:
+    """
+    Chỉ quét các file ảnh trực tiếp nằm trong thư mục chỉ định (KHÔNG quét thư mục con).
+    """
+    p = Path(folder_path).resolve()
+    if not p.exists() or not p.is_dir():
+        return []
+
+    valid_exts = {".jpg", ".jpeg", ".png", ".webp"}
+    images = [f for f in p.iterdir() if f.is_file() and f.suffix.lower() in valid_exts]
+    return sorted(images)
