@@ -506,7 +506,7 @@ export function CatalogListing() {
     return () => controller.abort();
   }, [filters, page, retry, queryKey]);
 
-  function pushUrl(next: Filters, nextPage: number) {
+  function queryString(next: Filters, nextPage: number): string {
     const q = new URLSearchParams();
     if (next.brand) q.set("brand", next.brand);
     if (next.categoryId) q.set("categoryId", next.categoryId);
@@ -516,15 +516,32 @@ export function CatalogListing() {
     if (next.sort !== EMPTY_FILTERS.sort) q.set("sort", next.sort);
     if (nextPage > 0) q.set("page", String(nextPage));
     const qs = q.toString();
-    // R5: push (không replace) để Back/Foward của trình duyệt bước qua từng
-    // trạng thái lọc; hiệu ứng đồng bộ params ⇒ state giữ một nguồn thật.
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    return qs ? `${pathname}?${qs}` : pathname;
+  }
+
+  function replaceUrl(next: Filters, nextPage: number) {
+    // P2: chi SUA LOI TU DONG moi replace — thay the entry URL hong/het han,
+    // khong day them entry de Back khong bao gio ket vong lap.
+    router.replace(queryString(next, nextPage), { scroll: false });
+  }
+
+  function pushUrl(next: Filters, nextPage: number) {
+    // R5: push (explicit user actions) de Back/Forward buoc qua tung trang thai.
+    router.push(queryString(next, nextPage), { scroll: false });
   }
 
   function commit(next: Filters, nextPage = 0) {
     setFilters(next);
     setPage(nextPage);
     pushUrl(next, nextPage);
+  }
+
+  // P2: sua loi TU DONG (late/out-of-range) dung replace — thay the entry hong,
+  // khong day them entry. Moi dieu huong ro rang cua user giu nguyen push.
+  function commitReplace(next: Filters, nextPage = 0) {
+    setFilters(next);
+    setPage(nextPage);
+    replaceUrl(next, nextPage);
   }
 
   function gotoPage(nextPage: number) {
@@ -551,7 +568,7 @@ export function CatalogListing() {
   // vẫn còn trang hợp lệ ⇒ về trang đầu một cách dự đoán được, không kẹt.
   useEffect(() => {
     if (!loading && data && data.items.length === 0 && page > 0 && data.totalPages > 0) {
-      commit(filters, 0);
+      commitReplace(filters, 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, data]);
