@@ -11,6 +11,14 @@ from src.services.evaluation_service import (
     evaluate_query,
     run_full_benchmark,
 )
+from src.services.point_service import (
+    create_point,
+    delete_point,
+    update_point_payload,
+    clear_all_points,
+    batch_create_from_directory,
+    scan_directory_images,
+)
 
 __all__ = [
     "search_by_text",
@@ -21,4 +29,10 @@ __all__ = [
     "calculate_average_precision",
     "evaluate_query",
     "run_full_benchmark",
+    "create_point",
+    "delete_point",
+    "update_point_payload",
+    "clear_all_points",
+    "batch_create_from_directory",
+    "scan_directory_images",
 ]

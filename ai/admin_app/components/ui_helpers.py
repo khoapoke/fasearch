@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 from PIL import Image
 from src.core.config import BASE_DIR
 from src.db.enums import PointStatus, CatalogCategory
+from src.utils import to_system_path
 
 
 def resolve_image_path(image_path: str) -> Optional[Path]:
@@ -15,18 +16,9 @@ def resolve_image_path(image_path: str) -> Optional[Path]:
     if not image_path:
         return None
 
-    # Chuẩn hóa dấu gạch chéo
-    clean_path = image_path.replace("\\", "/").lstrip("/")
-
-    # Thử tìm theo BASE_DIR
-    target = BASE_DIR / clean_path
-    if target.exists() and target.is_file():
-        return target
-
-    # Thử tìm trực tiếp nếu là đường dẫn tuyệt đối
-    direct_path = Path(image_path)
-    if direct_path.exists() and direct_path.is_file():
-        return direct_path
+    path_obj = to_system_path(image_path)
+    if path_obj.exists() and path_obj.is_file():
+        return path_obj
 
     return None
 

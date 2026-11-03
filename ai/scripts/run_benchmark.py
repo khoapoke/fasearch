@@ -17,6 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
 import torch
 from src.core.config import settings
 from src.repositories import get_image_repository
+from src.services.point_service import batch_create_from_directory
 from src.services.evaluation_service import (
     run_full_benchmark,
     get_available_test_images,
@@ -36,8 +37,8 @@ def ensure_test_data_seeded():
 
     if count == 0:
         print("\n[*] Qdrant hien chua co du lieu. Dang tu dong nap 10 anh test vao Qdrant...")
-        from scripts.seed_data import seed_data
-        seed_data(subfolder="test/images", batch_size=10)
+        target_test_dir = ROOT_DIR / "dataset" / "test" / "images"
+        batch_create_from_directory(target_dir=target_test_dir, batch_size=10)
         print("[*] Da nap xong du lieu test vao Qdrant!\n")
 
 

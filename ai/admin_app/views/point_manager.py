@@ -1,13 +1,14 @@
 import json
-import uuid
 import streamlit as st
-import torch
 from PIL import Image
 
-from src.core.ai_model import get_ai_model
 from src.db.enums import PointStatus, CatalogCategory
-from src.db.models import ImagePointPayload
 from src.repositories import get_image_repository
+from src.services.point_service import (
+    create_point,
+    delete_point,
+    update_point_payload,
+)
 from admin_app.components.ui_helpers import (
     resolve_image_path,
     get_status_badge,
@@ -98,12 +99,13 @@ def render_point_manager():
                                     unsafe_allow_html=True,
                                 )
 
-                            # 2. Thông tin cơ bản
-                            st.markdown(f"**{file_name}**", help=f"Đường dẫn: {raw_img_path}")
-                            st.markdown(
-                                f"{get_status_badge(curr_status)} {get_catalog_badge(curr_catalog)}",
-                                unsafe_allow_html=True,
-                            )
+                            # 2. Metadata tóm tắt
+                            st.markdown(f"**{file_name}**")
+                            c_b1, c_b2 = st.columns(2)
+                            with c_b1:
+                                st.markdown(get_status_badge(curr_status), unsafe_allow_html=True)
+                            with c_b2:
+                                st.markdown(get_catalog_badge(curr_catalog), unsafe_allow_html=True)
                             st.caption(f"ID: `{point_id[:16]}...`")
 
                             # 3. Chức năng Chỉnh sửa & Xóa
@@ -127,26 +129,26 @@ def render_point_manager():
                                 )
 
                                 if st.button("Cập nhật Payload", key=f"btn_update_{point_id}", type="primary"):
-                                    repo.update_payload(
+                                    update_point_payload(
                                         point_id=point_id,
-                                        payload={"status": new_status, "catalog": new_cat},
+                                        payload_updates={"status": new_status, "catalog": new_cat},
                                     )
                                     st.success("Đã cập nhật!")
                                     st.rerun()
 
                                 st.divider()
 
-                                # Nút Xóa mềm & Xóa cứng
+                                # Nút Xóa mềm & Xóa cứng (Gọi PointService)
                                 col_act1, col_act2 = st.columns(2)
                                 with col_act1:
                                     if curr_status != PointStatus.DELETED.value:
                                         if st.button("Xóa mềm", key=f"soft_del_{point_id}", help="Gán status = DELETED", icon=":material/delete:"):
-                                            repo.soft_delete(point_id)
+                                            delete_point(point_id=point_id, hard_delete=False)
                                             st.toast("Đã xóa mềm bản ghi!")
                                             st.rerun()
                                 with col_act2:
                                     if st.button("Xóa cứng", key=f"hard_del_{point_id}", help="Xóa vĩnh viễn khỏi Qdrant", icon=":material/cancel:"):
-                                        repo.hard_delete(point_id)
+                                        delete_point(point_id=point_id, hard_delete=True)
                                         st.toast("Đã xóa cứng vĩnh viễn!")
                                         st.rerun()
 
@@ -159,22 +161,21 @@ def render_point_manager():
 
         with st.form("add_product_form", clear_on_submit=True):
             uploaded_file = st.file_uploader(
-                "Chọn file ảnh sản phẩm",
+                "Chọn ảnh thời trang (JPG, PNG, WEBP)",
                 type=["png", "jpg", "jpeg", "webp"],
-                help="Hỗ trợ các định dạng ảnh phổ biến.",
             )
 
-            col_a1, col_a2 = st.columns(2)
-            with col_a1:
+            col_in1, col_in2 = st.columns(2)
+            with col_in1:
                 selected_cat = st.selectbox(
-                    "Phân loại danh mục (Catalog Category)",
+                    "Danh mục sản phẩm (Catalog)",
                     options=[c.value for c in CatalogCategory],
                     index=0,
                 )
-            with col_a2:
+            with col_in2:
                 selected_status = st.selectbox(
-                    "Trạng thái ban đầu (Point Status)",
-                    options=[PointStatus.ACTIVE.value, PointStatus.SEEDED.value],
+                    "Trạng thái ban đầu (Status)",
+                    options=[PointStatus.ACTIVE.value, PointStatus.INACTIVE.value],
                     index=0,
                 )
 
@@ -196,38 +197,19 @@ def render_point_manager():
                             st.error(f"Metadata JSON không hợp lệ: {e}")
                             return
 
-                    # Tiến trình nạp ảnh và sinh vector
+                    # Tiến trình nạp ảnh và sinh vector (gọi PointService)
                     with st.spinner("Đang lưu ảnh và trích xuất vector bằng mô hình CLIP..."):
                         try:
-                            # 1. Lưu ảnh vào dataset/admin/
+                            # 1. Lưu ảnh an toàn vào dataset/admin/
                             web_path, file_name, file_abs_path = save_admin_uploaded_image(uploaded_file)
 
-                            # 2. Sinh vector bằng mô hình CLIP
-                            device, model, processor = get_ai_model()
-                            with Image.open(file_abs_path) as img:
-                                rgb_img = img.convert("RGB")
-
-                            inputs = processor(images=rgb_img, return_tensors="pt").to(device)
-                            with torch.no_grad():
-                                features = model.get_image_features(**inputs)
-                                features = features / features.norm(p=2, dim=-1, keepdim=True)
-                                vector = features.cpu().numpy()[0].tolist()
-
-                            # 3. Tạo PointPayload và ghi vào Qdrant qua Repository
-                            new_point_id = str(uuid.uuid4())
-                            payload_obj = ImagePointPayload(
-                                image_path=web_path,
-                                file_name=file_name,
-                                catalog=CatalogCategory(selected_cat),
-                                status=PointStatus(selected_status),
+                            # 2. Gọi PointService xử lý toàn bộ logic AI + Qdrant
+                            new_point_id = create_point(
+                                image_path=file_abs_path,
+                                catalog=selected_cat,
+                                status=selected_status,
                                 product_id=prod_id_input or None,
                                 metadata=meta_dict or None,
-                            )
-
-                            repo.create(
-                                point_id=new_point_id,
-                                vector=vector,
-                                payload=payload_obj,
                             )
 
                             st.success(f"Đã thêm thành công! ID: `{new_point_id}` | File: `{file_name}`", icon=":material/check_circle:")

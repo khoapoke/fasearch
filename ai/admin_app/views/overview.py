@@ -6,6 +6,7 @@ from pathlib import Path
 from src.core.config import settings, BASE_DIR
 from src.db.enums import PointStatus
 from src.repositories import get_image_repository
+from src.services.point_service import clear_all_points, batch_create_from_directory
 
 
 def render_overview():
@@ -84,7 +85,7 @@ def render_overview():
     # ==========================================
     # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML (CÁCH A)
     # ==========================================
-    st.subheader("Chỉnh sửa Cấu hình (`configs/database.yaml`)", )
+    st.subheader("Chỉnh sửa Cấu hình (`configs/database.yaml`)")
     st.markdown(
         "Trực quan hóa và chỉnh sửa cấu hình hệ thống. Nội dung được validate cú pháp YAML an toàn trước khi ghi đĩa."
     )
@@ -160,7 +161,7 @@ def render_overview():
             if btn_reset:
                 with st.spinner("Đang xóa và khởi tạo lại collection trên Qdrant..."):
                     try:
-                        repo.reset_collection()
+                        clear_all_points()
                         st.success("✅ Đã reset collection rỗng thành công!")
                         st.rerun()
                     except Exception as ex:
@@ -175,7 +176,7 @@ def render_overview():
             with col_opt1:
                 subfolder_choice = st.selectbox(
                     "Thư mục nguồn:",
-                    options=["test", "raw", "Toàn bộ dataset"],
+                    options=["test", "test/images", "raw", "Toàn bộ dataset"],
                     index=0,
                 )
             with col_opt2:
@@ -185,15 +186,18 @@ def render_overview():
                     index=1,
                 )
 
-            btn_seed = st.button("Bắt đầu Nạp Dữ liệu Mẫu", key="btn_run_seeder",type="primary")
+            btn_seed = st.button("Bắt đầu Nạp Dữ liệu Mẫu", key="btn_run_seeder", type="primary")
             if btn_seed:
                 target_sub = None if subfolder_choice == "Toàn bộ dataset" else subfolder_choice
                 with st.spinner(f"Đang nạp ảnh từ thư mục `{subfolder_choice}` theo batch {batch_size_choice}..."):
                     try:
-                        from scripts.seed_data import seed_data
-                        seed_data(subfolder=target_sub, batch_size=batch_size_choice)
-                        st.success("Nạp dữ liệu hoàn tất thành công!", icon=":material/check:")
+                        dataset_root = BASE_DIR / settings.app.raw_data_dir
+                        target_dir = dataset_root / target_sub if target_sub else dataset_root
+                        success_n, skipped_n = batch_create_from_directory(
+                            target_dir=target_dir,
+                            batch_size=batch_size_choice,
+                        )
+                        st.success(f"Nạp dữ liệu hoàn tất! Thành công: {success_n} ảnh (Bỏ qua: {skipped_n})", icon=":material/check:")
                         st.rerun()
                     except Exception as ex:
                         st.error(f"Lỗi trong quá trình nạp dữ liệu: {ex}")
-
