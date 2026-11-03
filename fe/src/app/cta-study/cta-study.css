@@ -132,6 +132,29 @@
   .ctaPixel[data-state="hover"] .ctaSheen { transform: translateX(120%); opacity: 1; }
 }
 
+/* ---- Native pointer behaviour (CF-05) ----
+   Trước đây mọi hiệu ứng chỉ gắn với [data-state] do nút mô phỏng đặt, nên rê
+   chuột/nhấn thật không có phản hồi dù phần chữ hứa "chạy khi trỏ chuột".
+   Các rule dưới đây phản chiếu đúng hiệu ứng xem trước, chỉ ở thiết bị có trỏ
+   chính xác và khi chuyển động được phép; nút mô phỏng vẫn điều khiển được. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .ctaTactical:not(:disabled):hover { transform: translateY(-1px); }
+  .ctaTactical:not(:disabled):hover .ctaCorner::before { transform: translate(-1px, -1px); opacity: 1; }
+  .ctaTactical:not(:disabled):hover .ctaCorner::after { transform: translate(1px, 1px); opacity: 1; }
+  .ctaPixel:not(:disabled):hover .ctaSheen { transform: translateX(120%); opacity: 1; }
+  .ctaBase:not(:disabled):active,
+  .ctaTactical:not(:disabled):active,
+  .ctaPixel:not(:disabled):active { transform: scale(0.985); }
+}
+.ctaPage[data-motion="off"] .ctaTactical:not(:disabled):hover,
+.ctaPage[data-motion="off"] .ctaBase:not(:disabled):active,
+.ctaPage[data-motion="off"] .ctaTactical:not(:disabled):active,
+.ctaPage[data-motion="off"] .ctaPixel:not(:disabled):active { transform: none; }
+.ctaPage[data-motion="off"] .ctaPixel:not(:disabled):hover .ctaSheen { transform: translateX(0); opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .ctaPixel:not(:disabled):hover .ctaSheen { transform: translateX(0); opacity: 0.5; }
+}
+
 .ctaSpin {
   width: 15px;
   height: 15px;
