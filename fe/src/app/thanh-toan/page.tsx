@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
+import { createStripeCheckout, createVnpayCheckout } from "@/lib/customer-payments-client";
 import { getSelfProfile } from "@/lib/customer-profile-client";
 import { CommerceError, formatMoney, DEFAULT_WEIGHT_PER_ITEM_GRAM, calculateCartWeightGram, type CustomerCartQuote } from "@/lib/customer-commerce";
 import { validatePointsInput } from "@/lib/benefits";
@@ -43,6 +44,8 @@ function CheckoutPageContent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
+  const [method, setMethod] = useState<"COD" | "STRIPE" | "VNPAY">("COD");
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const pending = useRef(false);
   const quoteReq = useRef(0);
@@ -138,6 +141,8 @@ function CheckoutPageContent() {
   const voucherErrorRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => { if (voucherError) voucherErrorRef.current?.focus(); }, [voucherError]);
 
+  const zeroDue = Boolean(currentCartQuote && quote && currentCartQuote.merchandiseAmountDue + quote.shippingFee <= 0);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (pending.current || !cart?.items.length) return;
@@ -161,11 +166,13 @@ function CheckoutPageContent() {
     const current = quote?.key === key ? quote : await calculate();
     if (!current) { setError("Chưa có phí giao hàng hợp lệ. Kiểm tra tỉnh/quận rồi thử lại."); return; }
     pending.current = true;
-    setBusy(true); setError(""); setUncertain(false);
+    setBusy(true); setError(""); setUncertain(false); setCreatedOrderId(null);
     try {
+      const totalDue = (currentCartQuote?.merchandiseAmountDue ?? -1) + (quote?.shippingFee ?? 0);
+      const payMethod = totalDue === 0 ? "COD" : method;
       const checkout = {
         deliveryAddress: address.trim(), receiverName: name.trim(), receiverPhone: phone.trim(),
-        paymentMethod: "COD", shippingFee: current.shippingFee, ...(note.trim() ? { note: note.trim() } : {}),
+        paymentMethod: payMethod, shippingFee: current.shippingFee, ...(note.trim() ? { note: note.trim() } : {}),
         ...(currentCartQuote.voucherCode ? { voucherCode: currentCartQuote.voucherCode } : {}),
         redeemedPoints: currentCartQuote.redeemedPoints,
         quoteFingerprint: currentCartQuote.quoteFingerprint, expectedMerchandiseAmountDue: currentCartQuote.merchandiseAmountDue,
@@ -174,7 +181,28 @@ function CheckoutPageContent() {
       const checkoutKey = checkoutAttempt.current?.signature === signature ? checkoutAttempt.current.key : newOperationKey();
       checkoutAttempt.current = { signature, key: checkoutKey };
       const order = await createCustomerOrder({ ...checkout, checkoutKey });
-      router.push(`/don-hang/${order.orderId}`);
+      setCreatedOrderId(order.orderId);
+      if (payMethod === "COD") {
+        router.push(`/don-hang/${order.orderId}`);
+        return;
+      }
+      // Order created with the real paymentMethod; settlement only via a verified provider webhook.
+      try {
+        // One stable key per (order, provider): a retry or refresh reuses the same session.
+        const payKey = `pay-order-${order.orderId}-${payMethod}`.slice(0, 100);
+        const attempt = payMethod === "STRIPE"
+          ? await createStripeCheckout(order.orderId, payKey)
+          : await createVnpayCheckout(order.orderId, payKey);
+        if (!attempt.checkoutUrl) throw new Error("Cổng thanh toán chưa trả địa chỉ chuyển hướng.");
+        try {
+          sessionStorage.setItem("fasearch:pay-attempt", JSON.stringify({ attemptId: attempt.attemptId, orderId: order.orderId, provider: payMethod }));
+        } catch { /* best-effort return hint; ket-qua falls back to recent orders */ }
+        window.location.assign(attempt.checkoutUrl);
+      } catch (providerFailure) {
+        // The order exists; never auto-retry a provider session from here.
+        setUncertain(true);
+        setError(providerFailure instanceof Error ? providerFailure.message : "Không mở được cổng thanh toán.");
+      }
     } catch (failure) {
       if (failure instanceof CommerceError && failure.code === "4107") {
         setCartQuote(null); checkoutAttempt.current = null;
@@ -237,6 +265,24 @@ function CheckoutPageContent() {
                 <div className="checkout-field"><label htmlFor="checkout-note">Ghi chú (không bắt buộc)</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} /></div>
                 <div className="checkout-field"><label htmlFor="checkout-voucher">Mã voucher (không bắt buộc)</label><input id="checkout-voucher" className="checkout-input" value={voucherCode} onChange={(e) => { setVoucherCode(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} maxLength={50} autoComplete="off" /></div>
                 <div className="checkout-field"><label htmlFor="checkout-points">Điểm muốn đổi (không bắt buộc)</label><input id="checkout-points" className="checkout-input" value={pointsRaw} onChange={(e) => { setPointsRaw(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} inputMode="numeric" /></div>
+                <div className="checkout-field">
+                  <span id="checkout-method-label">Phương thức thanh toán</span>
+                  <div role="radiogroup" aria-labelledby="checkout-method-label" style={{ display: "grid", gap: 8, marginTop: 6 }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <input type="radio" name="pay-method" value="COD" checked={method === "COD"} onChange={() => setMethod("COD")} />
+                      <span><strong>Thanh toán khi nhận hàng (COD)</strong><br /><small>Thu tiền mặt khi giao hàng.</small></span>
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", opacity: zeroDue ? 0.5 : 1 }}>
+                      <input type="radio" name="pay-method" value="STRIPE" checked={method === "STRIPE"} onChange={() => setMethod("STRIPE")} disabled={zeroDue} />
+                      <span><strong>Thẻ quốc tế qua Stripe (thử nghiệm)</strong><br /><small>Chế độ test, thẻ công khai 4242; chỉ webhook đã ký mới ghi nhận thanh toán.</small></span>
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", opacity: zeroDue ? 0.5 : 1 }}>
+                      <input type="radio" name="pay-method" value="VNPAY" checked={method === "VNPAY"} onChange={() => setMethod("VNPAY")} disabled={zeroDue} />
+                      <span><strong>VNPAY sandbox</strong><br /><small>Kênh sandbox; kết quả cuối hiển thị sau đối soát IPN, đơn không tự đánh dấu đã trả.</small></span>
+                    </label>
+                  </div>
+                  {zeroDue ? <p className="commerce-note">Đơn 0đ chỉ thanh toán khi nhận hàng (COD).</p> : null}
+                </div>
                 <button className="commerce-ghost" type="button" disabled={voucherBusy} onClick={() => {
                   setError("");
                   try { void applyQuote(voucherCode.trim() || null, validatePointsInput(pointsRaw, Number.MAX_SAFE_INTEGER)); }
@@ -247,8 +293,8 @@ function CheckoutPageContent() {
                 {cartQuote && !quoteIsCurrent && !voucherBusy ? <p className="commerce-status" role="status">Giỏ hàng hoặc mã voucher đã thay đổi. Báo giá lại trước khi đặt đơn.</p> : null}
                 {quoteError ? <p className="commerce-status is-error" role="alert">{quoteError}</p> : null}
                 {error ? <p ref={errorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{error}</p> : null}
-                {uncertain ? <p className="commerce-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href="/don-hang">Mở Đơn hàng để đối soát →</Link></p> : null}
-                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? "Đang đặt đơn…" : "Đặt hàng (COD)"}</button>
+                {uncertain ? <p className="commerce-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href={createdOrderId ? `/don-hang/${createdOrderId}` : "/don-hang"}>Mở Đơn hàng để đối soát →</Link></p> : null}
+                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? (method === "COD" || zeroDue ? "Đang đặt đơn…" : "Đang mở cổng thanh toán…") : (method === "COD" || zeroDue ? "Đặt hàng (COD)" : "Đặt đơn và mở cổng thanh toán")}</button>
                 <p className="commerce-note">Giá và ưu đãi được xác nhận lại khi bạn đặt đơn.</p>
               </form>
               <aside className="checkout-summary-panel" aria-label="Tóm tắt thanh toán">
@@ -261,7 +307,7 @@ function CheckoutPageContent() {
                 <div className="checkout-summary-line"><span>Tiền hàng sau ưu đãi</span><strong>{currentCartQuote ? formatMoney(currentCartQuote.merchandiseAmountDue) : "—"}</strong></div>
                 <div className="checkout-summary-line"><span>Phí giao hàng {quote ? `(${quote.estimatedDays})` : ""}</span><strong>{quote ? formatMoney(quote.shippingFee) : quoteBusy ? "Đang tính…" : "—"}</strong></div>
                 <div className="checkout-total"><span>Tổng tạm tính</span><strong>{currentCartQuote && quote ? formatMoney(currentCartQuote.merchandiseAmountDue + quote.shippingFee) : "—"}</strong></div>
-                <div className="checkout-cod"><span>Thanh toán</span><strong>COD — thu khi nhận</strong></div>
+                <div className="checkout-cod"><span>Thanh toán</span><strong>{zeroDue ? "COD — thu khi nhận (đơn 0đ)" : method === "COD" ? "COD — thu khi nhận" : method === "STRIPE" ? "Stripe (sandbox) — chuyển cổng sau khi đặt" : "VNPAY (sandbox) — chuyển cổng sau khi đặt"}</strong></div>
                 <button className="commerce-ghost" type="button" onClick={() => { setQuote(null); void calculate(); }} disabled={quoteBusy}>{quoteBusy ? "Đang tính phí…" : "Tính lại phí giao hàng"}</button>
                 <p className="commerce-note">Tổng cuối cùng hiển thị sau khi đơn được xác nhận.</p>
               </aside>

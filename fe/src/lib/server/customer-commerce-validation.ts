@@ -13,7 +13,7 @@ export function checkoutBody(body: Record<string, unknown>): CheckoutBodyResult 
   if (deliveryAddress.length < 5 || deliveryAddress.length > 255) return invalid("Địa chỉ giao hàng chưa hợp lệ.", "INVALID_ADDRESS");
   if (receiverName.length < 2 || receiverName.length > 100) return invalid("Tên người nhận chưa hợp lệ.", "INVALID_RECEIVER");
   if (!/^\d{9,11}$/.test(receiverPhone.replace(/[ .-]/g, ""))) return invalid("Số điện thoại người nhận chưa hợp lệ.", "INVALID_PHONE");
-  if (paymentMethod !== "COD") return invalid("Pilot chỉ hỗ trợ COD.", "UNSUPPORTED_PAYMENT");
+  if (paymentMethod !== "COD" && paymentMethod !== "STRIPE" && paymentMethod !== "VNPAY") return invalid("Phương thức thanh toán chưa hỗ trợ.", "UNSUPPORTED_PAYMENT");
   if (typeof shippingFee !== "number" || !Number.isFinite(shippingFee) || shippingFee < 0 || shippingFee > 10000000) return invalid("Phí giao hàng chưa hợp lệ.", "INVALID_SHIPPING_FEE");
   if (body.note !== undefined && typeof body.note !== "string") return invalid("Ghi chú chưa hợp lệ.", "INVALID_NOTE");
   const note = typeof body.note === "string" ? body.note.trim() : "";
@@ -39,6 +39,11 @@ export function checkoutBody(body: Record<string, unknown>): CheckoutBodyResult 
     confirmation = { quoteFingerprint: fingerprint, expectedMerchandiseAmountDue: due, checkoutKey: key };
   }
 
+  // Zero-due orders settle locally only; the BE rejects external attempts for them.
+  if (paymentMethod !== "COD" && typeof shippingFee === "number" && typeof body.expectedMerchandiseAmountDue === "number"
+    && body.expectedMerchandiseAmountDue === 0 && shippingFee === 0) {
+    return invalid("Đơn 0đ chỉ thanh toán khi nhận hàng (COD).", "ZERO_DUE_ONLINE_UNSUPPORTED");
+  }
   return {
     ok: true,
     body: {

@@ -32,7 +32,7 @@ export function OrdersClient() {
   return <AdminShellB active="orders" title="Đơn hàng" eyebrow="Vận hành · dữ liệu thật từ BE">
     <div className="page-heading"><div><h1>Đơn hàng</h1><p className="meta">Đọc đơn · lọc theo trạng thái/mã/SĐT · không có thao tác ghi</p></div></div>
     <form className="review-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0, status); }} aria-label="Bộ lọc đơn hàng">
-      <div className="review-filter"><label htmlFor="admin-order-code">Mã đơn</label><input id="admin-order-code" className="control" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="ADM-…" /></div>
+      <div className="review-filter"><label htmlFor="admin-order-code">Mã đơn</label><input id="admin-order-code" className="control" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="DH-…" /></div>
       <div className="review-filter"><label htmlFor="admin-order-phone">Số điện thoại</label><input id="admin-order-phone" className="control" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" /></div>
       <button className="primary" type="submit" style={{ alignSelf: "end" }}>Lọc</button>
       <button className="text-link" type="button" onClick={() => { setOrderCode(""); setPhone(""); setStatus(""); setPage(0); void load(0, ""); }}>Đặt lại</button>

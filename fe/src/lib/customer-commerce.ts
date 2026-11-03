@@ -362,3 +362,44 @@ export function orderStatusTone(status: string): string {
   if (status === "SHIPPING") return "shipping";
   return "pending";
 }
+
+export type PaymentAttempt = {
+  id: number; orderId: number; provider: string; status: string;
+  amount: number; currency: string; checkoutUrl: string | null;
+  createdAt: string; expiresAt: string | null;
+};
+
+export function normalizePaymentAttempt(raw: unknown): PaymentAttempt {
+  const v = record(raw);
+  const checkoutUrl = text(v.checkoutUrl);
+  if (checkoutUrl !== null && !/^https:\/\//.test(checkoutUrl)) throw new CommerceError(INVALID, 502);
+  return {
+    id: integer(v.id, 1), orderId: integer(v.orderId, 1),
+    provider: typeof v.provider === "string" ? v.provider : "",
+    status: typeof v.status === "string" ? v.status : "",
+    amount: finite(v.amount), currency: typeof v.currency === "string" ? v.currency : "",
+    checkoutUrl, createdAt: typeof v.createdAt === "string" ? v.createdAt : "",
+    expiresAt: text(v.expiresAt),
+  };
+}
+
+// Provider checkout returns only { attemptId, checkoutUrl }; the attempt read returns the
+// full record. Keep them separate so a checkout response is never parsed as an attempt.
+export type ProviderCheckout = { attemptId: number; checkoutUrl: string };
+
+export function normalizeProviderCheckout(raw: unknown): ProviderCheckout {
+  const v = record(raw);
+  const checkoutUrl = text(v.checkoutUrl);
+  if (checkoutUrl === null || !/^https:\/\//.test(checkoutUrl)) throw new CommerceError(INVALID, 502);
+  return { attemptId: integer(v.attemptId, 1), checkoutUrl };
+}
+
+export function paymentAttemptStatusText(status: string): string {
+  const labels: Record<string, string> = {
+    CREATED: "Đã tạo, chờ thanh toán", PENDING: "Đang chờ thanh toán",
+    SETTLEMENT_PENDING: "Đã trả tiền, đang đối soát", SETTLED: "Đã thanh toán",
+    FAILED: "Thanh toán thất bại", CANCELLED: "Đã hủy thanh toán",
+    EXPIRED: "Phiên thanh toán hết hạn", REVIEW_REQUIRED: "Cần đối soát thủ công",
+  };
+  return labels[status] ?? status;
+}

@@ -5,11 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { cancelCustomerOrder, fetchCustomerOrder } from "@/lib/customer-commerce-client";
+import { createStripeCheckout, createVnpayCheckout, fetchPaymentAttempt } from "@/lib/customer-payments-client";
 import {
   CommerceError,
   formatMoney,
   orderStatusText,
+  paymentAttemptStatusText,
   type CustomerOrderDetail,
+  type PaymentAttempt,
 } from "@/lib/customer-commerce";
 import "@/components/customer-commerce/commerce.css";
 
@@ -56,6 +59,9 @@ export default function OrderDetailPage() {
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [storedAttempt, setStoredAttempt] = useState<PaymentAttempt | null>(null);
+  const [paying, setPaying] = useState<"" | "STRIPE" | "VNPAY">("");
+  const [payError, setPayError] = useState("");
   const busy = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +121,42 @@ export default function OrderDetailPage() {
     } finally {
       busy.current = false;
       setCancelling(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!order || order.status !== "PENDING") return;
+    try {
+      const raw = sessionStorage.getItem("fasearch:pay-attempt");
+      if (!raw) return;
+      const ref = JSON.parse(raw) as { attemptId?: number; orderId?: number };
+      if (ref?.orderId !== order.orderId || !ref?.attemptId) return;
+      fetchPaymentAttempt(String(ref.attemptId)).then(setStoredAttempt).catch(() => { /* best-effort hint */ });
+    } catch { /* storage unavailable */ }
+  }, [order]);
+
+  async function payOnline(provider: "STRIPE" | "VNPAY") {
+    if (!order || paying) return;
+    setPaying(provider); setPayError("");
+    try {
+      if (storedAttempt?.provider === provider && storedAttempt.checkoutUrl
+        && (storedAttempt.status === "CREATED" || storedAttempt.status === "PENDING")) {
+        window.location.assign(storedAttempt.checkoutUrl);
+        return;
+      }
+      const key = `pay-order-${order.orderId}-${provider}`.slice(0, 100);
+      const attempt = provider === "STRIPE"
+        ? await createStripeCheckout(order.orderId, key)
+        : await createVnpayCheckout(order.orderId, key);
+      if (!attempt.checkoutUrl) throw new Error("Cổng thanh toán chưa trả địa chỉ chuyển hướng.");
+      try {
+        sessionStorage.setItem("fasearch:pay-attempt", JSON.stringify({ attemptId: attempt.attemptId, orderId: order.orderId, provider }));
+      } catch { /* best-effort return hint */ }
+      window.location.assign(attempt.checkoutUrl);
+    } catch (failure) {
+      setPayError(failure instanceof Error ? failure.message : "Không mở được cổng thanh toán.");
+    } finally {
+      setPaying("");
     }
   }
 
@@ -345,6 +387,26 @@ export default function OrderDetailPage() {
                     Thanh toán khi nhận hàng (COD)
                   </p>
                 </div>
+                {order.status === "PENDING" && order.totalAmount > 0 ? (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--st-line)" }}>
+                    <p className="commerce-label">Thanh toán trực tuyến (sandbox)</p>
+                    {storedAttempt ? (
+                      <p className="commerce-note" style={{ margin: "4px 0 8px" }}>
+                        Kênh {storedAttempt.provider}: {paymentAttemptStatusText(storedAttempt.status)}
+                      </p>
+                    ) : null}
+                    {payError ? <p className="commerce-status is-error" role="alert">{payError}</p> : null}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button className="commerce-ghost" type="button" disabled={paying !== ""} onClick={() => payOnline("STRIPE")}>
+                        {paying === "STRIPE" ? "Đang mở Stripe…" : "Trả bằng Stripe"}
+                      </button>
+                      <button className="commerce-ghost" type="button" disabled={paying !== ""} onClick={() => payOnline("VNPAY")}>
+                        {paying === "VNPAY" ? "Đang mở VNPAY…" : "Trả bằng VNPAY"}
+                      </button>
+                    </div>
+                    <p className="commerce-note">Chỉ webhook/IPN đã ký mới ghi nhận thanh toán; làm mới không trừ tiền thêm.</p>
+                  </div>
+                ) : null}
               </aside>
             </div>
           ) : null}
