@@ -308,7 +308,18 @@ html[data-theme="dark"] .chHeader {
   transform: scale(0.985);
 }
 
-@media (max-width: 900px) {
+/* CF-04: dưới ~1060px thanh điều hướng đầy đủ (4 mục, gap 29px) chạm vào
+   brand căn giữa (đo được -3.41px tại 1024, -59px tại 901). Hai bước, không
+   đổi thiết kế: (1) siết gap/cỡ chữ vừa phải trong dải hẹp, (2) dùng
+   hamburger sẵn có khi vẫn không đủ chỗ thay vì ép chữ. */
+@media (max-width: 1100px) and (min-width: 991px) {
+  .chHeaderInner { padding-inline: 20px; gap: 12px; }
+  .chHeader .chNav { gap: 18px; }
+  .chHeader .chNav a { font-size: 13px; }
+  .chHeader .chRight { gap: 8px; }
+}
+
+@media (max-width: 990px) {
   /* Mobile: hamburger trái, brand giữa, giỏ hàng phải; tài khoản vào menu. */
   .chNav {
     display: none;
