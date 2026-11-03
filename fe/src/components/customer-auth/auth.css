@@ -61,10 +61,16 @@
   letter-spacing: -0.02em;
   line-height: 1.22;
 }
-.authPage .auth-photo { min-height: 0; margin: 18px -26px 12px; height: 100%; overflow: hidden; }
+/* CF-01: ảnh không được tràn xuống hàng chú thích. Trước đây `height:100%`
+   cộng margin dưới làm ảnh chờm qua figcaption: dòng credit 10px nằm ĐÈ lên
+   ảnh (đo được cap 652–665 trong photo 273–664 tại 1440), chữ xám nhỏ trên
+   pixel ảnh nên khó đọc. Hàng grid tự co giãn nên bỏ height cố định. */
+.authPage .auth-photo { min-height: 0; margin: 18px -26px 12px; overflow: hidden; }
 .authPage .auth-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
 .authPage .auth-photo-fail { display: grid; place-items: center; min-height: 320px; color: #4e554c; font-size: 12px; }
-.authPage .auth-credit { color: #4e554c; font-size: 10px; text-decoration: underline; }
+.authPage .auth-editorial figcaption { display: block; padding-top: 2px; line-height: 1.4; }
+/* Credit nằm trên nền thẻ (không đè ảnh), 11px và màu đủ tương phản ~5.5:1. */
+.authPage .auth-credit { color: #4e554c; font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
 
 .authPage .auth-form-wrap {
   display: grid;

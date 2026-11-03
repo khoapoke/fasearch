@@ -50,6 +50,10 @@ export function RegisterPanel() {
     if (Object.keys(local).length) {
       setFieldErrors(local);
       setError("Kiểm tra lại các trường được đánh dấu.");
+      // CF-02: đưa focus tới ô sai đầu tiên theo thứ tự biểu mẫu.
+      const order: FieldKey[] = ["username", "password", "email", "lastName", "phoneNumber"];
+      const first = order.find((k) => local[k]);
+      if (first) requestAnimationFrame(() => document.getElementById(`register-${first}`)?.focus());
       return;
     }
     const controller = new AbortController();

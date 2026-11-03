@@ -39,15 +39,24 @@ export function LoginPanel({ next }: { next: string }) {
     };
   }, [returnTo, next, router]);
 
+  // CF-02: lỗi nhập liệu phải chỉ đúng ô. Trước đây focus luôn nhảy vào khối
+  // thông báo nên người dùng phải tự tìm ô sai. Ô cụ thể được focus trực tiếp;
+  // khối thông báo chỉ nhận focus khi lỗi không gắn với ô nào (ví dụ lỗi máy chủ).
+  const fieldFocus = useRef(false);
   useEffect(() => {
-    if (error) errorRef.current?.focus();
+    if (!error) return;
+    if (fieldFocus.current) { fieldFocus.current = false; return; }
+    errorRef.current?.focus();
   }, [error]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busyRef.current) return;
-    if (!username.trim() || !password) {
+    const firstInvalidId = !username.trim() ? "login-username" : !password ? "login-password" : null;
+    if (firstInvalidId) {
+      fieldFocus.current = true;
       setError("Nhập tên đăng nhập và mật khẩu.");
+      requestAnimationFrame(() => document.getElementById(firstInvalidId)?.focus());
       return;
     }
     meRef.current?.abort();
@@ -101,6 +110,8 @@ export function LoginPanel({ next }: { next: string }) {
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck={false}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "login-error" : undefined}
                   required
                 />
               </div>
@@ -114,6 +125,8 @@ export function LoginPanel({ next }: { next: string }) {
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
                     autoComplete="current-password"
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? "login-error" : undefined}
                     required
                   />
                   <button
@@ -128,7 +141,7 @@ export function LoginPanel({ next }: { next: string }) {
                 </div>
               </div>
               {error ? (
-                <p ref={errorRef} tabIndex={-1} className="auth-status is-error" role="alert">{error}</p>
+                <p ref={errorRef} id="login-error" tabIndex={-1} className="auth-status is-error" role="alert">{error}</p>
               ) : busy ? (
                 <p className="auth-status is-info" role="status">Đang đăng nhập…</p>
               ) : null}
