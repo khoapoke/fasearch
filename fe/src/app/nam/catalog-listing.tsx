@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
@@ -29,6 +30,35 @@ type Filters = {
 
 const EMPTY_FILTERS: Filters = { brand: "", categoryId: "", keyword: "", minPrice: "", maxPrice: "", sort: "id,desc" };
 const PAGE_SIZE = 6;
+const BRAND_VISIBLE_COUNT = 8;
+// R5/DESIGN: tập danh mục có thể vượt 11 sau sửa taxonomy — 20 radio sẽ đẩy
+// giá/tên/hãng xuống dưới. Cùng mẫu disclosure gọn như hãng: luồng trang
+// thường, nút mở rộng rõ ràng, không khay cuộn lồng.
+
+/** Nhãn hãng theo slug canonical: giữ bản sắc MLB Korea, tách bạch
+    tham chiếu rỗng "MLB League" — không bao giờ hai nhãn "MLB" trần. */
+export function brandLabel(slug: string, name: string): string {
+  if (slug === "mlb-korea" && !/korea/i.test(name)) return "MLB Korea";
+  if (slug === "mlb" && name.trim().toLowerCase() === "mlb") return "MLB League";
+  return name;
+}
+
+/** Đọc bộ lọc từ URL — giữ tương thích query cũ (categoryId/brand/keyword/giá/sort/page). */
+function filtersFromParams(p: { get: (k: string) => string | null }): Filters {
+  const num = (k: string) => {
+    const raw = p.get(k);
+    return raw !== null && raw !== "" && Number.isFinite(Number(raw)) ? raw : "";
+  };
+  const sort = p.get("sort");
+  return {
+    brand: /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.get("brand") ?? "") ? (p.get("brand") as string) : "",
+    categoryId: /^\d+$/.test(p.get("categoryId") ?? "") ? (p.get("categoryId") as string) : "",
+    keyword: (p.get("keyword") ?? "").slice(0, 200),
+    minPrice: num("minPrice"),
+    maxPrice: num("maxPrice"),
+    sort: sort === "price,asc" || sort === "price,desc" || sort === "productName,asc" || sort === "productName,desc" ? sort : "id,desc",
+  };
+}
 
 function CatalogImage({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false);
@@ -112,6 +142,7 @@ function FilterFields({
   onDraft,
   onApply,
   onReset,
+  onNarrow,
   error,
 }: {
   prefix: string;
@@ -127,9 +158,13 @@ function FilterFields({
   onDraft: (next: { keyword: string; minPrice: string; maxPrice: string }) => void;
   onApply: () => void;
   onReset: () => void;
+  onNarrow?: () => void;
   error: string;
 }) {
   const [brandQuery, setBrandQuery] = useState("");
+  // R5: chỉ hiển thị tập con hữu ích + nút mở rộng rõ ràng — không khay cuộn lồng.
+  const [showAllBrands, setShowAllBrands] = useState(false);
+  const [showAllCats, setShowCats] = useState(false);
   return (
     <>
       <h2>Bộ lọc</h2>
@@ -142,7 +177,7 @@ function FilterFields({
           <input type="radio" name={`${prefix}-cat`} checked={filters.categoryId === ""} onChange={() => onCategory("")} />
           <span>Tất cả</span>
         </label>
-        {categories.map((category) => (
+        {(showAllCats ? categories : categories.slice(0, BRAND_VISIBLE_COUNT)).map((category) => (
           <label className="cat-filter-option" key={category.id}>
             <input
               type="radio"
@@ -153,6 +188,16 @@ function FilterFields({
             <span>{category.name}</span>
           </label>
         ))}
+        {!showAllCats && categories.length > BRAND_VISIBLE_COUNT ? (
+          <button
+            className="cat-text-button cat-brand-more"
+            type="button"
+            aria-expanded={showAllCats}
+            onClick={() => setShowCats(true)}
+          >
+            Xem thêm {categories.length - BRAND_VISIBLE_COUNT} danh mục
+          </button>
+        ) : null}
         {categoriesLoading ? <p className="cat-filter-note" role="status">Đang tải danh mục…</p> : null}
         {!categoriesLoading && categoriesError ? (
           <p className="cat-filter-note" role="alert">
@@ -182,7 +227,7 @@ function FilterFields({
         <details className="cat-filter-group cat-brand-group" open={filters.brand !== ""}>
           <summary>
             Thương hiệu
-            {filters.brand ? ` · ${brands.find((b) => b.slug === filters.brand)?.name ?? filters.brand}` : ` · ${brands.length}`}
+            {filters.brand ? ` · ${brandLabel(filters.brand, brands.find((b) => b.slug === filters.brand)?.name ?? filters.brand)}` : ` · ${brands.length}`}
           </summary>
           <div className="cat-brand-body">
             <label className="cat-brand-search">
@@ -195,33 +240,53 @@ function FilterFields({
                 onChange={(event) => setBrandQuery(event.target.value)}
               />
             </label>
-            <div className="cat-brand-list">
+            <div className="cat-brand-list" role="radiogroup" aria-label="Thương hiệu">
               <label className="cat-filter-option">
                 <input type="radio" name={`${prefix}-brand`} checked={filters.brand === ""} onChange={() => onBrand("")} />
                 <span>Tất cả thương hiệu</span>
               </label>
-              {brands
-                .filter((brand) => !brandQuery.trim() || brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()))
-                .map((brand) => (
-                  <label className="cat-filter-option" key={brand.slug}>
-                    <input
-                      type="radio"
-                      name={`${prefix}-brand`}
-                      checked={filters.brand === brand.slug}
-                      onChange={() => onBrand(brand.slug)}
-                    />
-                    <span>{brand.name}</span>
-                  </label>
-                ))}
+              {(() => {
+                const q = brandQuery.trim().toLowerCase();
+                const matches = brands.filter((brand) => !q || brandLabel(brand.slug, brand.name).toLowerCase().includes(q));
+                const visible = q || showAllBrands ? matches : matches.slice(0, BRAND_VISIBLE_COUNT);
+                return (
+                  <>
+                    {visible.map((brand) => (
+                      <label className="cat-filter-option" key={brand.slug}>
+                        <input
+                          type="radio"
+                          name={`${prefix}-brand`}
+                          checked={filters.brand === brand.slug}
+                          onChange={() => onBrand(brand.slug)}
+                        />
+                        <span>{brandLabel(brand.slug, brand.name)}</span>
+                      </label>
+                    ))}
+                    {!q && matches.length > BRAND_VISIBLE_COUNT ? (
+                      <button
+                        className="cat-text-button cat-brand-more"
+                        type="button"
+                        aria-expanded={showAllBrands}
+                        onClick={() => setShowAllBrands((v) => !v)}
+                      >
+                        {showAllBrands ? "Thu gọn" : `Xem thêm ${matches.length - BRAND_VISIBLE_COUNT} hãng`}
+                      </button>
+                    ) : null}
+                    {q && matches.length === 0 ? (
+                      <p className="cat-filter-note" role="status">Không có hãng nào khớp “{brandQuery.trim()}”.</p>
+                    ) : null}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </details>
       ) : null}
       {error ? <p className="cat-filter-note" role="alert">{error}</p> : null}
-      <button className="cat-button cat-filter-apply" type="button" onClick={onApply}>
+      <button className="cat-button cat-filter-apply" type="button" onClick={() => { onApply(); onNarrow?.(); }}>
         Áp dụng
       </button>
-      <button className="cat-text-button cat-filter-reset" type="button" onClick={onReset}>
+      <button className="cat-text-button cat-filter-reset" type="button" onClick={() => { onReset(); onNarrow?.(); }}>
         Xóa bộ lọc
       </button>
     </>
@@ -229,17 +294,27 @@ function FilterFields({
 }
 
 export function CatalogListing() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const [categoryAttempt, setCategoryAttempt] = useState(0);
   const [categorySettled, setCategorySettled] = useState<{ attempt: number; list?: CatalogCategory[]; error?: string }>({ attempt: -1 });
   const categories = categorySettled.attempt === categoryAttempt ? categorySettled.list ?? [] : [];
   const categoriesLoading = categorySettled.attempt !== categoryAttempt;
   const categoryError = categorySettled.attempt === categoryAttempt ? categorySettled.error ?? "" : "";
   const [brands, setBrands] = useState<CatalogBrand[]>([]);
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [draft, setDraft] = useState({ keyword: "", minPrice: "", maxPrice: "" });
+  // R5: bộ lọc là một phần của URL — Back/Forward và chia sẻ link giữ nguyên
+  // kết quả server. Khởi tạo lười từ query hiện tại, đồng bộ khi params đổi.
+  const [filters, setFilters] = useState<Filters>(() => filtersFromParams(params));
+  const [draft, setDraft] = useState(() => ({
+    keyword: params.get("keyword") ?? "",
+    minPrice: params.get("minPrice") ?? "",
+    maxPrice: params.get("maxPrice") ?? "",
+  }));
   const [filterError, setFilterError] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => Number(params.get("page") ?? "0") || 0);
   const [retry, setRetry] = useState(0);
+  const mobileFilterRef = useRef<HTMLDetailsElement>(null);
   const reqId = useRef(0);
   const queryKey = JSON.stringify({ filters, page, retry });
   const [settled, setSettled] = useState<{ key: string; data?: CatalogPage; error?: string }>({ key: "" });
@@ -303,10 +378,41 @@ export function CatalogListing() {
     return () => controller.abort();
   }, [filters, page, retry, queryKey]);
 
+  function pushUrl(next: Filters, nextPage: number) {
+    const q = new URLSearchParams();
+    if (next.brand) q.set("brand", next.brand);
+    if (next.categoryId) q.set("categoryId", next.categoryId);
+    if (next.keyword) q.set("keyword", next.keyword);
+    if (next.minPrice) q.set("minPrice", next.minPrice);
+    if (next.maxPrice) q.set("maxPrice", next.maxPrice);
+    if (next.sort !== EMPTY_FILTERS.sort) q.set("sort", next.sort);
+    if (nextPage > 0) q.set("page", String(nextPage));
+    const qs = q.toString();
+    // R5: push (không replace) để Back/Foward của trình duyệt bước qua từng
+    // trạng thái lọc; hiệu ứng đồng bộ params ⇒ state giữ một nguồn thật.
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
   function commit(next: Filters, nextPage = 0) {
     setFilters(next);
     setPage(nextPage);
+    pushUrl(next, nextPage);
   }
+
+  // Nút Back/Forward của trình duyệt: params đổi ⇒ state theo sau (một nguồn thật).
+  useEffect(() => {
+    const from = filtersFromParams(params);
+    const fromPage = Number(params.get("page") ?? "0") || 0;
+    const want = JSON.stringify({ ...from, page: fromPage });
+    const cur = JSON.stringify({ ...filters, page });
+    if (want !== cur) {
+      setFilters(from);
+      setDraft({ keyword: from.keyword, minPrice: from.minPrice, maxPrice: from.maxPrice });
+      setPage(fromPage);
+    }
+    // Chỉ đồng bộ theo params ngoài (Back/link); state nội bộ không trigger lại.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   function applyDraft() {
     const min = draft.minPrice ? Number(draft.minPrice) : null;
@@ -326,7 +432,7 @@ export function CatalogListing() {
   }
 
   const appliedChips = [
-    filters.brand ? { key: "brand", label: brands.find((b) => b.slug === filters.brand)?.name ?? filters.brand } : null,
+    filters.brand ? { key: "brand", label: brandLabel(filters.brand, brands.find((b) => b.slug === filters.brand)?.name ?? filters.brand) } : null,
     filters.categoryId ? { key: "category", label: categories.find((c) => String(c.id) === filters.categoryId)?.name ?? "Danh mục" } : null,
     filters.keyword ? { key: "keyword", label: `“${filters.keyword}”` } : null,
     filters.minPrice ? { key: "min", label: `Từ ${formatVnd(Number(filters.minPrice))}` } : null,
@@ -361,10 +467,18 @@ export function CatalogListing() {
               <FilterFields prefix="desktop" {...filterProps} />
             </aside>
             <section className="cat-listing-products" aria-label="Danh sách sản phẩm" aria-busy={loading}>
-              <details className="cat-filter-mobile">
+              <details
+                className="cat-filter-mobile"
+                ref={mobileFilterRef}
+                onKeyDown={(e) => { if (e.key === "Escape") e.currentTarget.removeAttribute("open"); }}
+              >
                 <summary>Bộ lọc{appliedChips.length ? ` (${appliedChips.length})` : ""}</summary>
                 <div className="cat-mobile-filter-body">
-                  <FilterFields prefix="mobile" {...filterProps} />
+                  <FilterFields
+                    prefix="mobile"
+                    {...filterProps}
+                    onNarrow={() => mobileFilterRef.current?.removeAttribute("open")}
+                  />
                 </div>
               </details>
               <div className="cat-listing-tools">
@@ -438,11 +552,11 @@ export function CatalogListing() {
                   </details>
                   {data.totalPages > 1 ? (
                     <nav className="cat-pagination" aria-label="Phân trang sản phẩm">
-                      <button className="cat-button" type="button" disabled={page <= 0 || loading} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                      <button className="cat-button" type="button" disabled={page <= 0 || loading} onClick={() => commit(filters, Math.max(0, page - 1))}>
                         Trang trước
                       </button>
                       <span>Trang {page + 1}/{data.totalPages}</span>
-                      <button className="cat-button" type="button" disabled={page + 1 >= data.totalPages || loading} onClick={() => setPage((p) => p + 1)}>
+                      <button className="cat-button" type="button" disabled={page + 1 >= data.totalPages || loading} onClick={() => commit(filters, page + 1)}>
                         Trang sau
                       </button>
                     </nav>

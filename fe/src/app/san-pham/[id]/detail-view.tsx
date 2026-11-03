@@ -8,8 +8,8 @@ import {
   fetchCatalogProduct,
   formatVnd,
   type CatalogProductDetail,
-  type CatalogVariant,
 } from "@/lib/customer-catalog";
+import { resolveSelection, isFullySentinel } from "@/lib/variant-select";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { addCustomerCartItem } from "@/lib/customer-commerce-client";
 import { CommerceError } from "@/lib/customer-commerce";
@@ -18,9 +18,8 @@ import "@/components/customer-catalog/catalog.css";
 
 type Viewer = { src: string; alt: string; caption: string; trigger: HTMLButtonElement };
 
-function unique(values: Array<string | null>): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
-}
+// R5: isPlaceholder + resolveSelection sống trong lib/variant-select để kiểm thử
+// biên trực tiếp (tests/variant-select.test.mjs) — component chỉ tiêu thụ.
 
 function swatchColor(color: string): string | null {
   const value = color.toLowerCase();
@@ -92,8 +91,10 @@ export function DetailView({ id }: { id: string }) {
       .then((result) => {
         if (reqId.current !== my) return;
         setSettled({ key: viewKey, data: result });
-        setColor(result.variants[0]?.color ?? "");
-        setSize(result.variants[0]?.size ?? "");
+        // R5: không đoán trước lựa chọn — SKU duy nhất tự giải quyết nội bộ,
+        // nhiều lựa chọn thì khách phải chọn thật (giống mẫu Nike đã đối chiếu).
+        setColor("");
+        setSize("");
         setQuantity(1);
         setImageFailed(false);
       })
@@ -109,16 +110,24 @@ export function DetailView({ id }: { id: string }) {
   }, [id, retry, viewKey]);
 
   const variants = product?.variants ?? [];
-  const colors = unique(variants.map((v) => v.color));
-  const sizesForColor = unique(variants.filter((v) => !color || v.color === color).map((v) => v.size));
-  const selected: CatalogVariant | undefined =
-    variants.find((v) => (!color || v.color === color) && (!size || v.size === size)) ?? variants[0];
+  // R5: giải quyết theo số ứng viên duy nhất — không `.find` tùy tiện.
+  // Chiều thật duy nhất tự có hiệu lực (không bắt bấm cho có); mập mờ thật
+  // (nhiều SKU mà không còn chiều thật nào) ⇒ trạng thái unavailable trung thực.
+  // Biến thể duy nhất toàn placeholder (3124) ⇒ một dòng thật, CTA vẫn chạy.
+  const singleHonest = variants.length === 1 && variants[0] ? isFullySentinel(variants[0]) : false;
+  const selection = resolveSelection(variants, color, size);
+  const colors = selection.colors;
+  const sizesForColor = selection.sizes;
+  const selected = selection.selected;
   const price = product ? product.price + (selected?.additionalPrice ?? 0) : 0;
+  const needColor = selection.needColor;
+  const needSize = selection.needSize;
+  const ambiguous = selection.ambiguous;
 
   function chooseColor(next: string) {
     setColor(next);
-    const first = variants.find((v) => v.color === next);
-    setSize(first?.size ?? "");
+    // Đổi màu ⇒ bỏ cỡ đã chọn (cỡ thuộc về màu cũ có thể không tồn tại).
+    setSize("");
   }
 
   function openZoom(trigger: HTMLButtonElement) {
@@ -231,9 +240,9 @@ export function DetailView({ id }: { id: string }) {
                 <p className="cat-price-note">Giá tham khảo theo biến thể đã chọn (giá gốc + phụ thu).</p>
               ) : null}
 
-              {colors.length ? (
+              {colors.length > 1 ? (
                 <div className="cat-option-block">
-                  <h2>Màu <span>{color || "—"}</span></h2>
+                  <h2>Màu <span>{color || "Chọn"}</span></h2>
                   <div className="cat-option-options">
                     {colors.map((option) => (
                       <button
@@ -251,9 +260,9 @@ export function DetailView({ id }: { id: string }) {
                 </div>
               ) : null}
 
-              {sizesForColor.length ? (
+              {sizesForColor.length > 1 ? (
                 <div className="cat-option-block">
-                  <h2>Kích cỡ <span>{size || "—"}</span></h2>
+                  <h2>Kích cỡ <span>{size || "Chọn"}</span></h2>
                   <div className="cat-option-options">
                     {sizesForColor.map((option) => (
                       <button
@@ -274,11 +283,7 @@ export function DetailView({ id }: { id: string }) {
                 <p className="cat-readonly-note">Máy chủ chưa trả về lựa chọn màu/kích thước cho sản phẩm này.</p>
               ) : null}
 
-              {sizesForColor.length > 0 ? (
-                <p className="cat-size-hint">
-                  Cỡ có sẵn: {sizesForColor.join(" · ")}
-                </p>
-              ) : null}
+              {/* R5: không còn dòng "Cỡ có sẵn" thừa — các pill cỡ đã liệt kê đủ. */}
 
               <div className="cat-buy-row">
                 <div className="cat-stepper" aria-label="Số lượng">
@@ -290,6 +295,23 @@ export function DetailView({ id }: { id: string }) {
                   {addBusy ? "Đang thêm…" : "Thêm vào giỏ"}
                 </button>
               </div>
+              {needColor || needSize ? (
+                <p className="cat-readonly-note" role="status" id="cat-buy-note">
+                  {needColor ? "Chọn màu" : "Chọn kích cỡ"} để thêm vào giỏ.
+                </p>
+              ) : null}
+              {singleHonest ? (
+                <p className="cat-readonly-note" role="status">Một phiên bản duy nhất — thêm trực tiếp vào giỏ.</p>
+              ) : null}
+              {ambiguous ? (
+                <p className="cat-readonly-note" role="status">
+                  Máy chủ trả về {variants.length} mã hàng nhưng thiếu thông tin màu/cỡ để phân biệt —
+                  liên hệ cửa hàng để đặt, không tự đoán mã.
+                </p>
+              ) : null}
+              {!selected && !needColor && !needSize && !ambiguous && !singleHonest && variants.length > 0 ? (
+                <p className="cat-readonly-note" role="status">Các mã hàng còn lại trùng thông tin hiển thị — liên hệ cửa hàng để đặt đúng mã.</p>
+              ) : null}
               {addNotice ? <p className="cat-readonly-note" role="status">{addNotice}{addNotice.includes("Đăng nhập") ? <> <Link className="cat-text-button" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập →</Link></> : null}</p> : null}
               {addError ? <p className="cat-error" role="alert">{addError}</p> : null}
 

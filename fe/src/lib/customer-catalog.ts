@@ -31,6 +31,9 @@ export type CatalogVariant = {
   color: string | null;
   size: string | null;
   additionalPrice: number;
+  /** Cờ BE (additive, có thể vắng): true = placeholder, không bao giờ thành pill. */
+  colorIsSentinel: boolean | null;
+  sizeIsSentinel: boolean | null;
 };
 
 export type CatalogProductDetail = CatalogProduct & {
@@ -137,6 +140,8 @@ function normalizeProduct(raw: unknown): CatalogProduct {
 function normalizeVariant(raw: unknown): CatalogVariant {
   if (!raw || typeof raw !== "object") throw new CatalogError(INVALID_DATA, 502);
   const v = raw as Record<string, unknown>;
+  const flag = (key: string): boolean | null =>
+    typeof v[key] === "boolean" ? (v[key] as boolean) : null;
   return {
     skuId: requireInteger(v.skuId, 1),
     productId: requireInteger(v.productId, 1),
@@ -145,6 +150,8 @@ function normalizeVariant(raw: unknown): CatalogVariant {
     // BE cho phép additionalPrice null; null/absent = 0 surcharge. Any other
     // non-number value is malformed, never silently turned into 0.
     additionalPrice: v.additionalPrice === null || v.additionalPrice === undefined ? 0 : requireFinite(v.additionalPrice),
+    colorIsSentinel: flag("colorIsSentinel"),
+    sizeIsSentinel: flag("sizeIsSentinel"),
   };
 }
 
