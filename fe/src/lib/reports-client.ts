@@ -36,9 +36,9 @@ export type MovementRow = {
   size: string | null;
   barcode: string | null;
   openingStock: null;
-  totalImport: number;
+  totalImport: number | null;
   totalSold: number;
-  totalDamaged: number;
+  totalDamaged: number | null;
   closingStock: number | null;
 };
 export type MovementResult = {
@@ -138,9 +138,9 @@ export async function fetchMovement(query: string): Promise<MovementResult> {
       size: strOrNull(r.size),
       barcode: strOrNull(r.barcode),
       openingStock: null as null,
-      totalImport: req(r.totalImport, isNum, "totalImport"),
+      totalImport: numOrNull(r.totalImport),
       totalSold: req(r.totalSold, isNum, "totalSold"),
-      totalDamaged: req(r.totalDamaged, isNum, "totalDamaged"),
+      totalDamaged: numOrNull(r.totalDamaged),
       closingStock: numOrNull(r.closingStock),
     };
   });

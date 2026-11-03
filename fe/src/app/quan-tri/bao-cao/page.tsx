@@ -260,9 +260,9 @@ function XntView({ data, page, onPage }: { data: MovementResult; page: number; o
                     <td>{[r.color, r.size].filter(Boolean).join(" · ") || "—"}</td>
                     <td className="adMono">{r.barcode ?? "—"}</td>
                     <td>Chưa đủ dữ liệu</td>
-                    <td>{r.totalImport}</td>
+                    <td>{r.totalImport === null ? "Chưa rõ" : r.totalImport}</td>
                     <td>{r.totalSold}</td>
-                    <td>{r.totalDamaged}</td>
+                    <td>{r.totalDamaged === null ? "Chưa rõ" : r.totalDamaged}</td>
                     <td><b>{r.closingStock === null ? "Chưa rõ" : r.closingStock}</b></td>
                   </tr>
                 ))}

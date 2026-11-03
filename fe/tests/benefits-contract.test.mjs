@@ -210,7 +210,7 @@ describe("reports adapters (BE CONTRACT v1: narrow admin BFFs, explicit nulls)",
       { rank: 1, productId: 9, productName: "Nike Blazer", categoryName: "Giày", totalQuantitySold: 3, totalRevenue: 3000000, currentInventory: null },
     ])));
     fixtures.set("GET /api/admin/reports/inventory-movement", jsonResponse(200, envelope({
-      content: [{ skuId: 1, productName: "Tee", color: "Đen", size: "M", barcode: "B1", openingStock: null, totalImport: 5, totalSold: 2, totalDamaged: 0, closingStock: 12 }],
+      content: [{ skuId: 1, productName: "Tee", color: "Đen", size: "M", barcode: "B1", openingStock: null, totalImport: null, totalSold: 2, totalDamaged: null, closingStock: 12 }],
       pageNumber: 0, pageSize: 20, totalElements: 1, totalPages: 1,
     })));
     const sp = await fetchTopProducts("type=BEST_SELLER&limit=10");
@@ -219,5 +219,8 @@ describe("reports adapters (BE CONTRACT v1: narrow admin BFFs, explicit nulls)",
     const x = await fetchMovement("page=0&size=20");
     assert.equal(x.items[0].closingStock, 12);
     assert.equal(x.items[0].openingStock, null);
+    assert.equal(x.items[0].totalImport, null);
+    assert.equal(x.items[0].totalDamaged, null);
+    assert.equal(x.items[0].totalSold, 2);
   });
 });
