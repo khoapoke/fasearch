@@ -504,6 +504,9 @@
 /* Nguồn là dòng phụ trong chi tiết, cách đường phân cách 16px, không dính chữ. */
 .catPage .cat-source-inline { margin: 16px 0 0; padding-top: 4px; color: var(--st-ink-soft); font-size: 12px; line-height: 1.6; }
 .catPage .cat-source-inline a { color: inherit; text-decoration: underline; }
+/* R5: mô tả thật từ feed (plaintext, React escape) — đoạn đọc được trong disclosure. */
+.catPage .cat-detail-desc { display: grid; gap: 10px; margin: 16px 0 0; }
+.catPage .cat-detail-desc p { margin: 0; color: var(--st-ink); font-size: 14.5px; line-height: 1.65; overflow-wrap: anywhere; }
 @media (max-width: 760px) {
   .catPage .cat-attr-list > div { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .catPage .cat-attr-list > div > dt + dd { margin-top: -8px; }

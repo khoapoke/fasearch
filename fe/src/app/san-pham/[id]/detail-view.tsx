@@ -9,7 +9,7 @@ import {
   formatVnd,
   type CatalogProductDetail,
 } from "@/lib/customer-catalog";
-import { resolveSelection, isFullySentinel } from "@/lib/variant-select";
+import { resolveSelection } from "@/lib/variant-select";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { addCustomerCartItem } from "@/lib/customer-commerce-client";
 import { CommerceError } from "@/lib/customer-commerce";
@@ -113,8 +113,6 @@ export function DetailView({ id }: { id: string }) {
   // R5: giải quyết theo số ứng viên duy nhất — không `.find` tùy tiện.
   // Chiều thật duy nhất tự có hiệu lực (không bắt bấm cho có); mập mờ thật
   // (nhiều SKU mà không còn chiều thật nào) ⇒ trạng thái unavailable trung thực.
-  // Biến thể duy nhất toàn placeholder (3124) ⇒ một dòng thật, CTA vẫn chạy.
-  const singleHonest = variants.length === 1 && variants[0] ? isFullySentinel(variants[0]) : false;
   const selection = resolveSelection(variants, color, size);
   const colors = selection.colors;
   const sizesForColor = selection.sizes;
@@ -295,22 +293,10 @@ export function DetailView({ id }: { id: string }) {
                   {addBusy ? "Đang thêm…" : "Thêm vào giỏ"}
                 </button>
               </div>
-              {needColor || needSize ? (
+              {needColor || needSize || (!selected && variants.length > 0 && !ambiguous) || ambiguous ? (
                 <p className="cat-readonly-note" role="status" id="cat-buy-note">
-                  {needColor ? "Chọn màu" : "Chọn kích cỡ"} để thêm vào giỏ.
+                  {needColor ? "Chọn màu để thêm vào giỏ." : needSize ? "Chọn kích cỡ để thêm vào giỏ." : "Phiên bản chưa xác định được — liên hệ cửa hàng để được tư vấn."}
                 </p>
-              ) : null}
-              {singleHonest ? (
-                <p className="cat-readonly-note" role="status">Một phiên bản duy nhất — thêm trực tiếp vào giỏ.</p>
-              ) : null}
-              {ambiguous ? (
-                <p className="cat-readonly-note" role="status">
-                  Máy chủ trả về {variants.length} mã hàng nhưng thiếu thông tin màu/cỡ để phân biệt —
-                  liên hệ cửa hàng để đặt, không tự đoán mã.
-                </p>
-              ) : null}
-              {!selected && !needColor && !needSize && !ambiguous && !singleHonest && variants.length > 0 ? (
-                <p className="cat-readonly-note" role="status">Các mã hàng còn lại trùng thông tin hiển thị — liên hệ cửa hàng để đặt đúng mã.</p>
               ) : null}
               {addNotice ? <p className="cat-readonly-note" role="status">{addNotice}{addNotice.includes("Đăng nhập") ? <> <Link className="cat-text-button" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập →</Link></> : null}</p> : null}
               {addError ? <p className="cat-error" role="alert">{addError}</p> : null}
@@ -323,10 +309,18 @@ export function DetailView({ id }: { id: string }) {
                     {product.material ? (<div><dt>Chất liệu</dt><dd>{product.material}</dd></div>) : null}
                     {product.style ? (<div><dt>Kiểu dáng</dt><dd>{product.style}</dd></div>) : null}
                     {product.brandName ? (<div><dt>Thương hiệu</dt><dd>{product.brandName}</dd></div>) : null}
-                    {!product.categoryName && !product.material && !product.style && !product.brandName ? (
+                    {!product.categoryName && !product.material && !product.style && !product.brandName && !product.description ? (
                       <div><dt>Thông tin</dt><dd>Chưa có thông tin bổ sung.</dd></div>
                     ) : null}
                   </dl>
+                  {product.description ? (
+                    <div className="cat-detail-desc">
+                      {product.description.split(/\n\s*\n/).map((para) => para.trim()).filter(Boolean).map((para, i) => (
+                        // Văn bản thuần từ feed, React escape mặc định — không innerHTML.
+                        <p key={i}>{para}</p>
+                      ))}
+                    </div>
+                  ) : null}
                   {product.sourceHost ? (
                     <p className="cat-source-inline">
                       Nguồn: {product.sourceUrl ? (<a href={product.sourceUrl} target="_blank" rel="noopener noreferrer">{product.sourceHost}</a>) : product.sourceHost}
