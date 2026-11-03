@@ -10,6 +10,7 @@ import "@/components/storefront/listing.css";
 
 type OwnOrder = {
   maDonHang: number;
+  orderCode?: string;
   trangThai: string;
   ngayDat: string;
   tongThanhToan: number;
@@ -78,7 +79,7 @@ export function HubContent() {
         {latest ? (
           <div style={{ marginTop: 10 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-              <b>Đơn #{latest.maDonHang}</b>
+              <b>{latest.orderCode || `Đơn #${latest.maDonHang}`}</b>
               <span className="pMatch">{orderStatusLabel(latest.trangThai)}</span>
               <span className="pPrice" style={{ marginLeft: "auto" }}>
                 {latest.tongThanhToan.toLocaleString("vi-VN")}₫

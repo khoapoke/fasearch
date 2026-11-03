@@ -31,7 +31,7 @@ export default function AddressesPage() {
   return (
     <AccountCenterShell active="/tai-khoan/dia-chi" title="Sổ địa chỉ nhận hàng">
       <p className="sfPreviewBar" role="note" style={{ borderRadius: 12, marginBottom: 14 }}>
-        <span>Bản xem trước — địa chỉ lưu trên trình duyệt, máy chủ chưa có API sổ địa chỉ.</span>
+        <span>Bản xem trước — địa chỉ được lưu trên thiết bị này; sổ địa chỉ đồng bộ chưa có trong phiên bản hiện tại.</span>
       </p>
       {rows.map((a) => (
         <div className="pvAddr" key={a.id} aria-current={a.isDefault}>

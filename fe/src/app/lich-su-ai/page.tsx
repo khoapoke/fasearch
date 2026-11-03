@@ -79,7 +79,7 @@ export default function AiHistoryPage() {
         <section className="sfSideCard" aria-label="Lịch sử trống">
           <b>Chưa có lịch sử tìm kiếm</b>
           <p className="sfIdentitySub" style={{ marginTop: 6, marginBottom: 16 }}>
-            Các lượt tìm kiếm bằng mô tả văn bản, hình ảnh hoặc đa phương thức trên máy chủ AI sẽ được lưu trữ tại đây.
+            Các lượt tìm kiếm bằng văn bản, hình ảnh hoặc kết hợp sẽ được lưu tại đây để bạn xem lại.
           </p>
           <Link className="auth-button is-primary" href="/tim-kiem-ai" style={{ display: "inline-block" }}>
             Trải nghiệm tìm kiếm AI →
