@@ -1,5 +1,5 @@
-import { StorefrontShell } from "@/components/storefront/storefront-shell";
-import { AccountPanel } from "@/components/customer-auth/account-panel";
+import { AccountCenterShell } from "@/components/storefront/account-center-shell";
+import { HubBody } from "@/components/customer-auth/account-panel";
 
 export const metadata = {
   title: "Tài khoản | FaSearch",
@@ -8,8 +8,8 @@ export const metadata = {
 
 export default function AccountPage() {
   return (
-    <StorefrontShell active="/tai-khoan" themed palette="customer" header="customer" footer="none">
-      <AccountPanel />
-    </StorefrontShell>
+    <AccountCenterShell active="/tai-khoan" title="Tài khoản của tôi">
+      <HubBody />
+    </AccountCenterShell>
   );
 }
