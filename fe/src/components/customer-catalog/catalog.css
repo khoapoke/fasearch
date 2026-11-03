@@ -97,7 +97,9 @@
 }
 .catPage .cat-input:focus-visible,
 .catPage .cat-select:focus-visible,
-.catPage .cat-button:focus-visible {
+.catPage .cat-button:focus-visible,
+.catPage .cat-page-btn:focus-visible,
+.catPage .cat-jump-go:focus-visible {
   outline: 2px solid var(--st-focus);
   outline-offset: 3px;
 }
@@ -114,6 +116,75 @@
    lồng nhau; mọi điều khiển tới được bằng cuộn trang bình thường. Mặc định
    không sticky để tránh bẫy cuộn ở viewport thấp. Gutter 4px giữ vòng focus. */
 .catPage .cat-filter-panel { padding: 4px 4px 4px 4px; overflow: visible; }
+.catPage .cat-listing-tools { scroll-margin-top: 104px; }
+/* R5-pagination: hàng tiện ích gọn — số trang + Đến trang, bọc hàng khi hẹp. */
+.catPage .cat-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 24px;
+  margin-top: 32px;
+}
+.catPage .cat-page-window {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.catPage .cat-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.catPage .cat-page-btn:disabled { cursor: default; opacity: 0.55; }
+.catPage .cat-page-btn.cat-page-current:disabled {
+  opacity: 1;
+  color: #fff;
+  border-color: var(--st-brand);
+  background: var(--st-brand);
+  font-weight: 600;
+}
+.catPage .cat-page-gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+  user-select: none;
+}
+.catPage .cat-page-jump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--st-ink-soft);
+  font-size: 13px;
+}
+.catPage .cat-page-jump label { white-space: nowrap; }
+.catPage .cat-jump-input { width: 76px; text-align: center; font-variant-numeric: tabular-nums; }
+.catPage .cat-jump-go { min-height: 40px; padding: 8px 16px; font-size: 13px; }
+.catPage .cat-jump-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--st-err-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .catPage .cat-page-jump { flex-basis: 100%; }
+}
 .catPage .cat-filter-panel h2 { margin: 0 0 24px; font-size: 14px; font-weight: 500; }
 .catPage .cat-filter-group { margin: 0 0 24px; padding: 0; border: 0; }
 .catPage .cat-filter-group legend { margin-bottom: 10px; font-size: 14px; font-weight: 500; }
@@ -260,14 +331,7 @@
 .catPage .cat-source summary { width: fit-content; min-height: 32px; padding: 6px 0; color: var(--st-ink-soft); font-size: 11px; cursor: pointer; }
 .catPage .cat-source > div { display: flex; flex-wrap: wrap; gap: 5px 18px; color: var(--st-ink-soft); font-size: 12px; }
 
-.catPage .cat-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 32px;
-}
-.catPage .cat-pagination span { color: var(--st-ink-soft); font-size: 13px; white-space: nowrap; }
+/* R5-pagination thay khối phân trang cũ (nút chữ lớn + fraction) — xem định nghĩa mới ở trên. */
 
 /* Status / empty / skeleton */
 .catPage .cat-status {

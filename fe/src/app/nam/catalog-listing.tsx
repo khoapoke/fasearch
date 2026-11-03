@@ -5,7 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
-import { ChevronDownIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
+import { BackIcon, ChevronDownIcon, ForwardIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
+import { pageWindow, parseJumpInput, visibleRange } from "@/lib/pagination";
 import {
   CatalogError,
   fetchCatalogCategories,
@@ -293,6 +294,129 @@ function FilterFields({
   );
 }
 
+function jumpErrorText(code: string, totalPages: number): string {
+  if (code === "empty") return "Vui lòng nhập số trang.";
+  if (code === "nan") return "Chỉ nhập số nguyên dương, ví dụ 27.";
+  return `Nhập số trang từ 1 đến ${totalPages}.`;
+}
+
+/**
+ * R5-pagination: compact numbered window + direct jump. 1-based UI,
+ * 0-based API (goto converts explicitly). Server counts only, no hardcode.
+ */
+function Pagination({
+  page,
+  totalPages,
+  loading,
+  onGoto,
+}: {
+  page: number;
+  totalPages: number;
+  loading: boolean;
+  onGoto: (page0: number) => void;
+}) {
+  const [jump, setJump] = useState("");
+  const [jumpError, setJumpError] = useState<string | null>(null);
+  const jumpInputId = "listing-jump";
+  const jumpErrorId = "listing-jump-error";
+  // Giới hạn trang đổi theo bộ lọc ⇒ lỗi cũ hết hiệu lực, xóa để nhập lại.
+  useEffect(() => {
+    setJumpError(null);
+  }, [totalPages]);
+
+  function goto(page0: number) {
+    // Trang hiện tại: không fetch trùng, không đẩy history thừa.
+    if (page0 === page) return;
+    onGoto(page0);
+  }
+
+  function submitJump(event: React.FormEvent) {
+    event.preventDefault();
+    const parsed = parseJumpInput(jump, totalPages);
+    if (parsed.error) {
+      setJumpError(jumpErrorText(parsed.error, totalPages));
+      return;
+    }
+    setJumpError(null);
+    goto((parsed.page as number) - 1);
+  }
+
+  return (
+    <nav className="cat-pagination" aria-label="Phân trang sản phẩm">
+      <div className="cat-page-window">
+        <button
+          className="cat-page-btn"
+          type="button"
+          aria-label="Trang trước"
+          disabled={page <= 0 || loading}
+          onClick={() => goto(Math.max(0, page - 1))}
+        >
+          <BackIcon />
+        </button>
+        {pageWindow(page + 1, totalPages).map((token) =>
+          token.kind === "gap" ? (
+            <span className="cat-page-gap" key={token.key} aria-hidden="true">…</span>
+          ) : token.page === page + 1 ? (
+            <button
+              className="cat-page-btn cat-page-current"
+              type="button"
+              key={token.page}
+              aria-label={`Trang ${token.page}`}
+              aria-current="page"
+              disabled
+            >
+              {token.page}
+            </button>
+          ) : (
+            <button
+              className="cat-page-btn"
+              type="button"
+              key={token.page}
+              aria-label={`Trang ${token.page}`}
+              disabled={loading}
+              onClick={() => goto(token.page - 1)}
+            >
+              {token.page}
+            </button>
+          ),
+        )}
+        <button
+          className="cat-page-btn"
+          type="button"
+          aria-label="Trang sau"
+          disabled={page + 1 >= totalPages || loading}
+          onClick={() => goto(page + 1)}
+        >
+          <ForwardIcon />
+        </button>
+      </div>
+      <form className="cat-page-jump" onSubmit={submitJump}>
+        <label htmlFor={jumpInputId}>Đến trang</label>
+        <input
+          id={jumpInputId}
+          className="cat-input cat-jump-input"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder={`1–${totalPages}`}
+          value={jump}
+          maxLength={10}
+          aria-invalid={jumpError ? true : undefined}
+          aria-describedby={jumpError ? jumpErrorId : undefined}
+          onChange={(e) => setJump(e.target.value)}
+        />
+        <button className="cat-button cat-jump-go" type="submit" disabled={loading}>
+          Đi
+        </button>
+        {jumpError ? (
+          <p className="cat-jump-error" role="alert" id={jumpErrorId}>
+            {jumpError}
+          </p>
+        ) : null}
+      </form>
+    </nav>
+  );
+}
+
 export function CatalogListing() {
   const router = useRouter();
   const pathname = usePathname();
@@ -321,6 +445,10 @@ export function CatalogListing() {
   const loading = settled.key !== queryKey;
   const data = settled.key === queryKey ? settled.data ?? null : null;
   const error = settled.key === queryKey ? settled.error ?? "" : "";
+  // Điều hướng trang bằng control (khác đổi bộ lọc): khi dữ liệu mới về xong
+  // mới cuộn + focus trạng thái — thông báo trang cho AT, không giật khi gõ jump.
+  const pagedByNav = useRef(false);
+  const statusRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -398,6 +526,35 @@ export function CatalogListing() {
     setPage(nextPage);
     pushUrl(next, nextPage);
   }
+
+  function gotoPage(nextPage: number) {
+    pagedByNav.current = true;
+    commit(filters, nextPage);
+  }
+
+  // Trang thật đổi xong (không phải đang tải) sau một lần bấm phân trang:
+  // đưa đầu kết quả vào tầm nhìn dưới sticky header, focus trạng thái để AT
+  // đọc trang mới. Đổi bộ lọc/sort (page reset) không cướp focus.
+  const range = data && !loading ? visibleRange(page, PAGE_SIZE, data.totalElements) : null;
+  useEffect(() => {
+    if (pagedByNav.current && !loading && data && data.items.length > 0) {
+      pagedByNav.current = false;
+      const el = statusRef.current;
+      if (el) {
+        el.scrollIntoView({ block: "start", behavior: "auto" });
+        el.focus({ preventScroll: true });
+      }
+    }
+  }, [page, loading, data]);
+
+  // Late page + bộ lọc thu hẹp (kể cả Back tới URL cũ): server trả rỗng mà
+  // vẫn còn trang hợp lệ ⇒ về trang đầu một cách dự đoán được, không kẹt.
+  useEffect(() => {
+    if (!loading && data && data.items.length === 0 && page > 0 && data.totalPages > 0) {
+      commit(filters, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, data]);
 
   // Nút Back/Forward của trình duyệt: params đổi ⇒ state theo sau (một nguồn thật).
   useEffect(() => {
@@ -482,8 +639,8 @@ export function CatalogListing() {
                 </div>
               </details>
               <div className="cat-listing-tools">
-                <span className="cat-result-count" role="status">
-                  {loading ? "Đang tải sản phẩm…" : `${data?.totalElements ?? 0} sản phẩm`}
+                <span className="cat-result-count" role="status" tabIndex={-1} ref={statusRef}>
+                  {loading ? "Đang tải sản phẩm…" : range ? `${range.from}–${range.to} trên ${data?.totalElements ?? 0} sản phẩm` : `${data?.totalElements ?? 0} sản phẩm`}
                 </span>
                 <label className="cat-sort-control" htmlFor="listing-sort">
                   Sắp xếp
@@ -551,15 +708,7 @@ export function CatalogListing() {
                     <div>Ảnh sản phẩm lấy từ trường imageUrl của API công khai; pilot chưa có metadata tác giả.</div>
                   </details>
                   {data.totalPages > 1 ? (
-                    <nav className="cat-pagination" aria-label="Phân trang sản phẩm">
-                      <button className="cat-button" type="button" disabled={page <= 0 || loading} onClick={() => commit(filters, Math.max(0, page - 1))}>
-                        Trang trước
-                      </button>
-                      <span>Trang {page + 1}/{data.totalPages}</span>
-                      <button className="cat-button" type="button" disabled={page + 1 >= data.totalPages || loading} onClick={() => commit(filters, page + 1)}>
-                        Trang sau
-                      </button>
-                    </nav>
+                    <Pagination page={page} totalPages={data.totalPages} loading={loading} onGoto={gotoPage} />
                   ) : null}
                 </>
               ) : null}
