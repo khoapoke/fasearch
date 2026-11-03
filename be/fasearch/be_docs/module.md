@@ -58,13 +58,15 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 ---
 
-## 3. Khách hàng thân thiết & Tích điểm (Module `user`)
+## 3. Khách hàng thân thiết & Tích điểm (Module `user`; S2 source and DB tests pass; runtime/independent Review pending)
+
+S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; historical fixed-rate/point-threshold examples không phải runtime policy. S3 reporting không được đánh dấu hoàn thành trong S2.
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-18 | Tích điểm tự động | Tự động cộng điểm thưởng vào tài khoản KH dựa trên giá trị thanh toán thực tế | `SYS` | |
-| FR-19 | Nâng hạng thành viên | Tự động cập nhật hạng thành viên khi tổng chi tiêu tích lũy đạt mốc quy định | `SYS` | |
-| FR-20 | Trừ điểm đổi giảm giá | Quy đổi điểm tích lũy thành số tiền giảm giá trực tiếp vào hóa đơn | `C` `S` | |
+| FR-18 | Tích điểm tự động S2 | Cộng earning theo policy version đã snapshot, từ `Invoice.totalActualPaid`; opening chỉ ghi nhận legacy balance, không grant lại | `SYS` | O |
+| FR-19 | Hạng theo doanh số | Chọn ngưỡng cumulative paid sales đã cấu hình; giữ nguyên tierId/tierName/thresholdPoint legacy và biểu diễn thiếu lịch sử là unknown | `SYS` | O |
+| FR-20 | Đổi điểm khi quote/settle | Redeem chỉ sau once-only opening và enabled policy; giữ điểm atomically, cap theo remaining merchandise, giải phóng/tiêu thụ đúng một lần | `C` `S` | O |
 
 ---
 
@@ -134,7 +136,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-44 | Xem danh sách khuyến mãi | Xem và lọc chương trình KM theo trạng thái (`UPCOMING`, `ACTIVE`, `EXPIRED`, `DISABLED`) | `A` | |
+| FR-44 | Xem danh sách khuyến mãi | Admin xem/lọc campaign; khách xem ưu đãi công khai đang hiệu lực qua `GET /api/v1/promotions` | `A` `P` | X |
 | FR-45 | Thêm mới chương trình KM | Thiết lập KM: Thời gian, SP áp dụng, Mức giảm (`PERCENTAGE` / `FIXED_AMOUNT`), Số lượng voucher | `A` | |
 | FR-46 | Sửa / Tạm dừng KM | Chỉnh sửa điều kiện hoặc tạm dừng chương trình KM trước thời hạn | `A` | |
 | FR-47 | Xác thực mã giảm giá | Kiểm tra và từ chối mã giảm giá khi đơn không thỏa điều kiện hoặc mã đã hết lượt | `SYS` | |
@@ -156,9 +158,9 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-52 | Báo cáo doanh thu | Xuất tổng doanh thu, lợi nhuận theo Ngày/Tuần/Tháng, lọc theo kênh bán (POS vs Online) | `A` | |
-| FR-53 | Báo cáo hiệu quả sản phẩm | Xuất Top N SP/SKU bán chạy nhất hoặc danh sách hàng tồn chậm luân chuyển | `A` | |
-| FR-54 | Báo cáo Xuất - Nhập - Tồn | Xuất biến động tồn kho (Tồn đầu kỳ, Nhập, Xuất bán, Tồn cuối kỳ) theo từng SKU | `A` | |
+| FR-52 | Báo cáo doanh thu | Xuất tổng doanh thu, lợi nhuận theo Ngày/Tuần/Tháng, lọc theo kênh bán (POS vs Online) | `A` | X |
+| FR-53 | Báo cáo hiệu quả sản phẩm | Xuất Top N SP/SKU bán chạy nhất hoặc danh sách hàng tồn chậm luân chuyển | `A` | X |
+| FR-54 | Báo cáo Xuất - Nhập - Tồn | Xuất biến động tồn kho (Tồn đầu kỳ, Nhập, Xuất bán, Tồn cuối kỳ) theo từng SKU | `A` | X |
 
 ---
 

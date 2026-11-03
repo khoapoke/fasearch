@@ -9,10 +9,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.springboot.fasearch.common.enums.ProductStatus;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
+import com.springboot.fasearch.modules.khuyenmai.dto.request.CartQuoteRequest;
+import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
+import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
+import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
 import com.springboot.fasearch.modules.order.dto.request.CartItemReq;
 import com.springboot.fasearch.modules.order.dto.request.CartItemUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.CartItemRes;
@@ -40,6 +45,7 @@ public class CartServiceImpl implements CartService {
     private final UserRepository userRepository;
     private final ProductVariantRepository productVariantRepository;
     private final InventoryRepository inventoryRepository;
+    private final CheckoutBenefitService checkoutBenefitService;
 
     private Customer getCurrentCustomer() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -52,7 +58,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private Cart getOrCreateCart(Customer customer) {
-        return cartRepository.findByCustomerId(customer.getId())
+        return cartRepository.findByCustomerIdForUpdate(customer.getId())
                 .orElseGet(() -> cartRepository.save(Cart.builder()
                         .customer(customer)
                         .totalItems(0)
@@ -111,6 +117,17 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public CartQuoteResponse quote(CartQuoteRequest request) {
+        Customer customer = getCurrentCustomer();
+        Cart cart = cartRepository.findByCustomerId(customer.getId())
+                .orElseThrow(() -> new com.springboot.fasearch.exception.AppException(
+                        com.springboot.fasearch.exception.ErrorCode.CART_EMPTY));
+        return checkoutBenefitService.quote(cartItemRepository.findById_CartId(cart.getId()), customer.getId(),
+                request.getVoucherCode(), LoyaltyService.parsePoints(request.getRedeemedPoints()));
+    }
+
+    @Override
     @Transactional
     public CartRes addItemToCart(CartItemReq req) {
         Customer customer = getCurrentCustomer();
@@ -118,6 +135,13 @@ public class CartServiceImpl implements CartService {
 
         ProductVariant variant = productVariantRepository.findById(req.getSkuId())
                 .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND));
+
+        // Retired/draft products must answer with a business error, never an anonymous 500
+        // and never a silent success that will fail later at settlement.
+        ProductStatus productStatus = variant.getProduct().getStatus();
+        if (productStatus == ProductStatus.DRAFT || productStatus == ProductStatus.DISCONTINUED) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_AVAILABLE);
+        }
 
         Inventory inventory = inventoryRepository.findByVariantId(variant.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.INSUFFICIENT_STOCK));

@@ -33,6 +33,22 @@ public class OrderRes {
     private BigDecimal subTotal;
 
     private BigDecimal discountAmount;
+    private Integer redeemedPoints;
+    private BigDecimal pointsDiscount;
+    private Long loyaltyPolicyId;
+    private Long loyaltyPolicyVersion;
+    private BigDecimal redeemCurrencyPerPointSnapshot;
+    private Integer earnedPoints;
+
+    private Long voucherId;
+
+    private String voucherCode;
+
+    private String voucherCampaignName;
+
+    private Long voucherCampaignVersion;
+
+    private Boolean replayed;
 
     private BigDecimal shippingFee;
 

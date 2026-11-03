@@ -76,9 +76,47 @@ public class Order {
     @Column(name = "ma_voucher")
     private Long voucherId;
 
+    @Column(name = "ma_code_voucher", length = 50)
+    private String voucherCode;
+
+    @Column(name = "ten_ctkm_snapshot", length = 255)
+    private String voucherCampaignName;
+
+    @Column(name = "phien_ban_km")
+    private Long voucherCampaignVersion;
+
+    @Column(name = "loai_giam_snapshot", length = 50)
+    private String voucherDiscountType;
+
+    @Column(name = "gia_tri_giam_snapshot", precision = 15, scale = 2)
+    private BigDecimal voucherDiscountValue;
+
     @Column(name = "tien_giam", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Column(name = "redeemed_points", nullable = false)
+    @Builder.Default
+    private Integer redeemedPoints = 0;
+
+    @Column(name = "points_discount", precision = 15, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal pointsDiscount = BigDecimal.ZERO;
+
+    @Column(name = "loyalty_policy_id")
+    private Long loyaltyPolicyId;
+
+    @Column(name = "loyalty_policy_version")
+    private Long loyaltyPolicyVersion;
+
+    @Column(name = "redeem_currency_per_point_snapshot", precision = 19, scale = 2)
+    private BigDecimal redeemCurrencyPerPointSnapshot;
+
+    @Column(name = "earned_points")
+    private Integer earnedPoints;
+
+    @Column(name = "loyalty_quote_fingerprint", length = 64)
+    private String loyaltyQuoteFingerprint;
 
     @Column(name = "tong_tien", precision = 15, scale = 2)
     @Builder.Default

@@ -19,7 +19,10 @@ import com.springboot.fasearch.modules.product.dto.request.ProductUpdateReq;
 import com.springboot.fasearch.modules.product.dto.request.VariantReq;
 import com.springboot.fasearch.modules.product.dto.response.ProductDetailRes;
 import com.springboot.fasearch.modules.product.dto.response.ProductRes;
+import com.springboot.fasearch.modules.brand.entity.Brand;
+import com.springboot.fasearch.modules.brand.repository.BrandRepository;
 import com.springboot.fasearch.modules.product.entity.Category;
+import com.springboot.fasearch.modules.publish.entity.PublicationStatus;
 import com.springboot.fasearch.modules.product.entity.Product;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
 import com.springboot.fasearch.modules.product.mapper.ProductMapper;
@@ -41,6 +44,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final CategoryRepository categoryRepository;
+    private final BrandRepository brandRepository;
     private final ProductMapper productMapper;
 
     @Override
@@ -51,7 +55,9 @@ public class ProductServiceImpl implements ProductService {
             Long categoryId,
             BigDecimal minPrice,
             BigDecimal maxPrice,
-            ProductStatus status) {
+            ProductStatus status,
+            String brand,
+            Long brandId) {
 
         Specification<Product> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -65,6 +71,14 @@ public class ProductServiceImpl implements ProductService {
                 predicates.add(cb.equal(root.get("category").get("id"), categoryId));
             }
 
+            if (brandId != null) {
+                predicates.add(cb.equal(root.get("brand").get("id"), brandId));
+            }
+
+            if (StringUtils.hasText(brand)) {
+                predicates.add(cb.equal(cb.lower(root.get("brand").get("slug")), brand.trim().toLowerCase()));
+            }
+
             if (minPrice != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
             }
@@ -76,6 +90,8 @@ public class ProductServiceImpl implements ProductService {
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));
             }
+
+            predicates.add(cb.equal(root.get("publicationStatus"), PublicationStatus.PUBLISHED));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -91,6 +107,9 @@ public class ProductServiceImpl implements ProductService {
     public ProductDetailRes getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        if (product.getPublicationStatus() != PublicationStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
 
         return productMapper.toProductDetailResponse(product);
     }
@@ -103,10 +122,19 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = productMapper.toProduct(req);
         product.setCategory(category);
+        if (req.getBrandId() != null) {
+            Brand brand = brandRepository.findById(req.getBrandId())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand not found"));
+            product.setBrand(brand);
+        }
         product.setIsDeleted(false);
         if (product.getStatus() == null) {
             product.setStatus(ProductStatus.ACTIVE);
         }
+        // Legacy create is a staging back-path: nothing reaches the public catalog
+        // until it is published through POST /api/v1/admin/products/drafts/{id}/publish.
+        product.setPublicationStatus(PublicationStatus.DRAFT);
+        product.setPublicationVersion(0L);
 
         Product savedProduct = productRepository.save(product);
 
@@ -149,11 +177,18 @@ public class ProductServiceImpl implements ProductService {
     public ProductDetailRes updateProduct(Long id, ProductUpdateReq req) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        requireStaged(product, "edit");
 
         if (req.getCategoryId() != null) {
             Category category = categoryRepository.findById(req.getCategoryId())
                     .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
             product.setCategory(category);
+        }
+
+        if (req.getBrandId() != null) {
+            Brand brand = brandRepository.findById(req.getBrandId())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand not found"));
+            product.setBrand(brand);
         }
 
         productMapper.updateProductFromReq(req, product);
@@ -193,6 +228,7 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        requireStaged(product, "delete");
 
         product.setIsDeleted(true);
         product.setStatus(ProductStatus.DISCONTINUED);
@@ -203,5 +239,14 @@ public class ProductServiceImpl implements ProductService {
 
         productRepository.save(product);
         log.info("Soft deleted product ID [{}] and marked DISCONTINUED", id);
+    }
+
+    /** Published rows may only change through the staged draft/publish flow. */
+    private void requireStaged(Product product, String action) {
+        if (product.getPublicationStatus() == PublicationStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.DATA_CONFLICT,
+                    "Product " + product.getId() + " is published; " + action
+                            + " it through /api/v1/admin/products/drafts (staged publication)");
+        }
     }
 }

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import com.springboot.fasearch.common.enums.PaymentMethodType;
 
+import jakarta.validation.constraints.Size;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -30,4 +32,13 @@ public class PaymentProcessReq {
     private BigDecimal amountPaid;
 
     private String note;
+
+    @Size(max = 50)
+    private String voucherCode;
+
+    @DecimalMin(value = "0", message = "Redeemed points must be non-negative")
+    private BigDecimal redeemedPoints;
+
+    @Size(max = 64)
+    private String quoteFingerprint;
 }

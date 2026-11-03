@@ -20,6 +20,8 @@ public interface AuthService {
 
     AccountInfoRes getMyInfo(String username);
 
+    void changePassword(String username, String oldPassword, String newPassword);
+
     PageResponse<AccountInfoRes> getAccounts(Pageable pageable, String keyword, RoleType role, AccountStatus status);
 
     AccountInfoRes createInternalAccount(AccountCreateReq req);

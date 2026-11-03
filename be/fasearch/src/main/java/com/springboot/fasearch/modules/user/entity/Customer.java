@@ -65,6 +65,14 @@ public class Customer {
     @Builder.Default
     private Integer accumulatePoint = 0;
 
+    @Column(name = "diem_giu_cho", nullable = false)
+    @Builder.Default
+    private Integer heldPoints = 0;
+
+    @Column(name = "sales_history_complete", nullable = false)
+    @Builder.Default
+    private Boolean salesHistoryComplete = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ma_hang")
     private MembershipTier membershipTier;

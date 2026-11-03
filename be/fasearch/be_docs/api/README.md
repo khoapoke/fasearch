@@ -22,6 +22,7 @@ Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc R
 | 8 | **Khuyến mãi & Giảm giá** | [api-promotion.md](./api-promotion.md) | Chương trình khuyến mãi, phát hành mã voucher & xác thực voucher |
 | 9 | **Đổi / Trả hàng** | [api-returnorder.md](./api-returnorder.md) | Tra cứu hóa đơn đổi trả, lập phiếu đổi trả & nhập kho thu hồi |
 | 10 | **Báo cáo & Thống kê** | [api-analytics.md](./api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn |
+| 11 | **Thương hiệu** | [api-brand.md](./api-brand.md) | Brand public list/logo, product brand filter, deterministic import contract |
 
 ---
 
@@ -70,7 +71,7 @@ Mọi phản hồi từ máy chủ đều được chuẩn hóa theo định d�
     "pageSize": 10,
     "totalElements": 45,
     "totalPages": 5,
-    "isLast": false
+    "last": false
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"
@@ -106,3 +107,5 @@ Mọi phản hồi từ máy chủ đều được chuẩn hóa theo định d�
 | `404` | `RESOURCE_NOT_FOUND` / `*_NOT_FOUND` | Không tìm thấy tài nguyên theo ID hoặc điều kiện lọc |
 | `405` | `METHOD_NOT_ALLOWED` | Phương thức HTTP không được hỗ trợ trên endpoint này |
 | `500` | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không xác định từ phía hệ thống |
+
+S2 loyalty adds stable business codes `4201`–`4208` and reuses S1 `4107`–`4109`; these numeric `ApiResponse.code` values are independent of their HTTP status (the loyalty conflicts use HTTP 409). See [api-user.md](./api-user.md), [api-order.md](./api-order.md), [api-payment.md](./api-payment.md), and [api-promotion.md](./api-promotion.md).

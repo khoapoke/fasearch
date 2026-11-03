@@ -12,6 +12,7 @@ import com.springboot.fasearch.modules.product.dto.response.CategoryRes;
 import com.springboot.fasearch.modules.product.entity.Category;
 import com.springboot.fasearch.modules.product.mapper.CategoryMapper;
 import com.springboot.fasearch.modules.product.repository.CategoryRepository;
+import com.springboot.fasearch.modules.product.repository.ProductRepository;
 import com.springboot.fasearch.modules.product.service.interfaces.CategoryService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
     private final CategoryMapper categoryMapper;
 
     @Override
@@ -39,6 +41,20 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
 
         return categoryMapper.toCategoryResponse(category);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryRes> getCategoriesWithCounts() {
+        List<CategoryRes> result = new java.util.ArrayList<>();
+        for (Object[] row : categoryRepository.findNonEmptyWithPublishedCounts()) {
+            result.add(CategoryRes.builder()
+                    .id(((Number) row[0]).longValue())
+                    .categoryName((String) row[1])
+                    .productCount(((Number) row[2]).longValue())
+                    .build());
+        }
+        return result;
     }
 
     @Override
@@ -85,6 +101,12 @@ public class CategoryServiceImpl implements CategoryService {
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+
+        long productCount = productRepository.countByCategory_IdAndIsDeletedFalse(id);
+        if (productCount > 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST,
+                    "Không thể xóa danh mục đang có " + productCount + " sản phẩm tham chiếu. Vui lòng di chuyển hoặc xóa sản phẩm trước.");
+        }
 
         category.setIsDeleted(true);
         categoryRepository.save(category);

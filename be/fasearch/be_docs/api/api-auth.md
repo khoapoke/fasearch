@@ -301,3 +301,12 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
+
+
+## Đổi mật khẩu hiện tại
+
+- **Endpoint:** `POST /api/v1/auth/change-password`
+- **Quyền hạn:** Bearer (own account).
+- **Body:** `{ "oldPassword": "...", "newPassword": "..." }`.
+- **Hành vi:** sai mật khẩu cũ → `401`, không đổi dữ liệu; đúng → `200`, cập nhật BCrypt hash và tăng `tai_khoan.token_version`. JWT mang claim `tokenVersion`; filter so khớp với DB nên mọi token cũ bị từ chối (`401`) ngay sau khi đổi. Token của tài khoản khác không bị ảnh hưởng. Client phải đăng nhập lại.
+- **Migration:** `V13__account_token_version.sql` (candidate-only additive).

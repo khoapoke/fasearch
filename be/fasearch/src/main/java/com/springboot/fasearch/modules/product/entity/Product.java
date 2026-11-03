@@ -7,8 +7,12 @@ import java.util.List;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.springboot.fasearch.common.enums.ProductStatus;
+import com.springboot.fasearch.modules.publish.entity.PublicationStatus;
+import com.springboot.fasearch.modules.brand.entity.Brand;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,6 +53,13 @@ public class Product {
     @JoinColumn(name = "ma_danh_muc")
     private Category category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ma_thuong_hieu")
+    private Brand brand;
+
+    @Column(name = "model_code", length = 100)
+    private String modelCode;
+
     @Column(name = "chat_lieu", length = 100)
     private String material;
 
@@ -72,6 +83,47 @@ public class Product {
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publication_status", length = 20, nullable = false)
+    @Builder.Default
+    private PublicationStatus publicationStatus = PublicationStatus.PUBLISHED;
+
+    @Column(name = "publication_version", nullable = false)
+    @Builder.Default
+    private Long publicationVersion = 1L;
+
+    // Source attribution snapshot; populated only by the guarded candidate import.
+    @Column(name = "source_host", length = 150)
+    private String sourceHost;
+
+    @Column(name = "source_product_id", length = 100)
+    private String sourceProductId;
+
+    @Column(name = "source_url", columnDefinition = "TEXT")
+    private String sourceUrl;
+
+    @Column(name = "source_payload_sha256", length = 64)
+    private String sourcePayloadSha256;
+
+    @Column(name = "source_fetched_at")
+    private java.time.LocalDateTime sourceFetchedAt;
+
+    @Column(name = "source_price", precision = 15, scale = 2)
+    private java.math.BigDecimal sourcePrice;
+
+    @Column(name = "source_currency", length = 10)
+    private String sourceCurrency;
+
+    @Column(name = "source_brand", length = 150)
+    private String sourceBrand;
+
+    @Column(name = "curation_class", length = 30)
+    private String curationClass;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "published_ref_id")
+    private Product publishedRef;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

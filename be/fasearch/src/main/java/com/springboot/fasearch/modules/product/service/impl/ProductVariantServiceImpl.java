@@ -68,7 +68,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 throw new AppException(ErrorCode.BARCODE_ALREADY_EXISTS);
             }
         } else {
-            barcode = String.format("SP%04d-%s-%s", productId, color.toUpperCase(), size.toUpperCase());
+            barcode = maVachTuDong(productId, color, size);
             if (productVariantRepository.existsByBarcode(barcode)) {
                 barcode = barcode + "-" + (System.currentTimeMillis() % 10000);
             }
@@ -137,10 +137,9 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
         Product product = variant.getProduct();
         String barcode = variant.getBarcode();
-        if (barcode == null || barcode.isBlank()) {
-            barcode = String.format("SP%04d-%s-%s", product.getId(),
-                    variant.getColor() != null ? variant.getColor().toUpperCase() : "DEF",
-                    variant.getSize() != null ? variant.getSize().toUpperCase() : "STD");
+        // Mã vạch cũ có thể chứa ký tự tiếng Việt (Code128 không mã hoá được) -> sinh lại ASCII.
+        if (barcode == null || barcode.isBlank() || !asciiOnly(barcode)) {
+            barcode = maVachTuDong(product.getId(), variant.getColor(), variant.getSize());
             variant.setBarcode(barcode);
             productVariantRepository.save(variant);
         }
@@ -159,6 +158,36 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 .build();
     }
 
+    /**
+     * Mã vạch tự sinh: chỉ dùng ASCII vì Code128 không mã hoá được ký tự tiếng Việt
+     * (ví dụ "Đen" từng làm bộ sinh mã vạch ném lỗi 500). Bỏ dấu, chỉ giữ A-Z0-9.
+     */
+    private static String maVachTuDong(Long productId, String color, String size) {
+        return String.format("SP%04d-%s-%s", productId, asciiHoa(color, "DEF"), asciiHoa(size, "STD"));
+    }
+
+    private static String asciiHoa(String value, String macDinh) {
+        if (value == null || value.isBlank()) {
+            return macDinh;
+        }
+        String khongDau = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd')
+                .replace('Đ', 'D')
+                .toUpperCase(java.util.Locale.ROOT)
+                .replaceAll("[^A-Z0-9]+", "");
+        return khongDau.isEmpty() ? macDinh : khongDau;
+    }
+
+    private static boolean asciiOnly(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) > 127) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public byte[] getBarcodeImageBytes(Long skuId) {
@@ -166,10 +195,8 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND));
 
         String barcode = variant.getBarcode();
-        if (barcode == null || barcode.isBlank()) {
-            barcode = String.format("SP%04d-%s-%s", variant.getProduct().getId(),
-                    variant.getColor() != null ? variant.getColor().toUpperCase() : "DEF",
-                    variant.getSize() != null ? variant.getSize().toUpperCase() : "STD");
+        if (barcode == null || barcode.isBlank() || !asciiOnly(barcode)) {
+            barcode = maVachTuDong(variant.getProduct().getId(), variant.getColor(), variant.getSize());
         }
 
         return barcodeService.generateBarcodePngBytes(barcode, 300, 100);

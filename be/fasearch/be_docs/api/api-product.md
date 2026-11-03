@@ -333,3 +333,37 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
+
+## Upload/serve ảnh sản phẩm (STT6 P2)
+
+### POST /api/v1/products/{id}/image
+Tải ảnh sản phẩm lên (multipart/form-data, field `file`).
+
+**Quyền hạn:** `ADMIN`
+
+**Validation:**
+- Loại file: PNG, JPG, JPEG, WEBP
+- Kích thước tối đa: 5MB
+- Tên file được sinh UUID an toàn (không path traversal)
+
+**Response:** HTTP 200 với URL ảnh (`/api/v1/products/images/{fileName}`).
+
+### GET /api/v1/products/images/{fileName}
+Phục vụ ảnh sản phẩm đã tải lên (cache private, max-age 3600).
+
+**Validation:**
+- Tên file: chỉ cho phép ký tự an toàn + phần mở rộng ảnh
+- Không cho phép path traversal (`..`, `/`, `\`)
+
+### DELETE /api/v1/products/{id}/image
+Xóa ảnh sản phẩm. Xóa file trên đĩa và đặt imageUrl về rỗng.
+
+**Quyền hạn:** `ADMIN`
+
+**Response:** HTTP 200 với message "Xóa ảnh sản phẩm thành công".
+
+### Validation thực tế (STT6 P2 fix)
+- Kiểm tra bytes ảnh thực sự bằng ImageIO (không chỉ dựa vào MIME/extension)
+- Từ chối file corrupt/spoofed (400 INVALID_IMAGE_FILE)
+- Kiểm tra product tồn tại và khả dụng TRƯỚC khi ghi file (không orphan file)
+- Tên file sinh UUID an toàn, không path traversal

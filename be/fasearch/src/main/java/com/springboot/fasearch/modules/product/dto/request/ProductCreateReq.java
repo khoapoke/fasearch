@@ -44,6 +44,11 @@ public class ProductCreateReq {
 
     private String imageUrl;
 
+    private Long brandId;
+
+    @Size(max = 100, message = "Model code tối đa 100 ký tự")
+    private String modelCode;
+
     @Builder.Default
     private ProductStatus status = ProductStatus.ACTIVE;
 

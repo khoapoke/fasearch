@@ -80,7 +80,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 
 - **Endpoint:** `POST /api/v1/orders/checkout`
 - **Quyền hạn:** `CUSTOMER`
-- **Mô tả:** Chốt giỏ hàng tạo đơn hàng mới, tạm giữ tồn kho, áp dụng voucher (nếu có).
+- **Mô tả:** Chốt giỏ hàng tạo đơn hàng mới, tạm giữ tồn kho, áp dụng voucher/điểm theo quote hiện hành. `shippingFee` giữ nguyên legacy caller input; S2 không tính lại hoặc đưa phí ship vào fingerprint.
 
 ### Request Body
 ```json
@@ -89,13 +89,19 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   "receiverName": "Nguyễn Văn A",
   "receiverPhone": "0987654321",
   "voucherCode": "FASEARCH10",
+  "redeemedPoints": 2,
+  "quoteFingerprint": "opaque-server-token",
+  "expectedMerchandiseAmountDue": 565000.00,
+  "checkoutKey": "client-generated-idempotency-key",
   "paymentMethod": "VNPAY_QR",
   "shippingFee": 30000.00,
   "note": "Giao vào giờ hành chính"
 }
 ```
 
-### Response Thành công (HTTP 201 Created)
+Khi quote có benefit, gửi đúng `quoteFingerprint`, `expectedMerchandiseAmountDue` và `checkoutKey`; checkout kiểm tra lại trong transaction. `checkoutKey` bắt buộc nếu có voucher/điểm. Giá/cart/voucher/policy/allowance đổi sau quote trả HTTP 409 / business code `4107 QUOTE_CHANGED`. Cùng key nhưng request input khác (kể cả shippingFee) trả HTTP 409 / `4108 IDEMPOTENCY_CONFLICT`; shippingFee không thuộc quote fingerprint.
+
+### Response Thành công (HTTP 201 Created; exact replay HTTP 200)
 ```json
 {
   "success": true,
@@ -107,8 +113,14 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
     "status": "PENDING",
     "subTotal": 630000.00,
     "discountAmount": 63000.00,
+    "redeemedPoints": 2,
+    "pointsDiscount": 2000.00,
+    "loyaltyPolicyId": 7,
+    "loyaltyPolicyVersion": 2,
+    "redeemCurrencyPerPointSnapshot": 1000.00,
+    "earnedPoints": null,
     "shippingFee": 30000.00,
-    "totalAmount": 597000.00,
+    "totalAmount": 595000.00,
     "createdAt": "2026-10-25T15:30:00"
   },
   "errors": null,
@@ -130,6 +142,8 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   - `orderCode`: Tìm theo mã đơn hàng.
   - `customerPhone`: Tìm theo số điện thoại khách hàng.
   - `startDate`, `endDate`: Khoảng thời gian đặt hàng.
+
+Order list/detail giữ nguyên fields cũ và thêm `redeemedPoints`, `pointsDiscount`, `loyaltyPolicyId`, `loyaltyPolicyVersion`, `redeemCurrencyPerPointSnapshot`, `earnedPoints`. `earnedPoints` null trước settlement; no-snapshot/pre-S2 orders giữ null. Line `discountAmount` vẫn là voucher discount; `pointsDiscountAmount` là phần phân bổ điểm và tổng line allocation bằng `pointsDiscount`.
 
 ### 3.2. Xem chi tiết đơn hàng
 - **Endpoint:** `GET /api/v1/orders/{id}`
@@ -158,10 +172,19 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
         "size": "L",
         "quantity": 1,
         "unitPrice": 350000.00,
-        "totalPrice": 350000.00
+        "totalPrice": 350000.00,
+        "discountAmount": 0.00,
+        "pointsDiscountAmount": 0.00
       }
     ],
     "subTotal": 350000.00,
+    "discountAmount": 0.00,
+    "redeemedPoints": 0,
+    "pointsDiscount": 0.00,
+    "loyaltyPolicyId": null,
+    "loyaltyPolicyVersion": null,
+    "redeemCurrencyPerPointSnapshot": null,
+    "earnedPoints": null,
     "shippingFee": 30000.00,
     "totalAmount": 380000.00,
     "createdAt": "2026-10-25T15:30:00"
@@ -189,7 +212,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ### 4.2. Hủy đơn hàng (FR-38)
 - **Endpoint:** `POST /api/v1/orders/{id}/cancel`
 - **Quyền hạn:** `ADMIN`, `STAFF`, `CUSTOMER`
-- **Mô tả:** Hủy đơn hàng trước khi hoàn tất thanh toán. Khách hàng chỉ có thể tự hủy đơn khi đơn ở trạng thái `PENDING` hoặc `CONFIRMED`. Nhân viên/Admin có thể hủy bất kỳ lúc nào trước khi hoàn tất. Hệ thống tự động hoàn trả số lượng tồn kho đã tạm giữ (availableStock += quantity, reservedStock -= quantity) (FR-40).
+- **Mô tả:** Khách hàng chỉ có thể tự hủy đơn `PENDING`/`CONFIRMED`; STAFF/ADMIN chỉ hủy đơn chưa PAID theo trạng thái cho phép. Trước bàn giao, hủy giải phóng stock, voucher và điểm giữ chỗ một lần trong cùng transaction. Sau bàn giao, financial holds của đơn voucher/đổi điểm S2 được giữ; hóa đơn đã PAID không thể bị hủy/giải phóng như đơn chưa thanh toán. Refund/reversal nằm ngoài scope.
 - **Request Body:**
 ```json
 {
@@ -343,6 +366,17 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
   "timestamp": "2026-10-28T15:26:00"
 }
 ```
+
+---
+
+### 5.3. Báo giá đơn tạm POS
+- **Endpoint:** `POST /api/v1/orders/pos/{orderId}/quote`
+- **Quyền hạn:** `ADMIN`, `STAFF`
+- **Request Body:** `{ "voucherCode":"SAVE10", "redeemedPoints":2 }`
+- **Mô tả:** Dùng persisted draft lines và customer đã link lúc tạo draft. Trả cùng totals/lines/fingerprint như `POST /api/v1/cart/quote`, bổ sung `orderId`. Preview-only; không giữ quota/điểm/tồn kho. Draft không có customer không được redeem hoặc earn.
+
+### 5.4. Settlement POS
+`POST /api/v1/payments/process` nhận thêm `voucherCode`, `redeemedPoints`, `quoteFingerprint` chỉ cho POS. Phải gửi fingerprint chính xác từ quote khi có benefits; service khóa và tính lại draft, rồi atomically giữ/tiêu thụ benefit, trừ tồn kho và lập invoice CASH. Chi tiết request/receipt ở [api-payment.md](./api-payment.md). Replay request y hệt trả lại invoice hiện có với HTTP 200; input tài chính khác trả HTTP 409 / `4108 IDEMPOTENCY_CONFLICT`.
 
 ---
 

@@ -1,6 +1,6 @@
 # TÀI LIỆU API: MODULE ANALYTICS (BÁO CÁO & THỐNG KÊ)
 
-Module `analytics` phục vụ quản trị viên theo dõi sức khỏe kinh doanh: tổng hợp doanh thu và lợi nhuận theo đa chiều, xếp hạng sản phẩm bán chạy/tồn chậm và báo cáo biến động xuất - nhập - tồn kho.
+Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh doanh. S2 không triển khai hoặc sửa các route báo cáo này; S3 vẫn gate riêng sau independent S2 technical PASS. XNT acceptance giữ SKU×warehouse; schema hiện chưa có warehouse identity/movement history và không được suy diễn missing opening/cost/channel thành zero. Chỉ công bố các báo cáo sau khi có contract/data readiness riêng.
 
 ---
 
@@ -140,7 +140,7 @@ Module `analytics` phục vụ quản trị viên theo dõi sức khỏe kinh do
     "pageSize": 10,
     "totalElements": 1,
     "totalPages": 1,
-    "isLast": true
+    "last": true
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"

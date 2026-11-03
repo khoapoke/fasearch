@@ -10,12 +10,16 @@
 
 ## 1. CURRENT CONTEXT
 
+- **Active task:** `admin-linked-demo-data` (BE lane) — candidate `18158` / DB `fasearch_admin_linked_demo_20261103` (V20) / 60-order demo dataset seeded + reconciled; stage-1 400 fix live; AI/media read-only reuse. Contract: `.agent/tasks/admin-linked-demo-data/live/be/CONTRACT.md`.
+- **Previous task:** `admin-benefits-reports-completion` (BE lane) — candidate `18156` / DB `fasearch_admin_benefits_reports_20261103` (V20) / read-only analytics LIVE; S1 benefits endpoints verified. Contract: `.agent/tasks/admin-benefits-reports-completion/live/be/CONTRACT.md`.
+- **Previous task:** `customer-catalog-detail-r5` (BE lane) — candidate `18154` / DB `fasearch_catalog_detail_r5_20261103` (V20) / taxonomy repaired to 12 canonical buckets / with-counts + sentinel flags live; AI 8024 read-only reuse. Contract: `.agent/tasks/customer-catalog-detail-r5/live/be/CONTRACT.md`.
+- **Previous task:** `customer-storefront-refinement-r3` (BE lane) — candidate `18150` / AI `8022` / DB `fasearch_storefront_r3_20261102` / index `storefront_r3_v1`. Catalog expanded from verified first-party VN + global feeds (1,259 published products), real CLIP index, brand filter and search proxies verified. Contract: `.agent/tasks/customer-storefront-refinement-r3/live/be/CONTRACT.md`.
 - **Completed Tasks:**
   - Module `search` (100% COMPLETED: FR-NC1, FR-NC2, FR-NC3):
     - `FR-NC1`: Text Search (`POST /api/v1/search/text`) querying CLIP vector embeddings in Qdrant via FastAPI AI Service.
     - `FR-NC2`: Image Search (`POST /api/v1/search/image`) uploading reference image binary and retrieving visually similar products.
     - `FR-NC3`: Multimodal Search (`POST /api/v1/search/multimodal`) combining reference image and modifying text query with configurable `text_weight`.
-  - Module `payment` (100% COMPLETED: FR-42, FR-43):
+  - Module `payment` S1 baseline (FR-42, FR-43 historically completed; S2 loyalty settlement replacement is active):
     - `FR-42`: Order payment calculation (`POST /api/v1/payments/calculate`).
     - `FR-43`: Payment processing & Invoice generation (`GET /api/v1/payments/methods`, `POST /api/v1/payments/process`, Flyway migration `V9`).
   - Module `order` / `cart` (100% COMPLETED: FR-35A -> FR-41):
@@ -31,9 +35,8 @@
   - Module `product` & `category`: `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Module 5 (`search`) is 100% completed. Ready to proceed to Module 9 (`promotion`: FR-44 to FR-47).
-- **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify database schema, voucher lifecycle (`VoucherStatus`: `UPCOMING`, `ACTIVE`, `EXPIRED`, `DISABLED`), and API specifications for `FR-44` (Promotion list & filtering).
+- **Active Task:** Brand catalog / AI mapping / sandbox payments on `codex/brand-catalog-payments-be` (base `9b2e32ca`). Added additive V14 brand schema, brand read API/logo serving, product brand/model fields and exact brand filter; added deterministic guarded brand importer (`scripts/import_brand_catalog.py`) with seed-only stock default and explicit `--update-stock` guard. Added V15 payment-attempt/event skeleton, Stripe/VNPAY signature verifiers, focused unit tests. No candidate runtime/DB/index yet; external provider E2E and credentials remain pending.
+- **Next Immediate Actions:** run focused build/tests, publish exact pins/progress, then build candidate DB/AI index when FE manifest arrives; no provider PAID claims or public IPN exposure.
 - **Technical Gotchas & Constraints:**
   - AI Search (`POST /api/v1/search/**`): Public endpoints in `PUBLIC_ENDPOINTS` (`/api/v1/search/**`); callers do not require authentication.
   - Integration with FastAPI AI Server (`ai-service.base-url: http://localhost:8000`) using Spring 6 `RestClient` in `FashionAiClient`.
@@ -41,7 +44,8 @@
   - Resilient product enrichment: safely tolerates `product_id == null` in test datasets, while enriching with `Product` data (`productName`, `price`, `status`) when a valid `product_id` matches the database.
   - Image file validation: checks non-empty, supported extensions (`.png`, `.jpg`, `.jpeg`, `.webp`), and size limit ($\le 10\text{MB}$).
   - Connection resilience: catches connection refusals / timeouts and throws `AI_SERVICE_UNAVAILABLE` (503).
-  - Payment processing (`POST /api/v1/payments/process`): Checks order existence and terminal states (`CANCELLED`, `RETURNED`), rejects already paid orders (`ORDER_ALREADY_PAID`), enforces customer ownership, verifies payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`), calculates cash change for cash payments, auto-generates invoice code `HD-YYYYMMDD-XXX`, persists `Invoice` & `Payment`, awards customer loyalty points (100,000 VNĐ = 1 pt), and handles omnichannel inventory deduction for POS draft orders (`OrderStatus.DRAFT` -> `OrderStatus.COMPLETED`).
+  - Loyalty gotcha: historical S1 payment code had a fixed-rate award, and historical preview docs used a fixed point conversion. These are not S2 defaults. For orders with an S2 policy snapshot, one settlement authority uses immutable policy version and `Invoice.totalActualPaid`; no second legacy award runs. Pre-S2 non-voucher point calculation remains display-only; pre-S2 orders receive no retroactive S2 earning/redemption. Unknown invoice coverage remains null, not zero.
+  - Promotions-checkout S1 uses the isolated candidate contract revision 2 (SHA-256 `734e0db49016c427efb1ec242214cb097c876565445b149bb651614a943aae82`), migration V10, DB `fasearch_promotions_checkout_20261030` on PG55440, and loopback BE18124 only. Exact source/JAR/data pins and retained synthetic fixtures are in the shared `live/be/BE-HANDOFF-S1.md`; no parent DB or BE18122 changes.
   - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
@@ -49,78 +53,38 @@
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
 
-### [Session 26] Implemented Module 5 (AI Search: FR-NC1, FR-NC2, FR-NC3) (2026-10-30)
-- **Done:**
-  - Configured `ai-service.base-url`, `api-prefix`, and `timeout-seconds` in `application.yaml`.
-  - Added AI search error codes in `ErrorCode.java`: `AI_SERVICE_UNAVAILABLE` (503), `INVALID_IMAGE_FILE` (400).
-  - Created DTOs in `modules.search.dto`:
-    - `ai/AiApiResponse.java`, `ai/AiSearchData.java`, `ai/AiSearchResultItem.java`, `ai/AiTextSearchReq.java` for FastAPI communication.
-    - `request/TextSearchReq.java` (validated `@NotBlank query`, `@Min(1) @Max(24) limit`).
-    - `response/ProductSearchItemRes.java` (`id`, `score`, `imagePath`, `fullImageUrl`, `fileName`, `catalog`, `productId`, `productName`, `price`, `status`) and `response/AiSearchRes.java`.
-  - Created `FashionAiClient` using Spring 6 `RestClient`: implements `searchByText`, `searchByImage`, `searchMultimodal` with robust error wrapping into `AI_SERVICE_UNAVAILABLE`.
-  - Created `SearchService` & `SearchServiceImpl`: validates input text & image files (`.png`, `.jpg`, `.jpeg`, `.webp`, $\le 10\text{MB}$), generates `fullImageUrl`, and enriches product details from `ProductRepository` when `productId` is present.
-  - Created `SearchController` with:
-    - `POST /api/v1/search/text` (FR-NC1)
-    - `POST /api/v1/search/image` (FR-NC2)
-    - `POST /api/v1/search/multimodal` (FR-NC3)
-    - No `@Operation` Swagger annotations, all responses wrapped in `ApiResponse<AiSearchRes>`.
-  - Updated `SecurityConfig`: added `/api/v1/search/**` to `PUBLIC_ENDPOINTS`.
-  - Updated `be_docs/module.md` marking `FR-NC1`, `FR-NC2`, `FR-NC3` as completed (`X`). Module 5 is 100% completed.
-- **Build Status:** `BUILD SUCCESS` (185 source files, 0 errors, 0 warnings).
+- F-LINK-01 (Control finding, fixed): the seeder quoted vouchers but omitted voucherCode/fingerprint/expectedMerchandiseAmountDue at checkout, so the 6 planned voucher orders settled full-price. Fixed run_order to send all three + assert persisted voucherCode/discount>0 from GET detail before proceeding. Added 3 supplemental API journeys (2 voucher-paid COMPLETED + 1 voucher-cancelled): idx 60 id 78 (voucher 457,000, invoice HD-20261103-037 PAID 4,113,000, usage CONSUMED, stock deducted, ledger EARN), idx 61 id 79 (voucher 95,000, invoice HD-20261103-038 PAID 855,000, CONSUMED, EARN 34), idx 62 id 80 (voucher hold RELEASED on pre-handoff cancel, no invoice). 63 new orders, 44 paid total. Checkout-key idempotency verified live (burned-key reuse with different inputs -> 409; identical replay returns the same order flagged replayed=true and the seeder refuses to drive it). Manual idx 60/61 recording from direct verification after trailing tooling crashes (column names su_dung_voucher, manifest status flag); no data rewritten.
 
-### [Session 25] Implemented FR-43 (Process Payment & Generate Invoice) in Payment Module (2026-10-29)
-- **Done:**
-  - Created Flyway migration `V9__refactor_invoice_and_payment_tables.sql`: added `ma_hd`, `ma_nv`, `tien_khach_dua`, `tien_thua`, `ghi_chu` to `hoa_don`; added `ma_giao_dich`, `ghi_chu`, `da_xoa` to `thanh_toan`; widened `thue_vat` to `DECIMAL(15, 2)`; seeded 4 active payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`).
-  - Added payment error codes in `ErrorCode.java`: `INVOICE_NOT_FOUND` (404), `ORDER_ALREADY_PAID` (400), `PAYMENT_METHOD_NOT_FOUND` (404), `PAYMENT_AMOUNT_INSUFFICIENT` (400).
-  - Created JPA Entities with Hibernate 6 `@SQLRestriction("da_xoa = false")`: `PaymentMethod`, `Invoice`, `Payment`.
-  - Created Spring Data JPA repositories in `modules.payment.repository`: `PaymentMethodRepository`, `InvoiceRepository`, `PaymentRepository`.
-  - Created DTOs in `modules.payment.dto`: `PaymentMethodRes`, `PaymentProcessReq`, `InvoiceRes`.
-  - Implemented `getPaymentMethods()` and `processPayment(PaymentProcessReq)` in `PaymentServiceImpl`:
-    - Validates order existence, prevents payment on cancelled/returned orders, checks for duplicate payment (`ORDER_ALREADY_PAID`).
-    - Validates customer ownership (403 `FORBIDDEN` if customer accesses foreign order).
-    - Tracks cashier/admin in `invoice.employee` for internal staff checkout.
-    - Validates cash payment amount sufficiency and computes `cashChange = cashReceived - totalAmount`.
-    - Handles Omnichannel stock deduction for POS draft orders (`order.status == DRAFT`): deducts `physicalStock` and `availableStock` atomically in `ton_kho`, sets order status to `COMPLETED`.
-    - Updates online order status from `PENDING` to `CONFIRMED`.
-    - Auto-generates unique invoice code `HD-YYYYMMDD-XXX`.
-    - Persists `Invoice` and `Payment` records with `PaymentStatus.PAID`.
-    - Accrues customer loyalty points (1 point per 100,000 VNĐ paid) if customer is present.
-  - Updated `PaymentController`: Added `GET /api/v1/payments/methods` (HTTP 200) and `POST /api/v1/payments/process` (HTTP 201), no `@Operation` annotations.
-  - Updated `SecurityConfig`: Added `/api/v1/payments/methods` to `PUBLIC_ENDPOINTS` and authorized `POST /api/v1/payments/process` for `ADMIN`, `STAFF`, `CUSTOMER`.
-  - Updated `be_docs/module.md` marking `FR-43` as completed (`X`). Module 8 is now 100% completed.
-- **Build Status:** `BUILD SUCCESS` (174 source files, 0 errors, 0 warnings).
-
-### [Session 24] Implemented FR-42 (Order Payment Calculation) in Payment Module (2026-10-29)
-- **Done:**
-  - Created DTOs in `modules.payment.dto`: `PaymentCalculateReq` and `PaymentCalculationRes`.
-  - Created `PaymentService` & `PaymentServiceImpl`:
-    - `POST /api/v1/payments/calculate`: Validates order existence and terminal states (`CANCELLED`, `RETURNED`); enforces customer ownership isolation (returns 403 `FORBIDDEN` if foreign order accessed by `CUSTOMER`); computes line item subtotal from `order.getDetails()`; computes voucher discount; computes point redemption discount (1 point = 1,000 VNĐ, verified against `customer.accumulatePoint`); calculates net product total, adds delivery `shippingFee`, and computes 8% VAT.
-  - Created `PaymentController` with `POST /api/v1/payments/calculate`, protected by `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")`, returning `ApiResponse<PaymentCalculationRes>` with HTTP 200 OK.
-  - Updated `SecurityConfig` authorizing `POST /api/v1/payments/calculate` for `ADMIN`, `STAFF`, `CUSTOMER`.
-  - Updated `be_docs/module.md` marking `FR-42` as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (165 source files, 0 errors, 0 warnings).
-
-### [Session 23] Implemented FR-41 (Shipping Fee Calculation) & Verified FR-40 in Order Module (2026-10-28)
-- **Done:**
-  - Created DTOs: `ShippingFeeCalcReq` and `ShippingFeeRes`.
-  - Updated `OrderService` & `OrderServiceImpl`: `POST /api/v1/orders/calculate-shipping-fee`: Calculates real-time delivery fee based on destination location (TP.HCM 25,000 VNĐ; major cities 30,000 VNĐ; other provinces 35,000 VNĐ) and package weight (>2,000g surcharge). Returns `ShippingFeeRes` with estimated delivery days.
-  - Updated `OrderController`: Added `POST /calculate-shipping-fee` returning `ApiResponse<ShippingFeeRes>` with HTTP 200 OK.
-  - Updated `SecurityConfig`: Added `/api/v1/orders/calculate-shipping-fee` to `PUBLIC_ENDPOINTS`.
-  - Verified and closed `FR-40` (Automated stock reservation on checkout, deduction on completion, and restoration on cancellation).
-  - Updated `be_docs/module.md` marking both `FR-40` and `FR-41` as completed (`X`). Module 7 is now 100% completed.
-- **Build Status:** `BUILD SUCCESS` (160 source files, 0 errors, 0 warnings).
-
-### [Session 22] Implemented FR-39 (POS Draft Orders) in Order Module (2026-10-28)
-- **Done:**
-  - Added `DRAFT` status to `OrderStatus` enum.
-  - Updated `Order` entity to make `customer` nullable (allowing POS walk-in customers).
-  - Created DTOs: `PosDraftItemReq` and `PosDraftOrderReq`.
-  - Updated `OrderRepository` with `findByStatusOrderByOrderDateDesc(OrderStatus.DRAFT)`.
-  - Updated `OrderService` & `OrderServiceImpl`: `POST /api/v1/orders/pos/draft` (draft order creation) and `GET /api/v1/orders/pos/drafts` (list active drafts).
-  - Enhanced `mapToOrderDetailRes` to safely handle nullable customer.
-  - Added guard preventing `DRAFT` orders from transitioning via online order pipeline and skipping reserved stock release on cancellation.
-  - Updated `OrderController`: Added `POST /api/v1/orders/pos/draft` (HTTP 201) and `GET /api/v1/orders/pos/drafts` (HTTP 200).
-  - Updated `SecurityConfig`: Configured `/api/v1/orders/pos/**` for `ADMIN` and `STAFF`.
-  - Updated `be_docs/module.md` marking FR-39 as completed (`X`).
-  - Updated `be_docs/api/api-order.md` with complete request/response documentation.
-- **Build Status:** `BUILD SUCCESS` (158 source files, 0 errors, 0 warnings).
+### [Session ALD-1] Admin linked demo data (2026-11-03)
+- New isolated candidate: BE `18158` / DB `fasearch_admin_linked_demo_20261103` (V20, role-owned clone of ABR; media/AI read-only reuse). Parent ABR 18156/DB and all older runtimes untouched; pool max 2 / min 0, no global/PG changes. JAR `664bb8...` (only the missing-param handler added).
+- Stage 1: added `MissingServletRequestParameterException` -> 400 to GlobalExceptionHandler (same file convention as the type-mismatch handler). Authenticated missing year/startDate now 400 with the parameter named; anon 401 and CUSTOMER 403 preserved. Narrow tests (2 unit + live matrix). Root cause: DefaultHandlerExceptionResolver.sendError collided with the security chain.
+- Stage 2: `scripts/seed_linked_demo_orders.py` (idempotent, run-key ABR-DEMO-20261103-v1): exactly 60 orders via real APIs (36 COMPLETED+CASH/PAID, 8 SHIPPING, 4 CONFIRMED, 4 PACKING, 4 PENDING, 4 CANCELLED), 10 synthetic @example.test customers, one multi-line import receipt top-up (unit price, documented), 1 ABR-DEMO campaign + ABR-DEMO-10 code activated, voucher subset settled at SHIPPING by ADMIN per COD rule. No ad-hoc PAID/stock SQL, no backdating. Manifest has per-order invoice/paid/stock/ledger + before/after snapshots; reruns resume and skip recorded indexes.
+- Reconciled: 42 paid / 110,827,000 (Nov 2: 6/10,407,000 baseline; Nov 3: 36/100,420,000 new); Nike Dunk Low top qty 6; sku-level deltas match reservation->deduction; cancelled rows released, unpaid hold reservations. Voucher orders paid only at SHIPPING by staff-role (ADMIN here), per service guard.
+- Gotchas: LocalDateTime rejects offset datetimes (use naive local ISO in scripts); Shopify-style "Title" option + UNKNOWN size are presentation sentinels (R5 flags), not real choices; customer register-then-login needs incremental manifest writes or passwords are lost on crash; import receipt needs importPrice>0 per line; voucher campaign defaults TAM_DUNG (must PUT HOAT_DUNG with version); pickleball-style names need word-boundary matching care.
+### [Session ABR-1] Admin benefits + reports completion (2026-11-03)
+- New isolated candidate: BE `18156` / DB `fasearch_admin_benefits_reports_20261103` (role-owned clone of R5, schema V20, no new migration; R5 media namespace read-only reused). Parent R5/3169/18152 and all older runtimes untouched; pool max 2 / min 0, no global/PG changes. JAR `39435614...` (new: analytics module only).
+- S1 verified live with ADMIN JWT: promotions list 200 (4 campaigns)/detail 200/create 201 (new rows default TAM_DUNG, no auto-enable)/codes 201; loyalty policies 200 (5)/balance 200; anon 401, CUSTOMER 403 on admin writes; public promotions 200. Discount enum is PHAN_TRAM/SO_TIEN; LocalDateTime fields reject offset datetimes (test bug, not BE). Disposable [ABR-TEST] campaign id 5 + code left tagged in the new DB. Double campaign submit creates a second row (no idempotency key in contract) — recorded, not changed.
+- S2 implemented read-only `modules/analytics` (controller/DTO/service/repo, no schema edit): revenue/top-products/inventory-movement, ADMIN only; PAID-only settlement, channel ALL-only (no channel column), COGS/grossProfit null (no cost history), opening/import/damaged null (no warehouse/opening/detail history) + explicit coverage object. Reconciled live: 10,407,000 = 6 paid invoices; Nike Blazer qty 3 (2 PENDING lines excluded); sku 1 sold 1/available 12. Focused math/boundary tests 6/6; PublishServiceTest 10/10 still green.
+- Gotchas: `docker exec` without `-i` drops piped SQL; Mockito List.of needs explicit <Object[]> witness for Object[] stubbing; PageResponse lives in com.springboot.fasearch.shared.
+### [Session R5-1] R5 catalog taxonomy repair + with-counts + sentinel flags (2026-11-03)
+- New isolated candidate: BE `18154` / DB `fasearch_catalog_detail_r5_20261103` (V20, role-owned clone of R4; AI 8024 + `storefront_r4_v1` reused read-only because product IDs/photos are unchanged). Parent 3169/18152/8024 and 3167/3165/payments untouched; pool max 2 / min 0, no global/PG changes.
+- Published `live/be/TAXONOMY-AUDIT.md` + `CONTRACT.md` early: FE's 4-category symptom is its BFF filtering by first-page ids (DB always had ~105 rows); 184 Khác rows came from `category_for()` substring misses (jorts/dress/đầm, sets, singletons); feeds carry rich types (rubies 2-letter codes decoded against live titles; mlb-korea types empty; vans types are model lines).
+- Added V20 `san_pham.source_product_type/source_tags` (provenance only) and `scripts/repair_taxonomy_r5.py`: explicit reviewed map to 12 canonical buckets (new: Áo kiểu id 12 reuse, Set/Bộ new id; renames Túi & Ví->Túi & Balo, Mũ/nón->Nón, Áo sơ mi->Áo sơ mi & Polo, Áo khoác->Áo khoác & Hoodie), immutable input snapshot + semantic hash (mapping+sorted pairs, excludes volatile fields), coverage-gap protection (missing input rows keep FK + provenance, reported not remapped), JSON psql transport, idempotent rerun (0 moves on re-apply). Control finding incorporated: no Apparel/TOPS/bare-ÁO/DK/AK->T-shirt false precision (generic tops -> Áo kiểu, DK by name polo/cardigan/knit), host-aware name order (bags/hats before model words, vans vay-exclusion), đ normalization, 47 focused tests incl. real raw feed cases.
+- Result: 1,736 FK moves, 7 honest Khác (RUNNY/Sleek, patches pack, 1 BOTTOMS, JN jumpsuit, Jump), 8 coverage gaps kept with good FKs; histories intact (2245/12001/19/0). `GET /api/v1/categories/with-counts` (whole-catalog published counts, desc) + `VariantRes.colorIsSentinel/sizeIsSentinel` (Default Title / Không xác định only; 3124 verified live, 2193 real options unaffected). Focused tests 6/6; new immutable JAR (Java changed).
+- Gotchas: dict-literal duplicate TYPE_MAP keys shadow silently (verified no value conflicts); `docker exec` without `-i` drops piped SQL heredocs; MapStruct @AfterMapping needs the MappingTarget import (already present); interface constants work for sentinel literals.
+### [Session 32] R4 candidate: canonical brands, verified logos, wider verified catalog + new index (2026-11-03)
+- New isolated candidate: BE `18152` / AI `8024` / DB `fasearch_storefront_r4_20261103` (role-owned clone of the R3 DB, schema V19) / index `storefront_r4_v1`, media `runtime/private/customer-storefront-r4/media`. The R3 JAR is reused byte-identically (Java unchanged since `4f754b69`), so no rebuild was needed; parent 3167/18150/8022 and 3165/3163 untouched.
+- Canonical brand projection stays data-only (no schema change, ids/slugs frozen): the duplicate unqualified "MLB" label is split into `mlb` = "MLB League" (0 products, league identity) and `mlb-korea` = "MLB Korea" (fashion), each with its own distinct verified logo. `official_url` values that pointed at retailers were corrected to the brand's own site.
+- Added `scripts/fetch_brand_logos_r4.py` (BE is the sole validator/importer) with: per-brand scoped discovery (a shared mutable inline-SVG buffer caused cross-brand selection — fixed by returning candidates/blocks as locals), a strict SVG tag/attribute allowlist (rejects every `on*`, active tags, external/protocol-relative/`data:`/`javascript:` refs and CSS `url()`; internal `#fragment` refs allowed), multi-label public-suffix-aware site matching plus final-redirect host re-check (so `x.com.vn` never matches `brand.com.vn`), asset gates (favicon/touch-icon/marketing-path rejection, minimum size, banner-strip limit, header-area placement requirement), an identity gate for secondary sources, exact `--db` target guard, and `ink` contrast metadata for FE surfaces. `scripts/test_fetch_brand_logos_r4.py` holds 48 focused checks, including the reproduced control defects.
+- It also consumes the read-only research lane's `live/research/LOGO-CANDIDATES.json` as *candidates only*: BE re-fetches the brand page and re-verifies that the page itself references the asset before calling it first-party.
+- Logo outcome: 23 of 27 brands have a validated logo and all 23 routes answer `200`. `vans` (the site's own header asset turned out to be the "NEW ARRIVAL Family" marketing banner) and `bape` (only a "BAPE BLACK" sub-line asset existed) are honest text fallbacks, as are unreachable `thisisneverthat`/`under-armour`. `puma` was replaced from a 57×57 touch icon back to its verified SVG mark; an inherited `asics` SVG answered `400` until its XML prolog/DOCTYPE were normalized (same artwork).
+- Gotcha: `import_brand_catalog.py` used to null `logo_file_name` when a manifest brand carried no logo — a later catalog import silently wiped every fetched logo (25 → 14). The upsert now uses `COALESCE(EXCLUDED.logo_file_name, thuong_hieu.logo_file_name)`; keep logos applied after or alongside catalog imports.
+- Catalog: +936 eligible first-party products (per-host caps 180 VN / 80 global, a media/index budget, not a coverage claim) → 2,195 published of 2,245 rows, 12,001 variants, 27 brands, 105 categories; history intact (15 orders / 19 lines / 15 accounts, 0 lines without a SKU), enum domains unchanged. CLI note: `docker exec` without `-i` silently drops a piped SQL heredoc — always use `docker exec -i`.
+- Index: `storefront_r4_v1` rebuilt from the published rows only (2,195 points, 0 failed, 0 skipped, cached CLIP weights); AI `/dataset/images/{file}` needs `RAW_DATA_DIR` pointing at a directory whose `images/` holds real files, otherwise the BE image proxy 404s.
+### [Session 31] R3 storefront candidate: catalog expansion + real CLIP index (2026-11-02)
+- New isolated candidate `fasearch_storefront_r3_20261102` (role-owned, cloned read-only from the 3165 catalog DB, snapshot sha in `live/be/READY.json`), media namespace `runtime/private/customer-storefront-r3/media`, collection `storefront_r3_v1`. Parent 3165/18148/8020 and its DB/media/index untouched; no schema/auth/payment change (schema stays V19).
+- Added `scripts/fetch_vn_feeds_r3.py` (read-only): handles Haravan/Shopify (`title`, `images[].src`) and Bizweb/Sapo (`name`, `images[]` strings, `featured_image`) dialects, keeps `source_host`/`source_product_id`/`source_variant_id`/`source_sku`, raw payload sha, fetch timestamp and matched photo sha; maps retailer feeds to the actual feed vendor (`VENDOR_BRANDS`) instead of the retailer; per-host caps (VN 120, global 60) are a media/index time budget, never a coverage claim.
+- Data honesty: `demoPriceVnd` = median source variant price rounded up to 10.000 VND; demo stock = 2 when the feed marks the variant available else 0, with the feed flag preserved in `source_available` — supplier quantity is never copied into `ton_kho`.
+- `scripts/index_catalog_ai.py` gained `--db` so the cached-CLIP indexer can target a candidate DB. Indexing keeps deterministic point ids (uuid5 of product id + image sha), skips unpublished/imaged-less rows, reuses the cached model (no download/training).
+- Result: 1,259 published products (from 211), 6,438 variants, 27 brands, 105 categories; hidden fixtures preserved as `UNPUBLISHED` (no deletes); 15 orders / 19 order lines / 15 accounts intact, 0 order lines without a SKU. Brand filter answers 200 for all 27 slugs (7 legitimately empty), `storefront_r3_v1` has 1,259 points, re-running import and index is idempotent by content hash.
+- Gotcha: the AI `/dataset/images/{file}` static mount needs `RAW_DATA_DIR` pointing at a directory whose `images/` holds the media files (Starlette does not follow a symlinked mount root), otherwise the BE `/api/v1/search/images/{file}` proxy 404s.

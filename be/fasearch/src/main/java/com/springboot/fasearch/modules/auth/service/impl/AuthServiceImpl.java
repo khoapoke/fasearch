@@ -68,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String roleName = account.getRole() != null ? account.getRole().getName().name() : RoleType.CUSTOMER.name();
-        String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId());
+        String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId(), account.getTokenVersion());
 
         return AuthRes.builder()
                 .accessToken(token)
@@ -114,6 +114,7 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(req.getPhoneNumber())
                 .gender(req.getGender())
                 .accumulatePoint(0)
+                .salesHistoryComplete(true)
                 .account(account)
                 .isDeleted(false)
                 .build();
@@ -121,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(customer);
 
         String roleName = customerRole.getName().name();
-        String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId());
+        String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId(), account.getTokenVersion());
 
         log.info("Khách hàng mới đã đăng ký thành công: username={}", account.getUsername());
 
@@ -135,11 +136,36 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(oldPassword, account.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Mật khẩu cũ không đúng");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Mật khẩu mới phải khác mật khẩu cũ");
+        }
+
+        account.setPassword(passwordEncoder.encode(newPassword));
+        account.setTokenVersion(account.getTokenVersion() == null ? 1L : account.getTokenVersion() + 1);
+        accountRepository.save(account);
+        log.info("Password changed successfully for account [{}]", username);
+    }
+
+    @Override
     public AccountInfoRes getMyInfo(String username) {
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        return accountMapper.toAccountInfoResponse(account);
+        AccountInfoRes res = accountMapper.toAccountInfoResponse(account);
+        // Bổ sung id hồ sơ khách hàng để client tự tra cứu chính mình mà không phải
+        // đoán/hay dùng id tài khoản (hai id khác nhau).
+        res.setCustomerId(userRepository.findByAccount_Username(username)
+                .map(com.springboot.fasearch.modules.user.entity.Customer::getId).orElse(null));
+        return res;
     }
 
     @Override

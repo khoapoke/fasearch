@@ -30,5 +30,17 @@ public class ProductDetailRes {
     private BigDecimal price;
     private String imageUrl;
     private ProductStatus status;
+    private Long brandId;
+    private String brandName;
+    private String brandSlug;
+    private String brandLogoUrl;
+    private String modelCode;
     private List<VariantRes> variants;
+
+    private String sourceHost;
+    private String sourceUrl;
+    private String sourceBrand;
+    private java.math.BigDecimal sourcePrice;
+    private String sourceCurrency;
+    private String curationClass;
 }

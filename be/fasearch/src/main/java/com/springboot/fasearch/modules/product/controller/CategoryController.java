@@ -30,6 +30,13 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
+    @GetMapping("/with-counts")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<CategoryRes>> getCategoriesWithCounts() {
+        List<CategoryRes> result = categoryService.getCategoriesWithCounts();
+        return ApiResponse.success(200, "Lấy danh mục kèm số lượng thành công", result);
+    }
+
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<List<CategoryRes>> getAllCategories() {

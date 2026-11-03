@@ -46,4 +46,12 @@ public class OrderDetail {
 
     @Column(name = "don_gia", precision = 15, scale = 2, nullable = false)
     private BigDecimal unitPrice;
+
+    @Column(name = "tien_giam", precision = 15, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Column(name = "points_discount_amount", precision = 15, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal pointsDiscountAmount = BigDecimal.ZERO;
 }

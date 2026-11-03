@@ -143,7 +143,7 @@ public class SearchServiceImpl implements SearchService {
                 .id(item.getId())
                 .score(item.getScore())
                 .imagePath(item.getImagePath())
-                .fullImageUrl(buildFullImageUrl(item.getImagePath()))
+                .fullImageUrl(buildFullImageUrl(item.getImagePath(), item.getFileName()))
                 .fileName(item.getFileName())
                 .catalog(item.getCatalog())
                 .productId(prodId)
@@ -153,15 +153,23 @@ public class SearchServiceImpl implements SearchService {
                 .build();
     }
 
-    private String buildFullImageUrl(String imagePath) {
-        if (imagePath == null || imagePath.isBlank()) {
-            return "";
+    @Override
+    public com.springboot.fasearch.modules.search.client.FashionAiClient.DatasetImage downloadDatasetImage(
+            String fileName) {
+        return fashionAiClient.fetchDatasetImage(fileName);
+    }
+
+    private String buildFullImageUrl(String imagePath, String fileName) {
+        if (imagePath != null && !imagePath.isBlank()) {
+            String base = fashionAiClient.getBaseUrl();
+            return imagePath.startsWith("/") ? base + imagePath : base + "/" + imagePath;
         }
-        String base = fashionAiClient.getBaseUrl();
-        if (imagePath.startsWith("/")) {
-            return base + imagePath;
+        // Index hiện tại chỉ có file_name (image_path rỗng): trả URL qua route proxy của BE
+        // để FE không gọi trực tiếp cổng AI và không lộ đường dẫn nội bộ.
+        if (fileName != null && !fileName.isBlank()) {
+            return "/api/v1/search/images/" + fileName;
         }
-        return base + "/" + imagePath;
+        return "";
     }
 }
 

@@ -14,5 +14,7 @@ public interface PaymentService {
 
     List<PaymentMethodRes> getPaymentMethods();
 
-    InvoiceRes processPayment(PaymentProcessReq req);
+    PaymentResult processPayment(PaymentProcessReq req);
+
+    record PaymentResult(InvoiceRes receipt, boolean replayed) {}
 }

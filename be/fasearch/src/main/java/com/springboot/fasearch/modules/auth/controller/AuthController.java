@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.springboot.fasearch.modules.auth.dto.request.ChangePasswordReq;
+
 import com.springboot.fasearch.modules.auth.dto.request.LoginReq;
 import com.springboot.fasearch.modules.auth.dto.request.RegisterReq;
 import com.springboot.fasearch.modules.auth.dto.response.AccountInfoRes;
@@ -47,5 +49,13 @@ public class AuthController {
     public ApiResponse<AccountInfoRes> getMyInfo(Authentication authentication) {
         AccountInfoRes response = authService.getMyInfo(authentication.getName());
         return ApiResponse.success(200, "Lấy thông tin tài khoản thành công", response);
+    }
+
+    @PostMapping("/change-password")
+    @SecurityRequirement(name = "BearerAuth")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<Void> changePassword(Authentication authentication, @Valid @RequestBody ChangePasswordReq req) {
+        authService.changePassword(authentication.getName(), req.getOldPassword(), req.getNewPassword());
+        return ApiResponse.success(200, "Đổi mật khẩu thành công", null);
     }
 }

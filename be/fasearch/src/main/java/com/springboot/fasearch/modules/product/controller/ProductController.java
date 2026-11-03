@@ -52,9 +52,11 @@ public class ProductController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) ProductStatus status) {
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) Long brandId) {
 
-        PageResponse<ProductRes> result = productService.getProducts(pageable, keyword, categoryId, minPrice, maxPrice, status);
+        PageResponse<ProductRes> result = productService.getProducts(pageable, keyword, categoryId, minPrice, maxPrice, status, brand, brandId);
         return ApiResponse.success(200, "Lấy danh sách sản phẩm thành công", result);
     }
 

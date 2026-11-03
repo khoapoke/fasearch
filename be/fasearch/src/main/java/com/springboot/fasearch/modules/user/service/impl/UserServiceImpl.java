@@ -17,9 +17,13 @@ import com.springboot.fasearch.modules.user.dto.request.CustomerCreateReq;
 import com.springboot.fasearch.modules.user.dto.request.CustomerUpdateReq;
 import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
 import com.springboot.fasearch.modules.user.entity.Customer;
+import com.springboot.fasearch.modules.user.entity.MembershipTier;
 import com.springboot.fasearch.modules.user.mapper.UserMapper;
 import com.springboot.fasearch.modules.user.repository.MembershipTierRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
+import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.payment.entity.Invoice;
+import com.springboot.fasearch.common.enums.PaymentStatus;
 import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 import com.springboot.fasearch.security.SecurityUtils;
 import com.springboot.fasearch.shared.PageResponse;
@@ -36,6 +40,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final MembershipTierRepository membershipTierRepository;
     private final UserMapper userMapper;
+    private final LoyaltyService loyaltyService;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,12 +51,14 @@ public class UserServiceImpl implements UserService {
         // RBAC check: Customers can only view their own profile
         verifyCustomerOwnership(customer, id, "access");
 
-        return userMapper.toCustomerResponse(customer);
+        CustomerRes response = userMapper.toCustomerResponse(customer);
+        loyaltyService.enrichCustomerProfile(response, customer);
+        return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId) {
+    public PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId, Long salesTierId) {
         Specification<Customer> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -68,11 +75,35 @@ public class UserServiceImpl implements UserService {
                 predicates.add(cb.equal(root.get("membershipTier").get("id"), tierId));
             }
 
+            if (salesTierId != null) {
+                MembershipTier salesTier = membershipTierRepository.findById(salesTierId).orElse(null);
+                if (salesTier == null || salesTier.getMinimumCumulativePaidSales() == null) {
+                    predicates.add(cb.disjunction());
+                } else {
+                    var invoices = query.subquery(java.math.BigDecimal.class);
+                    var invoice = invoices.from(Invoice.class);
+                    invoices.select(cb.coalesce(cb.sum(invoice.get("totalActualPaid")), java.math.BigDecimal.ZERO));
+                    invoices.where(cb.equal(invoice.get("order").get("customer").get("id"), root.get("id")),
+                            cb.equal(invoice.get("status"), PaymentStatus.PAID));
+                    predicates.add(cb.isTrue(root.get("salesHistoryComplete")));
+                    predicates.add(cb.greaterThanOrEqualTo(invoices, salesTier.getMinimumCumulativePaidSales()));
+                    membershipTierRepository.findAll().stream()
+                            .map(MembershipTier::getMinimumCumulativePaidSales)
+                            .filter(value -> value != null && value.compareTo(salesTier.getMinimumCumulativePaidSales()) > 0)
+                            .min(java.math.BigDecimal::compareTo)
+                            .ifPresent(next -> predicates.add(cb.lessThan(invoices, next)));
+                }
+            }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         Page<Customer> customerPage = userRepository.findAll(spec, pageable);
-        Page<CustomerRes> responsePage = customerPage.map(userMapper::toCustomerResponse);
+        Page<CustomerRes> responsePage = customerPage.map(customer -> {
+            CustomerRes response = userMapper.toCustomerResponse(customer);
+            loyaltyService.enrichCustomerProfile(response, customer);
+            return response;
+        });
 
         return PageResponse.from(responsePage);
     }
@@ -86,6 +117,7 @@ public class UserServiceImpl implements UserService {
 
         Customer customer = userMapper.toCustomer(req);
         customer.setAccumulatePoint(0);
+        customer.setSalesHistoryComplete(true);
         customer.setIsDeleted(false);
 
         // Assign default membership tier (thresholdPoint = 0)
@@ -101,7 +133,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public CustomerRes updateCustomer(Long id, CustomerUpdateReq req) {
-        Customer customer = userRepository.findById(id)
+        Customer customer = userRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
 
         // RBAC check: Customers can only update their own profile

@@ -222,3 +222,79 @@ $$\text{FullImageUrl} = \text{base-url} + \text{image\_path}$$
 | `400 Bad Request` | `INVALID_REQUEST` | Query trống hoặc file tải lên rỗng | *"Vui lòng chọn file ảnh hợp lệ"* |
 | `400 Bad Request` | `INVALID_IMAGE_FILE` | File không thuộc định dạng `.png, .jpg, .jpeg, .webp` | *"Định dạng file không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp"* |
 | `503 Service Unavailable` | `AI_SERVICE_UNAVAILABLE` | Server AI FastAPI (Port 8000) chưa bật hoặc mất kết nối | *"Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng kiểm tra server AI hoặc thử lại sau"* |
+
+---
+
+## 4. Lịch sử tìm kiếm tài khoản (STT6 P1)
+
+### POST /api/v1/account/search-history
+Ghi nhận lịch sử tìm kiếm sau khi có kết quả thực tế.
+
+**Quyền hạn:** `CUSTOMER`, `STAFF`, `ADMIN` (yêu cầu đăng nhập)
+
+**Request Body (JSON):**
+```json
+{
+  "mode": "TEXT",
+  "query": "áo sơ mi trắng",
+  "resultCount": 5,
+  "resultRefs": "[\"id1\",\"id2\"]",
+  "status": "SUCCESS"
+}
+```
+
+| Trường | Kiểu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `mode` | `TEXT`/`IMAGE`/`MULTIMODAL` | **Có** | Chế độ tìm kiếm |
+| `query` | `String` (max 500) | Không | Từ khóa tìm kiếm |
+| `resultCount` | `Integer` | Không | Số kết quả (mặc định 0) |
+| `resultRefs` | `String` (JSON array, max 4096 ký tự) | Không | Tham chiếu an toàn (không data URL, raw file, internal path, secret) |
+| `status` | `SUCCESS`/`FAILED`/`CANCELLED` | **Có** | Kết quả tìm kiếm |
+
+**Response:** HTTP 201 với `SearchHistoryRes` (id, mode, query, resultCount, resultRefs, status, occurredAt).
+
+### GET /api/v1/account/search-history?page=0&size=20
+Lấy lịch sử tìm kiếm của tài khoản hiện tại (phân trang, mới nhất trước).
+
+### DELETE /api/v1/account/search-history/{id}
+Xóa mềm một mục lịch sử. Trả 404 nếu không tồn tại hoặc không thuộc tài khoản hiện tại.
+
+---
+
+## 5. Yêu thích tài khoản (STT6 P1)
+
+### POST /api/v1/account/favorites?productId={id}
+Thêm sản phẩm vào yêu thích. Idempotent: nếu đã yêu thích, trả cùng id.
+
+**Quyền hạn:** `CUSTOMER`, `STAFF`, `ADMIN` (yêu cầu đăng nhập)
+
+**Response:** HTTP 201 với `FavoriteRes` (id, productId, productName, price, createdAt).
+
+**Lỗi:** 404 nếu sản phẩm không tồn tại hoặc không khả dụng (đã xóa/inactive).
+
+### DELETE /api/v1/account/favorites/{productId}
+Xóa mềm yêu thích. Trả 404 nếu không tồn tại.
+
+### GET /api/v1/account/favorites?page=0&size=20
+Lấy danh sách yêu thích của tài khoản hiện tại (phân trang, mới nhất trước).
+
+---
+
+## 6. Đổi mật khẩu (STT6 P1)
+
+### POST /api/v1/auth/change-password
+**Quyền hạn:** `CUSTOMER`, `STAFF`, `ADMIN` (yêu cầu đăng nhập)
+
+**Request Body (JSON):**
+```json
+{
+  "oldPassword": "mat_khau_cu",
+  "newPassword": "mat_khau_moi_min_6"
+}
+```
+
+**Response:** HTTP 200 với message "Đổi mật khẩu thành công".
+
+**Lỗi:** 401 nếu mật khẩu cũ sai; 400 nếu mật khẩu mới trùng mật khẩu cũ hoặc validation thất bại.
+
+**Hành vi sau đổi:** Token hiện tại vẫn hợp lệ (stateless JWT). Client nên đăng nhập lại với mật khẩu mới để lấy token mới.

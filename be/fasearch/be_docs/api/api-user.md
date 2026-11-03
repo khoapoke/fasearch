@@ -14,7 +14,8 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
   - `size`: Số bản ghi/trang (mặc định: `10`).
   - `sort`: Tiêu chí sắp xếp (ví dụ: `id,desc`).
   - `keyword`: Tìm kiếm theo Họ tên hoặc SĐT.
-  - `tierId`: Lọc theo ID hạng thành viên (`maHang`).
+  - `tierId`: Lọc theo ID hạng thành viên legacy (`maHang`), không thay đổi nghĩa cũ.
+  - `salesTierId`: Lọc theo ngưỡng doanh số tích lũy đã cấu hình; chỉ khách hàng có `salesHistoryComplete=true` được tính.
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -32,14 +33,18 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
         "phoneNumber": "0987654321",
         "dob": "1995-05-15",
         "accumulatePoint": 150,
-        "tierName": "Bạc"
+        "tierName": "Bạc",
+        "cumulativePaidSales": null,
+        "salesTierId": null,
+        "salesTierName": null,
+        "salesTierStatus": "HISTORY_UNKNOWN"
       }
     ],
     "pageNumber": 0,
     "pageSize": 10,
     "totalElements": 1,
     "totalPages": 1,
-    "isLast": true
+    "last": true
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"
@@ -70,7 +75,11 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "address": "123 Đường Lê Lợi, Quận 1, TP.HCM",
     "accumulatePoint": 150,
     "tierId": 2,
-    "tierName": "Bạc"
+    "tierName": "Bạc",
+    "cumulativePaidSales": null,
+    "salesTierId": null,
+    "salesTierName": null,
+    "salesTierStatus": "HISTORY_UNKNOWN"
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"
@@ -240,66 +249,33 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 
 ---
 
-## 8. Khách hàng thân thiết & Tích điểm (FR-18, FR-19, FR-20)
+## 8. Khách hàng thân thiết & Tích điểm (FR-18, FR-19, FR-20; S2 contract v1.4)
 
-### 8.1. Danh sách hạng thành viên & Quyền lợi (FR-19)
-- **Endpoint:** `GET /api/v1/users/loyalty/tiers`
-- **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`
-- **Response Thành công:**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "Lấy danh sách hạng thành viên thành công",
-  "result": [
-    {
-      "tierId": 1,
-      "tierName": "Đồng",
-      "thresholdPoint": 0,
-      "benefits": "Tích lũy 1% giá trị đơn hàng"
-    },
-    {
-      "tierId": 2,
-      "tierName": "Bạc",
-      "thresholdPoint": 500,
-      "benefits": "Giảm 5% toàn bộ hóa đơn"
-    },
-    {
-      "tierId": 3,
-      "tierName": "Vàng",
-      "thresholdPoint": 2000,
-      "benefits": "Giảm 10% toàn bộ hóa đơn"
-    }
-  ],
-  "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
-}
-```
+> Các ví dụ lịch sử về đổi điểm theo tỷ lệ cố định hoặc nâng hạng theo `thresholdPoint` không còn là quy tắc thực thi. S2 dùng policy version được ADMIN cấu hình, opening baseline một lần, số dư điểm legacy giữ nguyên, và ngưỡng hạng dựa trên doanh số hóa đơn thực trả. Không tự suy diễn tỷ lệ mặc định hoặc coi lịch sử chưa đủ là 0.
 
-### 8.2. Đổi điểm tích lũy giảm trừ trực tiếp (FR-20)
-- **Endpoint:** `POST /api/v1/users/loyalty/redeem`
-- **Quyền hạn:** `CUSTOMER`, `STAFF`
-- **Mô tả:** Đổi số điểm tích lũy của khách hàng thành số tiền khấu trừ vào hóa đơn (Quy đổi: 1 điểm = 1,000 VND).
-- **Request Body:**
-```json
-{
-  "customerId": 1,
-  "pointsToRedeem": 50
-}
-```
-- **Response Thành công:**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "Đổi điểm thành công",
-  "result": {
-    "customerId": 1,
-    "pointsDeducted": 50,
-    "discountAmount": 50000.00,
-    "remainingPoints": 100
-  },
-  "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
-}
-```
+### 8.1. Số dư và lịch sử của chính khách hàng
+- `GET /api/v1/thanh-vien` — `CUSTOMER`, lấy customer từ JWT; không nhận customerId.
+- `GET /api/v1/thanh-vien/lich-su?page=0&size=20` — `CUSTOMER`, ledger của chính khách hàng, mới nhất trước, `size` tối đa 100.
+- `GET /api/v1/thanh-vien/khach-hang/{customerId}` — `STAFF`, `ADMIN`, chỉ tra cứu số dư, không trả lịch sử ledger.
+
+Các trường số dư gồm `customerId`, `balancePoints`, `heldPoints`, `availablePoints`, `cumulativePaidSales`, `salesTierId`, `salesTierName`, `salesTierStatus`, `openingRecorded`, `policyStatus`, `currentPolicyId`, `currentPolicyVersion`. `availablePoints` là `null` trước opening; `cumulativePaidSales` là `null` nếu chưa chứng minh được độ bao phủ invoice; `salesTierStatus` là `HISTORY_UNKNOWN`, `NO_CONFIGURED_THRESHOLDS` hoặc `KNOWN`; `policyStatus` là `UNCONFIGURED`, `DISABLED` hoặc `ENABLED`. Các giá trị không biết được trả về tường minh là `null`, không biến thành zero.
+
+Ledger item: `{entryId,type,points,orderId,occurredAt}`, với type `OPENING`, `HOLD`, `RELEASE`, `REDEEM`, `EARN`. `OPENING` chỉ ghi nhận điểm cũ, không cộng lại số dư; HOLD/RELEASE thay đổi điểm giữ chỗ, không thay đổi net balance.
+
+### 8.2. Cấu hình policy và ngưỡng doanh số (ADMIN)
+- `GET /api/v1/thanh-vien/chinh-sach-cua-toi` — `CUSTOMER`, projection an toàn gồm balance của chính mình, policy hiện hành (`policyId/version/earn/redeem/status`) và danh sách tier thresholds; không cấp quyền admin.
+- `GET /api/v1/thanh-vien/chinh-sach?page=0&size=20` — `ADMIN`, lịch sử version, `PageResponse` mới nhất trước.
+- `POST /api/v1/thanh-vien/chinh-sach` — body `{ "earnCurrencyPerPoint":100000.00, "redeemCurrencyPerPoint":1000.00, "status":"DISABLED" }`; status mặc định `DISABLED`, kích hoạt phải rõ ràng.
+- `PUT /api/v1/thanh-vien/chinh-sach/{policyId}` — yêu cầu `version` hiện hành và cả hai rate/status mới; ghi version mới bất biến. Rate phải `>0`, tối đa hai chữ số thập phân, nằm trong `DECIMAL(19,2)`. Chỉ có tối đa một policy `ENABLED`.
+- `GET /api/v1/thanh-vien/chinh-sach/hang` — `ADMIN`, danh sách `{tierId,name,minimumCumulativePaidSales,version}` theo ngưỡng tăng dần rồi tierId.
+- `PUT /api/v1/thanh-vien/chinh-sach/hang/{tierId}` — body `{ "version":1, "minimumCumulativePaidSales":2500000.00 }`; ngưỡng không âm, duy nhất, tăng nghiêm ngặt theo tierId.
+- `POST /api/v1/quan-tri/thanh-vien/mo-dau` — `ADMIN`, body `{ "customerId":42 }`; ghi opening baseline hiện tại đúng một lần, không thay số dư.
+
+Policy response: `{policyId,version,earnCurrencyPerPoint,redeemCurrencyPerPoint,status,createdAt}`. Sales tier là ngưỡng cao nhất không vượt cumulative paid sales; không thay đổi `tierId`, `tierName` hay `thresholdPoint` legacy.
+
+### 8.3. Hồ sơ khách hàng và lỗi ổn định
+`GET /api/v1/users/customers` và `GET /api/v1/users/customers/{id}` giữ nguyên fields cũ, bổ sung `cumulativePaidSales`, `salesTierId`, `salesTierName`, `salesTierStatus`. Filter mới `salesTierId` độc lập với filter legacy `tierId`. Write request không nhận điểm/tier.
+
+Cumulative paid sales là tổng `Invoice.totalActualPaid` có trạng thái `PAID`, gồm shipping nếu đã nằm trong invoice, không gồm tender/change. Redemption không trừ doanh số lịch sử. Khách hàng chưa đủ lịch sử được đánh dấu `HISTORY_UNKNOWN` và trả sales null.
+
+S2 business code không đồng nhất với HTTP status: `4201 LEGACY_OPENING_REQUIRED`, `4202 LOYALTY_POLICY_UNAVAILABLE`, `4203 LOYALTY_POLICY_DISABLED`, `4204 INSUFFICIENT_POINTS`, `4205 OPENING_ALREADY_RECORDED`, `4206 LOYALTY_POLICY_VERSION_CHANGED`, `4207 LOYALTY_TIER_VERSION_CHANGED`, `4208 LOYALTY_STATE_CONFLICT` đều dùng HTTP 409. `4107 QUOTE_CHANGED` và `4108 IDEMPOTENCY_CONFLICT` cũng HTTP 409. Malformed/fractional/negative/overflow point hoặc policy inputs là HTTP 400. Lỗi S2 trả `Cache-Control: no-store`.

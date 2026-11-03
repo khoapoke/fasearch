@@ -8,5 +8,6 @@ public enum PaymentMethodType {
     BANK_TRANSFER,   // Chuyển khoản ngân hàng trực tiếp
     E_WALLET,        // Ví điện tử chung
     VNPAY_QR,        // Quét mã VNPay QR
-    MOMO             // Cổng / Ví điện tử MoMo
+    MOMO,            // Cổng / Ví điện tử MoMo
+    STRIPE           // Stripe test-mode checkout (sandbox/test keys only, never live)
 }

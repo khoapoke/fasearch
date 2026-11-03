@@ -11,7 +11,7 @@ public interface UserService {
 
     CustomerRes getCustomerById(Long id);
 
-    PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId);
+    PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId, Long salesTierId);
 
     CustomerRes createCustomer(CustomerCreateReq req);
 

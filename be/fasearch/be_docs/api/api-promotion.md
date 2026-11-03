@@ -4,45 +4,38 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi, giả
 
 ---
 
-## 1. Xem danh sách chương trình khuyến mãi (FR-44)
+## 1. Xem danh sách ưu đãi công khai (FR-44)
 
 - **Endpoint:** `GET /api/v1/promotions`
-- **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`, `ADMIN`
-- **Mô tả:** Lấy danh sách các đợt khuyến mãi đang chạy hoặc sắp diễn ra.
-- **Query Parameters:**
-  - `page`: Số trang (mặc định: `0`).
-  - `size`: Số bản ghi/trang (mặc định: `10`).
-  - `status`: Lọc theo trạng thái (`UPCOMING`, `ACTIVE`, `EXPIRED`, `DISABLED`).
+- **Quyền hạn:** `PUBLIC` (không cần Bearer).
+- **Mô tả:** Trả các ưu đãi đang hiệu lực, đang hoạt động và còn lượt mã. Không trả campaign tạm dừng, đã xóa, hết hạn, hết lượt, mã bị khóa hoặc số liệu quản trị nội bộ.
+- **Query Parameters:** Không có. Endpoint trả tối đa một mã còn khả dụng cho mỗi campaign.
 
 ### Response Thành công (HTTP 200 OK)
 ```json
 {
   "success": true,
   "code": 200,
-  "message": "Lấy danh sách khuyến mãi thành công",
-  "result": {
-    "content": [
-      {
-        "promotionId": 1,
-        "promotionName": "Chào Hè Sôi Động 2026",
-        "discountType": "PERCENTAGE",
-        "discountValue": 10.00,
-        "startDate": "2026-05-01T00:00:00",
-        "endDate": "2026-06-30T23:59:59",
-        "status": "ACTIVE",
-        "termsCondition": "Áp dụng cho hóa đơn từ 500,000 VND trở lên"
-      }
-    ],
-    "pageNumber": 0,
-    "pageSize": 10,
-    "totalElements": 1,
-    "totalPages": 1,
-    "isLast": true
-  },
+  "message": "Lấy danh sách ưu đãi công khai thành công",
+  "result": [
+    {
+      "campaignId": 1,
+      "title": "Ưu đãi chào mừng",
+      "discountType": "PHAN_TRAM",
+      "discountValue": 10.00,
+      "conditionText": "Áp dụng cho mọi đơn hàng",
+      "startAt": "2026-11-01T04:26:53",
+      "endAt": "2026-12-02T04:26:53",
+      "code": "WELCOME2026"
+    }
+  ],
   "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
+  "timestamp": "2026-11-02T11:30:00"
 }
 ```
+
+- Schema hiện tại không có cờ targeted/private cho mã; endpoint chỉ công bố campaign công khai đang hoạt động. `POST /api/v1/cart/quote` và checkout vẫn là nơi quyết định điều kiện/giá trị cuối cùng.
+- Không có trường minimum-order/cap riêng trong schema; không tự tạo giá trị.
 
 ---
 
@@ -155,3 +148,33 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi, giả
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
+
+## 5. Báo giá giỏ hàng với voucher và điểm S2
+
+- **Endpoint:** `POST /api/v1/cart/quote`
+- **Quyền hạn:** `CUSTOMER`; customer được xác định từ JWT.
+- **Request Body:**
+```json
+{ "voucherCode": "SAVE10", "redeemedPoints": 2 }
+```
+`redeemedPoints` tùy chọn, mặc định 0; phải là số nguyên không âm trong miền signed 32-bit. Báo giá chỉ đọc, không giữ voucher quota, điểm hoặc tồn kho. Voucher được áp dụng trước; điểm giảm trên tổng merchandise còn lại, gồm cả dòng không đủ điều kiện voucher. Không giảm shipping và không làm `shippingFee` thành đầu vào authoritative.
+
+- **Response (HTTP 200):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Quote calculated",
+  "result": {
+    "items": [{"skuId":11,"productName":"Item","quantity":1,"unitPrice":10000.00,"totalPrice":10000.00,"discountAmount":1000.00,"pointsDiscountAmount":2000.00}],
+    "subTotal":10000.00,"voucherCode":"SAVE10","voucherDiscount":1000.00,
+    "remainingMerchandiseAmount":9000.00,"redeemedPoints":2,"pointsDiscount":2000.00,
+    "allowedRedeemedPoints":9,"availablePoints":20,"policyStatus":"ENABLED",
+    "loyaltyPolicyId":7,"loyaltyPolicyVersion":2,"redeemCurrencyPerPoint":1000.00,
+    "merchandiseAmountDue":7000.00,"quoteFingerprint":"opaque-server-token"
+  },
+  "errors": null,
+  "timestamp": "2026-10-31T12:00:00"
+}
+```
+`discountAmount` trên line vẫn là voucher allocation; `pointsDiscountAmount` là phân bổ điểm sau voucher. Fingerprint là token mờ do server phát sinh, bao gồm lines/customer/prices/voucher/policy/điểm/tổng merchandise; không gồm shipping và không phải bearer authorization token. Thiếu opening, policy unavailable/disabled hoặc vượt `allowedRedeemedPoints` với điểm dương trả HTTP 409 lần lượt business code `4201`, `4202`, `4203`, `4204`; lỗi 4204 nêu chính xác maximum hiện tại trong `errors`. Điểm âm, phân số hoặc overflow là HTTP 400. Response có `Cache-Control: no-store`.

@@ -25,6 +25,10 @@ public class JwtProvider {
     private final JwtConfig jwtConfig;
 
     public String generateToken(String username, String role, Long accountId) {
+        return generateToken(username, role, accountId, 0L);
+    }
+
+    public String generateToken(String username, String role, Long accountId, Long tokenVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getExpirationMs());
 
@@ -32,6 +36,7 @@ public class JwtProvider {
                 .subject(username)
                 .claim("role", role)
                 .claim("accountId", accountId)
+                .claim("tokenVersion", tokenVersion == null ? 0L : tokenVersion)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(jwtConfig.getSigningKey())
@@ -48,6 +53,10 @@ public class JwtProvider {
 
     public Long extractAccountId(String token) {
         return extractClaim(token, claims -> claims.get("accountId", Long.class));
+    }
+
+    public Long extractTokenVersion(String token) {
+        return extractClaim(token, claims -> claims.get("tokenVersion", Long.class));
     }
 
     public Date extractExpiration(String token) {

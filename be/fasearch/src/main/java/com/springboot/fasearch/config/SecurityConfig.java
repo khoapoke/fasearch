@@ -42,6 +42,12 @@ public class SecurityConfig {
             "/api/v1/orders/calculate-shipping-fee",
             "/api/v1/payments/methods",
             "/api/v1/search/**",
+            "/api/v1/brands",
+            "/api/v1/brands/**",
+            "/api/v1/payments/stripe/webhook",
+            "/api/v1/payments/vnpay/return",
+            "/api/v1/payments/vnpay/ipn",
+            "/api/v1/promotions",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -67,6 +73,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 
                         // 2. Nhóm quyền Admin
+                        .requestMatchers("/api/v1/khuyen-mai", "/api/v1/khuyen-mai/**").hasRole(RoleType.ADMIN.name())
                         .requestMatchers("/api/v1/admin/**").hasRole(RoleType.ADMIN.toString())
                         .requestMatchers("/api/v1/auth/accounts/**").hasRole(RoleType.ADMIN.name())
                         .requestMatchers("/api/v1/categories/**").hasRole(RoleType.ADMIN.name())
@@ -89,6 +96,9 @@ public class SecurityConfig {
                         // 5. Nhóm quyền Thanh toán & Hóa đơn
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/calculate").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/process").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/payments/attempts/**").hasRole(RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/payments/stripe/checkout", "/api/v1/payments/vnpay/checkout")
+                                .hasRole(RoleType.CUSTOMER.name())
 
                         // Mọi endpoint còn lại bắt buộc phải xác thực
                         .anyRequest().authenticated())

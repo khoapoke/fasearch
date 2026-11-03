@@ -5,7 +5,10 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,9 @@ import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
+import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
+import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService.Application;
+import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.entity.OrderDetail;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;
@@ -36,6 +42,7 @@ import com.springboot.fasearch.modules.payment.repository.InvoiceRepository;
 import com.springboot.fasearch.modules.payment.repository.PaymentMethodRepository;
 import com.springboot.fasearch.modules.payment.repository.PaymentRepository;
 import com.springboot.fasearch.modules.payment.service.interfaces.PaymentService;
+import com.springboot.fasearch.modules.payment.service.interfaces.PaymentService.PaymentResult;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.entity.Employee;
 import com.springboot.fasearch.modules.user.repository.EmployeeRepository;
@@ -54,6 +61,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final InventoryRepository inventoryRepository;
+    private final CheckoutBenefitService checkoutBenefitService;
+    private final LoyaltyService loyaltyService;
 
     @Override
     @Transactional(readOnly = true)
@@ -96,45 +105,39 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        // 5. Tính giảm giá Voucher
-        BigDecimal voucherDiscount = BigDecimal.ZERO;
-        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
-            String code = req.getVoucherCode().trim();
-            if (code.equalsIgnoreCase("FASEARCH10")) {
-                // Áp dụng voucher 10% theo đặc tả API
-                voucherDiscount = subTotal.multiply(BigDecimal.valueOf(0.10)).setScale(2, RoundingMode.HALF_UP);
-            } else if (order.getDiscountAmount() != null && order.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
-                voucherDiscount = order.getDiscountAmount();
-            }
-        } else if (order.getDiscountAmount() != null) {
-            voucherDiscount = order.getDiscountAmount();
+        BigDecimal voucherDiscount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+        int requestedPoints = LoyaltyService.parsePoints(req.getRedeemedPoints());
+        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()
+                && !req.getVoucherCode().trim().equalsIgnoreCase(order.getVoucherCode())) {
+            throw new AppException(order.getLoyaltyQuoteFingerprint() == null ? ErrorCode.INVALID_REQUEST : ErrorCode.QUOTE_CHANGED,
+                    "Voucher must match the persisted order snapshot");
         }
 
-        // 6. Tính giảm giá điểm thưởng (1 điểm = 1.000 VNĐ)
-        BigDecimal pointDiscount = BigDecimal.ZERO;
-        if (req.getRedeemedPoints() != null && req.getRedeemedPoints() > 0) {
-            if (order.getCustomer() == null) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng của khách vãng lai không thể sử dụng điểm tích lũy");
+        BigDecimal pointDiscount;
+        if (order.getLoyaltyQuoteFingerprint() != null) {
+            if (req.getRedeemedPoints() != null && requestedPoints != (order.getRedeemedPoints() == null ? 0 : order.getRedeemedPoints())) {
+                throw new AppException(ErrorCode.QUOTE_CHANGED);
             }
-
-            int availablePoints = order.getCustomer().getAccumulatePoint() != null
-                    ? order.getCustomer().getAccumulatePoint()
-                    : 0;
-
-            if (req.getRedeemedPoints() > availablePoints) {
-                throw new AppException(ErrorCode.INVALID_REQUEST,
-                        String.format("Số điểm tích lũy sử dụng (%d) vượt quá số điểm hiện có của khách hàng (%d)",
-                                req.getRedeemedPoints(), availablePoints));
-            }
-
-            pointDiscount = BigDecimal.valueOf(req.getRedeemedPoints())
-                    .multiply(BigDecimal.valueOf(1000))
-                    .setScale(2, RoundingMode.HALF_UP);
-
-            // Điểm thưởng tối đa không vượt quá giá trị tiền hàng sau khi trừ voucher
-            BigDecimal remainingSubTotal = subTotal.subtract(voucherDiscount);
-            if (remainingSubTotal.compareTo(BigDecimal.ZERO) > 0 && pointDiscount.compareTo(remainingSubTotal) > 0) {
-                pointDiscount = remainingSubTotal;
+            pointDiscount = order.getPointsDiscount() == null ? BigDecimal.ZERO : order.getPointsDiscount();
+        } else if (order.getVoucherCode() != null) {
+            if (requestedPoints > 0) throw new AppException(ErrorCode.INVALID_REQUEST, "Legacy voucher orders cannot add request-only points");
+            pointDiscount = BigDecimal.ZERO;
+        } else {
+            // Pre-S2 non-voucher calculation remains a display-only legacy preview.
+            pointDiscount = BigDecimal.ZERO;
+            if (requestedPoints > 0) {
+                if (order.getCustomer() == null) {
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "Guest orders cannot use loyalty points");
+                }
+                int availablePoints = order.getCustomer().getAccumulatePoint() == null
+                        ? 0 : order.getCustomer().getAccumulatePoint();
+                if (requestedPoints > availablePoints) {
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "Requested points exceed legacy balance");
+                }
+                pointDiscount = BigDecimal.valueOf(requestedPoints).multiply(BigDecimal.valueOf(1000))
+                        .setScale(2, RoundingMode.HALF_UP);
+                BigDecimal remaining = subTotal.subtract(voucherDiscount);
+                if (remaining.signum() > 0 && pointDiscount.compareTo(remaining) > 0) pointDiscount = remaining;
             }
         }
 
@@ -153,6 +156,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         return PaymentCalculationRes.builder()
                 .subTotal(subTotal.setScale(2, RoundingMode.HALF_UP))
+                .redeemedPoints(order.getLoyaltyQuoteFingerprint() != null
+                        ? (order.getRedeemedPoints() == null ? 0 : order.getRedeemedPoints())
+                        : (order.getVoucherCode() == null ? requestedPoints : 0))
                 .voucherDiscount(voucherDiscount.setScale(2, RoundingMode.HALF_UP))
                 .pointDiscount(pointDiscount.setScale(2, RoundingMode.HALF_UP))
                 .shippingFee(shippingFee.setScale(2, RoundingMode.HALF_UP))
@@ -177,14 +183,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public InvoiceRes processPayment(PaymentProcessReq req) {
+    public PaymentResult processPayment(PaymentProcessReq req) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        // 1. Kiểm tra đơn hàng tồn tại
-        Order order = orderRepository.findById(req.getOrderId())
+        // 1. Lock order so duplicate collection attempts observe the first invoice.
+        Order order = orderRepository.findByIdForUpdate(req.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         // 2. Chặn đơn hàng ở trạng thái kết thúc không thể thanh toán
@@ -195,10 +201,10 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã được hoàn trả, không thể thanh toán");
         }
 
-        // 3. Kiểm tra đơn hàng đã thanh toán trước đó chưa
-        if (invoiceRepository.existsByOrderIdAndStatus(order.getId(), PaymentStatus.PAID)) {
-            throw new AppException(ErrorCode.ORDER_ALREADY_PAID);
-        }
+        boolean posDraft = order.getStatus() == OrderStatus.DRAFT;
+        boolean posOrder = order.getOrderCode() != null && order.getOrderCode().startsWith("POS-");
+        int requestedPoints = LoyaltyService.parsePoints(req.getRedeemedPoints());
+        Invoice previousInvoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
 
         // 4. Phân quyền: Khách hàng chỉ được thanh toán cho đơn của chính mình
         boolean isCustomer = auth.getAuthorities().stream()
@@ -218,9 +224,62 @@ public class PaymentServiceImpl implements PaymentService {
             employee = employeeRepository.findByAccount_Username(auth.getName()).orElse(null);
         }
 
+        if (posOrder && isCustomer) throw new AppException(ErrorCode.FORBIDDEN);
+        boolean hasBenefitInput = (req.getVoucherCode() != null && !req.getVoucherCode().isBlank())
+                || requestedPoints > 0 || (req.getQuoteFingerprint() != null && !req.getQuoteFingerprint().isBlank());
+        if (!posOrder && hasBenefitInput) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "POS benefit fields are only accepted for POS orders");
+        }
+        if (previousInvoice != null) {
+            if (posOrder && previousInvoice.getStatus() == PaymentStatus.PAID
+                    && order.getLoyaltyQuoteFingerprint() != null) {
+                if (!matchesPosReplay(req, order, previousInvoice, requestedPoints)) {
+                    throw new AppException(ErrorCode.IDEMPOTENCY_CONFLICT);
+                }
+                return new PaymentResult(invoiceResponse(previousInvoice, order), true);
+            }
+            throw new AppException(ErrorCode.ORDER_ALREADY_PAID);
+        }
+
         // 6. Kiểm tra phương thức thanh toán
         PaymentMethod paymentMethod = paymentMethodRepository.findByTypeAndStatus(req.getPaymentMethodCode(), "ACTIVE")
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
+        if (paymentMethod.getType() != PaymentMethodType.CASH) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Non-cash payments must use the provider checkout flow");
+        }
+        if (posDraft && paymentMethod.getType() != PaymentMethodType.CASH) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "POS draft orders must be settled in cash");
+        }
+        if (order.getVoucherCode() != null && isCustomer) throw new AppException(ErrorCode.FORBIDDEN);
+        if (!posDraft && order.getVoucherCode() != null && (order.getStatus() != OrderStatus.SHIPPING
+                || paymentMethod.getType() != PaymentMethodType.CASH)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher COD orders can only be collected in cash by staff after handoff");
+        }
+
+        if (posDraft) {
+            Application benefit = checkoutBenefitService.preparePosPayment(order.getDetails(),
+                    order.getCustomer() == null ? null : order.getCustomer().getId(), req.getVoucherCode(),
+                    requestedPoints, req.getQuoteFingerprint());
+            BigDecimal subtotal = BigDecimal.ZERO;
+            for (OrderDetail detail : order.getDetails()) {
+                BigDecimal lineTotal = detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
+                subtotal = subtotal.add(lineTotal);
+                detail.setDiscountAmount(benefit.discountBySku().getOrDefault(
+                        detail.getVariant().getId(), BigDecimal.ZERO.setScale(2)));
+                detail.setPointsDiscountAmount(benefit.loyaltyQuote().pointsDiscountBySku().getOrDefault(
+                        detail.getVariant().getId(), BigDecimal.ZERO.setScale(2)));
+            }
+            order.setDiscountAmount(benefit.discount());
+            order.setPointsDiscount(benefit.loyaltyQuote().pointsDiscount());
+            checkoutBenefitService.applySnapshot(order, benefit);
+            BigDecimal shipping = order.getShippingFee() == null ? BigDecimal.ZERO : order.getShippingFee();
+            order.setTotalAmount(subtotal.subtract(benefit.discount()).subtract(benefit.loyaltyQuote().pointsDiscount())
+                    .add(shipping).setScale(2, RoundingMode.HALF_UP));
+            checkoutBenefitService.recordHold(order.getId(), benefit);
+        } else if (order.getStatus() != OrderStatus.SHIPPING && order.getStatus() != OrderStatus.PENDING
+                && order.getStatus() != OrderStatus.CONFIRMED && order.getStatus() != OrderStatus.PACKING) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Order is not in a payable state");
+        }
 
         BigDecimal totalAmount = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
         BigDecimal cashReceived;
@@ -248,8 +307,9 @@ public class PaymentServiceImpl implements PaymentService {
         // 8. Khấu trừ tồn kho Omnichannel cho đơn POS (DRAFT -> COMPLETED)
         if (order.getStatus() == OrderStatus.DRAFT) {
             if (order.getDetails() != null) {
-                for (OrderDetail detail : order.getDetails()) {
-                    Inventory inv = inventoryRepository.findByVariantId(detail.getVariant().getId())
+                for (OrderDetail detail : order.getDetails().stream()
+                        .sorted(Comparator.comparing(row -> row.getVariant().getId())).toList()) {
+                    Inventory inv = inventoryRepository.findByVariantIdForUpdate(detail.getVariant().getId())
                             .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
                     if (inv.getAvailableStock() < detail.getQuantity()) {
                         throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
@@ -265,7 +325,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
         orderRepository.save(order);
 
-        // 9. Sinh mã hóa đơn duy nhất dạng HD-YYYYMMDD-XXX
+        // 9. Sinh mã hóa đơn duy nhất dạng HD-YYYYMMDD-XXX. Serialize code allocation per DB
+        //    transaction so concurrent settlements cannot observe the same count/existence result.
+        invoiceRepository.lockInvoiceCodeGeneration(0x4641534541524348L); // 'FASEARCH' advisory key
         String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String prefix = "HD-" + dateStr + "-";
         long countToday = invoiceRepository.countByInvoiceCodeStartingWith(prefix) + 1;
@@ -280,6 +342,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .invoiceCode(invoiceCode)
                 .order(order)
                 .employee(employee)
+                .paymentMethodCode(paymentMethod.getType())
                 .vatAmount(vatAmount)
                 .totalActualPaid(totalActualPaid)
                 .cashReceived(cashReceived)
@@ -291,41 +354,59 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 11. Lưu thông tin giao dịch thanh toán (Payment)
         String transactionCode = "TXN-" + System.currentTimeMillis();
-        Payment payment = Payment.builder()
-                .invoice(invoice)
-                .paymentMethod(paymentMethod)
-                .amount(totalActualPaid)
-                .transactionCode(transactionCode)
-                .status(PaymentStatus.PAID)
-                .note(req.getNote())
-                .build();
-        paymentRepository.save(payment);
-
-        // 12. Cộng điểm tích lũy cho khách hàng thành viên (100.000 VNĐ = 1 điểm)
-        if (order.getCustomer() != null) {
-            Customer customer = order.getCustomer();
-            int pointsEarned = totalActualPaid.divide(BigDecimal.valueOf(100000), 0, RoundingMode.FLOOR).intValue();
-            if (pointsEarned > 0) {
-                int currentPoints = customer.getAccumulatePoint() != null ? customer.getAccumulatePoint() : 0;
-                customer.setAccumulatePoint(currentPoints + pointsEarned);
-                userRepository.save(customer);
-            }
+        if (totalActualPaid.signum() > 0) {
+            Payment payment = Payment.builder()
+                    .invoice(invoice)
+                    .paymentMethod(paymentMethod)
+                    .amount(totalActualPaid)
+                    .transactionCode(transactionCode)
+                    .status(PaymentStatus.PAID)
+                    .note(req.getNote())
+                    .build();
+            paymentRepository.save(payment);
+        }
+        checkoutBenefitService.consume(order.getId());
+        if (order.getLoyaltyQuoteFingerprint() != null) {
+            loyaltyService.settleOrder(order, totalActualPaid);
+        } else {
+            // Pre-S2 orders keep the legacy fixed-rate award, settled atomically by the loyalty module.
+            loyaltyService.settleLegacyEarn(order, totalActualPaid);
         }
 
-        // 13. Trả về kết quả hóa đơn đã thanh toán
-        return InvoiceRes.builder()
-                .invoiceId(invoice.getId())
-                .invoiceCode(invoice.getInvoiceCode())
-                .orderId(order.getId())
-                .orderCode(order.getOrderCode())
-                .totalActualPaid(invoice.getTotalActualPaid())
-                .vatAmount(invoice.getVatAmount())
-                .cashReceived(invoice.getCashReceived())
-                .cashChange(invoice.getCashChange())
-                .paymentStatus(invoice.getStatus())
-                .paymentMethod(paymentMethod.getType())
-                .note(invoice.getNote())
-                .issuedAt(invoice.getIssuedAt() != null ? invoice.getIssuedAt() : LocalDateTime.now())
+        return new PaymentResult(invoiceResponse(invoice, order), false);
+    }
+
+    private boolean matchesPosReplay(PaymentProcessReq request, Order order, Invoice invoice, int requestedPoints) {
+        if (invoice.getPaymentMethodCode() != request.getPaymentMethodCode()
+                || invoice.getCashReceived() == null
+                || invoice.getCashReceived().compareTo(request.getAmountPaid()) != 0
+                || !Objects.equals(invoice.getNote(), request.getNote())
+                || requestedPoints != (order.getRedeemedPoints() == null ? 0 : order.getRedeemedPoints())
+                || !normalizeCode(request.getVoucherCode()).equals(normalizeCode(order.getVoucherCode()))) return false;
+        boolean hasBenefit = !normalizeCode(order.getVoucherCode()).isEmpty() || requestedPoints > 0;
+        if (hasBenefit) return Objects.equals(request.getQuoteFingerprint(), order.getLoyaltyQuoteFingerprint());
+        return request.getQuoteFingerprint() == null || request.getQuoteFingerprint().isBlank()
+                || Objects.equals(request.getQuoteFingerprint(), order.getLoyaltyQuoteFingerprint());
+    }
+
+    private InvoiceRes invoiceResponse(Invoice invoice, Order order) {
+        boolean s2 = order.getLoyaltyQuoteFingerprint() != null;
+        return InvoiceRes.builder().invoiceId(invoice.getId()).invoiceCode(invoice.getInvoiceCode())
+                .orderId(order.getId()).orderCode(order.getOrderCode())
+                .totalActualPaid(invoice.getTotalActualPaid()).vatAmount(invoice.getVatAmount())
+                .cashReceived(invoice.getCashReceived()).cashChange(invoice.getCashChange())
+                .paymentStatus(invoice.getStatus()).paymentMethod(invoice.getPaymentMethodCode())
+                .note(invoice.getNote()).issuedAt(invoice.getIssuedAt() == null ? LocalDateTime.now() : invoice.getIssuedAt())
+                .redeemedPoints(s2 ? (order.getRedeemedPoints() == null ? 0 : order.getRedeemedPoints()) : null)
+                .pointsDiscount(s2 ? order.getPointsDiscount() : null)
+                .loyaltyPolicyId(s2 ? order.getLoyaltyPolicyId() : null)
+                .loyaltyPolicyVersion(s2 ? order.getLoyaltyPolicyVersion() : null)
+                .redeemCurrencyPerPointSnapshot(s2 ? order.getRedeemCurrencyPerPointSnapshot() : null)
+                .earnedPoints(s2 && order.getLoyaltyPolicyId() != null ? order.getEarnedPoints() : null)
                 .build();
+    }
+
+    private static String normalizeCode(String code) {
+        return code == null ? "" : code.strip().toUpperCase(Locale.ROOT);
     }
 }

@@ -18,6 +18,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AccountInfoRes {
     private Long id;
+
+    /** Id hồ sơ khách hàng (khach_hang.ma_kh); null nếu tài khoản không có hồ sơ. */
+    private Long customerId;
     private String username;
     private String email;
     private RoleType role;

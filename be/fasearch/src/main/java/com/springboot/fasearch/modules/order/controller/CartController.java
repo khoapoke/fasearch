@@ -1,6 +1,8 @@
 package com.springboot.fasearch.modules.order.controller;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.springboot.fasearch.modules.order.dto.request.CartItemReq;
 import com.springboot.fasearch.modules.order.dto.request.CartItemUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.CartRes;
+import com.springboot.fasearch.modules.khuyenmai.dto.request.CartQuoteRequest;
+import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
 import com.springboot.fasearch.modules.order.service.interfaces.CartService;
 import com.springboot.fasearch.shared.ApiResponse;
 
@@ -36,6 +40,12 @@ public class CartController {
     public ApiResponse<CartRes> getMyCart() {
         CartRes result = cartService.getMyCart();
         return ApiResponse.success(200, "Lấy thông tin giỏ hàng thành công", result);
+    }
+
+    @PostMapping("/quote")
+    public ResponseEntity<ApiResponse<CartQuoteResponse>> quote(@Valid @RequestBody CartQuoteRequest req) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(200, "Tính ưu đãi giỏ hàng thành công", cartService.quote(req)));
     }
 
     @PostMapping("/items")

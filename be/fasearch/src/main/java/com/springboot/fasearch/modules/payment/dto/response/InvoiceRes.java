@@ -29,6 +29,12 @@ public class InvoiceRes {
     private BigDecimal cashChange;
     private PaymentStatus paymentStatus;
     private PaymentMethodType paymentMethod;
+    private Integer redeemedPoints;
+    private BigDecimal pointsDiscount;
+    private Long loyaltyPolicyId;
+    private Long loyaltyPolicyVersion;
+    private BigDecimal redeemCurrencyPerPointSnapshot;
+    private Integer earnedPoints;
     private String note;
     private LocalDateTime issuedAt;
 }

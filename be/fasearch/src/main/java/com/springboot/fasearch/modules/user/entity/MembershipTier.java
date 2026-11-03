@@ -2,6 +2,8 @@ package com.springboot.fasearch.modules.user.entity;
 
 import org.hibernate.annotations.SQLRestriction;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -35,6 +37,13 @@ public class MembershipTier {
     @Column(name = "nguong_diem")
     @Builder.Default
     private Integer thresholdPoint = 0;
+
+    @Column(name = "nguong_doanh_so", precision = 19, scale = 2)
+    private BigDecimal minimumCumulativePaidSales;
+
+    @Column(name = "phien_ban_doanh_so", nullable = false)
+    @Builder.Default
+    private Long salesTierVersion = 0L;
 
     @Column(name = "quyen_loi", columnDefinition = "TEXT")
     private String benefits;

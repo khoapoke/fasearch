@@ -4,7 +4,9 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,22 +40,23 @@ public class UserController {
 
     @GetMapping("/customers")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<PageResponse<CustomerRes>> getCustomers(
+    public ResponseEntity<ApiResponse<PageResponse<CustomerRes>>> getCustomers(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long tierId) {
+            @RequestParam(required = false) Long tierId,
+            @RequestParam(required = false) Long salesTierId) {
 
-        PageResponse<CustomerRes> result = userService.getCustomers(pageable, keyword, tierId);
-        return ApiResponse.success(200, "Lấy danh sách khách hàng thành công", result);
+        PageResponse<CustomerRes> result = userService.getCustomers(pageable, keyword, tierId, salesTierId);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(200, "Lấy danh sách khách hàng thành công", result));
     }
 
     @GetMapping("/customers/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
-    @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<CustomerRes> getCustomer(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<CustomerRes>> getCustomer(@PathVariable Long id) {
         CustomerRes response = userService.getCustomerById(id);
-        return ApiResponse.success(200, "Lấy thông tin khách hàng thành công", response);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(200, "Lấy thông tin khách hàng thành công", response));
     }
 
     @PostMapping("/customers")
