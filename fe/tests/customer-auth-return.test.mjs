@@ -17,3 +17,15 @@ test("rejects external, encoded, and query-based open redirects", () => {
     assert.equal(safeCustomerAuthReturn(target), "/tai-khoan", target);
   }
 });
+
+test("account cluster sub-routes survive return sanitisation (F-02)", () => {
+  for (const target of ["/tai-khoan/thong-tin", "/tai-khoan/dia-chi", "/tai-khoan/bao-mat", "/tai-khoan/diem-thuong", "/yeu-thich", "/lich-su-ai"]) {
+    assert.equal(safeCustomerAuthReturn(target), target, target);
+  }
+});
+
+test("still refuses encoded, query and unknown targets (F-02)", () => {
+  for (const target of ["/yeu-thich?x=1", "%2Fyeu-thich", "/unknown-route"]) {
+    assert.equal(safeCustomerAuthReturn(target), "/tai-khoan", target);
+  }
+});

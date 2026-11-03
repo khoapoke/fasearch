@@ -1,7 +1,10 @@
 // Legacy /tai-khoan/*, /kenh-ban/* and /quan-tri/* routes depend on the old
 // FASEARCH_SESSION; this exact promotions route has its own ADMIN-only JWT BFF.
 const FALLBACK = "/tai-khoan";
-const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/khuyen-mai", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi", "/quan-tri/phieu-xuat", "/quan-tri/kiem-ke", "/quan-tri/kiem-ke/moi", "/tim-kiem-ai", "/nam", "/quan-tri/khach-hang", "/quan-tri/khach-hang/moi", "/quan-tri/nhan-vien", "/quan-tri/nhan-vien/moi", "/quan-tri/tai-khoan-noi-bo"]);
+const TARGETS = new Set(["/", "/tai-khoan", "/gio-hang", "/thanh-toan", "/don-hang", "/quan-tri", "/quan-tri/khuyen-mai", "/quan-tri/don-hang", "/quan-tri/san-pham", "/quan-tri/danh-muc", "/quan-tri/ton-kho", "/quan-tri/phieu-nhap", "/quan-tri/phieu-nhap/moi", "/quan-tri/phieu-xuat", "/quan-tri/kiem-ke", "/quan-tri/kiem-ke/moi", "/tim-kiem-ai", "/nam", "/quan-tri/khach-hang", "/quan-tri/khach-hang/moi", "/quan-tri/nhan-vien", "/quan-tri/nhan-vien/moi", "/quan-tri/tai-khoan-noi-bo",
+  // Account cluster sub-routes: guests are sent here from these pages, so the
+  // return target must survive sanitisation instead of falling back to /tai-khoan.
+  "/tai-khoan/thong-tin", "/tai-khoan/dia-chi", "/tai-khoan/bao-mat", "/tai-khoan/diem-thuong", "/yeu-thich", "/lich-su-ai"]);
 
 function hasControlChar(value: string): boolean {
   for (const char of value) {
