@@ -13,7 +13,8 @@ def render_point_manager(point_srv: PointService) -> None:
     Tất cả các thao tác đều áp dụng trên collection của point_srv.
     """
     current_col = point_srv.collection_name
-    st.subheader(f"🖼️ Quản trị Vector Point — Collection: `{current_col}`")
+    st.subheader(f"Các điểm dữ liệu")
+    st.caption(f"Collection: `{current_col}`")
     st.caption("Xem danh sách, thêm ảnh mới sinh vector, chỉnh sửa metadata hoặc xóa Point.")
 
     repo = point_srv.repo
@@ -37,7 +38,7 @@ def render_point_manager(point_srv: PointService) -> None:
         with col_f3:
             st.write("")
             st.write("")
-            refresh_btn = st.button("🔄 Làm mới", use_container_width=True)
+            refresh_btn = st.button("Làm mới", use_container_width=True)
 
         target_status = None
         if status_filter_choice != "TẤT CẢ":
@@ -55,7 +56,7 @@ def render_point_manager(point_srv: PointService) -> None:
             records, next_offset = [], None
 
         if not records:
-            st.info(f"Hiện không có bản ghi nào trong collection '{current_col}' phù hợp với bộ lọc đã chọn.")
+            st.info(f"Hiện không có bản ghi nào phù hợp với bộ lọc đã chọn.")
         else:
             st.markdown(f"**Hiển thị {len(records)} Point gần nhất trong `{current_col}`:**")
 
@@ -99,7 +100,7 @@ def render_point_manager(point_srv: PointService) -> None:
             prod_id_input = st.text_input("Mã sản phẩm (Product ID - Tùy chọn)", placeholder="vd: SP-FASHION-001")
             meta_json = st.text_area("Metadata mở rộng (JSON format - Tùy chọn)", value='{"source": "admin_ui"}', height=80)
 
-            submit_add = st.form_submit_button(f"🚀 Nạp vào Collection {current_col}", type="primary")
+            submit_add = st.form_submit_button(f"Nạp vào Collection {current_col}", type="primary")
 
             if submit_add:
                 if not uploaded_file:
@@ -125,7 +126,7 @@ def render_point_manager(point_srv: PointService) -> None:
                                 metadata=meta_dict or None,
                             )
 
-                            st.success(f"Đã thêm thành công vào `{current_col}`! ID: `{new_point_id}` | File: `{file_name}`", icon=":material/check_circle:")
+                            st.success(f"Đã thêm thành công vào `{current_col}`! ID: `{new_point_id}` | File: `{file_name}`")
                             st.toast("Sản phẩm mới đã được nạp vào Vector Database!")
                         except Exception as ex:
                             st.error(f"Lỗi trong quá trình xử lý: {ex}")

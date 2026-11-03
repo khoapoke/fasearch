@@ -36,7 +36,7 @@ def render_point_card(record: Record, point_srv: PointService) -> None:
         else:
             st.markdown(
                 f"""<div style="height:140px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; border-radius:6px;">
-                    <span>📷 Không tìm thấy file gốc</span>
+                    <span>Không tìm thấy file gốc</span>
                 </div>""",
                 unsafe_allow_html=True,
             )
@@ -123,7 +123,7 @@ def render_search_result_card(item: Dict[str, Any]) -> None:
         else:
             st.markdown(
                 f"""<div style="height:140px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; border-radius:6px;">
-                    <span>📷 File ảnh: {file_name}</span>
+                    <span>File ảnh: {file_name}</span>
                 </div>""",
                 unsafe_allow_html=True,
             )

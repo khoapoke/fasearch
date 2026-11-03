@@ -7,7 +7,7 @@ from src.core.config import settings, BASE_DIR
 from src.db.enums import PointStatus
 from src.services.point_service import PointService
 from admin_app.components.seeder_box import render_seeder_box
-
+from admin_app.components.dialog import confirm_reset_dialog, confirm_delete_dialog
 
 def render_overview(point_srv: PointService) -> None:
     """
@@ -18,7 +18,7 @@ def render_overview(point_srv: PointService) -> None:
     default_col = settings.qdrant.collection_name
     is_default = (current_col == default_col)
 
-    st.subheader(f"📊 Tổng quan Collection: `{current_col}`")
+    st.subheader(f"Tổng quan Collection: `{current_col}`")
     st.caption("Giám sát trạng thái phần cứng, Vector Database và cấu hình hệ thống.")
     st.caption("Xem dashboard trực tiếp tại: http://localhost:6333/dashboard")
 
@@ -88,47 +88,47 @@ def render_overview(point_srv: PointService) -> None:
 
     st.divider()
 
+    # # ==========================================
+    # # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML
+    # # ==========================================
+    # st.subheader("Cấu hình Mặc định Hệ thống (`configs/database.yaml`)")
+    # st.caption("File cấu hình này đóng vai trò cung cấp collection và thông số vector mặc định (fallback) cho toàn bộ hệ thống.")
+
+    # yaml_path = BASE_DIR / "configs" / "database.yaml"
+
+    # if yaml_path.exists():
+    #     with open(yaml_path, "r", encoding="utf-8") as f:
+    #         current_yaml = f.read()
+
+    #     with st.form("yaml_edit_form"):
+    #         edited_yaml = st.text_area(
+    #             label="Nội dung file YAML",
+    #             value=current_yaml,
+    #             height=220,
+    #             help="Sửa các tham số cấu hình mặc định. Hãy chú ý thụt dòng chuẩn YAML.",
+    #         )
+    #         submitted = st.form_submit_button("Lưu cấu hình mặc định", type="primary")
+
+    #         if submitted:
+    #             try:
+    #                 parsed_data = yaml.safe_load(edited_yaml)
+    #                 if not isinstance(parsed_data, dict):
+    #                     st.error("Cấu hình YAML phải là một cấu trúc dạng key-value hợp lệ.")
+    #                 else:
+    #                     with open(yaml_path, "w", encoding="utf-8") as f:
+    #                         f.write(edited_yaml)
+    #                     st.success("Đã lưu cấu hình `configs/database.yaml` thành công!")
+    #             except yaml.YAMLError as err:
+    #                 st.error(f"Lỗi cú pháp YAML: {err}")
+    #             except Exception as ex:
+    #                 st.error(f"Có lỗi khi ghi file: {ex}")
+
+    # st.divider()
+
     # ==========================================
-    # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML
+    # PHẦN 3: VÙNG NGUY HIỂM DÀNH CHO COLLECTION
     # ==========================================
-    st.subheader("⚙️ Cấu hình Mặc định Hệ thống (`configs/database.yaml`)")
-    st.caption("File cấu hình này đóng vai trò cung cấp collection và thông số vector mặc định (fallback) cho toàn bộ hệ thống.")
-
-    yaml_path = BASE_DIR / "configs" / "database.yaml"
-
-    if yaml_path.exists():
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            current_yaml = f.read()
-
-        with st.form("yaml_edit_form"):
-            edited_yaml = st.text_area(
-                label="Nội dung file YAML",
-                value=current_yaml,
-                height=220,
-                help="Sửa các tham số cấu hình mặc định. Hãy chú ý thụt dòng chuẩn YAML.",
-            )
-            submitted = st.form_submit_button("Lưu cấu hình mặc định", type="primary")
-
-            if submitted:
-                try:
-                    parsed_data = yaml.safe_load(edited_yaml)
-                    if not isinstance(parsed_data, dict):
-                        st.error("Cấu hình YAML phải là một cấu trúc dạng key-value hợp lệ.")
-                    else:
-                        with open(yaml_path, "w", encoding="utf-8") as f:
-                            f.write(edited_yaml)
-                        st.success("✅ Đã lưu cấu hình `configs/database.yaml` thành công!")
-                except yaml.YAMLError as err:
-                    st.error(f"❌ Lỗi cú pháp YAML: {err}")
-                except Exception as ex:
-                    st.error(f"❌ Có lỗi khi ghi file: {ex}")
-
-    st.divider()
-
-    # ==========================================
-    # PHẦN 3: VÙNG NGUY HIỂM THEO COLLECTION (DANGER ZONE)
-    # ==========================================
-    st.subheader(f"🚨 Vùng nguy hiểm: Collection `{current_col}`")
+    st.subheader(f"Vùng nguy hiểm: Collection `{current_col}`")
     st.markdown("Các thao tác xóa và nạp dữ liệu dưới đây chỉ áp dụng cho collection đang chọn.")
 
     with st.container(border=True):
@@ -136,53 +136,44 @@ def render_overview(point_srv: PointService) -> None:
 
         # Cột 1: Xóa dữ liệu (Reset / Xóa hẳn)
         with col_d1:
-            st.markdown("##### 🗑️ Quản lý Dữ liệu Collection")
+            st.markdown("##### Quản lý Dữ liệu Collection")
             st.caption(f"Collection đang chọn: `{current_col}` ({'Mặc định' if is_default else 'Tùy chỉnh'})")
 
             # 1. Reset dữ liệu (Drop & Recreate rỗng) - Dành cho mọi collection
             confirm_reset = st.checkbox(
-                f"Xác nhận muốn RESET toàn bộ dữ liệu trong '{current_col}'",
+                f"Xác nhận RESET toàn bộ dữ liệu",
                 key="chk_confirm_reset",
             )
             if st.button(
-                "♻️ Reset Data (Làm sạch Collection)",
+                "Reset Data",
                 type="primary",
                 disabled=not confirm_reset,
                 use_container_width=True,
             ):
-                with st.spinner(f"Đang làm sạch collection '{current_col}'..."):
-                    try:
-                        point_srv.clear_all_points()
-                        st.success(f"✅ Đã làm sạch toàn bộ dữ liệu trong '{current_col}'!")
-                        st.rerun()
-                    except Exception as ex:
-                        st.error(f"Lỗi khi reset collection: {ex}")
+               confirm_reset_dialog(current_col, point_srv)
 
             # 2. Xóa hẳn collection - Chỉ mở cho collection tùy chỉnh (không phải mặc định)
             if not is_default:
                 st.divider()
-                st.markdown("##### ⚠️ Xóa hẳn Collection này")
+                st.markdown("##### Xóa Collection ")
                 st.caption(f"Xóa vĩnh viễn collection `{current_col}` khỏi Qdrant.")
                 confirm_drop = st.checkbox(
-                    f"Xác nhận XÓA SỔ hoàn toàn '{current_col}'",
+                    f"Xác nhận xóa",
                     key="chk_confirm_drop",
                 )
                 if st.button(
-                    f"🔥 Xóa hẳn '{current_col}' khỏi DB",
+                    f"Delete from Qdrant",
                     type="primary",
                     disabled=not confirm_drop,
                     use_container_width=True,
                 ):
-                    with st.spinner(f"Đang xóa collection '{current_col}'..."):
-                        try:
-                            point_srv.delete_collection()
-                            st.session_state["selected_collection"] = default_col
-                            st.success(f"Đã xóa hoàn toàn collection '{current_col}'!")
-                            st.rerun()
-                        except Exception as ex:
-                            st.error(f"Lỗi khi xóa collection: {ex}")
+                   confirm_delete_dialog(
+                    current_col=current_col,
+                    point_srv=point_srv,
+                    default_col=default_col
+                   )
             else:
-                st.info("ℹ️ Đây là collection mặc định của hệ thống: Chỉ hỗ trợ Reset dữ liệu, được bảo vệ không thể xóa hẳn.")
+                st.info("Đây là collection mặc định của hệ thống: Chỉ hỗ trợ Reset dữ liệu, được bảo vệ không thể xóa hẳn.")
 
         # Cột 2: Nạp dữ liệu vào collection này (Ủy quyền cho Seeder Box component)
         with col_d2:

@@ -17,7 +17,7 @@ def render_seeder_box(point_srv: PointService) -> None:
     """
     current_col = point_srv.collection_name
 
-    st.markdown(f"##### 🌱 Nạp dữ liệu vào `{current_col}`")
+    st.markdown(f"##### Nạp dữ liệu vào `{current_col}`")
     st.caption("Chỉ quét các file ảnh trực tiếp trong thư mục được chọn (bỏ qua các thư mục con bên trong).")
 
     # 1. Nút mở cửa sổ chọn thư mục Windows
@@ -27,7 +27,7 @@ def render_seeder_box(point_srv: PointService) -> None:
 
     col_btn_browse, col_btn_clear = st.columns([3, 1])
     with col_btn_browse:
-        if st.button("📂 Mở cửa sổ Browse chọn thư mục (Windows)", use_container_width=True, type="secondary"):
+        if st.button("Mở cửa sổ Browse chọn thư mục (Windows)", use_container_width=True, type="secondary"):
             selected_dir = open_folder_dialog(initial_dir=Path(st.session_state["seed_custom_folder"]))
             if selected_dir:
                 st.session_state["seed_custom_folder"] = selected_dir
@@ -51,15 +51,15 @@ def render_seeder_box(point_srv: PointService) -> None:
     direct_images = scan_folder_direct_images(chosen_dir_path) if chosen_dir_path else []
 
     if not chosen_dir_path or not chosen_dir_path.exists() or not chosen_dir_path.is_dir():
-        st.warning("⚠️ Thư mục không tồn tại hoặc không hợp lệ.")
+        st.warning("Thư mục không tồn tại hoặc không hợp lệ.")
     elif not direct_images:
-        st.warning("⚠️ Thư mục này không chứa file ảnh trực tiếp nào.")
+        st.warning("Thư mục này không chứa file ảnh trực tiếp nào.")
     else:
-        st.success(f"🟢 Tìm thấy **{len(direct_images)} ảnh** trực tiếp trong thư mục này.")
+        st.success(f"Tìm thấy **{len(direct_images)} ảnh** trực tiếp trong thư mục này.")
 
         # 3. Hiển thị xem trước tối đa 10 ảnh
         preview_count = min(10, len(direct_images))
-        with st.expander(f"👁️ Xem trước ({preview_count}/{len(direct_images)} ảnh trực tiếp)", expanded=True):
+        with st.expander(f"Xem trước ({preview_count}/{len(direct_images)} ảnh trực tiếp)", expanded=True):
             preview_cols = st.columns(min(5, preview_count))
             for idx in range(preview_count):
                 col = preview_cols[idx % min(5, preview_count)]
@@ -88,7 +88,7 @@ def render_seeder_box(point_srv: PointService) -> None:
     # Nút bắt đầu Seed
     btn_disabled = (len(direct_images) == 0)
     btn_seed = st.button(
-        f"🚀 Bắt đầu Nạp {len(direct_images)} ảnh vào `{current_col}`",
+        f"Bắt đầu nạp {len(direct_images)} ảnh",
         key="btn_run_seeder",
         type="primary",
         disabled=btn_disabled,
@@ -105,7 +105,7 @@ def render_seeder_box(point_srv: PointService) -> None:
                     status=PointStatus.SEEDED,
                     recursive=False,
                 )
-                st.success(f"✅ Nạp dữ liệu hoàn tất! Thành công: {success_n} ảnh (Bỏ qua: {skipped_n})")
+                st.success(f"Nạp dữ liệu hoàn tất! Thành công: {success_n} ảnh (Bỏ qua: {skipped_n})")
                 st.rerun()
             except Exception as ex:
                 st.error(f"Lỗi trong quá trình nạp dữ liệu: {ex}")

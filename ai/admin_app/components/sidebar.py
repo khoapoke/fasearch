@@ -1,5 +1,4 @@
 import re
-from typing import Tuple
 import streamlit as st
 import torch
 
@@ -11,13 +10,13 @@ from src.repositories import (
 )
 
 
-def render_sidebar() -> Tuple[str, int]:
+def render_sidebar() -> str:
     """
-    Component Sidebar: Quản lý danh sách Collection trên Qdrant, điều hướng trang và hiển thị thông số hệ thống.
-    Trả về: (selected_collection: str, page_choice: int)
+    Component Sidebar: Quản lý danh sách Collection trên Qdrant và hiển thị thông số hệ thống.
+    Trả về: selected_collection (str)
     """
     with st.sidebar:
-        st.title("🛍️ Fashion AI")
+        st.title("Fashion AI")
         st.caption("Admin Console & Multi-Collection Management")
 
         st.divider()
@@ -25,7 +24,7 @@ def render_sidebar() -> Tuple[str, int]:
         # ------------------------------------------
         # 1. QUẢN LÝ VÀ CHỌN COLLECTION
         # ------------------------------------------
-        st.markdown("##### 🗄️ Quản lý Collection")
+        st.markdown("##### Quản lý Collection")
 
         all_collections = list_all_collections()
         default_collection = settings.qdrant.collection_name
@@ -54,12 +53,12 @@ def render_sidebar() -> Tuple[str, int]:
             "Collection đang chọn:",
             options=all_collections,
             index=current_idx,
-            help="Toàn bộ thao tác và dữ liệu sẽ áp dụng cho collection này.",
+            help="Toàn bộ thao tác và dữ liệu trên các tab sẽ áp dụng cho collection này.",
         )
         st.session_state["selected_collection"] = selected_collection
 
         # Form tạo mới collection
-        with st.expander("➕ Tạo Collection mới"):
+        with st.expander("Tạo Collection mới"):
             new_col_input = st.text_input("Tên collection:", placeholder="vd: shoes_gallery")
             if st.button("Tạo ngay", use_container_width=True):
                 clean_name = new_col_input.strip()
@@ -77,9 +76,9 @@ def render_sidebar() -> Tuple[str, int]:
 
         # Xóa Collection phụ (Bảo vệ collection mặc định)
         if selected_collection == default_collection:
-            st.caption(f"🔒 `{selected_collection}` là collection mặc định của hệ thống. Bạn chỉ có thể Reset dữ liệu bên trong tại tab Tổng quan.")
+            st.caption(f"`{selected_collection}` là collection mặc định của hệ thống. Bạn chỉ có thể Reset dữ liệu bên trong tại tab Tổng quan.")
         else:
-            with st.expander("🗑️ Xóa Collection này"):
+            with st.expander("Xóa Collection này"):
                 st.warning(f"Thao tác này sẽ xóa sổ vĩnh viễn collection `{selected_collection}` khỏi Qdrant!")
                 confirm_delete = st.checkbox(f"Tôi xác nhận muốn xóa vĩnh viễn '{selected_collection}'")
                 if st.button("Xác nhận Xóa Hẳn", type="primary", use_container_width=True, disabled=not confirm_delete):
@@ -91,27 +90,11 @@ def render_sidebar() -> Tuple[str, int]:
         st.divider()
 
         # ------------------------------------------
-        # 2. ĐIỀU HƯỚNG TRANG (PAGE NAVIGATION)
+        # 2. THÔNG SỐ KỸ THUẬT HỆ THỐNG
         # ------------------------------------------
-        selected_page = st.radio(
-            "Chức năng quản trị:",
-            options=[
-                {"choose": 1, "title": "Tổng quan"},
-                {"choose": 2, "title": "Vector Point"},
-                {"choose": 3, "title": "Thử nghiệm tìm kiếm"},
-            ],
-            format_func=lambda opt: opt["title"],
-            index=0,
-        )
-
-        st.divider()
-
-        # ------------------------------------------
-        # 3. THÔNG SỐ KỸ THUẬT HỆ THỐNG
-        # ------------------------------------------
-        st.markdown("##### 🖥️ Thông số Kỹ thuật")
+        st.markdown("##### Thông số Kỹ thuật")
         is_cuda = torch.cuda.is_available()
-        dev_title = "🟢 CUDA (GPU)" if is_cuda else "⚪ CPU Mode"
+        dev_title = "CUDA (GPU)" if is_cuda else "CPU Mode"
         st.markdown(f"**Thiết bị:** {dev_title}")
         if is_cuda:
             st.caption(f"GPU: `{torch.cuda.get_device_name(0)}`")
@@ -123,6 +106,4 @@ def render_sidebar() -> Tuple[str, int]:
         st.divider()
         st.caption("Fashion AI Search Engine © 2026")
 
-    choice = selected_page.get("choose", 1)
-    return selected_collection, choice
-
+    return selected_collection

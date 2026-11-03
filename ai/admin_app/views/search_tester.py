@@ -15,13 +15,14 @@ def render_search_tester(search_srv: SearchService) -> None:
     Thực hiện truy vấn trực tiếp trên collection của search_srv.
     """
     current_col = search_srv.collection_name
-    st.subheader(f"🔍 Thử nghiệm Tìm kiếm — Collection: `{current_col}`")
+    st.subheader(f"Các phương thức tìm kiếm")
+    st.caption(f"Collection: `{current_col}`")
     st.caption("Kiểm thử tính năng trích xuất vector embedding và truy vấn độ tương đồng Cosine trong Qdrant.")
 
     # ==========================================
     # CẤU HÌNH THAM SỐ TÌM KIẾM
     # ==========================================
-    with st.expander("⚙️ Tham số truy vấn (Search Parameters)", expanded=True):
+    with st.expander("Tham số truy vấn (Search Parameters)", expanded=True):
         col_p1, col_p2, col_p3 = st.columns(3)
         with col_p1:
             top_k = st.slider("Số lượng kết quả (Top K)", min_value=1, max_value=24, value=6)
@@ -43,9 +44,9 @@ def render_search_tester(search_srv: SearchService) -> None:
 
     tab_text, tab_image, tab_multimodal = st.tabs(
         [
-            "💬 Tìm bằng Văn bản (Text-to-Image)",
-            "🖼️ Tìm bằng Hình ảnh (Image-to-Image)",
-            "✨ Tìm kết hợp Đa phương thức (Multimodal: Ảnh + Chữ)",
+            "Tìm bằng Văn bản (Text-to-Image)",
+            "Tìm bằng Hình ảnh (Image-to-Image)",
+            "Tìm kết hợp Đa phương thức (Multimodal: Ảnh + Chữ)",
         ]
     )
 
@@ -67,21 +68,21 @@ def render_search_tester(search_srv: SearchService) -> None:
                 label_visibility="collapsed",
             )
         with col_q2:
-            btn_text_search = st.button("🔎 Tìm kiếm", key="btn_search_text", type="primary", use_container_width=True)
+            btn_text_search = st.button("Tìm kiếm", key="btn_search_text", type="primary", use_container_width=True)
 
         # Gợi ý truy vấn nhanh
         st.caption("Gợi ý từ khóa mẫu:")
         c1, c2, c3, c4 = st.columns(4)
-        if c1.button("👔 áo sơ mi trắng"):
+        if c1.button("áo sơ mi trắng"):
             query_text = "áo sơ mi trắng"
             btn_text_search = True
-        if c2.button("🧥 black jacket"):
+        if c2.button("black jacket"):
             query_text = "black jacket"
             btn_text_search = True
-        if c3.button("👗 floral dress"):
+        if c3.button("floral dress"):
             query_text = "floral dress"
             btn_text_search = True
-        if c4.button("👖 blue jeans"):
+        if c4.button("blue jeans"):
             query_text = "blue jeans"
             btn_text_search = True
 
@@ -117,7 +118,7 @@ def render_search_tester(search_srv: SearchService) -> None:
             with col_preview:
                 st.image(uploaded_query_img, caption="Ảnh truy vấn", width=180)
             with col_btn:
-                btn_img_search = st.button("🔍 Tìm sản phẩm tương đồng", type="primary")
+                btn_img_search = st.button("Tìm sản phẩm tương đồng", type="primary")
 
             if btn_img_search:
                 with st.spinner(f"Đang tìm kiếm trong collection '{current_col}'..."):
@@ -182,11 +183,11 @@ def render_search_tester(search_srv: SearchService) -> None:
                 key="multi_text_weight_slider",
             )
             st.caption(
-                f"⚖️ Tỷ trọng hiện tại: **Ảnh {(1.0 - text_weight)*100:.0f}%** — **Văn bản {text_weight*100:.0f}%**"
+                f"Tỷ trọng hiện tại: **Ảnh {(1.0 - text_weight)*100:.0f}%** — **Văn bản {text_weight*100:.0f}%**"
             )
 
         btn_multi_search = st.button(
-            "✨ Tìm kiếm Đa phương thức",
+            "Tìm kiếm Đa phương thức",
             key="btn_search_multimodal",
             type="primary",
             use_container_width=True,
@@ -236,7 +237,7 @@ def render_search_tester(search_srv: SearchService) -> None:
     if results is not None:
         st.divider()
         st.markdown(
-            f"##### 🎯 Kết quả tìm kiếm trong `{current_col}` cho {query_display} "
+            f"##### Kết quả tìm kiếm trong `{current_col}` cho {query_display} "
             f"`({len(results)} kết quả trong {elapsed_ms:.1f}ms)`"
         )
 

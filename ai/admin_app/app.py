@@ -27,7 +27,6 @@ logging.basicConfig(
 # ==========================================
 st.set_page_config(
     page_title="Fashion AI Search | Admin Console",
-    page_icon="🛍️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -50,7 +49,7 @@ init_app_state()
 # ==========================================
 # THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR COMPONENT)
 # ==========================================
-selected_collection, choice = render_sidebar()
+selected_collection = render_sidebar()
 
 
 # ==========================================
@@ -61,11 +60,21 @@ search_srv = SearchService(collection_name=selected_collection)
 
 
 # ==========================================
-# ĐIỀU PHỐI MÀN HÌNH CHÍNH (ROUTER)
+# ĐIỀU HƯỚNG BẰNG TAB NGANG TRÊN ĐỈNH TRANG (TOP TABS)
 # ==========================================
-if choice == 1:
+tab_overview, tab_points, tab_search = st.tabs(
+    [
+        "Tổng quan & Cấu hình",
+        "Vector Point",
+        "Thử nghiệm",
+    ]
+)
+
+with tab_overview:
     render_overview(point_srv=point_srv)
-elif choice == 2:
+
+with tab_points:
     render_point_manager(point_srv=point_srv)
-elif choice == 3:
+
+with tab_search:
     render_search_tester(search_srv=search_srv)

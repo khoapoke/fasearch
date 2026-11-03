@@ -28,14 +28,14 @@ def get_status_badge(status: str) -> str:
     """Tạo badge HTML đẹp mắt cho từng trạng thái PointStatus (an toàn với dữ liệu legacy)."""
     status_upper = (status or "UNKNOWN").upper()
     color_map = {
-        PointStatus.ACTIVE.value: ("#059669", "#ecfdf5", "🟢 ACTIVE"),
-        PointStatus.SEEDED.value: ("#2563eb", "#eff6ff", "🔵 SEEDED"),
-        PointStatus.DELETED.value: ("#dc2626", "#fef2f2", "🔴 DELETED"),
-        PointStatus.INACTIVE.value: ("#d97706", "#fffbeb", "🟡 INACTIVE"),
-        "PENDING": ("#d97706", "#fffbeb", "🟡 PENDING"),
+        PointStatus.ACTIVE.value: ("#059669", "#ecfdf5", "ACTIVE"),
+        PointStatus.SEEDED.value: ("#2563eb", "#eff6ff", "SEEDED"),
+        PointStatus.DELETED.value: ("#dc2626", "#fef2f2", "DELETED"),
+        PointStatus.INACTIVE.value: ("#d97706", "#fffbeb", "INACTIVE"),
+        "PENDING": ("#d97706", "#fffbeb", "PENDING"),
     }
     border, bg, label = color_map.get(
-        status_upper, ("#6b7280", "#f3f4f6", f"⚪ {status_upper}")
+        status_upper, ("#6b7280", "#f3f4f6", status_upper)
     )
     return f"""<span style="
         display: inline-block;
@@ -61,7 +61,7 @@ def get_catalog_badge(catalog: str) -> str:
         color: #4b5563;
         background-color: #f3f4f6;
         border: 1px solid #e5e7eb;
-    ">🏷️ {cat_upper}</span>"""
+    ">{cat_upper}</span>"""
 
 
 def save_admin_uploaded_image(uploaded_file) -> Tuple[str, str, Path]:
