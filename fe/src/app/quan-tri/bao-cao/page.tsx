@@ -141,7 +141,7 @@ export default function ReportsPage() {
           ) : null}
           {tab === "xuat-nhap-ton" ? (
             <>
-              <label>Tháng <input type="month" value={f.thang ? `${f.thang.slice(3)}-${f.thang.slice(0, 2)}` : ""} onChange={(e) => { const v = e.target.value; set("thang", v ? `${v.slice(5, 7)}-${v.slice(0, 4)}` : ""); }} aria-label="Tháng (MM-YYYY)" /></label>
+              <label>Tháng <input type="month" value={f.thang ? `${f.thang.slice(3)}-${f.thang.slice(0, 2)}` : ""} onChange={(e) => { const v = e.target.value; set("thang", v ? `${v.slice(5, 7)}-${v.slice(0, 4)}` : ""); }} aria-label="Tháng (MM-YYYY, trống = tháng hiện tại)" /></label>
               <label>Mã SKU <input value={f.sku ?? ""} onChange={(e) => set("sku", e.target.value)} placeholder="Mã SKU" aria-label="Mã SKU" style={{ width: 120 }} /></label>
             </>
           ) : null}
