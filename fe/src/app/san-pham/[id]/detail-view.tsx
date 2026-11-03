@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BackIcon, ZoomIcon } from "@/components/customer-catalog/catalog-icons";
 import {
@@ -66,6 +67,7 @@ function ImageDialog({ viewer, onClose }: { viewer: Viewer | null; onClose: () =
 }
 
 export function DetailView({ id }: { id: string }) {
+  const router = useRouter();
   const [retry, setRetry] = useState(0);
   const viewKey = `${id}|${retry}`;
   const [settled, setSettled] = useState<{ key: string; data?: CatalogProductDetail; error?: string; notFound?: boolean }>({ key: "" });
@@ -162,7 +164,10 @@ export function DetailView({ id }: { id: string }) {
           ? current.map((line) => line === existing ? { ...line, qty: line.qty + quantity } : line)
           : [...current, { id: product?.id ?? Number(id), name: product?.name ?? "Sản phẩm", price, image: product?.imageUrl ?? undefined, qty: quantity, meta, skuId: selected.skuId, color, size }];
         writeCart(next);
-        setAddNotice("Đã lưu món này trên thiết bị. Đăng nhập để giữ giỏ hàng của bạn trên mọi thiết bị.");
+        // Giữ nguyên sản phẩm/biến thể/số lượng trong giỏ tạm rồi chuyển thẳng
+        // tới đăng nhập; giỏ sẽ nhập lại đúng một dòng sau khi đăng nhập.
+        setAddNotice("Đang chuyển tới đăng nhập để giữ món này trong giỏ của bạn…");
+        router.push("/dang-nhap?next=%2Fgio-hang");
       } else if (failure instanceof CommerceError && failure.status === 403) {
         setAddError("Tài khoản của bạn có vai trò Quản trị viên/Nhân viên. Chức năng mua hàng trực tuyến chỉ dành cho tài khoản Khách hàng. Vui lòng chuyển sang tài khoản Khách hàng để đặt đơn.");
       } else {
@@ -278,7 +283,7 @@ export function DetailView({ id }: { id: string }) {
               ) : null}
 
               {!variants.length ? (
-                <p className="cat-readonly-note">Máy chủ chưa trả về lựa chọn màu/kích thước cho sản phẩm này.</p>
+                <p className="cat-readonly-note">Sản phẩm này chưa có lựa chọn màu hoặc kích thước.</p>
               ) : null}
 
               {/* R5: không còn dòng "Cỡ có sẵn" thừa — các pill cỡ đã liệt kê đủ. */}
@@ -323,8 +328,7 @@ export function DetailView({ id }: { id: string }) {
                   ) : null}
                   {product.sourceHost ? (
                     <p className="cat-source-inline">
-                      Nguồn: {product.sourceUrl ? (<a href={product.sourceUrl} target="_blank" rel="noopener noreferrer">{product.sourceHost}</a>) : product.sourceHost}
-                      {" · "}giá demo
+                      Tham khảo: {product.sourceUrl ? (<a href={product.sourceUrl} target="_blank" rel="noopener noreferrer">{product.sourceHost}</a>) : product.sourceHost}
                     </p>
                   ) : null}
                 </details>

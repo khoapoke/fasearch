@@ -136,10 +136,22 @@ function CheckoutPageContent() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (pending.current || !cart?.items.length) return;
-    if (!name.trim() || !phone.trim() || !address.trim()) { setError("Điền đủ người nhận, số điện thoại và địa chỉ."); return; }
-    if (!/^\d{9,11}$/.test(phone.replace(/[ .-]/g, ""))) { setError("Số điện thoại phải có 9–11 chữ số."); return; }
-    if (address.trim().length < 5) { setError("Địa chỉ giao hàng quá ngắn."); return; }
-    if (!currentCartQuote) { setError("Hãy báo giá giỏ hàng/voucher trước khi đặt đơn."); return; }
+    // AC-04: lỗi đầu tiên được nêu rõ VÀ focus đúng ô để sửa ngay.
+    const firstInvalid =
+      !name.trim() ? "checkout-name"
+      : !phone.trim() || !/^\d{9,11}$/.test(phone.replace(/[ .-]/g, "")) ? "checkout-phone"
+      : !address.trim() || address.trim().length < 5 ? "checkout-address"
+      : null;
+    if (firstInvalid) {
+      setError(
+        firstInvalid === "checkout-name" ? "Vui lòng nhập tên người nhận."
+        : firstInvalid === "checkout-phone" ? "Số điện thoại phải có 9–11 chữ số."
+        : "Vui lòng nhập địa chỉ giao hàng (ít nhất 5 ký tự).",
+      );
+      document.getElementById(firstInvalid)?.focus();
+      return;
+    }
+    if (!currentCartQuote) { setError("Hãy áp dụng ưu đãi hoặc báo giá lại trước khi đặt hàng."); return; }
     const current = quote?.key === key ? quote : await calculate();
     if (!current) { setError("Chưa có phí giao hàng hợp lệ. Kiểm tra tỉnh/quận rồi thử lại."); return; }
     pending.current = true;
@@ -179,10 +191,10 @@ function CheckoutPageContent() {
         <div className="commerce-content">
           <nav className="commerce-crumbs" aria-label="Đường dẫn"><Link href="/gio-hang">Giỏ hàng</Link><span aria-hidden="true">›</span><span aria-current="page">Thanh toán</span></nav>
           <h1 className="commerce-title">Thanh toán</h1>
-          <p className="commerce-sub">Đơn thử nghiệm trên dữ liệu tổng hợp · COD · không có cổng thanh toán hay giao dịch thật.</p>
+          <p className="commerce-sub">Kiểm tra thông tin nhận hàng và tổng tiền trước khi đặt. Thanh toán khi nhận hàng (COD).</p>
 
           {authState === "guest" ? (
-            <div className="commerce-empty"><h2>Cần đăng nhập</h2><p>Đăng nhập để dùng giỏ máy chủ và tạo đơn thử nghiệm.</p><Link className="commerce-primary" href="/dang-nhap?next=%2Fthanh-toan">Đăng nhập →</Link></div>
+            <div className="commerce-empty"><h2>Cần đăng nhập</h2><p>Đăng nhập để xem giỏ hàng và đặt đơn của bạn.</p><Link className="commerce-primary" href="/dang-nhap?next=%2Fthanh-toan">Đăng nhập →</Link></div>
           ) : null}
           {authState === "checking" || (authState === "authenticated" && loading && !cart) ? <p className="commerce-status" role="status">Đang tải giỏ hàng…</p> : null}
           {authState === "error" ? (
@@ -224,13 +236,13 @@ function CheckoutPageContent() {
                   try { void applyQuote(voucherCode.trim() || null, validatePointsInput(pointsRaw, Number.MAX_SAFE_INTEGER)); }
                   catch (e) { setVoucherError(e instanceof Error ? e.message : "Điểm sử dụng chưa hợp lệ."); }
                 }}>{voucherBusy ? "Đang báo giá…" : "Áp dụng ưu đãi / báo giá lại"}</button>
-                <p className="checkout-test-note">Đơn thử nghiệm trên dữ liệu demo · thanh toán COD khi nhận hàng.</p>
+                <p className="checkout-test-note">Thanh toán khi nhận hàng (COD).</p>
                 {voucherError ? <p ref={voucherErrorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{voucherError}</p> : null}
                 {cartQuote && !quoteIsCurrent && !voucherBusy ? <p className="commerce-status" role="status">Giỏ hàng hoặc mã voucher đã thay đổi. Báo giá lại trước khi đặt đơn.</p> : null}
                 {quoteError ? <p className="commerce-status is-error" role="alert">{quoteError}</p> : null}
                 {error ? <p ref={errorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{error}</p> : null}
                 {uncertain ? <p className="commerce-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href="/don-hang">Mở Đơn hàng để đối soát →</Link></p> : null}
-                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? "Đang tạo đơn thử nghiệm…" : "Đặt đơn thử nghiệm (COD)"}</button>
+                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? "Đang đặt đơn…" : "Đặt hàng (COD)"}</button>
                 <p className="commerce-note">Giá và ưu đãi được xác nhận lại khi bạn đặt đơn.</p>
               </form>
               <aside className="checkout-summary-panel" aria-label="Tóm tắt thanh toán">
@@ -239,7 +251,7 @@ function CheckoutPageContent() {
                 <div className="checkout-summary-line"><span>Tạm tính hàng hóa</span><strong>{formatMoney(currentCartQuote?.subTotal ?? cart.subTotal)}</strong></div>
                 {currentCartQuote?.voucherCode ? <div className="checkout-summary-line"><span>Voucher {currentCartQuote.voucherCode}</span><strong>−{formatMoney(currentCartQuote.voucherDiscount)}</strong></div> : null}
                 {currentCartQuote && currentCartQuote.pointsDiscount > 0 ? <div className="checkout-summary-line"><span>Đổi {currentCartQuote.redeemedPoints} điểm</span><strong>−{formatMoney(currentCartQuote.pointsDiscount)}</strong></div> : null}
-                {currentCartQuote && currentCartQuote.allowedRedeemedPoints > 0 ? <p className="commerce-note">Tối đa {currentCartQuote.allowedRedeemedPoints.toLocaleString("vi-VN")} điểm theo báo giá máy chủ.</p> : null}
+                {currentCartQuote && currentCartQuote.allowedRedeemedPoints > 0 ? <p className="commerce-note">Bạn có thể dùng tối đa {currentCartQuote.allowedRedeemedPoints.toLocaleString("vi-VN")} điểm cho đơn này.</p> : null}
                 <div className="checkout-summary-line"><span>Tiền hàng sau ưu đãi</span><strong>{currentCartQuote ? formatMoney(currentCartQuote.merchandiseAmountDue) : "—"}</strong></div>
                 <div className="checkout-summary-line"><span>Phí giao hàng {quote ? `(${quote.estimatedDays})` : ""}</span><strong>{quote ? formatMoney(quote.shippingFee) : quoteBusy ? "Đang tính…" : "—"}</strong></div>
                 <div className="checkout-total"><span>Tổng tạm tính</span><strong>{currentCartQuote && quote ? formatMoney(currentCartQuote.merchandiseAmountDue + quote.shippingFee) : "—"}</strong></div>

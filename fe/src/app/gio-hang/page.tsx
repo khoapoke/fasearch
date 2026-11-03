@@ -46,6 +46,15 @@ export default function CartPage() {
     }
     if (next) setCart(next);
     if (ok) setNotice(`Đã thêm ${ok} món vào giỏ của bạn.`);
+    // AC-03: món không nhập được phải được nói rõ, không im lặng biến mất.
+    const failed = local.length - ok;
+    if (failed > 0) {
+      setActionError(
+        failed === 1
+          ? "1 món đã chọn chưa thêm được vào giỏ vì không đủ tồn kho. Món đó vẫn được giữ trên thiết bị này để bạn chọn lại."
+          : `${failed} món đã chọn chưa thêm được vào giỏ vì không đủ tồn kho. Chúng vẫn được giữ trên thiết bị này.`,
+      );
+    }
   }, [authState, cart, setCart]);
 
   useEffect(() => { void Promise.resolve().then(() => importGuest()); }, [importGuest]);
@@ -107,7 +116,7 @@ export default function CartPage() {
           {notice ? <p className="commerce-status" role="status">{notice}</p> : null}
           {actionError ? <p className="commerce-status is-error" role="alert">{actionError}</p> : null}
 
-          {authState === "checking" || (authState === "authenticated" && loading && !cart) ? <p className="commerce-status" role="status">Đang tải giỏ hàng từ máy chủ…</p> : null}
+          {authState === "checking" || (authState === "authenticated" && loading && !cart) ? <p className="commerce-status" role="status">Đang tải giỏ hàng…</p> : null}
           {authState === "error" ? (
             <div className="commerce-empty" role="alert">
               <h2>{loadError.includes("quyền") ? "Khu vực mua sắm dành cho khách hàng" : "Không tải được giỏ hàng"}</h2>
@@ -167,7 +176,7 @@ export default function CartPage() {
 
           {authState === "authenticated" && cart ? (
             <div className="commerce-layout">
-              <section className="commerce-panel" aria-label="Sản phẩm trong giỏ máy chủ">
+              <section className="commerce-panel" aria-label="Sản phẩm trong giỏ hàng">
                 <div className="commerce-toolbar"><p>Cập nhật theo tồn kho hiện tại</p><span>{cart.totalItems} món</span></div>
                 {lines.length === 0 ? (
                   <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Thêm sản phẩm từ trang chi tiết để bắt đầu.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div>
@@ -182,7 +191,7 @@ export default function CartPage() {
                         <div>
                           <p className="commerce-line-name">{line.productName}</p>
                           <p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · Đơn giá {formatMoney(line.unitPrice)}</p>
-                          <p className="commerce-line-price">SKU {line.skuId}</p>
+                          <p className="commerce-line-price">{[line.color, line.size].filter(Boolean).join(" · ") ? "Đã chọn biến thể" : "Một phiên bản"}</p>
                         </div>
                         <div className="commerce-line-side">
                           <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
@@ -199,7 +208,7 @@ export default function CartPage() {
                 )}
                 {lines.length ? <button className="commerce-ghost" type="button" disabled={busy !== null} onClick={clear}>{busy === "clear" ? "Đang xóa…" : "Xóa toàn bộ giỏ"}</button> : null}
               </section>
-              <aside className="commerce-summary" aria-label="Tóm tắt giỏ máy chủ">
+              <aside className="commerce-summary" aria-label="Tóm tắt giỏ hàng">
                 <h2>Tóm tắt</h2>
                 <div className="commerce-summary-row"><span>Tạm tính</span><strong>{formatMoney(subtotal)}</strong></div>
                 <div className="commerce-summary-row"><span>Số món</span><strong>{cart.totalItems}</strong></div>
