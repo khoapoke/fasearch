@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdminShell } from "@/components/admin/admin-shell";
+import { AdminShellB } from "@/components/admin-b/admin-shell";
+import "@/components/admin/admin.css";
 import { addCampaignCode, createCampaign, fetchCampaign, fetchCampaigns, updateCampaign, type Campaign } from "@/lib/promotions-client";
 import { benefitErrorMessage } from "@/lib/benefits";
 
@@ -175,13 +176,9 @@ export default function CampaignsPage() {
   }
 
   return (
-    <AdminShell
-      active="campaigns"
-      crumbs={[{ label: "Quản trị", href: "/quan-tri/tai-khoan" }, { label: "Khuyến mãi & Voucher" }]}
-      title="Khuyến mãi & Voucher"
-      lede="Tạo/sửa/tạm dừng chương trình theo phiên bản. Đơn đã chốt giữ nguyên deal."
-      actions={<button className="adBtn adBtnPrimary" type="button" onClick={() => setCreating((v) => !v)}>{creating ? "Đóng form" : "Tạo chương trình"}</button>}
-    >
+    <AdminShellB active="promotions" title="Khuyến mãi & Voucher" eyebrow="Quản trị">
+      <p className="adLede">Tạo/sửa/tạm dừng chương trình theo phiên bản. Đơn đã chốt giữ nguyên deal.</p>
+      <div className="adActions" style={{ margin: "0 0 16px" }}><button className="adBtn adBtnPrimary" type="button" onClick={() => setCreating((v) => !v)}>{creating ? "Đóng form" : "Tạo chương trình"}</button></div>
       {creating ? (
         <section className="adCard" aria-label="Tạo chương trình">
           <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>Chương trình mới</h2>
@@ -289,7 +286,7 @@ export default function CampaignsPage() {
           )}
         </section>
       ) : null}
-    </AdminShell>
+    </AdminShellB>
   );
 }
 

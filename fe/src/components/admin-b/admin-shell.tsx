@@ -8,7 +8,7 @@ import "./admin-b.css";
 
 type State = { kind: "loading" } | { kind: "guest" } | { kind: "denied" } | { kind: "ready"; identity: AuthIdentity };
 
-export function AdminShellB({ active, title, eyebrow, children }: { active: "overview" | "orders" | "customers" | "employees" | "internalAccounts" | "products" | "categories" | "stock" | "imports" | "exports" | "stocktakes"; title: string; eyebrow?: string; children: React.ReactNode }) {
+export function AdminShellB({ active, title, eyebrow, children }: { active: "overview" | "orders" | "customers" | "employees" | "internalAccounts" | "products" | "categories" | "stock" | "imports" | "exports" | "stocktakes" | "promotions" | "loyalty" | "reports"; title: string; eyebrow?: string; children: React.ReactNode }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [dark, setDark] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -68,6 +68,10 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <Link className={`nav-item${active === "imports" ? " active" : ""}`} href="/quan-tri/phieu-nhap" aria-current={active === "imports" ? "page" : undefined}><Icon name="truck" /><span>Phiếu nhập</span></Link>
             <Link className={`nav-item${active === "exports" ? " active" : ""}`} href="/quan-tri/phieu-xuat" aria-current={active === "exports" ? "page" : undefined}><Icon name="package" /><span>Phiếu xuất</span></Link>
             <Link className={`nav-item${active === "stocktakes" ? " active" : ""}`} href="/quan-tri/kiem-ke" aria-current={active === "stocktakes" ? "page" : undefined}><Icon name="clipboard-list" /><span>Kiểm kê</span></Link>
+            <div className="nav-group">Ưu đãi &amp; Báo cáo</div>
+            <Link className={`nav-item${active === "promotions" ? " active" : ""}`} href="/quan-tri/khuyen-mai" aria-current={active === "promotions" ? "page" : undefined}><Icon name="calendar-days" /><span>Khuyến mãi</span></Link>
+            <Link className={`nav-item${active === "loyalty" ? " active" : ""}`} href="/quan-tri/chinh-sach-diem" aria-current={active === "loyalty" ? "page" : undefined}><Icon name="scroll-text" /><span>Chính sách điểm</span></Link>
+            <Link className={`nav-item${active === "reports" ? " active" : ""}`} href="/quan-tri/bao-cao" aria-current={active === "reports" ? "page" : undefined}><Icon name="chart-no-axes-combined" /><span>Báo cáo</span></Link>
           </nav>
           <div className="sidebar-bottom"><span className="fixture-dot" />Đơn thật · tài chính preview</div>
         </aside>

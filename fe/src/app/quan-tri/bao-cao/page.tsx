@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdminShell } from "@/components/admin/admin-shell";
+import { AdminShellB } from "@/components/admin-b/admin-shell";
+import "@/components/admin/admin.css";
 import {
   downloadReportCsv, fetchProducts, fetchRevenue, fetchXnt,
   type DoanhThuResult, type SanPhamResult, type XntResult,
@@ -87,13 +88,9 @@ export default function ReportsPage() {
   const ready = state.kind === "ready" && state.tab === tab ? state : null;
 
   return (
-    <AdminShell
-      active="reports"
-      crumbs={[{ label: "Quản trị", href: "/quan-tri/tai-khoan" }, { label: "Báo cáo" }]}
-      title="Báo cáo doanh thu & hàng hóa"
-      lede="Số liệu từ hóa đơn đã thu thật. Chi phí lịch sử chưa rõ và tồn đầu kỳ chưa rõ hiện cảnh báo, không tính 0."
-      actions={<button className="adBtn adBtnPrimary" type="button" disabled={csvBusy || !ready} onClick={csv}>{csvBusy ? "Đang xuất…" : "Xuất CSV (cùng bộ lọc)"}</button>}
-    >
+    <AdminShellB active="reports" title="Báo cáo doanh thu & hàng hóa" eyebrow="Quản trị">
+      <p className="adLede">Số liệu từ hóa đơn đã thu thật. Chi phí lịch sử chưa rõ và tồn đầu kỳ chưa rõ hiện cảnh báo, không tính 0.</p>
+      <div className="adActions" style={{ margin: "0 0 16px" }}><button className="adBtn adBtnPrimary" type="button" disabled={csvBusy || !ready} onClick={csv}>{csvBusy ? "Đang xuất…" : "Xuất CSV (cùng bộ lọc)"}</button></div>
       <div className="adFilters" role="group" aria-label="Loại báo cáo" style={{ marginBottom: 12 }}>
         {(["doanh-thu", "san-pham", "xuat-nhap-ton"] as Tab[]).map((t) => (
           <button key={t} className="adBtn" type="button" aria-pressed={tab === t} onClick={() => setTab(t)} style={tab === t ? { background: "#4338ca", borderColor: "#4338ca", color: "#fff" } : undefined}>
@@ -141,7 +138,7 @@ export default function ReportsPage() {
           {ready.xnt ? <XntView data={ready.xnt} /> : null}
         </div>
       ) : null}
-    </AdminShell>
+    </AdminShellB>
   );
 }
 

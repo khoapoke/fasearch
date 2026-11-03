@@ -2,7 +2,6 @@ import type { NextRequest } from "next/server";
 import { adminIdentity } from "@/lib/server/admin-bff";
 import { authCookie, requireJsonPost } from "@/lib/server/customer-auth";
 
-const BE = "http://127.0.0.1:18126";
 const noStore = { "cache-control": "no-store" };
 const voucherMessages: Record<number, string> = {
   4101: "Mã voucher không tồn tại.",
@@ -65,8 +64,18 @@ export async function promotionsUpstream(
   if (who.identity.role !== "ADMIN") return jsonError(403, 403, "Chỉ ADMIN được quản lý khuyến mãi.");
   const token = authCookie(request);
   if (!token) return jsonError(401, 401, "Thiếu phiên quản trị.");
+  let base: string;
   try {
-    const upstream = await fetch(`${BE}${path}`, {
+    // Một upstream hiển cấu hình cho mọi lệnh benefits/loyalty (S1).
+    // Không port cứng: thiếu cấu hình là lỗi triển khai, báo 503 thật.
+    const raw = process.env.FASEARCH_BACKEND_URL;
+    if (!raw) throw new Error("benefits upstream not configured");
+    base = raw.replace(/\/+$/, "");
+  } catch {
+    return jsonError(503, 503, "Máy chủ chưa cấu hình upstream benefits.");
+  }
+  try {
+    const upstream = await fetch(`${base}${path}`, {
       method,
       headers: { accept: "application/json", authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),

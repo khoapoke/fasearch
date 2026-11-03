@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdminShell } from "@/components/admin/admin-shell";
+import { AdminShellB } from "@/components/admin-b/admin-shell";
+import "@/components/admin/admin.css";
 import {
   createLoyaltyPolicy, fetchLoyaltyPolicy, fetchTierList, openLegacyBalance, policyId, updateLoyaltyPolicy,
   updateTierThreshold, type LoyaltyPolicyAdmin, type TierInfo,
@@ -181,12 +182,8 @@ export default function LoyaltyPolicyPage() {
   }
 
   return (
-    <AdminShell
-      active="loyalty"
-      crumbs={[{ label: "Quản trị", href: "/quan-tri/tai-khoan" }, { label: "Chính sách điểm" }]}
-      title="Chính sách điểm & Hạng"
-      lede="Cấu hình mức chi tiêu tích điểm, giá trị đổi điểm và chính sách theo phiên bản. Chính sách mới mặc định DISABLED."
-    >
+    <AdminShellB active="loyalty" title="Chính sách điểm & Hạng" eyebrow="Quản trị">
+      <p className="adLede">Cấu hình mức chi tiêu tích điểm, giá trị đổi điểm và chính sách theo phiên bản. Chính sách mới mặc định DISABLED.</p>
       {loading ? <p className="adState" role="status">Đang tải chính sách…</p> : null}
       {error ? (
         <div ref={errorRef} tabIndex={-1} className="adCard" role="alert">
@@ -251,6 +248,6 @@ export default function LoyaltyPolicyPage() {
           </section>
         </>
       ) : null}
-    </AdminShell>
+    </AdminShellB>
   );
 }
