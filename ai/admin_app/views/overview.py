@@ -83,7 +83,7 @@ def render_overview():
     st.divider()
 
     # ==========================================
-    # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML (CÁCH A)
+    # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML 
     # ==========================================
     st.subheader("Chỉnh sửa Cấu hình (`configs/database.yaml`)")
     st.markdown(

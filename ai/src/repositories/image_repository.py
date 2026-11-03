@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class ImageRepository(BaseRepository):
     """
     Repository phụ trách lưu trữ, truy vấn và quản lý vòng đời của Point
-    trong collection 'image_gallery' trên Qdrant.
+    trong collection trên Qdrant.
     """
 
     def __init__(
@@ -34,6 +34,29 @@ class ImageRepository(BaseRepository):
     ) -> None:
         target_collection = collection_name or settings.qdrant.collection_name
         super().__init__(collection_name=target_collection, client=client)
+
+    def ensure_collection_exists(self) -> bool:
+        """
+        Kiểm tra và tự động khởi tạo collection nếu chưa tồn tại trên Qdrant.
+        Cấu hình vector_size và distance được lấy từ settings.qdrant.
+        """
+        if not self.client.collection_exists(self.collection_name):
+            distance_choice = Distance.COSINE
+            if settings.qdrant.distance.lower() == "euclid":
+                distance_choice = Distance.EUCLID
+            elif settings.qdrant.distance.lower() == "dot":
+                distance_choice = Distance.DOT
+
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=settings.qdrant.vector_size,
+                    distance=distance_choice,
+                ),
+            )
+            logger.info(f"Đã tự động khởi tạo collection mới '{self.collection_name}' trên Qdrant.")
+            return True
+        return False
 
     def search_vectors(
         self,
@@ -260,14 +283,16 @@ class ImageRepository(BaseRepository):
         return True
 
 
+# Registry cache cho ImageRepository theo collection_name
+_image_repositories: Dict[str, ImageRepository] = {}
 
-# Singleton instance cho ImageRepository
-_image_repository: Optional[ImageRepository] = None
 
-
-def get_image_repository() -> ImageRepository:
-    """Dependency injector / Singleton accessor cho ImageRepository."""
-    global _image_repository
-    if _image_repository is None:
-        _image_repository = ImageRepository()
-    return _image_repository
+def get_image_repository(collection_name: Optional[str] = None) -> ImageRepository:
+    """
+    Dependency injector / Factory accessor cho ImageRepository.
+    Lưu cache các instance theo từng tên collection để tái sử dụng kết nối.
+    """
+    target_name = collection_name or settings.qdrant.collection_name
+    if target_name not in _image_repositories:
+        _image_repositories[target_name] = ImageRepository(collection_name=target_name)
+    return _image_repositories[target_name]

@@ -1,5 +1,7 @@
 """Services package initialization."""
 from src.services.search_service import (
+    SearchService,
+    search_service,
     search_by_text,
     search_by_image,
     search_multimodal,
@@ -12,6 +14,8 @@ from src.services.evaluation_service import (
     run_full_benchmark,
 )
 from src.services.point_service import (
+    PointService,
+    point_service,
     create_point,
     delete_point,
     update_point_payload,
@@ -21,14 +25,22 @@ from src.services.point_service import (
 )
 
 __all__ = [
+    # Classes & Singletons
+    "PointService",
+    "point_service",
+    "SearchService",
+    "search_service",
+    # Search functions
     "search_by_text",
     "search_by_image",
     "search_multimodal",
+    # Evaluation functions
     "load_ground_truth",
     "calculate_precision_recall_at_k",
     "calculate_average_precision",
     "evaluate_query",
     "run_full_benchmark",
+    # Point CUD functions
     "create_point",
     "delete_point",
     "update_point_payload",
