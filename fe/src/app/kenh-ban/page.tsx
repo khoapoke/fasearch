@@ -25,7 +25,7 @@ type StaffOrder = {
 function todayRange(): string {
   const now = new Date();
   const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  return `tuNgay=${day}&denNgay=${day}`;
+  return `period=DAY&startDate=${day}&endDate=${day}`;
 }
 
 // Dashboard chỉ dùng số liệu thật từ API: catalog, đơn hàng, báo cáo doanh thu
@@ -81,9 +81,8 @@ export default function MerchantDashboard() {
     fetchRevenue(todayRange())
       .then((r) => {
         if (!live) return;
-        const total = r.rows.reduce((sum, row) => sum + (row.tongThu ?? 0), 0);
-        setRevenueToday(total);
-        setRevenueNote(r.ghiChuBaoPhu ?? "");
+        setRevenueToday(r.summary.totalRevenue);
+        setRevenueNote(typeof r.coverage.channelNote === "string" ? r.coverage.channelNote : "");
       })
       .catch((e) => {
         if (!live) return;

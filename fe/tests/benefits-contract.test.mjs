@@ -188,24 +188,36 @@ describe("benefit submit pins applied inputs + policy snapshot (R2F1: no quote e
   });
 
 });
-describe("reports adapters", () => {
-  it("revenue GET rows + coverage note (no invented summaries)", async () => {
+describe("reports adapters (BE CONTRACT v1: narrow admin BFFs, explicit nulls)", () => {
+  it("revenue GET summary/timeline/coverage (no invented summaries)", async () => {
     const { fetchRevenue } = await import("../src/lib/reports-client.ts");
-    fixtures.set("GET /api/be/v1/bao-cao/doanh-thu", jsonResponse(200, envelope({ rows: [], ghiChuBaoPhu: "n" })));
-    const r = await fetchRevenue("tuNgay=2026-10-01&denNgay=2026-10-18");
-    assert.deepEqual(r.rows, []);
-    assert.equal(r.ghiChuBaoPhu, "n");
-    assert.ok(calls[0].url.includes("tuNgay=2026-10-01"));
+    fixtures.set("GET /api/admin/reports/revenue", jsonResponse(200, envelope({
+      summary: { totalRevenue: 10407000, totalOrders: 6, averageOrderValue: 1734500, totalCogs: null, grossProfit: null },
+      timeline: [{ date: "2026-11-01", revenue: 1000000, orders: 1 }],
+      coverage: { paidInvoices: 6, excludedPending: 9, cogsNote: "no cost history" },
+    })));
+    const r = await fetchRevenue("period=DAY&startDate=2026-11-01&endDate=2026-11-03");
+    assert.equal(r.summary.totalRevenue, 10407000);
+    assert.equal(r.summary.totalCogs, null);
+    assert.deepEqual(r.timeline, [{ date: "2026-11-01", revenue: 1000000, orders: 1 }]);
+    assert.equal(r.coverage.excludedPending, 9);
+    assert.ok(calls[0].url.includes("/api/admin/reports/revenue?"));
   });
 
-  it("san-pham top/banCham/chuaTungBan + xnt unknown-opening flag", async () => {
-    const { fetchProducts, fetchXnt } = await import("../src/lib/reports-client.ts");
-    fixtures.set("GET /api/be/v1/bao-cao/san-pham", jsonResponse(200, envelope({ top: [], banCham: [], chuaTungBan: [], ghiChuBaoPhu: "g" })));
-    fixtures.set("GET /api/be/v1/bao-cao/xuat-nhap-ton", jsonResponse(200, envelope({ rows: [{ maSku: 1, maKho: 1, tonDau: 0, nhap: 5, xuat: 2, dieuChinh: 0, tonCuoi: 3, tonDauUnknown: true }], skuTonDauUnknown: [1], ghiChuBaoPhu: "x" })));
-    const sp = await fetchProducts("topN=10");
-    assert.deepEqual(sp.top, []);
-    const x = await fetchXnt("maKho=1");
-    assert.equal(x.rows[0].tonCuoi, 3);
-    assert.deepEqual(x.skuTonDauUnknown, [1]);
+  it("top-products + movement shapes with honest nulls", async () => {
+    const { fetchTopProducts, fetchMovement } = await import("../src/lib/reports-client.ts");
+    fixtures.set("GET /api/admin/reports/top-products", jsonResponse(200, envelope([
+      { rank: 1, productId: 9, productName: "Nike Blazer", categoryName: "Giày", totalQuantitySold: 3, totalRevenue: 3000000, currentInventory: null },
+    ])));
+    fixtures.set("GET /api/admin/reports/inventory-movement", jsonResponse(200, envelope({
+      content: [{ skuId: 1, productName: "Tee", color: "Đen", size: "M", barcode: "B1", openingStock: null, totalImport: 5, totalSold: 2, totalDamaged: 0, closingStock: 12 }],
+      pageNumber: 0, pageSize: 20, totalElements: 1, totalPages: 1,
+    })));
+    const sp = await fetchTopProducts("type=BEST_SELLER&limit=10");
+    assert.equal(sp[0].productName, "Nike Blazer");
+    assert.equal(sp[0].currentInventory, null);
+    const x = await fetchMovement("page=0&size=20");
+    assert.equal(x.items[0].closingStock, 12);
+    assert.equal(x.items[0].openingStock, null);
   });
 });

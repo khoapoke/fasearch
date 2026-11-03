@@ -27,6 +27,59 @@ function jsonError(status: number, code: number | string, message: string): Resp
   return Response.json({ success: false, code, message, result: null }, { status, headers: noStore });
 }
 
+/**
+ * S2 analytics read-only proxy (BE CONTRACT v1). ADMIN only; allowlisted
+ * narrow report routes call this with a pre-validated BE path. Never invents
+ * numbers: BE 4xx/5xx surfaces as honest errors, nulls pass through.
+ */
+export async function analyticsUpstream(request: NextRequest, path: string): Promise<Response> {
+  const who = await adminIdentity(request);
+  if ("response" in who) return who.response;
+  if (who.identity.role !== "ADMIN") return jsonError(403, 403, "Chỉ ADMIN được xem báo cáo.");
+  const token = authCookie(request);
+  if (!token) return jsonError(401, 401, "Thiếu phiên quản trị.");
+  let base: string;
+  try {
+    const raw = process.env.FASEARCH_BACKEND_URL;
+    if (!raw) throw new Error("analytics upstream not configured");
+    base = raw.replace(/\/+$/, "");
+  } catch {
+    return jsonError(503, 503, "Máy chủ chưa cấu hình upstream báo cáo.");
+  }
+  try {
+    const upstream = await fetch(`${base}${path}`, {
+      method: "GET",
+      headers: { accept: "application/json", authorization: `Bearer ${token}` },
+      cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]),
+    });
+    if (!upstream.ok) {
+      // BE từ chối quyền dù phiên ADMIN đã xác thực ở BFF (vd: endpoint tồn kho
+      // thiếu matcher): đây là lỗi cấu hình máy chủ, KHÔNG phải hết phiên.
+      // Trả 502 + mã riêng để UI không nhầm thành "đăng nhập lại".
+      if (upstream.status === 401) {
+        return jsonError(502, "UPSTREAM_UNAUTHORIZED", "Máy chủ báo cáo từ chối quyền truy cập dù phiên quản trị còn hiệu lực (lỗi cấu hình máy chủ, đã ghi nhận cho đội BE, thử lại sau).");
+      }
+      let message = `Báo cáo thất bại (HTTP ${upstream.status}).`;
+      try {
+        const p = (await upstream.json()) as { message?: string } | null;
+        if (p?.message) message = p.message;
+      } catch {
+        /* non-JSON */
+      }
+      return jsonError(upstream.status || 502, upstream.status || 502, message);
+    }
+    const payload = (await upstream.json()) as { success?: boolean; result?: unknown };
+    if (!payload || payload.success !== true || payload.result === undefined) {
+      return jsonError(502, 502, "Phản hồi báo cáo không đúng định dạng.");
+    }
+    return Response.json({ success: true, code: 200, message: "OK", result: payload.result }, { status: 200, headers: noStore });
+  } catch {
+    return jsonError(503, 503, "Không kết nối được máy chủ báo cáo.");
+  }
+}
+
 async function safeError(upstream: Response): Promise<Response> {
   let payload: { code?: unknown } | null = null;
   try { payload = await upstream.json(); } catch { /* use the status-only fallback */ }
