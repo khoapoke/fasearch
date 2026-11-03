@@ -6,14 +6,10 @@ from PIL import Image
 
 from src.core.config import BASE_DIR
 from src.services.search_service import SearchService
-from admin_app.components.ui_helpers import (
-    resolve_image_path,
-    get_status_badge,
-    get_catalog_badge,
-)
+from admin_app.components.image_card import render_search_result_card
 
 
-def render_search_tester(search_srv: SearchService):
+def render_search_tester(search_srv: SearchService) -> None:
     """
     Trang 3: Sân chơi thử nghiệm tìm kiếm đa phương thức (Text-to-Image, Image-to-Image và Multimodal).
     Thực hiện truy vấn trực tiếp trên collection của search_srv.
@@ -254,34 +250,4 @@ def render_search_tester(search_srv: SearchService):
 
                 for col, item in zip(grid_cols, chunk):
                     with col:
-                        score = item.get("score", 0.0)
-                        score_pct = max(0.0, min(1.0, score)) * 100
-                        raw_img = item.get("image_path", "")
-                        file_name = item.get("file_name", "Unknown")
-                        catalog = item.get("catalog", "FASHION_PRODUCT")
-                        item_id = item.get("id", "")
-
-                        with st.container(border=True):
-                            # Preview ảnh kết quả
-                            resolved = resolve_image_path(raw_img)
-                            if resolved:
-                                try:
-                                    st.image(str(resolved), width="stretch")
-                                except Exception:
-                                    st.warning("Lỗi hiển thị ảnh.")
-                            else:
-                                st.markdown(
-                                    f"""<div style="height:140px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; border-radius:6px;">
-                                        <span>📷 File ảnh: {file_name}</span>
-                                    </div>""",
-                                    unsafe_allow_html=True,
-                                )
-
-                            # Thanh điểm Cosine Similarity
-                            st.progress(score_pct / 100.0)
-                            st.markdown(f"**Độ tương đồng:** `{score:.4f}` ({score_pct:.1f}%)")
-
-                            # Metadata
-                            st.markdown(f"**{file_name}**")
-                            st.markdown(f"{get_catalog_badge(catalog)}", unsafe_allow_html=True)
-                            st.caption(f"ID: `{item_id[:16]}...`")
+                        render_search_result_card(item=item)

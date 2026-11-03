@@ -1,18 +1,13 @@
 import json
 import streamlit as st
-from PIL import Image
 
 from src.db.enums import PointStatus, CatalogCategory
 from src.services.point_service import PointService
-from admin_app.components.ui_helpers import (
-    resolve_image_path,
-    get_status_badge,
-    get_catalog_badge,
-    save_admin_uploaded_image,
-)
+from admin_app.components.image_card import render_point_card
+from admin_app.components.ui_helpers import save_admin_uploaded_image
 
 
-def render_point_manager(point_srv: PointService):
+def render_point_manager(point_srv: PointService) -> None:
     """
     Trang 2: Quản trị Point trong Vector Database (Thêm, Sửa, Xóa mềm, Xóa cứng, Duyệt danh sách).
     Tất cả các thao tác đều áp dụng trên collection của point_srv.
@@ -64,7 +59,7 @@ def render_point_manager(point_srv: PointService):
         else:
             st.markdown(f"**Hiển thị {len(records)} Point gần nhất trong `{current_col}`:**")
 
-            # Hiển thị theo lưới 3 cột
+            # Hiển thị theo lưới 3 cột qua Image Card Component
             cols_per_row = 3
             for i in range(0, len(records), cols_per_row):
                 row_records = records[i : i + cols_per_row]
@@ -72,82 +67,7 @@ def render_point_manager(point_srv: PointService):
 
                 for col, record in zip(row_cols, row_records):
                     with col:
-                        payload = record.payload or {}
-                        raw_img_path = payload.get("image_path", "")
-                        file_name = payload.get("file_name", "Không rõ tên")
-                        curr_status = payload.get("status", "UNKNOWN")
-                        curr_catalog = payload.get("catalog", "FASHION_PRODUCT")
-                        point_id = str(record.id)
-
-                        # Container hiển thị cho từng Point
-                        with st.container(border=True):
-                            # 1. Preview ảnh
-                            resolved = resolve_image_path(raw_img_path)
-                            if resolved:
-                                try:
-                                    st.image(str(resolved), width="stretch")
-                                except Exception:
-                                    st.warning("Không thể hiển thị ảnh.")
-                            else:
-                                st.markdown(
-                                    f"""<div style="height:140px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; border-radius:6px;">
-                                        <span>📷 Không tìm thấy file gốc</span>
-                                    </div>""",
-                                    unsafe_allow_html=True,
-                                )
-
-                            # 2. Metadata tóm tắt
-                            st.markdown(f"**{file_name}**")
-                            c_b1, c_b2 = st.columns(2)
-                            with c_b1:
-                                st.markdown(get_status_badge(curr_status), unsafe_allow_html=True)
-                            with c_b2:
-                                st.markdown(get_catalog_badge(curr_catalog), unsafe_allow_html=True)
-                            st.caption(f"ID: `{point_id[:16]}...`")
-
-                            # 3. Chức năng Chỉnh sửa & Xóa
-                            with st.expander("Chi tiết / Sửa"):
-                                st.write(f"**ID đầy đủ:** `{point_id}`")
-                                st.write(f"**Đường dẫn:** `{raw_img_path}`")
-                                st.write(f"**Ngày tạo:** {payload.get('created_at', 'N/A')}")
-
-                                # Form chỉnh sửa nhanh
-                                new_status = st.selectbox(
-                                    "Đổi trạng thái",
-                                    options=[s.value for s in PointStatus],
-                                    index=[s.value for s in PointStatus].index(curr_status) if curr_status in [s.value for s in PointStatus] else 0,
-                                    key=f"status_{point_id}",
-                                )
-                                new_cat = st.selectbox(
-                                    "Đổi danh mục",
-                                    options=[c.value for c in CatalogCategory],
-                                    index=[c.value for c in CatalogCategory].index(curr_catalog) if curr_catalog in [c.value for c in CatalogCategory] else 0,
-                                    key=f"cat_{point_id}",
-                                )
-
-                                if st.button("Cập nhật Payload", key=f"btn_update_{point_id}", type="primary"):
-                                    point_srv.update_point_payload(
-                                        point_id=point_id,
-                                        payload_updates={"status": new_status, "catalog": new_cat},
-                                    )
-                                    st.success("Đã cập nhật!")
-                                    st.rerun()
-
-                                st.divider()
-
-                                # Nút Xóa mềm & Xóa cứng (Gọi PointService của collection)
-                                col_act1, col_act2 = st.columns(2)
-                                with col_act1:
-                                    if curr_status != PointStatus.DELETED.value:
-                                        if st.button("Xóa mềm", key=f"soft_del_{point_id}", help="Gán status = DELETED", icon=":material/delete:"):
-                                            point_srv.delete_point(point_id=point_id, hard_delete=False)
-                                            st.toast("Đã xóa mềm bản ghi!")
-                                            st.rerun()
-                                with col_act2:
-                                    if st.button("Xóa cứng", key=f"hard_del_{point_id}", help="Xóa vĩnh viễn khỏi Qdrant", icon=":material/cancel:"):
-                                        point_srv.delete_point(point_id=point_id, hard_delete=True)
-                                        st.toast("Đã xóa cứng vĩnh viễn!")
-                                        st.rerun()
+                        render_point_card(record=record, point_srv=point_srv)
 
     # =========================================================================
     # TAB 2: THÊM ẢNH MỚI VÀO COLLECTION NÀY
