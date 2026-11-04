@@ -27,24 +27,22 @@ def render_seeder_box(point_srv: PointService) -> None:
 
     col_btn_browse, col_btn_clear = st.columns([3, 1])
     with col_btn_browse:
-        if st.button("Mở cửa sổ Browse chọn thư mục (Windows)", use_container_width=True, type="secondary"):
+        if st.button("Mở cửa sổ Browse chọn thư mục (Windows)", width="stretch", type="secondary"):
             selected_dir = open_folder_dialog(initial_dir=Path(st.session_state["seed_custom_folder"]))
             if selected_dir:
                 st.session_state["seed_custom_folder"] = selected_dir
                 st.rerun()
 
     with col_btn_clear:
-        if st.button("Mặc định", use_container_width=True, help="Khôi phục về thư mục test/images mặc định"):
+        if st.button("Mặc định", width="stretch", help="Khôi phục về thư mục test/images mặc định"):
             st.session_state["seed_custom_folder"] = default_path
             st.rerun()
 
-    # Ô hiển thị đường dẫn đã chọn
+    # Ô hiển thị đường dẫn đã chọn (đồng bộ trực tiếp qua key="seed_custom_folder")
     chosen_dir_str = st.text_input(
         "Đường dẫn thư mục đã chọn:",
-        value=st.session_state["seed_custom_folder"],
-        key="input_chosen_seed_dir",
+        key="seed_custom_folder",
     )
-    st.session_state["seed_custom_folder"] = chosen_dir_str
 
     # 2. Quét kiểm tra ảnh trực tiếp trong thư mục (Cách B)
     chosen_dir_path = Path(chosen_dir_str.strip()) if chosen_dir_str.strip() else None
@@ -92,7 +90,7 @@ def render_seeder_box(point_srv: PointService) -> None:
         key="btn_run_seeder",
         type="primary",
         disabled=btn_disabled,
-        use_container_width=True,
+        width="stretch",
     )
 
     if btn_seed and direct_images and chosen_dir_path:

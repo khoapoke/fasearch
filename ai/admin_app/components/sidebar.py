@@ -60,7 +60,7 @@ def render_sidebar() -> str:
         # Form tạo mới collection
         with st.expander("Tạo Collection mới"):
             new_col_input = st.text_input("Tên collection:", placeholder="vd: shoes_gallery")
-            if st.button("Tạo ngay", use_container_width=True):
+            if st.button("Tạo ngay", width="stretch"):
                 clean_name = new_col_input.strip()
                 if not clean_name:
                     st.error("Vui lòng nhập tên collection.")
@@ -81,7 +81,7 @@ def render_sidebar() -> str:
             with st.expander("Xóa Collection này"):
                 st.warning(f"Thao tác này sẽ xóa sổ vĩnh viễn collection `{selected_collection}` khỏi Qdrant!")
                 confirm_delete = st.checkbox(f"Tôi xác nhận muốn xóa vĩnh viễn '{selected_collection}'")
-                if st.button("Xác nhận Xóa Hẳn", type="primary", use_container_width=True, disabled=not confirm_delete):
+                if st.button("Xác nhận Xóa Hẳn", type="primary", width="stretch", disabled=not confirm_delete):
                     delete_collection(selected_collection)
                     st.session_state["selected_collection"] = default_collection
                     st.success(f"Đã xóa collection '{selected_collection}'!")

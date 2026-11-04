@@ -38,7 +38,7 @@ def render_point_manager(point_srv: PointService) -> None:
         with col_f3:
             st.write("")
             st.write("")
-            refresh_btn = st.button("Làm mới", use_container_width=True)
+            refresh_btn = st.button("Làm mới", width="stretch")
 
         target_status = None
         if status_filter_choice != "TẤT CẢ":

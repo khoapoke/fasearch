@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 
@@ -15,13 +14,13 @@ def confirm_reset_dialog(current_col, point_srv):
     col1, col2 = st.columns(2)
 
     with col1:
-        cancel = st.button("Hủy", use_container_width=True)
+        cancel = st.button("Hủy", width="stretch")
 
     with col2:
         confirm = st.button(
             "Xác nhận Reset",
             type="primary",
-            use_container_width=True
+            width="stretch",
         )
 
     if cancel:
@@ -37,7 +36,6 @@ def confirm_reset_dialog(current_col, point_srv):
 
         except Exception as ex:
             st.error(f"Lỗi khi reset: {ex}")
-
 
 
 @st.dialog("Xác nhận xóa Collection")
@@ -57,14 +55,14 @@ def confirm_delete_dialog(current_col, point_srv, default_col):
     with col1:
         cancel = st.button(
             "Hủy",
-            use_container_width=True
+            width="stretch",
         )
 
     with col2:
         confirm = st.button(
             "Xác nhận xóa",
             type="primary",
-            use_container_width=True
+            width="stretch",
         )
 
     if cancel:

@@ -68,7 +68,7 @@ def render_search_tester(search_srv: SearchService) -> None:
                 label_visibility="collapsed",
             )
         with col_q2:
-            btn_text_search = st.button("Tìm kiếm", key="btn_search_text", type="primary", use_container_width=True)
+            btn_text_search = st.button("Tìm kiếm", key="btn_search_text", type="primary", width="stretch")
 
         # Gợi ý truy vấn nhanh
         st.caption("Gợi ý từ khóa mẫu:")
@@ -190,7 +190,7 @@ def render_search_tester(search_srv: SearchService) -> None:
             "Tìm kiếm Đa phương thức",
             key="btn_search_multimodal",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
         if btn_multi_search:

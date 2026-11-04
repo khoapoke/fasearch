@@ -148,7 +148,7 @@ def render_overview(point_srv: PointService) -> None:
                 "Reset Data",
                 type="primary",
                 disabled=not confirm_reset,
-                use_container_width=True,
+                width="stretch",
             ):
                confirm_reset_dialog(current_col, point_srv)
 
@@ -165,7 +165,7 @@ def render_overview(point_srv: PointService) -> None:
                     f"Delete from Qdrant",
                     type="primary",
                     disabled=not confirm_drop,
-                    use_container_width=True,
+                    width="stretch",
                 ):
                    confirm_delete_dialog(
                     current_col=current_col,

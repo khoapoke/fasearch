@@ -94,7 +94,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 for idx, c in enumerate(DEFAULT_BENCHMARK_CASES)
             ]
         )
-        st.dataframe(suite_df, hide_index=True, use_container_width=True)
+        st.dataframe(suite_df, hide_index=True, width="stretch")
 
         col_k_cfg, col_btn_run = st.columns([3, 1])
         with col_k_cfg:
@@ -107,7 +107,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
         with col_btn_run:
             st.write("")
             st.write("")
-            btn_run_suite = st.button("Chạy Đánh giá Hệ thống", type="primary", use_container_width=True)
+            btn_run_suite = st.button("Chạy Đánh giá Hệ thống", type="primary", width="stretch")
 
         # Session state key lưu kết quả benchmark theo collection
         suite_cache_key = f"benchmark_summary_{current_col}"
@@ -182,7 +182,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 rows.append(row_data)
 
             table_df = pd.DataFrame(rows)
-            st.dataframe(table_df, hide_index=True, use_container_width=True)
+            st.dataframe(table_df, hide_index=True, width="stretch")
 
             # Khối phân tích trực quan kết quả Hit / Miss
             st.divider()
