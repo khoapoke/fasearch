@@ -32,8 +32,12 @@ function rangeText(start: string, end: string) { return `${dayText(start)} – $
 function amount(v: number) { return v.toLocaleString("vi-VN"); }
 function Money({ v }: { v: number }) { return <span className="money">{amount(v)}<span className="unit">VND</span></span>; }
 function dayText(v: string) {
-  const d = new Date(`${v}T00:00:00+07:00`);
-  return Number.isNaN(d.getTime()) ? v : new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(d);
+  // YYYY-MM-DD (ngày kỳ) hoặc ISO đầy đủ (createdAt từ BE) — không bao giờ trả ISO thô.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const d = dateOnly ? new Date(`${v}T00:00:00+07:00`) : new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  const f = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" });
+  return dateOnly ? f.format(d) : `${f.format(d)} ${new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hour12: false }).format(d)}`;
 }
 async function fetchRevenue(startDate: string, endDate: string): Promise<RevenueResult> {
   const q = new URLSearchParams({ period: "DAY", startDate, endDate, channel: "ALL" });
@@ -180,14 +184,14 @@ export function OverviewClient() {
   };
   const resetRange = () => { const t = todayLocal(); setStart(shift(t, -2)); setEnd(t); setApplied({ start: shift(t, -2), end: t }); setError(""); };
   return <AdminShellB active="overview" title="Tổng quan">
-    <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Đơn cập nhật từ BE · {freshness ?? "chưa có thời điểm tải thành công"}</p></div>{admin ? <form className="date-control" onSubmit={applyRange}><label>Từ ngày<input type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} /></label><label>Đến ngày<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" type="submit">Áp dụng</button><button className="text-link" type="button" onClick={resetRange}>Đặt lại</button><p className="meta">Kỳ theo lịch Asia/Ho_Chi_Minh · kênh ALL</p></form> : null}</div>
+    <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Đơn cập nhật từ BE · {freshness ?? "chưa có thời điểm tải thành công"}</p></div>{admin ? <form className="date-control date-range" onSubmit={applyRange}><div className="catalog-field"><label htmlFor="ov-start">Từ ngày</label><input id="ov-start" className="catalog-input" type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} /></div><div className="catalog-field"><label htmlFor="ov-end">Đến ngày</label><input id="ov-end" className="catalog-input" type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></div><div className="date-actions"><button className="primary" type="submit">Áp dụng</button><button className="text-link" type="button" onClick={resetRange}>Đặt lại</button></div><p className="meta date-note">Kỳ theo lịch Asia/Ho_Chi_Minh · kênh ALL</p></form> : null}</div>
     {loading ? <p className="meta">Đang tải hàng đợi đơn…</p> : null}
     {error ? <div className="order-empty" role="alert"><strong>Không tải được tổng quan</strong><p>{error}</p><Link className="text-link" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div> : null}
     {data ? <div className="desk-grid"><div className="operations">
       <section className="workbench" aria-labelledby="work-title"><div className="work-title"><span className="work-count">{data.queueTotal}</span><div><h2 id="work-title">đơn cần xử lý</h2><p className="meta scope">Đơn từ BE · chưa có kênh/thanh toán · cũ nhất trước</p></div></div>
         <div className="stage-tabs" role="tablist" aria-label="Trạng thái đơn cần xử lý">{STAGES.map((item, index) => <button key={item.code} id={`tab-${item.code}`} type="button" role="tab" aria-selected={stage === item.code} aria-controls="order-panel" tabIndex={stage === item.code ? 0 : -1} onClick={() => selectStage(item.code)} onKeyDown={(event) => onTabKey(event, index)}>{item.label}<span>{counts[item.code] ?? 0}</span></button>)}</div>
         <div id="order-panel" role="tabpanel" aria-labelledby={`tab-${stage}`}>
-          {queue.length === 0 ? <div className="order-empty"><strong>Không có đơn {STAGES.find((item) => item.code === stage)?.lower ?? ""}</strong><p>Không có bản ghi ở nhóm này.</p></div> : <div className="orders-list">{queue.map((order) => <Link className="order-row" href={`/quan-tri/don-hang/${order.orderId}`} key={order.orderId} aria-label={`Mở đơn ${order.orderCode}`}><span className="order-id"><strong>{order.orderCode}</strong><small>{dayText(order.createdAt)}</small></span><span className="customer"><strong>{order.customerName ?? "Không có tên"}</strong><small>{STATUS_LABEL[order.status] ?? order.status} · <Money v={order.totalAmount} /></small></span><span className="order-status">{STATUS_LABEL[order.status] ?? order.status}</span><Icon name="chevron-right" /></Link>)}</div>}
+          {queue.length === 0 ? <div className="order-empty"><strong>Không có đơn {STAGES.find((item) => item.code === stage)?.lower ?? ""}</strong><p>Không có bản ghi ở nhóm này.</p></div> : <div className="orders-list">{queue.map((order) => <Link className="order-row" href={`/quan-tri/don-hang/${order.orderId}`} key={order.orderId} aria-label={`Mở đơn ${order.orderCode}`}><span className="order-id"><strong>{order.orderCode}</strong><small>{dayText(order.createdAt)}</small></span><span className="customer"><strong title={order.customerName ?? "Không có tên"}>{order.customerName ?? "Không có tên"}</strong><small>{STATUS_LABEL[order.status] ?? order.status} · <Money v={order.totalAmount} /></small></span><span className="order-status">{STATUS_LABEL[order.status] ?? order.status}</span><Icon name="chevron-right" /></Link>)}</div>}
         </div>
         <div className="work-footer" id="work-footer"><span className="preview-count">Hiển thị {queue.length}/{group.total} đơn {STAGES.find((item) => item.code === stage)?.lower ?? ""} · tổng {data.queueTotal}</span>{group.total > 0 ? <Link className="text-link preview-link" href={`/quan-tri/don-hang?status=${stage}`}>Xem tất cả<Icon name="arrow-right" /></Link> : null}</div>
       </section>

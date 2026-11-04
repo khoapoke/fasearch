@@ -73,7 +73,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <Link className={`nav-item${active === "loyalty" ? " active" : ""}`} href="/quan-tri/chinh-sach-diem" aria-current={active === "loyalty" ? "page" : undefined}><Icon name="scroll-text" /><span>Chính sách điểm</span></Link>
             <Link className={`nav-item${active === "reports" ? " active" : ""}`} href="/quan-tri/bao-cao" aria-current={active === "reports" ? "page" : undefined}><Icon name="chart-no-axes-combined" /><span>Báo cáo</span></Link>
           </nav>
-          <div className="sidebar-bottom"><span className="fixture-dot" />Đơn thật · tài chính preview</div>
+          <div className="sidebar-bottom"><span className="fixture-dot" />Vận hành nội bộ · STAFF/ADMIN</div>
         </aside>
         <div className="workspace">
           <header className="appbar">

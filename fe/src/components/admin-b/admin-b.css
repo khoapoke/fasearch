@@ -668,8 +668,9 @@
 }
 .admB .order-row{
   display: grid;
-  grid-template-columns: 140px minmax(0, 1fr) auto 18px;
+  grid-template-columns: max-content minmax(0, 1fr) auto 18px;
   gap: 12px;
+  column-gap: 16px;
   align-items: center;
   min-height: 76px;
   padding: 10px 0;
@@ -712,6 +713,9 @@
   font-size: var(--body-size);
   line-height: var(--body-lh);
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .admB .order-row small{
   display: block;
@@ -1746,6 +1750,24 @@
     display: inline-block;
     margin-top: 14px;
   }
+.admB .page-heading > form.date-control{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: end;
+  }
+.admB form.date-control .date-actions{
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-height: 40px;
+  }
+.admB form.date-control .date-note{
+    flex-basis: 100%;
+  }
+.admB form.date-control .catalog-field{
+    min-width: 150px;
+  }
 .admB .page-heading > .primary{
     display: inline-flex;
     margin-top: 14px;
@@ -1769,8 +1791,9 @@
     gap: 16px;
   }
 .admB .order-row{
-    grid-template-columns: 126px minmax(0, 1fr) 16px;
+    grid-template-columns: max-content minmax(0, 1fr) 16px;
     gap: 8px;
+    column-gap: 12px;
   }
 .admB .order-row-static{
     grid-template-columns: 126px minmax(0, 1fr);
