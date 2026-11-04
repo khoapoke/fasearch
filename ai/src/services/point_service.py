@@ -193,12 +193,18 @@ class PointService:
             },
         }
         self.repo.create(point_id=point_id, vector=vector, payload=payload)
+        # Dọn các point cũ cùng product_id nhưng khác ID (vd. point UUID do lần seed trước) để không bị trùng
+        self.repo.delete_by_product_id(str(point_id), keep_id=point_id)
         logger.info(f"Đã upsert sản phẩm '{point_id}' vào collection '{self.collection_name}'")
         return point_id
 
     def delete_product_point(self, product_id: PointId) -> bool:
         """Xóa cứng point sản phẩm (tombstone khi sản phẩm bị unpublish/xóa). Idempotent."""
-        return self.repo.hard_delete(normalize_point_id(product_id))
+        point_id = normalize_point_id(product_id)
+        self.repo.hard_delete(point_id)
+        # Sản phẩm có thể đang được lập chỉ mục dưới ID khác (UUID) -> xóa theo product_id trong payload
+        self.repo.delete_by_product_id(str(point_id))
+        return True
 
     def delete_point(self, point_id: PointId, hard_delete: bool = False) -> bool:
         """

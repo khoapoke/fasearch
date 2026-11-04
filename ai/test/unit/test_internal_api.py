@@ -89,3 +89,25 @@ def test_internal_endpoints_are_loopback_only(fake_processor, mem_repo):
     assert remote.delete("/internal/v1/index/products/1").status_code == 403
     assert remote.post("/internal/v1/index/upsert", data={"product_id": "1", "name": "x"}).status_code == 403
     assert mem_repo.count_points() == 0
+
+
+def test_delete_and_upsert_also_clean_points_with_other_ids(client, mem_repo):
+    """Index cũ lưu sản phẩm dưới ID UUID (payload product_id=806): unpublish phải gỡ cả point đó; upsert không tạo bản trùng."""
+    import uuid as _uuid
+    from conftest import FakeModel
+    import torch
+
+    old = str(_uuid.uuid4())
+    vec = FakeModel._vec(torch.tensor([3])).numpy()[0].tolist()
+    mem_repo.create(old, vec, {"product_id": "806", "metadata": {"product_id": 806}, "file_name": "x.jpg"})
+    other = str(_uuid.uuid4())
+    mem_repo.create(other, vec, {"product_id": "999", "metadata": {"product_id": 999}, "file_name": "y.jpg"})
+
+    assert _upsert(client, product_id=806, name="new").status_code == 200
+    assert mem_repo.get_by_id(806) is not None and mem_repo.get_by_id(old) is None  # không còn bản trùng
+    assert mem_repo.get_by_id(other) is not None  # sản phẩm khác không bị đụng
+
+    mem_repo.create(old, vec, {"product_id": "806", "file_name": "x.jpg"})
+    assert client.delete("/internal/v1/index/products/806").status_code == 200
+    assert mem_repo.get_by_id(806) is None and mem_repo.get_by_id(old) is None
+    assert mem_repo.get_by_id(other) is not None

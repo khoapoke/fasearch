@@ -5,6 +5,8 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    FilterSelector,
+    HasIdCondition,
     MatchValue,
     PointIdsList,
     PointStruct,
@@ -174,6 +176,23 @@ class ImageRepository(BaseRepository):
             points_selector=PointIdsList(points=[normalize_point_id(point_id)]),
         )
         return True
+
+    def delete_by_product_id(self, product_id: str, keep_id: Optional[PointId] = None) -> None:
+        """
+        Xóa mọi point mang product_id này trong payload (kể cả point có ID UUID do lần lập chỉ mục cũ tạo ra),
+        trừ point có ID = keep_id. Giúp unpublish/upsert không để sót bản ghi trùng sản phẩm.
+        """
+        pid = str(product_id)
+        conditions = [FieldCondition(key="product_id", match=MatchValue(value=pid))]
+        if pid.isdigit():
+            conditions.append(FieldCondition(key="metadata.product_id", match=MatchValue(value=int(pid))))
+        query_filter = Filter(should=conditions)
+        if keep_id is not None:
+            query_filter.must_not = [HasIdCondition(has_id=[normalize_point_id(keep_id)])]
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=FilterSelector(filter=query_filter),
+        )
 
     def count_points(self, filter_status: Optional[PointStatus] = None) -> int:
         """Đếm tổng số point trong collection. Có thể lọc theo PointStatus."""
