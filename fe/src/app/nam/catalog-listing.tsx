@@ -6,7 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
 import { BackIcon, ChevronDownIcon, ForwardIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
-import { pageWindow, parseJumpInput, visibleRange } from "@/lib/pagination";
+import { parseJumpInput, visibleRange } from "@/lib/pagination";
+import { optionFingerprint } from "@/lib/study-helpers";
+import { KEYWORD_DEBOUNCE_MS, SLOW_LOAD_MS, shouldDebounceKeyword } from "@/lib/catalog-live";
+import { SlideOptions } from "@/components/customer-catalog/slide-options";
+import { PriceRange, type PriceBounds, type PriceExtent } from "@/components/customer-catalog/price-range";
 import {
   CatalogError,
   fetchCatalogCategories,
@@ -134,21 +138,29 @@ function FilterFields({
   filters,
   brands,
   onBrand,
-  draft,
   categories,
   categoriesLoading,
   categoriesError,
   onRetryCategories,
   onCategory,
-  onDraft,
-  onApply,
+  keyword,
+  onKeyword,
+  onKeywordCompose,
+  onKeywordEnter,
+  extent,
+  onPrice,
   onReset,
   onNarrow,
   error,
 }: {
   prefix: string;
   filters: Filters;
-  draft: { keyword: string; minPrice: string; maxPrice: string };
+  keyword: string;
+  onKeyword: (value: string) => void;
+  onKeywordCompose: (composing: boolean, value?: string) => void;
+  onKeywordEnter: () => void;
+  extent: PriceExtent | null;
+  onPrice: (next: PriceBounds) => void;
   categories: CatalogCategory[];
   categoriesLoading: boolean;
   categoriesError: string;
@@ -156,8 +168,6 @@ function FilterFields({
   onCategory: (value: string) => void;
   brands: CatalogBrand[];
   onBrand: (value: string) => void;
-  onDraft: (next: { keyword: string; minPrice: string; maxPrice: string }) => void;
-  onApply: () => void;
   onReset: () => void;
   onNarrow?: () => void;
   error: string;
@@ -166,29 +176,37 @@ function FilterFields({
   // R5: chỉ hiển thị tập con hữu ích + nút mở rộng rõ ràng — không khay cuộn lồng.
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [showAllCats, setShowCats] = useState(false);
+  const catRows = showAllCats ? categories : categories.slice(0, BRAND_VISIBLE_COUNT);
+  const q = brandQuery.trim().toLowerCase();
+  // Thu hẹp danh sách hãng ngay trong máy (không gọi mạng, không debounce).
+  const brandMatches = brands.filter((brand) => !q || brandLabel(brand.slug, brand.name).toLowerCase().includes(q));
+  const brandRows = q || showAllBrands ? brandMatches : brandMatches.slice(0, BRAND_VISIBLE_COUNT);
   return (
     <>
       <h2>Bộ lọc</h2>
-      {/* R4-E: danh mục + giá đứng trước; thương hiệu gọn trong disclosure có ô tìm,
-          để danh sách 27 hãng không đẩy danh mục/giá xuống dưới màn hình. */}
-
       <fieldset className="cat-filter-group">
         <legend>Danh mục</legend>
-        <label className="cat-filter-option">
-          <input type="radio" name={`${prefix}-cat`} checked={filters.categoryId === ""} onChange={() => onCategory("")} />
-          <span>Tất cả</span>
-        </label>
-        {(showAllCats ? categories : categories.slice(0, BRAND_VISIBLE_COUNT)).map((category) => (
-          <label className="cat-filter-option" key={category.id}>
-            <input
-              type="radio"
-              name={`${prefix}-cat`}
-              checked={filters.categoryId === String(category.id)}
-              onChange={() => onCategory(String(category.id))}
-            />
-            <span>{category.name}</span>
+        <SlideOptions
+          label="Danh mục"
+          activeKey={filters.categoryId || "all"}
+          fingerprint={optionFingerprint(["all", ...catRows.map((c) => c.id)])}
+        >
+          <label className="cat-filter-option" data-active={filters.categoryId === ""}>
+            <input type="radio" name={`${prefix}-cat`} checked={filters.categoryId === ""} onChange={() => onCategory("")} />
+            <span>Tất cả</span>
           </label>
-        ))}
+          {catRows.map((category) => (
+            <label className="cat-filter-option" key={category.id} data-active={filters.categoryId === String(category.id)}>
+              <input
+                type="radio"
+                name={`${prefix}-cat`}
+                checked={filters.categoryId === String(category.id)}
+                onChange={() => onCategory(String(category.id))}
+              />
+              <span>{category.name}</span>
+            </label>
+          ))}
+        </SlideOptions>
         {!showAllCats && categories.length > BRAND_VISIBLE_COUNT ? (
           <button
             className="cat-text-button cat-brand-more"
@@ -209,20 +227,27 @@ function FilterFields({
       </fieldset>
       <fieldset className="cat-filter-group">
         <legend>Khoảng giá</legend>
-        <div className="cat-price-grid">
-          <div className="cat-field">
-            <label htmlFor={`${prefix}-min`}>Từ</label>
-            <input id={`${prefix}-min`} className="cat-input" inputMode="numeric" value={draft.minPrice} onChange={(e) => onDraft({ ...draft, minPrice: e.target.value.replace(/[^\d]/g, "") })} />
-          </div>
-          <div className="cat-field">
-            <label htmlFor={`${prefix}-max`}>Đến</label>
-            <input id={`${prefix}-max`} className="cat-input" inputMode="numeric" value={draft.maxPrice} onChange={(e) => onDraft({ ...draft, maxPrice: e.target.value.replace(/[^\d]/g, "") })} />
-          </div>
-        </div>
+        <PriceRange
+          extent={extent}
+          value={{ lo: filters.minPrice ? Number(filters.minPrice) : null, hi: filters.maxPrice ? Number(filters.maxPrice) : null }}
+          onCommit={onPrice}
+          idPrefix={`${prefix}-price`}
+        />
       </fieldset>
-      <div className="cat-field" style={{ marginBottom: 18 }}>
+      <div className="cat-field cat-keyword-field">
         <label htmlFor={`${prefix}-keyword`}>Tìm theo tên</label>
-        <input id={`${prefix}-keyword`} className="cat-input" value={draft.keyword} maxLength={200} onChange={(e) => onDraft({ ...draft, keyword: e.target.value })} />
+        <input
+          id={`${prefix}-keyword`}
+          className="cat-input"
+          type="search"
+          autoComplete="off"
+          value={keyword}
+          maxLength={200}
+          onChange={(e) => onKeyword(e.target.value)}
+          onCompositionStart={() => onKeywordCompose(true)}
+          onCompositionEnd={(e) => onKeywordCompose(false, e.currentTarget.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); onKeywordEnter(); onNarrow?.(); } }}
+        />
       </div>
       {brands.length > 0 ? (
         <details className="cat-filter-group cat-brand-group" open={filters.brand !== ""}>
@@ -241,52 +266,45 @@ function FilterFields({
                 onChange={(event) => setBrandQuery(event.target.value)}
               />
             </label>
-            <div className="cat-brand-list" role="radiogroup" aria-label="Thương hiệu">
-              <label className="cat-filter-option">
+            <SlideOptions
+              label="Thương hiệu"
+              className="cat-brand-list"
+              activeKey={filters.brand || "all"}
+              fingerprint={optionFingerprint(["all", ...brandRows.map((b) => b.slug)])}
+            >
+              <label className="cat-filter-option" data-active={filters.brand === ""}>
                 <input type="radio" name={`${prefix}-brand`} checked={filters.brand === ""} onChange={() => onBrand("")} />
-                <span>Tất cả thương hiệu</span>
+                <span>Tất cả</span>
               </label>
-              {(() => {
-                const q = brandQuery.trim().toLowerCase();
-                const matches = brands.filter((brand) => !q || brandLabel(brand.slug, brand.name).toLowerCase().includes(q));
-                const visible = q || showAllBrands ? matches : matches.slice(0, BRAND_VISIBLE_COUNT);
-                return (
-                  <>
-                    {visible.map((brand) => (
-                      <label className="cat-filter-option" key={brand.slug}>
-                        <input
-                          type="radio"
-                          name={`${prefix}-brand`}
-                          checked={filters.brand === brand.slug}
-                          onChange={() => onBrand(brand.slug)}
-                        />
-                        <span>{brandLabel(brand.slug, brand.name)}</span>
-                      </label>
-                    ))}
-                    {!q && matches.length > BRAND_VISIBLE_COUNT ? (
-                      <button
-                        className="cat-text-button cat-brand-more"
-                        type="button"
-                        aria-expanded={showAllBrands}
-                        onClick={() => setShowAllBrands((v) => !v)}
-                      >
-                        {showAllBrands ? "Thu gọn" : `Xem thêm ${matches.length - BRAND_VISIBLE_COUNT} hãng`}
-                      </button>
-                    ) : null}
-                    {q && matches.length === 0 ? (
-                      <p className="cat-filter-note" role="status">Không có hãng nào khớp “{brandQuery.trim()}”.</p>
-                    ) : null}
-                  </>
-                );
-              })()}
-            </div>
+              {brandRows.map((brand) => (
+                <label className="cat-filter-option" key={brand.slug} data-active={filters.brand === brand.slug}>
+                  <input
+                    type="radio"
+                    name={`${prefix}-brand`}
+                    checked={filters.brand === brand.slug}
+                    onChange={() => onBrand(brand.slug)}
+                  />
+                  <span>{brandLabel(brand.slug, brand.name)}</span>
+                </label>
+              ))}
+            </SlideOptions>
+            {!q && brandMatches.length > BRAND_VISIBLE_COUNT ? (
+              <button
+                className="cat-text-button cat-brand-more"
+                type="button"
+                aria-expanded={showAllBrands}
+                onClick={() => setShowAllBrands((v) => !v)}
+              >
+                {showAllBrands ? "Thu gọn" : `Xem thêm ${brandMatches.length - BRAND_VISIBLE_COUNT} hãng`}
+              </button>
+            ) : null}
+            {q && brandMatches.length === 0 ? (
+              <p className="cat-filter-note" role="status">Không có hãng nào khớp “{brandQuery.trim()}”.</p>
+            ) : null}
           </div>
         </details>
       ) : null}
       {error ? <p className="cat-filter-note" role="alert">{error}</p> : null}
-      <button className="cat-button cat-filter-apply" type="button" onClick={() => { onApply(); onNarrow?.(); }}>
-        Áp dụng
-      </button>
       <button className="cat-text-button cat-filter-reset" type="button" onClick={() => { onReset(); onNarrow?.(); }}>
         Xóa bộ lọc
       </button>
@@ -301,8 +319,9 @@ function jumpErrorText(code: string, totalPages: number): string {
 }
 
 /**
- * R5-pagination: compact numbered window + direct jump. 1-based UI,
- * 0-based API (goto converts explicitly). Server counts only, no hardcode.
+ * Phân trang gọn: Trước · "Trang [n] / tổng" · Sau.
+ * Chỉ MỘT readout trang hiện tại/tổng; ô số nhập trực tiếp, Enter để đi
+ * (kiểm tra 1…tổng, không clamp ngầm). 1-based ở UI, 0-based ở API.
  */
 function Pagination({
   page,
@@ -315,105 +334,71 @@ function Pagination({
   loading: boolean;
   onGoto: (page0: number) => void;
 }) {
-  const [jump, setJump] = useState("");
-  const [jumpError, setJumpError] = useState<string | null>(null);
-  const jumpInputId = "listing-jump";
-  const jumpErrorId = "listing-jump-error";
-  // Giới hạn trang đổi theo bộ lọc ⇒ lỗi cũ hết hiệu lực, xóa để nhập lại.
-  useEffect(() => {
-    setJumpError(null);
-  }, [totalPages]);
-
   function goto(page0: number) {
     // Trang hiện tại: không fetch trùng, không đẩy history thừa.
     if (page0 === page) return;
     onGoto(page0);
   }
+  return (
+    <nav className="cat-pagination" aria-label="Phân trang sản phẩm">
+      <button
+        className="cat-page-btn"
+        type="button"
+        aria-label="Trang trước"
+        disabled={page <= 0 || loading}
+        onClick={() => goto(Math.max(0, page - 1))}
+      >
+        <BackIcon />
+      </button>
+      {/* key theo trang ⇒ ô nhập luôn bắt đầu từ trang thật hiện tại sau mọi điều hướng. */}
+      <PageJump key={`${page}-${totalPages}`} page={page} totalPages={totalPages} loading={loading} onGoto={goto} />
+      <button
+        className="cat-page-btn"
+        type="button"
+        aria-label="Trang sau"
+        disabled={page + 1 >= totalPages || loading}
+        onClick={() => goto(page + 1)}
+      >
+        <ForwardIcon />
+      </button>
+    </nav>
+  );
+}
 
-  function submitJump(event: React.FormEvent) {
+function PageJump({ page, totalPages, loading, onGoto }: { page: number; totalPages: number; loading: boolean; onGoto: (page0: number) => void }) {
+  const [jump, setJump] = useState(String(page + 1));
+  const [jumpError, setJumpError] = useState<string | null>(null);
+  const errorId = "listing-jump-error";
+  function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (loading) return;
     const parsed = parseJumpInput(jump, totalPages);
     if (parsed.error) {
       setJumpError(jumpErrorText(parsed.error, totalPages));
       return;
     }
     setJumpError(null);
-    goto((parsed.page as number) - 1);
+    onGoto((parsed.page as number) - 1);
   }
-
   return (
-    <nav className="cat-pagination" aria-label="Phân trang sản phẩm">
-      <div className="cat-page-window">
-        <button
-          className="cat-page-btn"
-          type="button"
-          aria-label="Trang trước"
-          disabled={page <= 0 || loading}
-          onClick={() => goto(Math.max(0, page - 1))}
-        >
-          <BackIcon />
-        </button>
-        {pageWindow(page + 1, totalPages).map((token) =>
-          token.kind === "gap" ? (
-            <span className="cat-page-gap" key={token.key} aria-hidden="true">…</span>
-          ) : token.page === page + 1 ? (
-            <button
-              className="cat-page-btn cat-page-current"
-              type="button"
-              key={token.page}
-              aria-label={`Trang ${token.page}`}
-              aria-current="page"
-              disabled
-            >
-              {token.page}
-            </button>
-          ) : (
-            <button
-              className="cat-page-btn"
-              type="button"
-              key={token.page}
-              aria-label={`Trang ${token.page}`}
-              disabled={loading}
-              onClick={() => goto(token.page - 1)}
-            >
-              {token.page}
-            </button>
-          ),
-        )}
-        <button
-          className="cat-page-btn"
-          type="button"
-          aria-label="Trang sau"
-          disabled={page + 1 >= totalPages || loading}
-          onClick={() => goto(page + 1)}
-        >
-          <ForwardIcon />
-        </button>
-      </div>
-      <form className="cat-page-jump" onSubmit={submitJump}>
-        <label htmlFor={jumpInputId}>Đến trang</label>
-        <input
-          id={jumpInputId}
-          className="cat-input cat-jump-input"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder={`1–${totalPages}`}
-          value={jump}
-          maxLength={10}
-          aria-invalid={jumpError ? true : undefined}
-          aria-describedby={jumpError ? jumpErrorId : undefined}
-          onChange={(e) => setJump(e.target.value)}
-        />
-        <button className="cat-button cat-jump-go" type="submit" disabled={loading}>
-          Đi
-        </button>
-        {jumpError ? (
-          <p className="cat-jump-error" role="alert" id={jumpErrorId}>
-            {jumpError}
-          </p>
-        ) : null}
-      </form>
-    </nav>
+    <form className="cat-page-jump" onSubmit={submit}>
+      <label htmlFor="listing-jump">Trang</label>
+      <input
+        id="listing-jump"
+        className="cat-input cat-jump-input"
+        inputMode="numeric"
+        autoComplete="off"
+        value={jump}
+        maxLength={10}
+        aria-describedby={jumpError ? errorId : "listing-jump-hint"}
+        aria-invalid={jumpError ? true : undefined}
+        onChange={(e) => { setJump(e.target.value); setJumpError(null); }}
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      <span className="cat-jump-total" aria-hidden="true">/ {totalPages}</span>
+      <span className="cat-visually-hidden" id="listing-jump-hint">trên tổng {totalPages} trang. Nhấn Enter để đi tới trang đã nhập.</span>
+      {jumpError ? <p className="cat-jump-error" role="alert" id={errorId}>{jumpError}</p> : null}
+    </form>
   );
 }
 
@@ -444,11 +429,13 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   // R5: bộ lọc là một phần của URL — Back/Forward và chia sẻ link giữ nguyên
   // kết quả server. Khởi tạo lười từ query hiện tại, đồng bộ khi params đổi.
   const [filters, setFilters] = useState<Filters>(() => filtersFromParams(params));
-  const [draft, setDraft] = useState(() => ({
-    keyword: params.get("keyword") ?? "",
-    minPrice: params.get("minPrice") ?? "",
-    maxPrice: params.get("maxPrice") ?? "",
-  }));
+  // Từ khóa đang gõ (chưa commit). Giá không có draft ở đây: PriceRange tự giữ
+  // draft tương tác và chỉ commit sau thao tác của người dùng.
+  const [keywordDraft, setKeywordDraft] = useState(() => (params.get("keyword") ?? "").slice(0, 200));
+  const composingRef = useRef(false);
+  const [composeEpoch, setComposeEpoch] = useState(0);
+  const filtersRef = useRef(filters);
+  useEffect(() => { filtersRef.current = filters; });
   const [filterError, setFilterError] = useState("");
   const [page, setPage] = useState(() => Number(params.get("page") ?? "0") || 0);
   const [retry, setRetry] = useState(0);
@@ -459,6 +446,21 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   const loading = settled.key !== queryKey;
   const data = settled.key === queryKey ? settled.data ?? null : null;
   const error = settled.key === queryKey ? settled.error ?? "" : "";
+  // Giữ kết quả cũ trong lúc refetch (không chớp lưới, không đổi chiều cao).
+  const [lastData, setLastData] = useState<CatalogPage | null>(null);
+  if (data && data !== lastData) setLastData(data);
+  const display = data ?? lastData;
+  // Skeleton chỉ khi CHƯA có dữ liệu nào và đã chờ lâu hơn ngưỡng.
+  const [slowKey, setSlowKey] = useState("");
+  const slow = loading && !display && slowKey === queryKey;
+  useEffect(() => {
+    if (!loading || display) return;
+    const id = window.setTimeout(() => setSlowKey(queryKey), SLOW_LOAD_MS);
+    return () => window.clearTimeout(id);
+  }, [loading, display, queryKey]);
+  // Khoảng giá thật của tập đang xem (bỏ qua bộ lọc giá) — chỉ đọc, giữ giá trị cũ khi đang tải.
+  const [extent, setExtent] = useState<PriceExtent | null>(null);
+  const extentKey = `${filters.brand}|${filters.categoryId}|${filters.keyword}`;
   // Điều hướng trang bằng control (khác đổi bộ lọc): khi dữ liệu mới về xong
   // mới cuộn + focus trạng thái — thông báo trang cho AT, không giật khi gõ jump.
   const pagedByNav = useRef(false);
@@ -520,6 +522,60 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     return () => controller.abort();
   }, [filters, page, retry, queryKey]);
 
+  useEffect(() => {
+    const c = new AbortController();
+    const base = {
+      brand: filters.brand || undefined,
+      categoryId: filters.categoryId ? Number(filters.categoryId) : null,
+      keyword: filters.keyword,
+      page: 0,
+      size: 1,
+    };
+    Promise.all([
+      fetchCatalogProducts({ ...base, sort: "price,asc" }, c.signal),
+      fetchCatalogProducts({ ...base, sort: "price,desc" }, c.signal),
+    ])
+      .then(([lo, hi]) => {
+        if (c.signal.aborted) return;
+        setExtent(lo.items.length && hi.items.length ? { min: lo.items[0].price, max: hi.items[0].price } : null);
+      })
+      .catch(() => { if (!c.signal.aborted) setExtent(null); });
+    return () => c.abort();
+    // extentKey gom đúng các bộ lọc ảnh hưởng thang giá.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extentKey]);
+
+  // Tìm theo tên: debounce, không commit giữa lúc đang gõ IME, replace (không spam history).
+  // compositionend tăng composeEpoch ⇒ đúng một lần hẹn cho chuỗi cuối.
+  useEffect(() => {
+    const typed = keywordDraft.trim();
+    if (!shouldDebounceKeyword(typed, filters.keyword, composingRef.current)) return;
+    const id = window.setTimeout(() => {
+      const cur = filtersRef.current;
+      if (typed !== cur.keyword) commitReplaceKeyword(cur, typed);
+    }, KEYWORD_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keywordDraft, composeEpoch, filters.keyword]);
+
+  function commitReplaceKeyword(cur: Filters, typed: string) {
+    // Đổi truy vấn ⇒ về trang 1.
+    commitReplace({ ...cur, keyword: typed }, 0);
+  }
+
+  function onKeywordCompose(composing: boolean, value?: string) {
+    composingRef.current = composing;
+    if (!composing) {
+      if (value !== undefined) setKeywordDraft(value);
+      setComposeEpoch((n) => n + 1);
+    }
+  }
+
+  function onKeywordEnter() {
+    const typed = keywordDraft.trim();
+    if (typed !== filtersRef.current.keyword) commit({ ...filtersRef.current, keyword: typed }, 0);
+  }
+
   function queryString(next: Filters, nextPage: number): string {
     const q = new URLSearchParams();
     if (next.brand) q.set("brand", next.brand);
@@ -566,7 +622,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   // Trang thật đổi xong (không phải đang tải) sau một lần bấm phân trang:
   // đưa đầu kết quả vào tầm nhìn dưới sticky header, focus trạng thái để AT
   // đọc trang mới. Đổi bộ lọc/sort (page reset) không cướp focus.
-  const range = data && !loading ? visibleRange(page, PAGE_SIZE, data.totalElements) : null;
+  const range = display ? visibleRange(page, PAGE_SIZE, display.totalElements) : null;
   useEffect(() => {
     if (pagedByNav.current && !loading && data && data.items.length > 0) {
       pagedByNav.current = false;
@@ -595,26 +651,20 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     const cur = JSON.stringify({ ...filters, page });
     if (want !== cur) {
       setFilters(from);
-      setDraft({ keyword: from.keyword, minPrice: from.minPrice, maxPrice: from.maxPrice });
+      setKeywordDraft(from.keyword);
       setPage(fromPage);
     }
     // Chỉ đồng bộ theo params ngoài (Back/link); state nội bộ không trigger lại.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
-  function applyDraft() {
-    const min = draft.minPrice ? Number(draft.minPrice) : null;
-    const max = draft.maxPrice ? Number(draft.maxPrice) : null;
-    if (min !== null && max !== null && min > max) {
-      setFilterError("Giá từ phải nhỏ hơn hoặc bằng giá đến.");
-      return;
-    }
+  function commitPrice(next: PriceBounds) {
     setFilterError("");
-    commit({ ...filters, keyword: draft.keyword.trim(), minPrice: draft.minPrice, maxPrice: draft.maxPrice });
+    commit({ ...filters, minPrice: next.lo === null ? "" : String(next.lo), maxPrice: next.hi === null ? "" : String(next.hi) });
   }
 
   function reset() {
-    setDraft({ keyword: "", minPrice: "", maxPrice: "" });
+    setKeywordDraft("");
     setFilterError("");
     commit(EMPTY_FILTERS);
   }
@@ -631,14 +681,17 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     filters,
     brands,
     onBrand: (brand: string) => commit({ ...filters, brand }),
-    draft,
+    keyword: keywordDraft,
+    onKeyword: setKeywordDraft,
+    onKeywordCompose,
+    onKeywordEnter,
+    extent,
+    onPrice: commitPrice,
     categories,
     categoriesLoading,
     categoriesError: categoryError,
     onRetryCategories: () => setCategoryAttempt((n) => n + 1),
     onCategory: (categoryId: string) => commit({ ...filters, categoryId }),
-    onDraft: setDraft,
-    onApply: applyDraft,
     onReset: reset,
     error: filterError,
   };
@@ -678,7 +731,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
               </details>
               <div className="cat-listing-tools">
                 <span className="cat-result-count" role="status" tabIndex={-1} ref={statusRef}>
-                  {loading ? "Đang tải sản phẩm…" : range ? `${range.from}–${range.to} trên ${data?.totalElements ?? 0} sản phẩm` : `${data?.totalElements ?? 0} sản phẩm`}
+                  {!display ? "Đang tải sản phẩm…" : range ? `${range.from}–${range.to} trên ${display.totalElements} sản phẩm` : `${display.totalElements} sản phẩm`}
                 </span>
                 <label className="cat-sort-control" htmlFor="listing-sort">
                   Sắp xếp
@@ -711,9 +764,9 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
                       onClick={() => {
                         if (chip.key === "brand") commit({ ...filters, brand: "" });
                         else if (chip.key === "category") commit({ ...filters, categoryId: "" });
-                        else if (chip.key === "keyword") { setDraft({ ...draft, keyword: "" }); commit({ ...filters, keyword: "" }); }
-                        else if (chip.key === "min") { setDraft({ ...draft, minPrice: "" }); commit({ ...filters, minPrice: "" }); }
-                        else { setDraft({ ...draft, maxPrice: "" }); commit({ ...filters, maxPrice: "" }); }
+                        else if (chip.key === "keyword") { setKeywordDraft(""); commit({ ...filters, keyword: "" }); }
+                        else if (chip.key === "min") commit({ ...filters, minPrice: "" });
+                        else commit({ ...filters, maxPrice: "" });
                       }}
                     >
                       {chip.label} ×
@@ -726,31 +779,30 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
                   {error}{" "}
                   <button className="cat-text-button" type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại</button>
                 </div>
-              ) : loading && !data ? (
-                <div className="cat-skeleton-grid" aria-hidden="true">
+              ) : !display ? (
+                <div className="cat-skeleton-grid" aria-hidden="true" data-slow={slow}>
                   {Array.from({ length: PAGE_SIZE }, (_, i) => <div className="cat-skeleton" key={i} />)}
                 </div>
-              ) : data && data.items.length === 0 ? (
+              ) : display.items.length === 0 && !loading ? (
                 <div className="cat-empty">
                   <h2>Không có sản phẩm</h2>
                   <p>Thử bỏ bớt bộ lọc hoặc chọn danh mục khác.</p>
                   <button className="cat-text-button" type="button" onClick={reset}>Xóa bộ lọc</button>
                 </div>
-              ) : data ? (
-                <>
+              ) : (
+                <div className="cat-results" data-refetching={loading}>
                   <div className="cat-product-grid">
-                    {data.items.map((product) => <ProductCard product={product} key={product.id} />)}
+                    {display.items.map((product) => <ProductCard product={product} key={product.id} />)}
                   </div>
                   <details className="cat-source">
                     <summary>Nguồn ảnh</summary>
                     <div>Ảnh sản phẩm lấy từ trường imageUrl của API công khai; pilot chưa có metadata tác giả.</div>
                   </details>
-                  {data.totalPages > 1 ? (
-                    <Pagination page={page} totalPages={data.totalPages} loading={loading} onGoto={gotoPage} />
+                  {display.totalPages > 1 ? (
+                    <Pagination page={page} totalPages={display.totalPages} loading={loading} onGoto={gotoPage} />
                   ) : null}
-                </>
-              ) : null}
-              {loading && data ? <p className="cat-status cat-info" role="status">Đang cập nhật sản phẩm…</p> : null}
+                </div>
+              )}
             </section>
           </div>
         </div>

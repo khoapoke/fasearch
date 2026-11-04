@@ -98,8 +98,7 @@
 .catPage .cat-input:focus-visible,
 .catPage .cat-select:focus-visible,
 .catPage .cat-button:focus-visible,
-.catPage .cat-page-btn:focus-visible,
-.catPage .cat-jump-go:focus-visible {
+.catPage .cat-page-btn:focus-visible {
   outline: 2px solid var(--st-focus);
   outline-offset: 3px;
 }
@@ -115,28 +114,23 @@
 /* R5: bộ lọc là luồng tài liệu thường — không giới hạn chiều cao, không khay cuộn
    lồng nhau; mọi điều khiển tới được bằng cuộn trang bình thường. Mặc định
    không sticky để tránh bẫy cuộn ở viewport thấp. Gutter 4px giữ vòng focus. */
-.catPage .cat-filter-panel { padding: 4px 4px 4px 4px; overflow: visible; }
+.catPage .cat-filter-panel { padding: 6px 10px 6px 6px; overflow: visible; }
 .catPage .cat-listing-tools { scroll-margin-top: 104px; }
-/* R5-pagination: hàng tiện ích gọn — số trang + Đến trang, bọc hàng khi hẹp. */
+/* Phân trang gọn: Trước · Trang [n] / tổng · Sau — một readout duy nhất. */
 .catPage .cat-pagination {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 16px 24px;
-  margin-top: 32px;
-}
-.catPage .cat-page-window {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 12px 16px;
+  margin-top: 36px;
 }
 .catPage .cat-page-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px 10px;
   border: 1px solid var(--st-control-border);
   border-radius: 7px;
@@ -144,59 +138,33 @@
   background: var(--st-surface);
   font: inherit;
   font-size: 14px;
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.catPage .cat-page-btn:disabled { cursor: default; opacity: 0.55; }
-.catPage .cat-page-btn.cat-page-current:disabled {
-  opacity: 1;
-  color: #fff;
-  border-color: var(--st-brand);
-  background: var(--st-brand);
-  font-weight: 600;
-}
-.catPage .cat-page-gap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  color: var(--st-ink-soft);
-  font-size: 14px;
-  user-select: none;
-}
+.catPage .cat-page-btn:disabled { cursor: default; opacity: 0.45; }
 .catPage .cat-page-jump {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-height: 44px;
   color: var(--st-ink-soft);
-  font-size: 13px;
+  font-size: 14px;
 }
 .catPage .cat-page-jump label { white-space: nowrap; }
-.catPage .cat-jump-input { width: 76px; text-align: center; font-variant-numeric: tabular-nums; }
-.catPage .cat-jump-go { min-height: 40px; padding: 8px 16px; font-size: 13px; }
+.catPage .cat-jump-input { width: 64px; min-height: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+.catPage .cat-jump-total { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .catPage .cat-jump-error {
   flex-basis: 100%;
   margin: 0;
   color: var(--st-err-text);
   font-size: 12.5px;
   line-height: 1.5;
-}
-@media (max-width: 480px) {
-  .catPage .cat-page-jump { flex-basis: 100%; }
+  text-align: center;
 }
 .catPage .cat-filter-panel h2 { margin: 0 0 24px; font-size: 14px; font-weight: 500; }
-.catPage .cat-filter-group { margin: 0 0 24px; padding: 0; border: 0; }
-.catPage .cat-filter-group legend { margin-bottom: 10px; font-size: 14px; font-weight: 500; }
-.catPage .cat-filter-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  color: var(--st-ink-soft);
-  font-size: 14px;
-  cursor: pointer;
-}
+.catPage .cat-filter-group { min-width: 0; margin: 0 0 30px; padding: 0; border: 0; }
+.catPage .cat-filter-group legend { margin-bottom: 14px; padding: 0; font-size: 14px; font-weight: 500; }
 .catPage .cat-filter-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--st-brand); }
 .catPage .cat-filter-reset { justify-content: flex-start; }
 .catPage .cat-filter-note {
@@ -205,8 +173,6 @@
   font-size: 11px;
   line-height: 1.5;
 }
-.catPage .cat-price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.catPage .cat-filter-apply { margin-top: 10px; width: 100%; min-height: 36px; font-size: 13px; }
 .catPage .cat-filter-mobile {
   display: none;
   margin-bottom: 20px;
@@ -583,13 +549,102 @@
 .catPage .cat-brand-group > summary::-webkit-details-marker { display: none; }
 .catPage .cat-brand-group > summary::after { content: "▾"; color: var(--st-ink-soft); font-size: 12px; }
 .catPage .cat-brand-group[open] > summary::after { content: "▴"; }
-.catPage .cat-brand-body { display: grid; gap: 8px; padding-bottom: 6px; }
+.catPage .cat-brand-body { display: grid; gap: 14px; padding: 6px 2px 8px; }
 .catPage .cat-brand-search input { width: 100%; min-height: 40px; }
 /* R5: danh sách hãng là luồng tài liệu thường — không khay cuộn; hiển thị tập con
    hữu ích + nút mở rộng rõ ràng thay vì cuộn lồng. */
-.catPage .cat-brand-list { display: grid; gap: 2px; overflow: visible; }
+
 .catPage .cat-brand-more { justify-self: start; margin-top: 4px; }
 .catPage .cat-visually-hidden {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+
+/* ---- Bộ lọc: khoảng thở, mục chọn không dính nhau, không cắt vòng focus ---- */
+.catPage .cat-slide-opts {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 3px;
+  margin: -3px;
+  isolation: isolate;
+  overflow: visible;
+}
+.catPage .cat-filter-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.catPage .cat-filter-option:hover { background: color-mix(in srgb, var(--st-select) 55%, transparent); }
+.catPage .cat-filter-option[data-active="true"] { color: var(--st-ink); }
+/* Nền chọn do underlay (.cat-selbg) đảm nhiệm. */
+.catPage .cat-filter-option:has(input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 1px; }
+.catPage .cat-selbg {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 3px;
+  right: 3px;
+  height: 0;
+  border-radius: 7px;
+  background: var(--st-select);
+  box-shadow: inset 3px 0 0 var(--st-brand);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition: transform 0.32s cubic-bezier(0.34, 1.32, 0.5, 1), opacity 0.15s ease;
+}
+.catPage .cat-slide-opts[data-motion="off"] .cat-selbg { transition: none; }
+.catPage .cat-keyword-field { margin-bottom: 30px; }
+.catPage .cat-brand-more { margin-top: 10px; }
+.catPage .cat-filter-group > .cat-brand-more { margin-left: 12px; }
+.catPage .cat-brand-search input { min-height: 44px; }
+.catPage .cat-filter-reset { margin-top: 8px; }
+
+/* ---- Khoảng giá ---- */
+.catPage .cat-price { display: grid; gap: 14px; }
+.catPage .cat-price-readout { margin: 0; color: var(--st-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-track { position: relative; height: 28px; margin: 0 10px; touch-action: none; }
+.catPage .cat-price-rail, .catPage .cat-price-fill { position: absolute; top: 12px; height: 4px; border-radius: 2px; }
+.catPage .cat-price-rail { left: 0; right: 0; background: var(--st-line); }
+.catPage .cat-price-fill { background: var(--st-brand); }
+.catPage .cat-price-thumb {
+  position: absolute;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 2px solid var(--st-brand);
+  border-radius: 50%;
+  background: var(--st-surface);
+  cursor: grab;
+  touch-action: none;
+}
+.catPage .cat-price-thumb:active { cursor: grabbing; }
+.catPage .cat-price-thumb:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; }
+.catPage .cat-price-scale { display: flex; justify-content: space-between; color: var(--st-ink-soft); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.catPage .cat-price-grid .cat-input { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-error { margin: 0; color: var(--st-err-text); }
+
+/* ---- Làm mới kết quả: giữ lưới cũ, mờ nhẹ, không nhảy bố cục ---- */
+.catPage .cat-results { transition: opacity 0.18s ease; }
+.catPage .cat-results[data-refetching="true"] { opacity: 0.55; pointer-events: none; }
+.catPage .cat-skeleton-grid[data-slow="false"] { visibility: hidden; }
+.catPage .cat-skeleton-grid[data-slow="true"] .cat-skeleton { animation: cat-pulse 1.4s ease-in-out infinite; }
+@keyframes cat-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) {
+  .catPage .cat-selbg { transition: none; }
+  .catPage .cat-results { transition: none; }
+  .catPage .cat-skeleton-grid[data-slow="true"] .cat-skeleton { animation: none; }
 }
