@@ -7,6 +7,7 @@ from PIL import Image
 
 from src.core.ai_model import get_ai_model
 from src.core.config import settings
+from src.core.exceptions import InvalidInputError
 from src.repositories import ImageRepository, get_image_repository
 from src.utils import to_system_path
 
@@ -24,8 +25,35 @@ def _format_results(results: list) -> List[Dict[str, Any]]:
             "image_path": payload.get("image_path", ""),
             "file_name": payload.get("file_name", ""),
             "catalog": payload.get("catalog", ""),
+            # BE (AiSearchResultItem) dùng product_id để gắn kết quả với sản phẩm trong DB
+            "product_id": str(payload["product_id"]) if payload.get("product_id") is not None else None,
+            "metadata": payload.get("metadata") or {},
         })
     return formatted
+
+
+def _validate_limit(limit: int) -> None:
+    """Limit phải >= 1 (không còn trần ở tầng service; trần HTTP do tầng API quản lý)."""
+    if limit is None or limit < 1:
+        raise InvalidInputError("Tham số limit phải lớn hơn hoặc bằng 1")
+
+
+def _validate_query(query_text: str) -> str:
+    """Chuẩn hóa và kiểm tra chuỗi truy vấn văn bản (không được rỗng)."""
+    clean = (query_text or "").strip()
+    if not clean:
+        raise InvalidInputError("Chuỗi tìm kiếm (query) không được để trống")
+    return clean
+
+
+def _load_rgb_image(sys_path) -> Image.Image:
+    """Đọc ảnh và chuyển RGB; ảnh rỗng/hỏng -> InvalidInputError (HTTP 400), không lộ đường dẫn."""
+    try:
+        with Image.open(sys_path) as img:
+            return img.convert("RGB")
+    except Exception as e:
+        logger.warning(f"Không thể đọc ảnh tại '{sys_path}': {e}")
+        raise InvalidInputError("File ảnh không hợp lệ hoặc bị hỏng")
 
 
 class SearchService:
@@ -50,9 +78,11 @@ class SearchService:
         score_threshold: Optional[Union[torch.Tensor, float]] = None,
     ) -> List[Dict[str, Any]]:
         """Trích xuất vector text và tìm kiếm ảnh tương đồng trong collection."""
+        _validate_limit(limit)
+        query_text = _validate_query(query_text)
         device, model, processor = get_ai_model()
 
-        text_inputs = processor(text=[query_text], return_tensors="pt", padding=True).to(device)
+        text_inputs = processor(text=[query_text], return_tensors="pt", padding=True, truncation=True).to(device)
 
         with torch.no_grad():
             text_features = model.get_text_features(**text_inputs)
@@ -80,14 +110,10 @@ class SearchService:
         score_threshold: Optional[Union[torch.Tensor, float]] = None,
     ) -> List[Dict[str, Any]]:
         """Trích xuất vector ảnh và tìm kiếm ảnh tương đồng trong collection."""
+        _validate_limit(limit)
         device, model, processor = get_ai_model()
         sys_path = to_system_path(image_path)
-
-        try:
-            with Image.open(sys_path) as img:
-                image = img.convert("RGB")
-        except Exception as e:
-            raise ValueError(f"Không thể đọc ảnh tại '{sys_path}': {e}")
+        image = _load_rgb_image(sys_path)
 
         image_inputs = processor(images=image, return_tensors="pt").to(device)
 
@@ -127,15 +153,13 @@ class SearchService:
         - limit: Số lượng kết quả tối đa
         - text_weight: Trọng số ưu tiên Text (0.0: 100% ảnh, 1.0: 100% text, 0.5: cân bằng 50-50)
         """
+        _validate_limit(limit)
+        query_text = _validate_query(query_text)
         device, model, processor = get_ai_model()
         sys_path = to_system_path(image_path)
 
         # 1. Trích xuất vector đặc trưng từ ảnh
-        try:
-            with Image.open(sys_path) as img:
-                image = img.convert("RGB")
-        except Exception as e:
-            raise ValueError(f"Không thể đọc ảnh tại '{sys_path}': {e}")
+        image = _load_rgb_image(sys_path)
 
         image_inputs = processor(images=image, return_tensors="pt").to(device)
         with torch.no_grad():
@@ -143,7 +167,7 @@ class SearchService:
             image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
 
         # 2. Trích xuất vector đặc trưng từ văn bản
-        text_inputs = processor(text=[query_text], return_tensors="pt", padding=True).to(device)
+        text_inputs = processor(text=[query_text], return_tensors="pt", padding=True, truncation=True).to(device)
         with torch.no_grad():
             text_features = model.get_text_features(**text_inputs)
             text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
