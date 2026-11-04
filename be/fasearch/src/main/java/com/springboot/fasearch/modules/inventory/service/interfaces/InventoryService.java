@@ -23,6 +23,9 @@ public interface InventoryService {
 
     StockRes getStockBySkuId(Long skuId);
 
+    /** Bounded, server-computed stock overview (counts are whole-catalog aggregates). */
+    com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes getStockSummary(int limit);
+
     ImportReceiptDetailRes createImportReceipt(ImportReceiptCreateReq req);
 
     PageResponse<ImportReceiptRes> getImportReceipts(Pageable pageable, String receiptCode, String supplierName);

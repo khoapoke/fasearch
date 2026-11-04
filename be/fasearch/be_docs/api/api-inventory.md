@@ -4,6 +4,16 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 
 ---
 
+## Tổng quan tồn kho (Admin Overview)
+
+- **Endpoint:** `GET /api/v1/inventory/stock-summary?limit=20`
+- **Quyền hạn:** `A` `S` (đọc vận hành; **không** chứa trường tài chính)
+- **Mô tả:** Số liệu tổng hợp toàn hệ thống cho màn hình tổng quan: đếm thật bằng truy vấn tổng hợp (không suy ra từ một trang kết quả) + danh sách ngoại lệ có giới hạn.
+- **Ngữ nghĩa:** `availableStock` = `so_luong_kha_dung` (vật lý − tạm giữ). `outOfStock`: available ≤ 0; `lowStock`: 0 < available ≤ `minThreshold` của từng SKU; `healthyStock`: available > minThreshold.
+- **Response:** `{totalSkus, outOfStock, lowStock, healthyStock, physicalTotal, reservedTotal, availableTotal, exceptionsTotal, limit, generatedAt, exceptions: StockRes[]}`.
+- `exceptionsTotal` là tổng thật (out+low); `exceptions` tối đa `limit` dòng (1–50, mặc định 20), sắp xếp `availableStock` tăng dần rồi `skuId` tăng dần.
+- Không có tồn đầu kỳ/lịch sử kho/ngưỡng tự đặt — các trường đó vẫn là giới hạn đã biết của schema.
+
 ## 1. Tra cứu tồn kho khả dụng (FR-29)
 
 - **Endpoint:** `GET /api/v1/inventory/stock`

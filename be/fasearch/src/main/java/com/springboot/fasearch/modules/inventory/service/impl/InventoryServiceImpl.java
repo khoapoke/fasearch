@@ -5,10 +5,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -70,6 +72,30 @@ public class InventoryServiceImpl implements InventoryService {
     private final StocktakeDetailRepository stocktakeDetailRepository;
     private final ProductVariantRepository productVariantRepository;
     private final InventoryMapper inventoryMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes getStockSummary(int limit) {
+        if (limit < 1 || limit > 50) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid limit (1-50)");
+        }
+        long exceptionsTotal = inventoryRepository.countOutOfStock() + inventoryRepository.countLowStock();
+        List<com.springboot.fasearch.modules.inventory.entity.Inventory> rows =
+                inventoryRepository.findExceptions(PageRequest.of(0, limit));
+        return com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes.builder()
+                .totalSkus(inventoryRepository.countLive())
+                .outOfStock(inventoryRepository.countOutOfStock())
+                .lowStock(inventoryRepository.countLowStock())
+                .healthyStock(inventoryRepository.countHealthyStock())
+                .physicalTotal(inventoryRepository.sumPhysical())
+                .reservedTotal(inventoryRepository.sumReserved())
+                .availableTotal(inventoryRepository.sumAvailable())
+                .exceptionsTotal(exceptionsTotal)
+                .limit(limit)
+                .generatedAt(LocalDateTime.now())
+                .exceptions(inventoryMapper.toStockResponseList(rows))
+                .build();
+    }
 
     @Override
     @Transactional(readOnly = true)

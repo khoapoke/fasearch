@@ -56,6 +56,19 @@ public class InventoryController {
         return ApiResponse.success(200, "Tra cứu tồn kho thành công", result);
     }
 
+    /**
+     * Whole-catalog stock overview: real aggregate counts plus a bounded exception list.
+     * ADMIN and STAFF (operational read); no financial field is exposed here.
+     */
+    @GetMapping("/stock-summary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes> getStockSummary(
+            @RequestParam(defaultValue = "20") int limit) {
+        return ApiResponse.success(200, "Tổng quan tồn kho thành công",
+                inventoryService.getStockSummary(limit));
+    }
+
     @GetMapping("/stock/{skuId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)

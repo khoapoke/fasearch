@@ -99,7 +99,7 @@ S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; hi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-29 | Tra cứu tồn kho | Xem số lượng tồn kho khả dụng của từng mã SKU theo từng chi nhánh / kho | `A` `S` | X |
+| FR-29 (overview projection `GET /inventory/stock-summary` added rev2) | Tra cứu tồn kho | Xem số lượng tồn kho khả dụng của từng mã SKU theo từng chi nhánh / kho | `A` `S` | X |
 | FR-30 | Lập phiếu nhập kho | Tạo phiếu nhập kho từ nhà cung cấp, tự động cộng số lượng tồn kho theo SKU | `A` | X |
 | FR-31 | Lập phiếu xuất / Chuyển kho | Tạo phiếu xuất hủy (hàng lỗi) hoặc phiếu chuyển kho giữa các chi nhánh | `A` | X |
 | FR-32 | Kiểm kê kho | Tạo phiếu kiểm kê, ghi nhận số lượng đếm thực tế bằng quét mã vạch | `A` `S` | X |
