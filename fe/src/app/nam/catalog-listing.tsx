@@ -323,9 +323,9 @@ function jumpErrorText(code: string, totalPages: number): string {
 }
 
 /**
- * Phân trang gọn: Trước · "Trang [n] / tổng" · Sau.
- * Chỉ MỘT readout trang hiện tại/tổng; ô số nhập trực tiếp, Enter để đi
- * (kiểm tra 1…tổng, không clamp ngầm). 1-based ở UI, 0-based ở API.
+ * Phân trang (giữ nét cũ Direction A, không trùng lặp): ‹ · SỐ TRANG LỚN trong khung góc
+ * (chính là ô nhập) · "/ tổng" · vạch tiến độ mảnh · ›. Click/focus để gõ số trang,
+ * Enter đi tới (kiểm tra 1…tổng, không clamp ngầm), Esc hoàn lại. 1-based ở UI, 0-based ở API.
  */
 function Pagination({
   page,
@@ -370,7 +370,8 @@ function Pagination({
 }
 
 function PageJump({ page, totalPages, loading, onGoto }: { page: number; totalPages: number; loading: boolean; onGoto: (page0: number) => void }) {
-  const [jump, setJump] = useState(String(page + 1));
+  const current = String(page + 1);
+  const [jump, setJump] = useState(current);
   const [jumpError, setJumpError] = useState<string | null>(null);
   const errorId = "listing-jump-error";
   function submit(event: React.FormEvent) {
@@ -386,21 +387,37 @@ function PageJump({ page, totalPages, loading, onGoto }: { page: number; totalPa
   }
   return (
     <form className="cat-page-jump" onSubmit={submit}>
-      <label htmlFor="listing-jump">Trang</label>
-      <input
-        id="listing-jump"
-        className="cat-input cat-jump-input"
-        inputMode="numeric"
-        autoComplete="off"
-        value={jump}
-        maxLength={10}
-        aria-describedby={jumpError ? errorId : "listing-jump-hint"}
-        aria-invalid={jumpError ? true : undefined}
-        onChange={(e) => { setJump(e.target.value); setJumpError(null); }}
-        onFocus={(e) => e.currentTarget.select()}
-      />
+      <span className="cat-page-cur">
+        <input
+          id="listing-jump"
+          className="cat-page-cur-input"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label="Trang hiện tại, nhập số trang"
+          value={jump}
+          maxLength={10}
+          size={Math.max(2, jump.length)}
+          aria-describedby={jumpError ? errorId : "listing-jump-hint"}
+          aria-invalid={jumpError ? true : undefined}
+          onChange={(e) => { setJump(e.target.value); setJumpError(null); }}
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={() => { setJump(current); setJumpError(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setJump(current); setJumpError(null); e.currentTarget.select(); } }}
+        />
+        <span className="cat-corner" aria-hidden="true" />
+      </span>
       <span className="cat-jump-total" aria-hidden="true">/ {totalPages}</span>
-      <span className="cat-visually-hidden" id="listing-jump-hint">trên tổng {totalPages} trang. Nhấn Enter để đi tới trang đã nhập.</span>
+      <span
+        className="cat-page-pos"
+        role="progressbar"
+        aria-label="Vị trí trang"
+        aria-valuemin={1}
+        aria-valuemax={totalPages}
+        aria-valuenow={page + 1}
+      >
+        <i style={{ width: `${((page + 1) / Math.max(1, totalPages)) * 100}%` }} />
+      </span>
+      <span className="cat-visually-hidden" id="listing-jump-hint">trên tổng {totalPages} trang. Nhấn Enter để đi tới trang đã nhập, Esc để hoàn lại.</span>
       {jumpError ? <p className="cat-jump-error" role="alert" id={errorId}>{jumpError}</p> : null}
     </form>
   );

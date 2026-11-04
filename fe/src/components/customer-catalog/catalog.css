@@ -116,17 +116,16 @@
    không sticky để tránh bẫy cuộn ở viewport thấp. Gutter 4px giữ vòng focus. */
 .catPage .cat-filter-panel { padding: 6px 10px 6px 6px; overflow: visible; }
 .catPage .cat-listing-tools { scroll-margin-top: 104px; }
-/* Phân trang gọn: Trước · Trang [n] / tổng · Sau — một readout duy nhất. */
+/* Phân trang: ‹ · số lớn trong khung góc (ô nhập) · / tổng · vạch tiến độ · › */
 .catPage .cat-pagination {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 12px 16px;
+  align-items: center;
+  gap: 12px;
   margin-top: 36px;
 }
 .catPage .cat-page-btn {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   min-width: 44px;
@@ -143,29 +142,54 @@
 .catPage .cat-page-btn:disabled { cursor: default; opacity: 0.45; }
 .catPage .cat-page-jump {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
+  gap: 4px 12px;
   color: var(--st-ink-soft);
   font-size: 14px;
 }
-.catPage .cat-page-jump label { white-space: nowrap; }
-.catPage .cat-jump-input { width: 64px; min-height: 44px; text-align: center; font-variant-numeric: tabular-nums; }
-.catPage .cat-jump-total { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.catPage .cat-page-cur { position: relative; display: inline-flex; flex: none; padding: 2px 14px; }
+.catPage .cat-page-cur-input {
+  min-width: 2ch;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  color: var(--st-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: text;
+}
+.catPage .cat-page-cur:has(.cat-page-cur-input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 2px; border-radius: 4px; }
+.catPage .cat-page-cur .cat-corner { inset: 0; }
+.catPage .cat-jump-total { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.catPage .cat-page-pos { flex: 1 1 80px; height: 2px; border-radius: 2px; background: var(--st-line); overflow: hidden; }
+.catPage .cat-page-pos i { display: block; height: 100%; background: var(--st-ink); transition: width 0.25s ease; }
 .catPage .cat-jump-error {
   flex-basis: 100%;
   margin: 0;
   color: var(--st-err-text);
   font-size: 12.5px;
   line-height: 1.5;
-  text-align: center;
+}
+@media (max-width: 480px) {
+  .catPage .cat-pagination { flex-wrap: wrap; gap: 10px; }
+  .catPage .cat-page-jump { order: 3; flex-basis: 100%; justify-content: center; }
+  .catPage .cat-page-btn:first-child { margin-right: auto; }
+  .catPage .cat-pagination .cat-page-btn:last-child { margin-left: auto; }
 }
 .catPage .cat-filter-panel h2 { margin: 0 0 24px; font-size: 14px; font-weight: 500; }
 .catPage .cat-filter-group { min-width: 0; margin: 0 0 30px; padding: 0; border: 0; }
 .catPage .cat-filter-group legend { margin-bottom: 14px; padding: 0; font-size: 14px; font-weight: 500; }
-.catPage .cat-filter-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--st-brand); }
 .catPage .cat-filter-reset { justify-content: flex-start; }
 .catPage .cat-filter-note {
   margin: 14px 0 0;
@@ -587,7 +611,6 @@
 .catPage .cat-filter-option:hover { background: color-mix(in srgb, var(--st-select) 55%, transparent); }
 .catPage .cat-filter-option[data-active="true"] { color: var(--st-ink); }
 /* Nền chọn do underlay (.cat-selbg) đảm nhiệm. */
-.catPage .cat-filter-option input:focus-visible { outline: none; }
 .catPage .cat-filter-option:has(input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 1px; }
 .catPage .cat-selbg {
   position: absolute;
@@ -598,13 +621,25 @@
   height: 0;
   border-radius: 7px;
   background: var(--st-select);
-  box-shadow: inset 3px 0 0 var(--st-brand);
   opacity: 0;
   pointer-events: none;
   will-change: transform;
   transition: transform 0.32s cubic-bezier(0.34, 1.32, 0.5, 1), opacity 0.15s ease;
 }
 .catPage .cat-slide-opts[data-motion="off"] .cat-selbg { transition: none; }
+/* Khung góc xanh kiểu cũ (Direction A): góc trên-trái + dưới-phải, trượt cùng nền. */
+.catPage .cat-corner { position: absolute; inset: 4px; pointer-events: none; }
+.catPage .cat-corner::before, .catPage .cat-corner::after,
+.catPage .cat-selbg::before, .catPage .cat-selbg::after {
+  content: ""; position: absolute; width: 9px; height: 9px; border: 0 solid var(--st-brand);
+}
+.catPage .cat-corner::before, .catPage .cat-selbg::before { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
+.catPage .cat-corner::after, .catPage .cat-selbg::after { right: 0; bottom: 0; border-right-width: 2px; border-bottom-width: 2px; }
+.catPage .cat-selbg::before { top: 4px; left: 4px; }
+.catPage .cat-selbg::after { right: 4px; bottom: 4px; }
+/* Bỏ nút radio tròn: hàng chọn là cả hàng (input vẫn có thật, focus được, đọc được). */
+.catPage .cat-filter-option input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; pointer-events: none; }
+.catPage .cat-filter-option { padding: 6px 12px 6px 18px; border-radius: 6px; }
 .catPage .cat-keyword-field { margin-bottom: 30px; }
 .catPage .cat-brand-more { margin-top: 10px; }
 .catPage .cat-filter-group > .cat-brand-more { margin-left: 12px; }
