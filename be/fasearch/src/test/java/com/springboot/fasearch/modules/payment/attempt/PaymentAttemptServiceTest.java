@@ -1,7 +1,10 @@
 package com.springboot.fasearch.modules.payment.attempt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,6 +45,7 @@ import com.springboot.fasearch.modules.payment.repository.InvoiceRepository;
 import com.springboot.fasearch.modules.payment.repository.PaymentMethodRepository;
 import com.springboot.fasearch.modules.payment.repository.PaymentRepository;
 import com.springboot.fasearch.modules.payment.attempt.service.impl.PaymentAttemptServiceImpl;
+import com.springboot.fasearch.modules.payment.entity.Invoice;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 
@@ -89,6 +93,8 @@ class PaymentAttemptServiceTest {
         AppException error = assertThrows(AppException.class, () -> service.create(req));
         assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
         verify(attemptRepository, never()).save(any());
+        // P-4: a foreign order must be rejected before any row lock is taken on it.
+        verify(orderRepository, never()).findByIdForUpdate(any());
     }
 
     @Test
@@ -104,6 +110,7 @@ class PaymentAttemptServiceTest {
         req.setOrderId(10L); req.setProvider(PaymentProvider.STRIPE); req.setIdempotencyKey("key-1");
         assertEquals(5L, service.create(req).getId());
         verify(attemptRepository, never()).save(any());
+        verify(orderRepository, never()).findByIdForUpdate(any());
     }
 
     @Test
@@ -191,5 +198,167 @@ class PaymentAttemptServiceTest {
         AppException error = assertThrows(AppException.class, () -> service.create(req));
         assertEquals(ErrorCode.INVALID_REQUEST, error.getErrorCode());
         verify(attemptRepository, never()).save(any());
+    }
+
+    private PaymentAttempt attemptWith(long id, String key, PaymentAttemptStatus status) {
+        return PaymentAttempt.builder().id(id).order(order).provider(PaymentProvider.STRIPE)
+                .amount(new BigDecimal("100000.00")).currency("VND").status(status)
+                .idempotencyKey(key).providerReference("ref-" + id).providerCheckoutUrl("https://pay.example/" + id)
+                .build();
+    }
+
+    private PaymentAttemptCreateReq createReq(String key) {
+        PaymentAttemptCreateReq req = new PaymentAttemptCreateReq();
+        req.setOrderId(10L); req.setProvider(PaymentProvider.STRIPE); req.setIdempotencyKey(key);
+        return req;
+    }
+
+    // Plain read only: enough for paths that return an existing attempt or reject without writing.
+    private void stubOrderAndCustomer() {
+        when(userRepository.findByAccount_Username("customer")).thenReturn(Optional.of(customer));
+        when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
+    }
+
+    // Paths that may write a new attempt also take the row lock (after the plain-read ownership check).
+    private void stubOrderLock() {
+        when(orderRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(order));
+    }
+
+    @Test
+    void createOpensFreshAttemptWhenKeyIsNew() {
+        stubOrderAndCustomer();
+        stubOrderLock();
+        when(attemptRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var res = service.create(createReq("pay-order-10-STRIPE"));
+        ArgumentCaptor<PaymentAttempt> captor = ArgumentCaptor.forClass(PaymentAttempt.class);
+        verify(attemptRepository).save(captor.capture());
+        assertEquals("pay-order-10-STRIPE", captor.getValue().getIdempotencyKey());
+        assertEquals(PaymentAttemptStatus.CREATED, res.getStatus());
+    }
+
+    @Test
+    void repayAfterTerminalAttemptCreatesFreshAttemptWithDerivedKey() {
+        for (PaymentAttemptStatus terminal : List.of(PaymentAttemptStatus.FAILED,
+                PaymentAttemptStatus.CANCELLED, PaymentAttemptStatus.EXPIRED)) {
+            org.mockito.Mockito.reset(attemptRepository, invoiceRepository, orderRepository);
+            stubOrderAndCustomer();
+            stubOrderLock();
+            PaymentAttempt dead = attemptWith(5L, "pay-order-10-STRIPE", terminal);
+            when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, "pay-order-10-STRIPE"))
+                    .thenReturn(Optional.of(dead));
+            when(attemptRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            var res = service.create(createReq("pay-order-10-STRIPE"));
+            ArgumentCaptor<PaymentAttempt> captor = ArgumentCaptor.forClass(PaymentAttempt.class);
+            verify(attemptRepository).save(captor.capture());
+            PaymentAttempt fresh = captor.getValue();
+            verify(orderRepository).findById(10L);
+            verify(orderRepository).findByIdForUpdate(10L);
+            assertEquals("pay-order-10-STRIPE~r1", fresh.getIdempotencyKey());
+            assertEquals(PaymentAttemptStatus.CREATED, fresh.getStatus());
+            assertNull(fresh.getProviderCheckoutUrl());
+            assertNull(res.getCheckoutUrl());
+            assertNotEquals(dead.getProviderReference(), fresh.getProviderReference());
+        }
+    }
+
+    @Test
+    void repeatedRepayWhileRetryAttemptIsOpenReturnsSameAttempt() {
+        stubOrderAndCustomer();
+        PaymentAttempt dead = attemptWith(5L, "k", PaymentAttemptStatus.FAILED);
+        PaymentAttempt open = attemptWith(6L, "k~r1", PaymentAttemptStatus.CREATED);
+        when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, "k")).thenReturn(Optional.of(dead));
+        when(attemptRepository.findFirstByProviderAndOrder_IdAndIdempotencyKeyStartingWithOrderByIdDesc(
+                PaymentProvider.STRIPE, 10L, "k~r")).thenReturn(Optional.of(open));
+        var res = service.create(createReq("k"));
+        assertEquals(6L, res.getId());
+        assertEquals("https://pay.example/6", res.getCheckoutUrl());
+        verify(attemptRepository, never()).save(any());
+        verify(orderRepository, never()).findByIdForUpdate(any());
+    }
+
+    @Test
+    void secondRepayAfterRetryAlsoTerminalGetsNextSequence() {
+        stubOrderAndCustomer();
+        stubOrderLock();
+        PaymentAttempt dead = attemptWith(5L, "k", PaymentAttemptStatus.FAILED);
+        PaymentAttempt deadRetry = attemptWith(6L, "k~r1", PaymentAttemptStatus.EXPIRED);
+        when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, "k")).thenReturn(Optional.of(dead));
+        when(attemptRepository.findFirstByProviderAndOrder_IdAndIdempotencyKeyStartingWithOrderByIdDesc(
+                PaymentProvider.STRIPE, 10L, "k~r")).thenReturn(Optional.of(deadRetry));
+        when(attemptRepository.countByProviderAndOrder_IdAndIdempotencyKeyStartingWith(
+                PaymentProvider.STRIPE, 10L, "k~r")).thenReturn(1L);
+        when(attemptRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        service.create(createReq("k"));
+        ArgumentCaptor<PaymentAttempt> captor = ArgumentCaptor.forClass(PaymentAttempt.class);
+        verify(attemptRepository).save(captor.capture());
+        assertEquals("k~r2", captor.getValue().getIdempotencyKey());
+    }
+
+    @Test
+    void openSettledOrReviewAttemptIsNeverReplaced() {
+        for (PaymentAttemptStatus status : List.of(PaymentAttemptStatus.CREATED, PaymentAttemptStatus.PENDING,
+                PaymentAttemptStatus.SETTLEMENT_PENDING, PaymentAttemptStatus.SETTLED,
+                PaymentAttemptStatus.REVIEW_REQUIRED)) {
+            org.mockito.Mockito.reset(attemptRepository, orderRepository);
+            stubOrderAndCustomer();
+            when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, "k"))
+                    .thenReturn(Optional.of(attemptWith(5L, "k", status)));
+            assertEquals(5L, service.create(createReq("k")).getId());
+            verify(attemptRepository, never()).save(any());
+            verify(orderRepository, never()).findByIdForUpdate(any());
+        }
+    }
+
+    @Test
+    void repayRejectedWhenOrderAlreadyHasInvoice() {
+        stubOrderAndCustomer();
+        stubOrderLock();
+        when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, "k"))
+                .thenReturn(Optional.of(attemptWith(5L, "k", PaymentAttemptStatus.FAILED)));
+        when(invoiceRepository.findByOrderId(10L)).thenReturn(Optional.of(Invoice.builder().id(1L).build()));
+        AppException error = assertThrows(AppException.class, () -> service.create(createReq("k")));
+        assertEquals(ErrorCode.ORDER_ALREADY_PAID, error.getErrorCode());
+        verify(attemptRepository, never()).save(any());
+    }
+
+    @Test
+    void retryKeyFitsColumnForMaxLengthClientKey() {
+        stubOrderAndCustomer();
+        stubOrderLock();
+        String longKey = "x".repeat(100);
+        when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, longKey))
+                .thenReturn(Optional.of(attemptWith(5L, longKey, PaymentAttemptStatus.FAILED)));
+        when(attemptRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        service.create(createReq(longKey));
+        ArgumentCaptor<PaymentAttempt> captor = ArgumentCaptor.forClass(PaymentAttempt.class);
+        verify(attemptRepository).save(captor.capture());
+        assertTrue(captor.getValue().getIdempotencyKey().length() <= 100);
+        assertEquals("x".repeat(90) + "~r1", captor.getValue().getIdempotencyKey());
+    }
+
+    @Test
+    void sameKeyForDifferentOrderStillConflicts() {
+        stubOrderAndCustomer();
+        Order other = Order.builder().id(99L).customer(customer).status(OrderStatus.PENDING)
+                .totalAmount(new BigDecimal("1.00")).build();
+        PaymentAttempt foreign = PaymentAttempt.builder().id(5L).order(other).provider(PaymentProvider.STRIPE)
+                .status(PaymentAttemptStatus.FAILED).idempotencyKey("k").build();
+        when(attemptRepository.findByProviderAndIdempotencyKey(PaymentProvider.STRIPE, "k")).thenReturn(Optional.of(foreign));
+        AppException error = assertThrows(AppException.class, () -> service.create(createReq("k")));
+        assertEquals(ErrorCode.DATA_CONFLICT, error.getErrorCode());
+        verify(attemptRepository, never()).save(any());
+    }
+
+    @Test
+    void retryAttemptSuccessEventStillSettlesOnlyThroughVerifiedEventPath() {
+        // A fresh retry attempt is CREATED and unpaid; amount checks still guard settlement.
+        PaymentAttempt retry = attemptWith(6L, "k~r1", PaymentAttemptStatus.CREATED);
+        when(attemptRepository.findByProviderAndProviderReferenceForUpdate(PaymentProvider.STRIPE, "ref-6"))
+                .thenReturn(Optional.of(retry));
+        AppException error = assertThrows(AppException.class,
+                () -> service.recordProviderEvent(new PaymentEventCommand(PaymentProvider.STRIPE, "evt-9", "ref-6",
+                        "d".repeat(64), new BigDecimal("1.00"), "VND", ProviderEventOutcome.SUCCESS)));
+        assertEquals(ErrorCode.INVALID_REQUEST, error.getErrorCode());
+        verify(invoiceRepository, never()).save(any());
     }
 }

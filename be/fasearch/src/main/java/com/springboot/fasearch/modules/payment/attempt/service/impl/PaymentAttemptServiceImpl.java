@@ -42,6 +42,9 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class PaymentAttemptServiceImpl implements PaymentAttemptService {
+    private static final String RETRY_MARKER = "~r";
+    private static final int MAX_BASE_KEY_LENGTH = 90;
+
     private final PaymentAttemptRepository attemptRepository;
     private final PaymentEventRepository eventRepository;
     private final OrderRepository orderRepository;
@@ -56,6 +59,8 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
     @Transactional
     public PaymentAttemptRes create(PaymentAttemptCreateReq request) {
         Customer customer = currentCustomer();
+        // Ownership and payability are checked on a plain read, so a caller can never row-lock another
+        // customer's order. The row lock below is taken only when a new attempt may actually be written.
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         if (order.getCustomer() == null || !order.getCustomer().getId().equals(customer.getId())) {
@@ -68,23 +73,75 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
         if (order.getTotalAmount() == null || order.getTotalAmount().signum() <= 0) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Zero-due orders require local settlement");
         }
-        PaymentAttempt existing = attemptRepository.findByProviderAndIdempotencyKey(
-                request.getProvider(), request.getIdempotencyKey()).orElse(null);
-        if (existing != null) {
-            if (!existing.getOrder().getId().equals(order.getId())) {
-                throw new AppException(ErrorCode.DATA_CONFLICT, "Idempotency key belongs to another order");
-            }
-            return response(existing);
+        PaymentProvider provider = request.getProvider();
+        String key = request.getIdempotencyKey().strip();
+        // The client keeps sending one stable key per order/provider. The newest attempt of that key family
+        // is the live one: an open (or settled/under-review) attempt is returned unchanged, so retries stay
+        // idempotent; only a terminal FAILED/CANCELLED/EXPIRED attempt is replaced by a fresh one.
+        PaymentAttempt latest = resolveLatest(order, provider, key);
+        if (latest != null && !isRetryable(latest.getStatus())) {
+            return response(latest);
         }
-        PaymentAttempt attempt = PaymentAttempt.builder()
-                .order(order).provider(request.getProvider())
+        // A new attempt may be written: serialize per order so two re-pay clicks open at most one attempt,
+        // then re-resolve because another request may have created one while this one waited for the lock.
+        Order locked = orderRepository.findByIdForUpdate(order.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        latest = resolveLatest(locked, provider, key);
+        if (latest == null) {
+            return response(attemptRepository.save(newAttempt(locked, provider, key)));
+        }
+        if (!isRetryable(latest.getStatus())) {
+            return response(latest);
+        }
+        if (invoiceRepository.findByOrderId(locked.getId()).isPresent()) {
+            throw new AppException(ErrorCode.ORDER_ALREADY_PAID);
+        }
+        String prefix = retryPrefix(key);
+        long sequence = attemptRepository.countByProviderAndOrder_IdAndIdempotencyKeyStartingWith(
+                provider, locked.getId(), prefix) + 1;
+        String retryKey = prefix + sequence;
+        while (attemptRepository.findByProviderAndIdempotencyKey(provider, retryKey).isPresent()) {
+            sequence++;
+            retryKey = prefix + sequence;
+        }
+        return response(attemptRepository.save(newAttempt(locked, provider, retryKey)));
+    }
+
+    // Newest attempt of the key family (the key itself, then "<key>~r<n>"), or null when the key is unused.
+    private PaymentAttempt resolveLatest(Order order, PaymentProvider provider, String key) {
+        PaymentAttempt existing = attemptRepository.findByProviderAndIdempotencyKey(provider, key).orElse(null);
+        if (existing == null) {
+            return null;
+        }
+        if (!existing.getOrder().getId().equals(order.getId())) {
+            throw new AppException(ErrorCode.DATA_CONFLICT, "Idempotency key belongs to another order");
+        }
+        return attemptRepository
+                .findFirstByProviderAndOrder_IdAndIdempotencyKeyStartingWithOrderByIdDesc(
+                        provider, order.getId(), retryPrefix(key))
+                .orElse(existing);
+    }
+
+    private static boolean isRetryable(PaymentAttemptStatus status) {
+        return status == PaymentAttemptStatus.FAILED || status == PaymentAttemptStatus.CANCELLED
+                || status == PaymentAttemptStatus.EXPIRED;
+    }
+
+    // Retry keys are "<client key>~r<n>"; the client key is clipped so the derived key fits the 100-char column.
+    private static String retryPrefix(String key) {
+        String base = key.length() > MAX_BASE_KEY_LENGTH ? key.substring(0, MAX_BASE_KEY_LENGTH) : key;
+        return base + RETRY_MARKER;
+    }
+
+    private PaymentAttempt newAttempt(Order order, PaymentProvider provider, String idempotencyKey) {
+        return PaymentAttempt.builder()
+                .order(order).provider(provider)
                 .amount(order.getTotalAmount()).currency("VND")
                 .status(PaymentAttemptStatus.CREATED)
-                .idempotencyKey(request.getIdempotencyKey().strip())
+                .idempotencyKey(idempotencyKey)
                 .providerReference("SKELETON-" + UUID.randomUUID())
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
                 .build();
-        return response(attemptRepository.save(attempt));
     }
 
     @Override

@@ -128,7 +128,7 @@ Legacy fixed-rate award (đơn pre-S2 không có loyalty snapshot và không có
 
 ## 5. Cổng thanh toán bên ngoài
 
-API hiện tại không expose endpoint tạo VNPAY/MoMo URL hoặc callback/IPN. Các method code trong danh mục không hàm ý tích hợp provider; không dùng dữ liệu giả hay gửi giao dịch thật trong S2.
+Stripe (test mode) và VNPAY (sandbox) có endpoint checkout/webhook/IPN riêng — xem mục "Provider checkout (test/sandbox)" bên dưới; endpoint tạo URL và callback/IPN **có tồn tại** trong source (`StripeCheckoutController`, `StripeWebhookController`, `VnpayController`). MoMo **chưa** có endpoint. Các method code trong danh mục không tự hàm ý tích hợp provider; không dùng dữ liệu giả hay gửi giao dịch thật.
 
 ## Invoice code allocation (concurrency)
 
@@ -140,10 +140,10 @@ API hiện tại không expose endpoint tạo VNPAY/MoMo URL hoặc callback/IPN
 - `POST /api/v1/payments/attempts` — `CUSTOMER`, body `{orderId, provider, idempotencyKey}`; server derives amount/currency from the persisted order, enforces own-order ownership and returns `CREATED`.
 - `GET /api/v1/payments/attempts/{id}` — `CUSTOMER`, own attempt only.
 - Additive tables `payment_attempt` and `payment_event` (migration V15). Event dedup key is **`(provider, provider_event_id)`**, not a global event ID.
-- Provider success records `SETTLEMENT_PENDING`; it does **not** create an invoice/payment or change stock. Late success after `CANCELLED`/`EXPIRED` becomes `REVIEW_REQUIRED`; no financial rule is invented.
-- `StripeSignatureVerifier` and `VnpaySignatureVerifier` implement signature checks only. No external provider endpoints/keys are live; Stripe/VNPAY E2E remains `NOT_RUN`.
-- Existing COD/cash `POST /api/v1/payments/process` is unchanged and remains the only settlement path in this candidate.
-- Unresolved policy before provider settlement: late-success handling, hold release timing, refunds/partials and zero-due external attempts. Do not mark `PAID` from a redirect.
+- Late provider success after `CANCELLED`/`EXPIRED` becomes `REVIEW_REQUIRED`; no financial rule is invented. (Verified provider success now settles through the authoritative path described under "Provider checkout".)
+- `StripeSignatureVerifier` and `VnpaySignatureVerifier` implement the signature checks used by the webhook/IPN endpoints. Stripe/VNPAY sandbox E2E is tracked in the `payment-sandbox-readiness` packet, not here.
+- COD/cash settlement via `POST /api/v1/payments/process` is unchanged; non-cash methods are rejected there. Provider settlement happens only through the verified Stripe webhook / VNPAY IPN (see "Provider checkout").
+- Still unresolved policy: refunds/partials and double-payment of an order by two attempts. Do not mark `PAID` from a redirect.
 
 ## Provider checkout (test/sandbox, candidate-only)
 
@@ -157,3 +157,26 @@ API hiện tại không expose endpoint tạo VNPAY/MoMo URL hoặc callback/IPN
 - Late success after `CANCELLED`/`EXPIRED`/closed order stays `REVIEW_REQUIRED`; no automatic fulfillment, no refund module, no silent stock change.
 - Attempt `FAILURE`/`EXPIRED`/`CANCELLED` alone never cancels the order and never releases holds; holds release only via the authoritative `cancelOrder`/expiry path, exactly once.
 - Zero-due orders are rejected from external checkout and settle only through the existing local zero-settlement path; no fake external charge.
+
+## Re-pay after a terminal attempt (idempotent retry contract)
+
+The storefront sends one stable `idempotencyKey` per order/provider (e.g. `pay-order-{orderId}-{provider}`). `payment_attempt` keeps `UNIQUE (provider, idempotency_key)` (V15), so the server resolves the *newest attempt of that key family* inside `PaymentAttemptServiceImpl#create` (used by `POST /payments/attempts`, `/payments/stripe/checkout`, `/payments/vnpay/checkout`):
+
+| Latest attempt of the key | Result of the next request with the same key |
+| :--- | :--- |
+| none | new attempt `CREATED` with the client key |
+| `CREATED`, `PENDING`, `SETTLEMENT_PENDING` (open) | same attempt returned; checkout endpoints return the stored `checkoutUrl` (idempotent) |
+| `SETTLED`, `REVIEW_REQUIRED` | same attempt returned (HTTP 201 with the stored attempt and its `checkoutUrl`, no new session, no error); never replaced. A re-pay after settlement therefore *returns the settled attempt*, it does not fail |
+| `FAILED`, `CANCELLED`, `EXPIRED` (terminal) | a **new** attempt `CREATED` is stored under the derived key `<clientKey>~r<n>` (`n` = 1, 2, …; the client key is clipped to 90 chars so the key fits `VARCHAR(100)`), with its own `providerReference`; the checkout endpoint then creates a **fresh** Stripe session / VNPAY `TxnRef` |
+
+- Retry is rejected with `ORDER_ALREADY_PAID` (400) if the order already has an invoice; the key still conflicting with another order stays `DATA_CONFLICT` (409).
+- Ownership/payability is checked on a plain read first (a customer cannot row-lock someone else's order). The order row lock (`findByIdForUpdate`) is taken only when a new attempt may be written, and the key family is re-resolved under the lock, so two concurrent re-pay clicks open at most one retry **attempt** (see residual risk 2 for provider sessions).
+- No schema change and no FE change: the response shape (`attemptId`, `checkoutUrl`) is unchanged; the derived key is internal.
+- Webhook/IPN handling is unchanged: events are matched by `(provider, providerReference)`, so a late event for an old attempt only affects that old attempt; dedup key `(provider, provider_event_id)`, amount/currency check and PAID-only-via-verified-event are unchanged.
+
+### Known residual risks (accepted, no settlement-semantics change in this candidate)
+
+1. **Late success on a `FAILED` attempt still settles** (`settleVerifiedSuccess` only routes `CANCELLED`/`EXPIRED` late successes to `REVIEW_REQUIRED`). Since a fresh `K~r<n>` attempt can now be open beside an old `FAILED` one, a customer could be charged on both; the second verified success finds the invoice, is recorded `DUPLICATE`/`SETTLED`, and no review/refund is raised. Providers rarely send success after failure for one session; decide the rule (review on success-after-FAILED or when another attempt already settled the invoice) before any real money.
+2. **Concurrent first checkout can open two provider sessions for one attempt.** The order lock is released when `create` commits; the provider session is created and `attachProviderSession` runs afterwards, outside the lock and without a "URL already attached" check. Two simultaneous requests may both create sessions and the last attach wins; a payment on the overwritten session cannot be matched (webhook 404 / IPN `01`). The FE `paying` busy state mitigates it. Follow-up: attach only when `providerCheckoutUrl` is null, otherwise return the stored URL.
+3. **`ORDER_ALREADY_PAID` is checked only on the retry path.** If the latest attempt is open, its URL is returned even when a sibling provider attempt already paid the order.
+4. **Re-pay after settlement returns the settled attempt** (HTTP 201, stored `checkoutUrl`) instead of an error; clients must use `status` of the response (`SETTLED`) rather than assume a payable URL.

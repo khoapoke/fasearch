@@ -13,6 +13,9 @@ import com.springboot.fasearch.modules.payment.attempt.entity.PaymentProvider;
 
 public interface PaymentAttemptRepository extends JpaRepository<PaymentAttempt, Long> {
     Optional<PaymentAttempt> findByProviderAndIdempotencyKey(PaymentProvider provider, String idempotencyKey);
+    Optional<PaymentAttempt> findFirstByProviderAndOrder_IdAndIdempotencyKeyStartingWithOrderByIdDesc(
+            PaymentProvider provider, Long orderId, String keyPrefix);
+    long countByProviderAndOrder_IdAndIdempotencyKeyStartingWith(PaymentProvider provider, Long orderId, String keyPrefix);
     Optional<PaymentAttempt> findByProviderAndProviderReference(PaymentProvider provider, String providerReference);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
