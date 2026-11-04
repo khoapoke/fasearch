@@ -1,4 +1,11 @@
 import argparse
+import sys
+from pathlib import Path
+
+# Đảm bảo gốc dự án nằm trong sys.path để chạy trực tiếp `python scripts/init_qdrant.py`
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams

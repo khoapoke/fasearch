@@ -283,3 +283,11 @@ Lệnh trên chỉ reset khi có cờ `--reset`; hãy xác nhận đúng Qdrant/
 - Không chạy script reset collection trên Qdrant dùng chung nếu chưa thông báo team.
 - Khi thay đổi model hoặc kích thước vector, phải cập nhật `configs\database.yaml`, tạo lại collection và nạp lại dữ liệu.
 - Khi triển khai production, thay `allow_origins=["*"]` trong `src\main.py` bằng danh sách domain frontend cụ thể.
+
+## 15. Chạy unit test
+Unit test dùng Qdrant in-memory và CLIP giả (không cần Docker, GPU hay tải model). Từ thư mục `ai`:
+
+```powershell
+pip install pytest
+python -m pytest test\unit tests -v
+```

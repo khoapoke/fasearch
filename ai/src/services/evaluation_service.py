@@ -218,8 +218,10 @@ class EvaluationService:
             latencies.append(res.latency_ms)
 
             for k, metric in res.metrics_at_k.items():
-                accum_precision[k].append(metric.precision)
-                accum_recall[k].append(metric.recall)
+                # evaluate_query luôn thêm `limit` vào k_list; chỉ gom các ngưỡng K người dùng yêu cầu
+                if k in accum_precision:
+                    accum_precision[k].append(metric.precision)
+                    accum_recall[k].append(metric.recall)
 
         if not ap_scores:
             raise GroundTruthMissingError(
