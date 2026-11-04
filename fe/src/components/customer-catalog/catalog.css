@@ -179,9 +179,8 @@
   border-bottom: 1px solid var(--st-line);
 }
 .catPage .cat-filter-mobile > summary { min-height: 45px; padding: 9px 0; font-size: 14px; }
-.catPage .cat-mobile-filter-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 18px 0; }
-.catPage .cat-mobile-filter-body .cat-filter-group { margin-bottom: 0; }
-.catPage .cat-mobile-filter-body .cat-filter-reset { grid-column: 1 / -1; }
+.catPage .cat-mobile-filter-body { display: block; padding: 18px 0 8px; }
+.catPage .cat-mobile-filter-body > h2 { display: none; }
 .catPage .cat-listing-tools {
   display: flex;
   align-items: center;
@@ -588,6 +587,7 @@
 .catPage .cat-filter-option:hover { background: color-mix(in srgb, var(--st-select) 55%, transparent); }
 .catPage .cat-filter-option[data-active="true"] { color: var(--st-ink); }
 /* Nền chọn do underlay (.cat-selbg) đảm nhiệm. */
+.catPage .cat-filter-option input:focus-visible { outline: none; }
 .catPage .cat-filter-option:has(input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 1px; }
 .catPage .cat-selbg {
   position: absolute;

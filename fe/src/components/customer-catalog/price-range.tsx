@@ -192,7 +192,9 @@ export function PriceRange({
           </div>
         </>
       ) : (
-        <p className="cat-filter-note" role="status">Chưa đọc được thang giá — vẫn nhập giá chính xác bên dưới được.</p>
+        <p className="cat-filter-note" role="status">
+          {extent ? `Tập này chỉ có một mức giá: ${formatVnd(extent.min)}.` : "Chưa có thang giá cho tập sản phẩm này — vẫn nhập giá chính xác bên dưới được."}
+        </p>
       )}
       <div className="cat-price-grid">
         <div className="cat-field">
