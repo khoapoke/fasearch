@@ -11,3 +11,15 @@ export const SLOW_LOAD_MS = 250;
 export function shouldDebounceKeyword(typed: string, committed: string, composing: boolean): boolean {
   return !composing && typed !== committed;
 }
+
+/**
+ * Hàng hiển thị của danh sách radio rút gọn: `limit` hàng đầu, nhưng hàng đang
+ * chọn LUÔN nằm trong tập hiển thị (không bao giờ chọn mà không thấy).
+ */
+export function visibleWithActive<T>(items: readonly T[], limit: number, isActive: (item: T) => boolean, expanded: boolean): T[] {
+  if (expanded || items.length <= limit) return [...items];
+  const head = items.slice(0, limit);
+  if (head.some(isActive)) return head;
+  const active = items.find(isActive);
+  return active ? [...head, active] : head;
+}

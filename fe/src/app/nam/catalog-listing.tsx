@@ -8,7 +8,7 @@ import { loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
 import { BackIcon, ChevronDownIcon, ForwardIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
 import { parseJumpInput, visibleRange } from "@/lib/pagination";
 import { optionFingerprint } from "@/lib/study-helpers";
-import { KEYWORD_DEBOUNCE_MS, SLOW_LOAD_MS, shouldDebounceKeyword } from "@/lib/catalog-live";
+import { KEYWORD_DEBOUNCE_MS, SLOW_LOAD_MS, shouldDebounceKeyword, visibleWithActive } from "@/lib/catalog-live";
 import { SlideOptions } from "@/components/customer-catalog/slide-options";
 import { PriceRange, type PriceBounds, type PriceExtent } from "@/components/customer-catalog/price-range";
 import {
@@ -148,6 +148,7 @@ function FilterFields({
   onKeywordCompose,
   onKeywordEnter,
   extent,
+  extentStatus,
   onPrice,
   onReset,
   onNarrow,
@@ -160,6 +161,7 @@ function FilterFields({
   onKeywordCompose: (composing: boolean, value?: string) => void;
   onKeywordEnter: () => void;
   extent: PriceExtent | null;
+  extentStatus: "loading" | "ready" | "empty";
   onPrice: (next: PriceBounds) => void;
   categories: CatalogCategory[];
   categoriesLoading: boolean;
@@ -176,11 +178,12 @@ function FilterFields({
   // R5: chỉ hiển thị tập con hữu ích + nút mở rộng rõ ràng — không khay cuộn lồng.
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [showAllCats, setShowCats] = useState(false);
-  const catRows = showAllCats ? categories : categories.slice(0, BRAND_VISIBLE_COUNT);
+  // Hàng đang chọn luôn hiển thị, kể cả khi nằm ngoài tập rút gọn.
+  const catRows = visibleWithActive(categories, BRAND_VISIBLE_COUNT, (c) => String(c.id) === filters.categoryId, showAllCats);
   const q = brandQuery.trim().toLowerCase();
   // Thu hẹp danh sách hãng ngay trong máy (không gọi mạng, không debounce).
   const brandMatches = brands.filter((brand) => !q || brandLabel(brand.slug, brand.name).toLowerCase().includes(q));
-  const brandRows = q || showAllBrands ? brandMatches : brandMatches.slice(0, BRAND_VISIBLE_COUNT);
+  const brandRows = visibleWithActive(brandMatches, BRAND_VISIBLE_COUNT, (b) => b.slug === filters.brand, !!q || showAllBrands);
   return (
     <>
       <h2>Bộ lọc</h2>
@@ -207,14 +210,14 @@ function FilterFields({
             </label>
           ))}
         </SlideOptions>
-        {!showAllCats && categories.length > BRAND_VISIBLE_COUNT ? (
+        {!showAllCats && categories.length > catRows.length ? (
           <button
             className="cat-text-button cat-brand-more"
             type="button"
             aria-expanded={showAllCats}
             onClick={() => setShowCats(true)}
           >
-            Xem thêm {categories.length - BRAND_VISIBLE_COUNT} danh mục
+            Xem thêm {categories.length - catRows.length} danh mục
           </button>
         ) : null}
         {categoriesLoading ? <p className="cat-filter-note" role="status">Đang tải danh mục…</p> : null}
@@ -229,6 +232,7 @@ function FilterFields({
         <legend>Khoảng giá</legend>
         <PriceRange
           extent={extent}
+          status={extentStatus}
           value={{ lo: filters.minPrice ? Number(filters.minPrice) : null, hi: filters.maxPrice ? Number(filters.maxPrice) : null }}
           onCommit={onPrice}
           idPrefix={`${prefix}-price`}
@@ -295,7 +299,7 @@ function FilterFields({
                 aria-expanded={showAllBrands}
                 onClick={() => setShowAllBrands((v) => !v)}
               >
-                {showAllBrands ? "Thu gọn" : `Xem thêm ${brandMatches.length - BRAND_VISIBLE_COUNT} hãng`}
+                {showAllBrands ? "Thu gọn" : `Xem thêm ${brandMatches.length - brandRows.length} hãng`}
               </button>
             ) : null}
             {q && brandMatches.length === 0 ? (
@@ -433,6 +437,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   // draft tương tác và chỉ commit sau thao tác của người dùng.
   const [keywordDraft, setKeywordDraft] = useState(() => (params.get("keyword") ?? "").slice(0, 200));
   const composingRef = useRef(false);
+  const typingSession = useRef(false);
   const [composeEpoch, setComposeEpoch] = useState(0);
   const filtersRef = useRef(filters);
   useEffect(() => { filtersRef.current = filters; });
@@ -447,9 +452,11 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   const data = settled.key === queryKey ? settled.data ?? null : null;
   const error = settled.key === queryKey ? settled.error ?? "" : "";
   // Giữ kết quả cũ trong lúc refetch (không chớp lưới, không đổi chiều cao).
-  const [lastData, setLastData] = useState<CatalogPage | null>(null);
-  if (data && data !== lastData) setLastData(data);
-  const display = data ?? lastData;
+  const [last, setLast] = useState<{ data: CatalogPage; page: number } | null>(null);
+  if (data && data !== last?.data) setLast({ data, page });
+  const display = data ?? last?.data ?? null;
+  // Trang đã tạo ra `display` (khác `page` đích trong lúc đổi trang chậm): readout + ô trang bám theo cái đang thấy.
+  const displayPage = data ? page : last?.page ?? page;
   // Skeleton chỉ khi CHƯA có dữ liệu nào và đã chờ lâu hơn ngưỡng.
   const [slowKey, setSlowKey] = useState("");
   const slow = loading && !display && slowKey === queryKey;
@@ -459,7 +466,8 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     return () => window.clearTimeout(id);
   }, [loading, display, queryKey]);
   // Khoảng giá thật của tập đang xem (bỏ qua bộ lọc giá) — chỉ đọc, giữ giá trị cũ khi đang tải.
-  const [extent, setExtent] = useState<PriceExtent | null>(null);
+  const [extentState, setExtentState] = useState<{ key: string; value: PriceExtent | null }>({ key: "", value: null });
+  const [keptExtent, setKeptExtent] = useState<PriceExtent | null>(null);
   const extentKey = `${filters.brand}|${filters.categoryId}|${filters.keyword}`;
   // Điều hướng trang bằng control (khác đổi bộ lọc): khi dữ liệu mới về xong
   // mới cuộn + focus trạng thái — thông báo trang cho AT, không giật khi gõ jump.
@@ -537,9 +545,11 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     ])
       .then(([lo, hi]) => {
         if (c.signal.aborted) return;
-        setExtent(lo.items.length && hi.items.length ? { min: lo.items[0].price, max: hi.items[0].price } : null);
+        const value = lo.items.length && hi.items.length ? { min: lo.items[0].price, max: hi.items[0].price } : null;
+        setExtentState({ key: extentKey, value });
+        if (value) setKeptExtent(value);
       })
-      .catch(() => { if (!c.signal.aborted) setExtent(null); });
+      .catch(() => { if (!c.signal.aborted) setExtentState({ key: extentKey, value: null }); });
     return () => c.abort();
     // extentKey gom đúng các bộ lọc ảnh hưởng thang giá.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -559,8 +569,12 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   }, [keywordDraft, composeEpoch, filters.keyword]);
 
   function commitReplaceKeyword(cur: Filters, typed: string) {
-    // Đổi truy vấn ⇒ về trang 1.
-    commitReplace({ ...cur, keyword: typed }, 0);
+    // Đổi truy vấn ⇒ về trang 1. Lần commit đầu của một phiên gõ = push (Back về
+    // trạng thái trước khi gõ); các lần tinh chỉnh sau = replace (không spam history).
+    const first = !typingSession.current;
+    if (first) commit({ ...cur, keyword: typed }, 0);
+    else commitReplace({ ...cur, keyword: typed }, 0);
+    typingSession.current = true;
   }
 
   function onKeywordCompose(composing: boolean, value?: string) {
@@ -601,6 +615,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   }
 
   function commit(next: Filters, nextPage = 0) {
+    typingSession.current = false;
     setFilters(next);
     setPage(nextPage);
     pushUrl(next, nextPage);
@@ -622,7 +637,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
   // Trang thật đổi xong (không phải đang tải) sau một lần bấm phân trang:
   // đưa đầu kết quả vào tầm nhìn dưới sticky header, focus trạng thái để AT
   // đọc trang mới. Đổi bộ lọc/sort (page reset) không cướp focus.
-  const range = display ? visibleRange(page, PAGE_SIZE, display.totalElements) : null;
+  const range = display ? visibleRange(displayPage, PAGE_SIZE, display.totalElements) : null;
   useEffect(() => {
     if (pagedByNav.current && !loading && data && data.items.length > 0) {
       pagedByNav.current = false;
@@ -652,6 +667,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     if (want !== cur) {
       setFilters(from);
       setKeywordDraft(from.keyword);
+      typingSession.current = false;
       setPage(fromPage);
     }
     // Chỉ đồng bộ theo params ngoài (Back/link); state nội bộ không trigger lại.
@@ -685,7 +701,9 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     onKeyword: setKeywordDraft,
     onKeywordCompose,
     onKeywordEnter,
-    extent,
+    // Đang tải: giữ thang cũ (không chớp); lần đầu: trạng thái loading có chỗ dành sẵn.
+    extent: extentState.key === extentKey ? extentState.value : keptExtent,
+    extentStatus: (extentState.key !== extentKey ? (keptExtent ? "ready" : "loading") : extentState.value ? "ready" : "empty") as "loading" | "ready" | "empty",
     onPrice: commitPrice,
     categories,
     categoriesLoading,
@@ -731,7 +749,9 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
               </details>
               <div className="cat-listing-tools">
                 <span className="cat-result-count" role="status" tabIndex={-1} ref={statusRef}>
-                  {!display ? "Đang tải sản phẩm…" : range ? `${range.from}–${range.to} trên ${display.totalElements} sản phẩm` : `${display.totalElements} sản phẩm`}
+                  {!display
+                    ? "Đang tải sản phẩm…"
+                    : `${range ? `${range.from}–${range.to} trên ${display.totalElements} sản phẩm` : `${display.totalElements} sản phẩm`}${loading ? " · Đang cập nhật…" : ""}`}
                 </span>
                 <label className="cat-sort-control" htmlFor="listing-sort">
                   Sắp xếp
@@ -799,7 +819,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
                     <div>Ảnh sản phẩm lấy từ trường imageUrl của API công khai; pilot chưa có metadata tác giả.</div>
                   </details>
                   {display.totalPages > 1 ? (
-                    <Pagination page={page} totalPages={display.totalPages} loading={loading} onGoto={gotoPage} />
+                    <Pagination page={displayPage} totalPages={display.totalPages} loading={loading} onGoto={gotoPage} />
                   ) : null}
                 </div>
               )}

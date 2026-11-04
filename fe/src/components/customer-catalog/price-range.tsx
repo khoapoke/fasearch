@@ -18,11 +18,14 @@ export type PriceExtent = { min: number; max: number };
  */
 export function PriceRange({
   extent,
+  status,
   value,
   onCommit,
   idPrefix,
 }: {
   extent: PriceExtent | null;
+  /** loading: chưa biết thang giá (không được hiện lỗi); empty: thật sự không có. */
+  status: "loading" | "ready" | "empty";
   value: PriceBounds;
   onCommit: (next: PriceBounds) => void;
   idPrefix: string;
@@ -89,6 +92,8 @@ export function PriceRange({
         let v: number;
         if (e.key === "ArrowLeft" || e.key === "ArrowDown") v = here - PRICE_STEP;
         else if (e.key === "ArrowRight" || e.key === "ArrowUp") v = here + PRICE_STEP;
+        else if (e.key === "PageDown") v = here - PRICE_STEP * 10;
+        else if (e.key === "PageUp") v = here + PRICE_STEP * 10;
         else if (e.key === "Home") v = thumb === 0 ? min : other;
         else if (e.key === "End") v = thumb === 0 ? other : max;
         else return;
@@ -155,55 +160,59 @@ export function PriceRange({
       <p className="cat-price-readout" aria-live="polite">
         {active ? `${formatVnd(lo)} – ${formatVnd(hi)}` : "Mọi mức giá"}
       </p>
-      {extent && max > min ? (
-        <>
-          <div
-            className="cat-price-track"
-            ref={trackRef}
-            onPointerMove={onTrackMove}
-            onPointerUp={() => endDrag(true)}
-            onPointerCancel={() => endDrag(false)}
-          >
-            <span className="cat-price-rail" aria-hidden="true" />
-            <span className="cat-price-fill" aria-hidden="true" style={{ left: `${pct(lo)}%`, width: `${Math.max(0, pct(hi) - pct(lo))}%` }} />
-            {([0, 1] as const).map((thumb) => {
-              const v = thumb === 0 ? lo : hi;
-              return (
-                <div
-                  key={thumb}
-                  className="cat-price-thumb"
-                  role="slider"
-                  tabIndex={0}
-                  aria-label={thumb === 0 ? "Giá thấp nhất" : "Giá cao nhất"}
-                  aria-valuemin={thumb === 0 ? min : lo}
-                  aria-valuemax={thumb === 0 ? hi : max}
-                  aria-valuenow={v}
-                  aria-valuetext={formatVnd(v)}
-                  style={{ left: `${pct(v)}%` }}
-                  onPointerDown={onThumbDown(thumb)}
-                  {...thumbKeys(thumb)}
-                />
-              );
-            })}
-          </div>
-          <div className="cat-price-scale" aria-hidden="true">
-            <span>{formatVnd(min)}</span>
-            <span>{formatVnd(max)}</span>
-          </div>
-        </>
-      ) : (
-        <p className="cat-filter-note" role="status">
-          {extent ? `Tập này chỉ có một mức giá: ${formatVnd(extent.min)}.` : "Chưa có thang giá cho tập sản phẩm này — vẫn nhập giá chính xác bên dưới được."}
-        </p>
-      )}
+      <div className="cat-price-instrument" aria-busy={status === "loading"}>
+        {status === "loading" && !extent ? (
+          <span className="cat-price-skel" aria-hidden="true" />
+        ) : extent && max > min ? (
+          <>
+            <div
+              className="cat-price-track"
+              ref={trackRef}
+              onPointerMove={onTrackMove}
+              onPointerUp={() => endDrag(true)}
+              onPointerCancel={() => endDrag(false)}
+            >
+              <span className="cat-price-rail" aria-hidden="true" />
+              <span className="cat-price-fill" aria-hidden="true" style={{ left: `${pct(lo)}%`, width: `${Math.max(0, pct(hi) - pct(lo))}%` }} />
+              {([0, 1] as const).map((thumb) => {
+                const v = thumb === 0 ? lo : hi;
+                return (
+                  <div
+                    key={thumb}
+                    className="cat-price-thumb"
+                    role="slider"
+                    tabIndex={0}
+                    aria-label={thumb === 0 ? "Giá thấp nhất" : "Giá cao nhất"}
+                    aria-valuemin={thumb === 0 ? min : lo}
+                    aria-valuemax={thumb === 0 ? hi : max}
+                    aria-valuenow={v}
+                    aria-valuetext={formatVnd(v)}
+                    style={{ left: `${pct(v)}%` }}
+                    onPointerDown={onThumbDown(thumb)}
+                    {...thumbKeys(thumb)}
+                  />
+                );
+              })}
+            </div>
+            <div className="cat-price-scale" aria-hidden="true">
+              <span>{formatVnd(min)}</span>
+              <span>{formatVnd(max)}</span>
+            </div>
+          </>
+        ) : (
+          <p className="cat-filter-note" role="status">
+            {extent ? `Tập này chỉ có một mức giá: ${formatVnd(extent.min)}.` : "Chưa có thang giá cho tập sản phẩm này — vẫn nhập giá chính xác bên dưới được."}
+          </p>
+        )}
+      </div>
       <div className="cat-price-grid">
         <div className="cat-field">
           <label htmlFor={`${idPrefix}-min`}>Từ</label>
-          <input id={`${idPrefix}-min`} className="cat-input" placeholder={extent ? String(min) : "Không giới hạn"} value={shownLo} {...fieldProps("lo")} />
+          <input id={`${idPrefix}-min`} className="cat-input" placeholder={extent ? formatVnd(min) : "Không giới hạn"} value={shownLo} {...fieldProps("lo")} />
         </div>
         <div className="cat-field">
           <label htmlFor={`${idPrefix}-max`}>Đến</label>
-          <input id={`${idPrefix}-max`} className="cat-input" placeholder={extent ? String(max) : "Không giới hạn"} value={shownHi} {...fieldProps("hi")} />
+          <input id={`${idPrefix}-max`} className="cat-input" placeholder={extent ? formatVnd(max) : "Không giới hạn"} value={shownHi} {...fieldProps("hi")} />
         </div>
       </div>
       {error ? <p className="cat-filter-note cat-price-error" role="alert" id={errId}>{error}</p> : null}

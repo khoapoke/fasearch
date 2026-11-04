@@ -614,6 +614,10 @@
 /* ---- Khoảng giá ---- */
 .catPage .cat-price { display: grid; gap: 14px; }
 .catPage .cat-price-readout { margin: 0; color: var(--st-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+/* Khung thang giá có chiều cao cố định: loading → slider → ghi chú không làm rail dịch. */
+.catPage .cat-price-instrument { display: grid; align-content: start; gap: 8px; min-height: 52px; }
+.catPage .cat-price-instrument > .cat-filter-note { margin: 0; }
+.catPage .cat-price-skel { display: block; height: 4px; margin: 12px 10px 0; border-radius: 2px; background: var(--st-line); opacity: 0.6; }
 .catPage .cat-price-track { position: relative; height: 28px; margin: 0 10px; touch-action: none; }
 .catPage .cat-price-rail, .catPage .cat-price-fill { position: absolute; top: 12px; height: 4px; border-radius: 2px; }
 .catPage .cat-price-rail { left: 0; right: 0; background: var(--st-line); }
@@ -632,7 +636,7 @@
 }
 .catPage .cat-price-thumb:active { cursor: grabbing; }
 .catPage .cat-price-thumb:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; }
-.catPage .cat-price-scale { display: flex; justify-content: space-between; color: var(--st-ink-soft); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-scale { display: flex; height: 16px; line-height: 16px; justify-content: space-between; color: var(--st-ink-soft); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .catPage .cat-price-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .catPage .cat-price-grid .cat-input { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
 .catPage .cat-price-error { margin: 0; color: var(--st-err-text); }
