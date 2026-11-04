@@ -2039,3 +2039,6 @@
 .admB .draft-preview-grid{display:grid;gap:24px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;}
 .admB .draft-preview-grid > *{min-width:0;overflow-wrap:anywhere;}
 @media(max-width:680px){.admB .draft-preview-grid{grid-template-columns:minmax(0,1fr);}}
+
+/* Line-item fields need stacked labels inside the narrow receipt grid tracks. */
+.admB .catalog-form .import-line .catalog-field{grid-template-columns:minmax(0,1fr);align-items:start;min-width:0;}
