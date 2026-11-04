@@ -10,6 +10,7 @@ from qdrant_client.models import PointStruct
 
 from src.core.ai_model import get_ai_model
 from src.core.config import settings
+from src.core.exceptions import InvalidInputError
 from src.db.enums import CatalogCategory, PointStatus
 from src.db.models import ImagePointPayload
 from src.repositories import ImageRepository, get_image_repository
@@ -47,11 +48,31 @@ class PointService:
             with Image.open(sys_path) as img:
                 rgb_image = img.convert("RGB")
         except Exception as e:
-            raise ValueError(f"Không thể đọc file ảnh '{sys_path}': {e}")
+            logger.warning(f"Không thể đọc file ảnh '{sys_path}': {e}")
+            raise InvalidInputError("File ảnh không hợp lệ hoặc bị hỏng")
 
         inputs = processor(images=rgb_image, return_tensors="pt").to(device)
         with torch.no_grad():
             features = model.get_image_features(**inputs)
+            features = features / features.norm(p=2, dim=-1, keepdim=True)
+            vector = features.cpu().numpy()[0].tolist()
+
+        del inputs, features
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        return vector
+
+    @staticmethod
+    def extract_text_vector(text: str) -> List[float]:
+        """Trích xuất vector CLIP 512D (chuẩn hóa L2) từ một đoạn văn bản (tự cắt theo giới hạn 77 token)."""
+        clean = (text or "").strip()
+        if not clean:
+            raise InvalidInputError("Nội dung văn bản để tạo vector không được để trống")
+        device, model, processor = get_ai_model()
+        inputs = processor(text=[clean], return_tensors="pt", padding=True, truncation=True).to(device)
+        with torch.no_grad():
+            features = model.get_text_features(**inputs)
             features = features / features.norm(p=2, dim=-1, keepdim=True)
             vector = features.cpu().numpy()[0].tolist()
 
@@ -136,6 +157,48 @@ class PointService:
             f"Đã tạo Point ID '{assigned_id}' trong collection '{self.collection_name}' cho file: {file_name}"
         )
         return assigned_id
+
+    def upsert_product_point(
+        self,
+        product_id: PointId,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        brand_slug: Optional[str] = None,
+        model: Optional[str] = None,
+        image_path: Optional[Union[str, Path]] = None,
+    ) -> PointId:
+        """
+        Upsert (idempotent) 1 point sản phẩm do Backend đồng bộ khi publish.
+        - point_id = product_id số của Backend (hoặc UUID).
+        - Vector: từ ảnh nếu có `image_path`, ngược lại từ văn bản (name + description + brand + model).
+        - Payload giữ nguyên hợp đồng cũ của Backend: catalog "brand_catalog", product_id, metadata.
+        """
+        point_id = normalize_point_id(product_id)
+        if image_path is not None:
+            vector = self.extract_image_vector(image_path)
+        else:
+            text = " ".join(p for p in [name or "", description or "", brand_slug or "", model or ""] if p).strip()
+            if not text:
+                raise InvalidInputError("Không có dữ liệu để lập chỉ mục: thiếu cả ảnh và văn bản")
+            vector = self.extract_text_vector(text)
+
+        payload = {
+            "image_path": "",
+            "file_name": "",
+            "catalog": "brand_catalog",
+            "status": PointStatus.SEEDED.value,
+            "product_id": str(point_id),
+            "metadata": {
+                k: v for k, v in {"brand_slug": brand_slug, "model": model, "name": name}.items() if v
+            },
+        }
+        self.repo.create(point_id=point_id, vector=vector, payload=payload)
+        logger.info(f"Đã upsert sản phẩm '{point_id}' vào collection '{self.collection_name}'")
+        return point_id
+
+    def delete_product_point(self, product_id: PointId) -> bool:
+        """Xóa cứng point sản phẩm (tombstone khi sản phẩm bị unpublish/xóa). Idempotent."""
+        return self.repo.hard_delete(normalize_point_id(product_id))
 
     def delete_point(self, point_id: PointId, hard_delete: bool = False) -> bool:
         """
