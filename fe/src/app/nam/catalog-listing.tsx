@@ -417,7 +417,21 @@ function Pagination({
   );
 }
 
-export function CatalogListing() {
+export type ListingVariant = {
+  /** Đường dẫn nav được đánh dấu active. */
+  shell: string;
+  title: string;
+  /** Ghi chú trung thực về dữ liệu thật đang nằm sau trang này. */
+  note?: string;
+  /** Liên kết nhanh chỉ dùng chiều dữ liệu thật (danh mục). */
+  links?: Array<{ label: string; href: string }>;
+  /** Hiện nhanh các thương hiệu thật làm liên kết (trang bộ sưu tập). */
+  brandLinks?: boolean;
+};
+
+const DEFAULT_VARIANT: ListingVariant = { shell: "/nam", title: "Sản phẩm" };
+
+export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: ListingVariant } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -630,11 +644,18 @@ export function CatalogListing() {
   };
 
   return (
-    <StorefrontShell active="/nam" themed palette="customer" header="customer" footer="none">
+    <StorefrontShell active={variant.shell} themed palette="customer" header="customer" footer="none">
       <div className="catPage">
         <div className="cat-content cat-catalog-content">
           <div className="cat-head cat-head-compact">
-            <h1>Sản phẩm</h1>
+            <h1>{variant.title}</h1>
+            {variant.note ? <p className="cat-product-meta" style={{ marginTop: 6 }}>{variant.note}</p> : null}
+            {variant.links?.length || variant.brandLinks ? (
+              <p className="cat-product-meta" style={{ marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {variant.links?.map((l) => <Link key={l.href} href={l.href} className="cat-text-button">{l.label}</Link>)}
+                {variant.brandLinks ? brands.slice(0, 10).map((br) => <Link key={br.slug} href={`${pathname}?brand=${br.slug}`} className="cat-text-button">{brandLabel(br.slug, br.name)}</Link>) : null}
+              </p>
+            ) : null}
           </div>
           <div className="cat-listing-layout">
             <aside className="cat-filter-panel cat-filter-desktop" aria-label="Bộ lọc">

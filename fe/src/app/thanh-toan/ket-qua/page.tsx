@@ -16,7 +16,7 @@ const POLL_MS = 2500;
 const MAX_POLLS = 24;
 const STORAGE_KEY = "fasearch:pay-attempt";
 
-type Verdict = "loading" | "success" | "pending" | "failed" | "expired" | "cancelled" | "review" | "missing" | "error";
+type Verdict = "loading" | "success" | "pending" | "unpaid" | "failed" | "expired" | "cancelled" | "review" | "missing" | "error";
 
 // Same-tab return hint left by the checkout/order pages before redirecting to the
 // provider. Query params and this hint never mark anything paid; only the
@@ -72,16 +72,18 @@ function PaymentResultContent() {
       setError("");
       const orderStatus = o?.status ?? "";
       const attemptStatus = a?.status ?? "";
-      const settled = attemptStatus === "SETTLED"
-        || ["CONFIRMED", "PACKING", "SHIPPING", "COMPLETED"].includes(orderStatus);
-      // Authoritative settled state always wins; the cancel hint never contradicts it.
-      if (settled) return "success" as const;
+      // Success ONLY for a SETTLED payment attempt. Order status alone (confirmed by staff,
+      // COD, unpaid online order) is not evidence of an online payment.
+      if (attemptStatus === "SETTLED") return "success" as const;
       if (orderStatus === "CANCELLED" || attemptStatus === "CANCELLED") return "cancelled" as const;
       if (attemptStatus === "FAILED") return "failed" as const;
       if (attemptStatus === "EXPIRED") return "expired" as const;
       if (attemptStatus === "REVIEW_REQUIRED") return "review" as const;
       // Returned via cancel_url with nothing settled yet: show cancel + retry, keep polling off.
       if (cancelledHint) return "cancelled" as const;
+      // No payment attempt to wait for (e.g. COD, or order handled without an online payment):
+      // honest "no online payment recorded" instead of success or endless polling.
+      if (!attemptId && o) return "unpaid" as const;
       return "pending" as const;
     } catch (failure) {
       if (failure instanceof CommerceError && failure.status === 401) {
@@ -138,6 +140,7 @@ function PaymentResultContent() {
   const headline: Record<Exclude<Verdict, "loading">, string> = {
     success: "Thanh toán thành công",
     pending: "Đang chờ đối soát thanh toán",
+    unpaid: "Chưa ghi nhận thanh toán trực tuyến",
     failed: "Thanh toán thất bại",
     expired: "Phiên thanh toán đã hết hạn",
     cancelled: "Đã hủy thanh toán",
@@ -155,10 +158,11 @@ function PaymentResultContent() {
           <p className="commerce-sub">Hiển thị theo trạng thái đơn hàng và phiên thanh toán trên máy chủ — tham số trên đường dẫn không đánh dấu đã trả tiền.</p>
 
           {verdict === "loading" ? <p className="commerce-status" role="status">Đang đối soát với máy chủ…</p> : (
-            <div className="commerce-empty" role={verdict === "success" ? "status" : "alert"}>
+            <div className="commerce-empty" role={verdict === "success" || verdict === "unpaid" ? "status" : "alert"}>
               <h2>{headline[verdict]}</h2>
               {verdict === "success" ? <p>Đơn hàng của bạn đã được ghi nhận thanh toán qua kênh an toàn. Hóa đơn và điểm thưởng (nếu có) được chốt bởi máy chủ.</p> : null}
               {verdict === "pending" ? <p>Giao dịch đang chờ webhook/IPN đã ký từ cổng thanh toán. Trang tự kiểm tra lại trong khoảng 1 phút; làm mới không tạo đơn mới và không trừ tiền thêm.</p> : null}
+              {verdict === "unpaid" ? <p>Đơn hàng đã được ghi nhận nhưng chưa có thanh toán trực tuyến nào được xác nhận. Nếu bạn chọn thanh toán khi nhận hàng (COD), bạn trả tiền khi nhận; nếu muốn trả online, hãy thanh toán từ trang đơn hàng.</p> : null}
               {verdict === "failed" ? <p>Giao dịch báo thất bại. Đơn hàng vẫn giữ nguyên, bạn có thể thử lại từ trang đơn hàng.</p> : null}
               {verdict === "expired" ? <p>Phiên thanh toán đã hết hạn. Đơn hàng vẫn giữ nguyên, bạn có thể tạo phiên mới từ trang đơn hàng.</p> : null}
               {verdict === "cancelled" ? <p>Bạn đã hủy thanh toán tại cổng. Đơn hàng vẫn giữ nguyên, bạn có thể thanh toán lại sau.</p> : null}
@@ -176,7 +180,7 @@ function PaymentResultContent() {
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
                 {orderId ? <Link className="commerce-primary" href={`/don-hang/${orderId}`}>Về đơn hàng →</Link> : <Link className="commerce-primary" href="/don-hang">Về danh sách đơn hàng →</Link>}
                 {verdict === "pending" || verdict === "error" ? <button className="commerce-ghost" type="button" onClick={() => void refresh()}>Kiểm tra lại{polls > 0 ? ` (${polls})` : ""}</button> : null}
-                {verdict === "failed" || verdict === "expired" || verdict === "cancelled" ? (orderId ? <Link className="commerce-ghost" href={`/don-hang/${orderId}`}>Thanh toán lại từ đơn hàng</Link> : null) : null}
+                {verdict === "failed" || verdict === "expired" || verdict === "cancelled" || verdict === "unpaid" ? (orderId ? <Link className="commerce-ghost" href={`/don-hang/${orderId}`}>Thanh toán lại từ đơn hàng</Link> : null) : null}
               </div>
             </div>
           )}
