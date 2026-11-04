@@ -106,3 +106,50 @@
   animation: fade-swap 200ms var(--ease-out) both;
   animation-delay: calc(var(--stagger-index, 0) * 30ms);
 }
+
+/* ---- Sitewide motion completion (item 6) --------------------------------
+ * CTA quan trọng ngoài nhóm P1: checkout/giỏ (.commerce-primary), AI search
+ * (.search-submit), tìm kiếm header (.sfSearchBtn). Chỉ transform; disabled /
+ * aria-disabled không bao giờ nâng hay lún. Tắt chuyển động đã được
+ * globals.css xử lý (prefers-reduced-motion và html[data-motion="off"]). */
+.commercePage .commerce-primary, .aiPage .search-submit, .sfSearchBtn {
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .commercePage .commerce-primary:not(:disabled):not([aria-disabled="true"]):hover,
+  .aiPage .search-submit:not(:disabled):hover,
+  .sfSearchBtn:hover {
+    transform: translateY(-1px);
+  }
+}
+.commercePage .commerce-primary:not(:disabled):not([aria-disabled="true"]):active,
+.aiPage .search-submit:not(:disabled):active,
+.sfSearchBtn:active {
+  transform: scale(0.97);
+}
+.commercePage .commerce-primary:disabled, .aiPage .search-submit:disabled {
+  transform: none;
+  transition: none;
+}
+
+/* Focus bàn phím khác hẳn hover: vòng 3px offset, không phụ thuộc transform. */
+.hmCta:focus-visible, .pgApply:focus-visible, .sfBtn:focus-visible,
+.cat-button:focus-visible, .commercePage .commerce-primary:focus-visible,
+.aiPage .search-submit:focus-visible, .sfSearchBtn:focus-visible {
+  outline: 3px solid var(--st-focus, var(--accent));
+  outline-offset: 3px;
+}
+
+/* Số lượng: số đổi chỉ mờ-trượt 2px (opacity/transform), vùng số có min-width
+   + tabular-nums nên không dịch layout. Nút giới hạn (disabled) đứng yên. */
+.qty-tick {
+  display: inline-block;
+  animation: qty-tick 140ms var(--ease-out);
+}
+@keyframes qty-tick {
+  from { opacity: 0.35; transform: translateY(3px); }
+}
+.cat-stepper button:focus-visible, .commerce-stepper button:focus-visible {
+  outline: 2px solid var(--st-focus, var(--accent));
+  outline-offset: -3px;
+}

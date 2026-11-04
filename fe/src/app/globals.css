@@ -158,3 +158,30 @@ img {
     transition: opacity 120ms linear !important;
   }
 }
+
+/* "Chuyển động: Tắt" (menu giao diện, localStorage fa-motion) — cùng hiệu lực
+   với prefers-reduced-motion: bỏ di chuyển, giữ phản hồi màu/opacity ngắn. */
+html[data-motion="off"] {
+  scroll-behavior: auto;
+}
+
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+html[data-motion="off"] .bkOverlay,
+html[data-motion="off"] .bkModal,
+html[data-motion="off"] .rise-in,
+html[data-motion="off"] .flash-in,
+html[data-motion="off"] .fade-swap,
+html[data-motion="off"] .stagger-item,
+html[data-motion="off"] .qty-tick {
+  animation: none !important;
+  transform: none !important;
+  transition: opacity 120ms linear !important;
+}

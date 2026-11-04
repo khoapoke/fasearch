@@ -17,6 +17,9 @@ import { CommerceError } from "@/lib/customer-commerce";
 import { readCart, writeCart, type CartItem as GuestItem } from "@/components/storefront/storefront-client";
 import "@/components/customer-catalog/catalog.css";
 
+// Trần số lượng mỗi dòng — khớp mức kẹp 999 khi đồng bộ giỏ (gio-hang/page.tsx).
+const MAX_LINE_QTY = 999;
+
 type Viewer = { src: string; alt: string; caption: string; trigger: HTMLButtonElement };
 
 // R5: isPlaceholder + resolveSelection sống trong lib/variant-select để kiểm thử
@@ -290,9 +293,9 @@ export function DetailView({ id }: { id: string }) {
 
               <div className="cat-buy-row">
                 <div className="cat-stepper" aria-label="Số lượng">
-                  <button type="button" aria-label="Giảm số lượng" onClick={() => setQuantity((q) => Math.max(1, q - 1))}>−</button>
-                  <span aria-live="polite">{quantity}</span>
-                  <button type="button" aria-label="Tăng số lượng" onClick={() => setQuantity((q) => q + 1)}>+</button>
+                  <button type="button" aria-label="Giảm số lượng" disabled={quantity <= 1} onClick={() => setQuantity((q) => Math.max(1, q - 1))}>−</button>
+                  <span aria-live="polite"><span key={quantity} className="qty-tick">{quantity}</span></span>
+                  <button type="button" aria-label="Tăng số lượng" disabled={quantity >= MAX_LINE_QTY} onClick={() => setQuantity((q) => Math.min(MAX_LINE_QTY, q + 1))}>+</button>
                 </div>
                 <button className="cat-button cat-primary" type="button" disabled={!selected || addBusy} aria-describedby="cat-buy-note" onClick={addToCart}>
                   {addBusy ? "Đang thêm…" : "Thêm vào giỏ"}

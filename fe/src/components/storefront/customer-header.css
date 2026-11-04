@@ -531,6 +531,20 @@ html[data-theme="dark"] .chHeader {
   flex: 1;
 }
 
+.chThemeSep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--st-line);
+}
+
+.chThemeHint {
+  margin: 4px 10px 6px;
+  max-width: 220px;
+  color: var(--st-ink-soft);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
 .chThemeCheck {
   width: 16px;
   height: 16px;

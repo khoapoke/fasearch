@@ -1249,13 +1249,13 @@ html[data-theme="dark"] .hmHome {
   .hmHome[data-attention="on"] .hmResultHalo { animation: none; }
   .hmQueryCaret { animation: none; opacity: 0; }
 }
-body[data-motion="off"] .hmBrandTrack,
-body[data-motion="off"] .hmQueryCaret,
-body[data-motion="off"] .hmTags,
-body[data-motion="off"] .hmProcessing,
-body[data-motion="off"] .hmResult { animation: none; }
-body[data-motion="off"] .hmResultMotion,
-body[data-motion="off"] .hmResultHalo { animation: none !important; opacity: 0 !important; }
+html[data-motion="off"] .hmBrandTrack,
+html[data-motion="off"] .hmQueryCaret,
+html[data-motion="off"] .hmTags,
+html[data-motion="off"] .hmProcessing,
+html[data-motion="off"] .hmResult { animation: none; }
+html[data-motion="off"] .hmResultMotion,
+html[data-motion="off"] .hmResultHalo { animation: none !important; opacity: 0 !important; }
 
 
 /* R4-A: đích "Thương hiệu" (#thuong-hieu) phải nằm dưới header sticky, cả khi

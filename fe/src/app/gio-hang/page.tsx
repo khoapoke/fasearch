@@ -197,8 +197,8 @@ export default function CartPage() {
                           <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
                           <div className="commerce-stepper" aria-label={`Số lượng ${line.productName}`}>
                             <button type="button" disabled={busy !== null} aria-label={`Giảm ${line.productName}`} onClick={() => line.quantity > 1 ? mutate(line.skuId, "set", line.quantity - 1) : mutate(line.skuId, "remove")}>−</button>
-                            <span aria-live="polite">{busy === line.skuId ? "…" : line.quantity}</span>
-                            <button type="button" disabled={busy !== null} aria-label={`Tăng ${line.productName}`} onClick={() => mutate(line.skuId, "set", line.quantity + 1)}>+</button>
+                            <span aria-live="polite"><span key={busy === line.skuId ? "busy" : line.quantity} className="qty-tick">{busy === line.skuId ? "…" : line.quantity}</span></span>
+                            <button type="button" disabled={busy !== null || line.quantity >= 999} aria-label={`Tăng ${line.productName}`} onClick={() => mutate(line.skuId, "set", line.quantity + 1)}>+</button>
                           </div>
                           <button className="commerce-remove" type="button" disabled={busy !== null} onClick={() => mutate(line.skuId, "remove")}>Xóa</button>
                         </div>

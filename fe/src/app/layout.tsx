@@ -4,6 +4,7 @@ import "./globals.css";
 import "@/components/ui/motion.css";
 import "@/components/studio/studio.css";
 import { themeBootScript } from "@/lib/theme";
+import { motionBootScript } from "@/lib/motion-boot";
 
 // Source typeface (Stitch export uses Google Fonts Be Vietnam Pro).
 // next/font self-hosts it at build time, so a font CDN failure cannot break
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             flash sai màu; React thấy cùng markup server/client nên không lệch
             hydration (DESIGN §2). */}
         <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
+        <script dangerouslySetInnerHTML={{ __html: motionBootScript() }} />
       </head>
       <body>{children}</body>
     </html>

@@ -7,6 +7,7 @@ import {
   writeStoredTheme,
   type ThemeChoice,
 } from "@/lib/theme";
+import { useHomeMotion } from "@/lib/home-motion";
 
 /**
  * Bộ chọn giao diện Customer: một nút icon 40px + popover nhỏ.
@@ -68,6 +69,8 @@ function OptionIcon({ choice }: { choice: ThemeChoice }) {
 
 export function CustomerThemeMenu({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [choice, setChoice] = useState<ThemeChoice>("system");
+  const { preference: motionPref, prefersReduced, setPreference: setMotionPref } = useHomeMotion();
+  const motionOff = motionPref === "off";
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
@@ -169,6 +172,27 @@ export function CustomerThemeMenu({ open, onOpenChange }: { open: boolean; onOpe
               </button>
             );
           })}
+          <div className="chThemeSep" role="separator" />
+          <button
+            type="button"
+            className="chThemeOpt"
+            aria-pressed={motionOff}
+            aria-describedby={prefersReduced ? "ch-motion-hint" : undefined}
+            onClick={() => setMotionPref(motionOff ? "auto" : "off")}
+          >
+            <svg className="chThemeIcon" aria-hidden="true" focusable="false" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 10h3l2-5 4 10 2-5h3" />
+            </svg>
+            <span>Tắt chuyển động</span>
+            {motionOff ? (
+              <svg className="chThemeCheck" aria-hidden="true" focusable="false" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m3.5 8.5 3 3 6-6.5" />
+              </svg>
+            ) : null}
+          </button>
+          {prefersReduced ? (
+            <p className="chThemeHint" id="ch-motion-hint">Thiết bị đang yêu cầu giảm chuyển động nên trang đã tĩnh.</p>
+          ) : null}
         </div>
       ) : null}
     </div>
