@@ -1,75 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
-import { PREVIEW_ADDRESSES, type PreviewAddress } from "@/lib/preview-data";
+import { getSelfProfile, type CustomerProfile } from "@/lib/customer-profile-client";
 import "@/components/storefront/preview.css";
 
-export default function AddressesPage() {
-  const [rows, setRows] = useState<PreviewAddress[]>(PREVIEW_ADDRESSES);
-  const [form, setForm] = useState({ name: "", phone: "", address: "", kind: "Nhà riêng" });
-  const [editing, setEditing] = useState<string | null>(null);
-  const [msg, setMsg] = useState("");
+type View = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; profile: CustomerProfile };
 
-  function add(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
-      setMsg("Vui lòng nhập đủ họ tên, SĐT và địa chỉ.");
-      return;
-    }
-    if (editing) {
-      setRows((prev) => prev.map((x) => (x.id === editing ? { ...x, name: form.name.trim(), phone: form.phone.trim(), address: `${form.address.trim()} (${form.kind})` } : x)));
-      setEditing(null);
-      setMsg("Đã sửa địa chỉ trong sổ preview trên trình duyệt này.");
-    } else {
-      setRows((prev) => [...prev, { id: `local-${Date.now()}`, name: form.name.trim(), phone: form.phone.trim(), address: `${form.address.trim()} (${form.kind})`, isDefault: prev.length === 0 }]);
-      setMsg("Đã thêm địa chỉ vào sổ preview trên trình duyệt này.");
-    }
-    setForm({ name: "", phone: "", address: "", kind: "Nhà riêng" });
-  }
+export default function AddressesPage() {
+  const [view, setView] = useState<View>({ kind: "loading" });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getSelfProfile(controller.signal)
+      .then((profile) => setView({ kind: "ready", profile }))
+      .catch((failure) => {
+        if (controller.signal.aborted) return;
+        setView({ kind: "error", message: failure instanceof Error && failure.message ? failure.message : "Không tải được hồ sơ khách hàng." });
+      });
+    return () => controller.abort();
+  }, []);
+
+  const profile = view.kind === "ready" ? view.profile : null;
+  const receiver = profile ? [profile.lastName, profile.firstName].filter(Boolean).join(" ") : "";
+  const address = profile?.address?.trim() ?? "";
 
   return (
-    <AccountCenterShell active="/tai-khoan/dia-chi" title="Sổ địa chỉ nhận hàng">
-      <p className="sfPreviewBar" role="note" style={{ borderRadius: 12, marginBottom: 14 }}>
-        <span>Bản xem trước — địa chỉ được lưu trên thiết bị này; sổ địa chỉ đồng bộ chưa có trong phiên bản hiện tại.</span>
+    <AccountCenterShell active="/tai-khoan/dia-chi" title="Địa chỉ nhận hàng">
+      <p className="mpMuted" style={{ marginBottom: 14 }}>
+        Hiện FaSearch chưa hỗ trợ sổ nhiều địa chỉ. Khi thanh toán, hệ thống dùng địa chỉ trong hồ sơ của bạn dưới đây (bạn vẫn có thể chỉnh lại ngay tại bước thanh toán).
       </p>
-      {rows.map((a) => (
-        <div className="pvAddr" key={a.id} aria-current={a.isDefault}>
+      {view.kind === "loading" ? <p className="mpMuted" role="status">Đang tải địa chỉ…</p> : null}
+      {view.kind === "error" ? <p className="mpMuted" role="alert">{view.message}</p> : null}
+      {profile ? (
+        <section className="pvAddr" aria-label="Địa chỉ trong hồ sơ">
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <b>{a.name}</b>
-            {a.isDefault ? <span className="pMatch">Mặc định</span> : null}
-            <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              {!a.isDefault ? (
-                <button type="button" className="auth-button" onClick={() => setRows((prev) => prev.map((x) => ({ ...x, isDefault: x.id === a.id })))}>Đặt mặc định</button>
-              ) : null}
-              <button type="button" className="auth-button" onClick={() => {
-                setForm({ name: a.name, phone: a.phone, address: a.address.replace(/ \((Văn phòng|Nhà riêng|Khác)\)$/, ""), kind: (a.address.match(/\((Văn phòng|Nhà riêng|Khác)\)$/) || [])[1] || "Nhà riêng" });
-                setEditing(a.id);
-              }}>Sửa</button>
-              <button type="button" className="auth-button" onClick={() => setRows((prev) => prev.filter((x) => x.id !== a.id))}>Xóa</button>
-            </span>
+            <b>{receiver || "Chưa có họ tên"}</b>
+            <span className="pMatch">Địa chỉ trong hồ sơ</span>
           </div>
-          <p>{a.phone} · {a.address}</p>
-        </div>
-      ))}
-      <section className="sfSideCard" aria-label="Thêm địa chỉ mới">
-        <b>{editing ? "Sửa địa chỉ" : "Thêm địa chỉ mới"}</b>
-        <form onSubmit={add} style={{ marginTop: 10 }}>
-          <div className="pvField"><label htmlFor="ad-name">Họ tên người nhận</label><input id="ad-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div className="pvField"><label htmlFor="ad-phone">Số điện thoại</label><input id="ad-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-          <div className="pvField"><label htmlFor="ad-addr">Địa chỉ</label><input id="ad-addr" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Số nhà, đường, phường, quận, tỉnh/thành" /></div>
-          <div className="pvField">
-            <label htmlFor="ad-kind">Loại địa chỉ</label>
-            <select id="ad-kind" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
-              <option>Văn phòng</option>
-              <option>Nhà riêng</option>
-              <option>Khác</option>
-            </select>
-          </div>
-          <button className="auth-button is-primary" type="submit">{editing ? "Lưu sửa đổi" : "Lưu địa chỉ"}</button>
-          {msg ? <p className="mpMuted" role="status" style={{ marginTop: 8 }}>{msg}</p> : null}
-        </form>
-      </section>
+          <p>{profile.phoneNumber || "Chưa có số điện thoại"} · {address || "Chưa có địa chỉ"}</p>
+          {!address ? <p>Hãy thêm địa chỉ trong hồ sơ để bước thanh toán điền sẵn cho bạn.</p> : null}
+          <p style={{ marginTop: 10 }}>
+            <Link className="auth-button is-primary" href="/tai-khoan/thong-tin">{address ? "Sửa trong hồ sơ" : "Thêm địa chỉ trong hồ sơ"}</Link>
+          </p>
+        </section>
+      ) : null}
     </AccountCenterShell>
   );
 }

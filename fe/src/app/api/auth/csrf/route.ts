@@ -1,8 +1,12 @@
-import type { NextRequest } from "next/server";
-import { forwardSessionRequest } from "@/lib/server/session-proxy";
-
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  return forwardSessionRequest(request, "/api/v1/auth/csrf", "GET");
+// Proxy cũ của phiên dựa trên CSRF/cookie đã ngừng: BE là JWT-only và không còn
+// /api/v1/auth/csrf. Dùng /api/customer-auth/* (đăng xuất xóa cookie tại BFF).
+function gone(): Response {
+  return Response.json(
+    { success: false, code: 410, message: "Route xác thực cũ đã ngừng. Dùng các BFF xác thực tích hợp.", result: null },
+    { status: 410, headers: { "cache-control": "no-store" } },
+  );
 }
+export async function GET() { return gone(); }

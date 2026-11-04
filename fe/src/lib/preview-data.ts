@@ -14,14 +14,6 @@ export type PreviewOrder = {
   lines: PreviewOrderItem[];
 };
 
-export type PreviewAddress = {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  isDefault: boolean;
-};
-
 export type PreviewAiEntry = {
   id: string;
   date: string;
@@ -49,11 +41,6 @@ export const PREVIEW_ORDERS: PreviewOrder[] = [
     id: "FS-89501", date: "24/09/2026", status: "done", items: 1, total: 249000,
     lines: [{ name: "Áo Thun Cotton Compact 220gsm", meta: "Màu Đen · Size L", qty: 1, price: 249000 }],
   },
-];
-
-export const PREVIEW_ADDRESSES: PreviewAddress[] = [
-  { id: "a1", name: "Trần Quân Trị", phone: "090 123 4567", address: "12 Nguyễn Huệ, Bến Nghé, Quận 1, TP.HCM", isDefault: true },
-  { id: "a2", name: "Trần Quân Trị", phone: "090 123 4567", address: "88 Láng Hạ, Đống Đa, Hà Nội", isDefault: false },
 ];
 
 export const PREVIEW_AI_HISTORY: PreviewAiEntry[] = [

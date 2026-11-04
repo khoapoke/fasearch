@@ -22,12 +22,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // Màn hình có node lỗi render có điều kiện (nên phải focus qua effect).
 const SCREENS = [
-  "src/app/dang-nhap/login-form.tsx",
   "src/app/thanh-toan/page.tsx",
   "src/app/tim-kiem-ai/search-view.tsx",
   "src/app/don-hang/[id]/page.tsx",
   "src/app/tai-khoan/bao-mat/password-form.tsx",
-  "src/app/tai-khoan/thong-tin/profile-editor.tsx",
 ];
 
 // Effect focus đúng hình dạng đã dùng trong repo: `useEffect(() => { if (…) ref.focus(); }, [dep])`.

@@ -19,16 +19,8 @@ export type Paged<T> = {
 type LoyaltyEnvelope<T> = { success?: boolean; code?: number | string; message?: string; result?: T; errors?: Array<{ reason?: string }> };
 
 async function loyaltyRequest<T>(path: string, method: "GET" | "POST" | "PUT" = "GET", body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (method !== "GET") {
-    const csrfResponse = await fetch("/api/auth/csrf", { cache: "no-store" });
-    const csrf = await csrfResponse.json().catch(() => null) as { success?: boolean; result?: { headerName?: unknown; token?: unknown } } | null;
-    if (!csrfResponse.ok || csrf?.success !== true || typeof csrf.result?.headerName !== "string" || typeof csrf.result.token !== "string") {
-      throw Object.assign(new Error("Phiên đăng nhập đã hết hoặc mã CSRF không hợp lệ."), { status: csrfResponse.status || 401 });
-    }
-    headers[csrf.result.headerName] = csrf.result.token;
-    headers["content-type"] = "application/json";
-  }
+  // BE là JWT-only (CSRF tắt): BFF /api/admin/loyalty/* xác thực bằng cookie phiên, không cần mã CSRF.
+  const headers: Record<string, string> = method !== "GET" ? { "content-type": "application/json" } : {};
   const response = await fetch(path, {
     method,
     headers,

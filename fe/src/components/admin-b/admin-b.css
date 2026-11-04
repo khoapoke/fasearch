@@ -424,6 +424,39 @@
 .admB .icon-btn:hover{
   border-color: var(--line-strong);
 }
+.admB .logout-btn{
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--meta-size);
+  cursor: pointer;
+}
+.admB .logout-btn:hover:not(:disabled){
+  border-color: var(--line-strong);
+}
+.admB .logout-btn:disabled{
+  opacity: .6;
+  cursor: progress;
+}
+.admB .logout-btn:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.admB .logout-error{
+  margin: 0;
+  padding: 8px 24px;
+  background: var(--accent-bg);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--meta-size);
+}
 .admB .nav-toggle{
   display: none;
 }
@@ -1733,6 +1766,16 @@
   }
 .admB .user{
     font-size: 11px;
+  }
+.admB .logout-btn{
+    min-height: 44px;
+    padding: 0 10px;
+  }
+.admB .logout-btn span{
+    display: none;
+  }
+.admB .logout-error{
+    padding: 8px 16px;
   }
 .admB .user .avatar{
     width: 26px;

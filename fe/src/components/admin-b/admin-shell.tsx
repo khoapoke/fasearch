@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { authMe, AuthApiError, type AuthIdentity } from "@/lib/customer-auth-client";
+import { authLogout, authMe, AuthApiError, type AuthIdentity } from "@/lib/customer-auth-client";
 import { Icon } from "./icons";
 import "./admin-b.css";
 
@@ -12,6 +13,9 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
   const [state, setState] = useState<State>({ kind: "loading" });
   const [dark, setDark] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -38,6 +42,22 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
       localStorage.setItem("fasearch-admin-theme", next ? "dark" : "light");
       return next;
     });
+  }
+
+  // Kết thúc phiên trình duyệt (xóa cookie đăng nhập tại BFF + cache phía client);
+  // không thu hồi token phía máy chủ.
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      await authLogout();
+      router.replace("/dang-nhap?next=%2Fquan-tri");
+      router.refresh();
+    } catch (failure) {
+      setLogoutError(failure instanceof Error && failure.message ? failure.message : "Không thể đăng xuất. Thử lại.");
+      setLoggingOut(false);
+    }
   }
 
   if (state.kind === "loading") return <div className="admB font-inter"><div className="workspace"><main id="main" className="admB-loading">Đang kiểm tra quyền quản trị…</main></div></div>;
@@ -84,8 +104,10 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <div className="utilities">
               <button className="icon-btn" type="button" onClick={toggleTheme} aria-label={dark ? "Chuyển giao diện sáng" : "Chuyển giao diện tối"}><Icon name={dark ? "sun" : "moon"} /></button>
               <span className="user"><span className="avatar">{role === "STAFF" ? "NV" : "QT"}</span>{role === "STAFF" ? "Nhân viên" : "Quản trị"}</span>
+              <button className="logout-btn" type="button" onClick={logout} disabled={loggingOut} aria-busy={loggingOut} aria-label={loggingOut ? "Đang đăng xuất" : "Đăng xuất khỏi phiên trình duyệt này"} title="Đăng xuất khỏi phiên trình duyệt này"><Icon name="log-out" /><span>{loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}</span></button>
             </div>
           </header>
+          {logoutError ? <p className="logout-error" role="alert">{logoutError}</p> : null}
           <main id="main" tabIndex={-1}>
             {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
             {children}

@@ -95,6 +95,16 @@ describe("benefits adapters hit contract paths with envelope", () => {
     assert.deepEqual((await fetchOwnLoyaltyHistory("page=0&size=20")).data, []);
   });
 
+  it("admin loyalty writes go straight to the BFF without the removed /api/auth/csrf", async () => {
+    const { updateTierThreshold } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("PUT /api/admin/loyalty/tiers/3", jsonResponse(200, envelope({ tierId: 3, name: "Bạc", minimumCumulativePaidSales: 500000, version: 2 })));
+    const tier = await updateTierThreshold(3, 1, 500000);
+    assert.equal(tier.version, 2);
+    assert.equal(calls.some((c) => c.url.endsWith("/api/auth/csrf")), false);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].method, "PUT");
+  });
+
   it("campaign PUT {phienBan, trangThai} (+field edit uses same shape)", async () => {
     const { updateCampaign } = await import("../src/lib/benefits-client.ts");
     fixtures.set("PUT /api/be/v1/khuyen-mai/1", jsonResponse(200, envelope({ maKm: 1, trangThai: "TAM_DUNG", phienBan: 2 })));
