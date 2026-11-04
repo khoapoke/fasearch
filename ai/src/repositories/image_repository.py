@@ -14,6 +14,7 @@ from qdrant_client.models import (
 )
 
 from src.core.config import settings
+from src.core.qdrant_client import get_qdrant_client
 from src.db.enums import PointStatus
 from src.db.models import ImagePointPayload
 from src.repositories.base import BaseRepository
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ImageRepository(BaseRepository):
     """
     Repository phụ trách lưu trữ, truy vấn và quản lý vòng đời của Point
-    trong collection 'image_gallery' trên Qdrant.
+    trong một collection cụ thể trên Qdrant.
     """
 
     def __init__(
@@ -35,6 +36,26 @@ class ImageRepository(BaseRepository):
         target_collection = collection_name or settings.qdrant.collection_name
         super().__init__(collection_name=target_collection, client=client)
 
+    def ensure_collection_exists(self) -> bool:
+        """Kiểm tra và tự động khởi tạo collection nếu chưa tồn tại trên Qdrant."""
+        if not self.client.collection_exists(self.collection_name):
+            distance_choice = Distance.COSINE
+            if settings.qdrant.distance.lower() == "euclid":
+                distance_choice = Distance.EUCLID
+            elif settings.qdrant.distance.lower() == "dot":
+                distance_choice = Distance.DOT
+
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=settings.qdrant.vector_size,
+                    distance=distance_choice,
+                ),
+            )
+            logger.info(f"Đã tự động khởi tạo collection mới '{self.collection_name}' trên Qdrant.")
+            return True
+        return False
+
     def search_vectors(
         self,
         query_vector: List[float],
@@ -43,10 +64,7 @@ class ImageRepository(BaseRepository):
         exclude_deleted: bool = True,
         extra_filter: Optional[Filter] = None,
     ) -> List[ScoredPoint]:
-        """
-        Tìm kiếm cosine vector tương đồng trong collection.
-        Mặc định tự động loại trừ các bản ghi có trạng thái DELETED (Soft Deleted).
-        """
+        """Tìm kiếm cosine vector tương đồng trong collection."""
         conditions = []
         if exclude_deleted:
             conditions.append(
@@ -78,9 +96,7 @@ class ImageRepository(BaseRepository):
         return results
 
     def get_by_id(self, point_id: str) -> Optional[Record]:
-        """
-        Lấy thông tin chi tiết một point theo ID. Trả về None nếu không tìm thấy.
-        """
+        """Lấy thông tin chi tiết một point theo ID."""
         records = self.client.retrieve(
             collection_name=self.collection_name,
             ids=[point_id],
@@ -97,9 +113,7 @@ class ImageRepository(BaseRepository):
         vector: List[float],
         payload: Union[ImagePointPayload, Dict[str, Any]],
     ) -> bool:
-        """
-        Tạo mới hoặc ghi đè một Vector Point vào Qdrant.
-        """
+        """Tạo mới hoặc ghi đè một Vector Point vào Qdrant."""
         payload_dict = (
             payload.to_payload_dict()
             if isinstance(payload, ImagePointPayload)
@@ -118,9 +132,7 @@ class ImageRepository(BaseRepository):
         return True
 
     def upsert_batch(self, points: List[PointStruct]) -> int:
-        """
-        Nạp dữ liệu hàng loạt theo batch vào Qdrant. Trả về số lượng point đã nạp.
-        """
+        """Nạp dữ liệu hàng loạt theo batch vào Qdrant."""
         if not points:
             return 0
         self.client.upsert(
@@ -134,9 +146,7 @@ class ImageRepository(BaseRepository):
         point_id: str,
         payload: Union[ImagePointPayload, Dict[str, Any]],
     ) -> bool:
-        """
-        Cập nhật các trường payload cho một point cụ thể.
-        """
+        """Cập nhật các trường payload cho một point cụ thể."""
         payload_dict = (
             payload.to_payload_dict()
             if isinstance(payload, ImagePointPayload)
@@ -150,19 +160,14 @@ class ImageRepository(BaseRepository):
         return True
 
     def soft_delete(self, point_id: str) -> bool:
-        """
-        Xóa mềm point bằng cách cập nhật status = DELETED.
-        Bản ghi vẫn tồn tại trong DB nhưng bị loại bỏ khỏi kết quả tìm kiếm.
-        """
+        """Xóa mềm point bằng cách cập nhật status = DELETED."""
         return self.update_payload(
             point_id=point_id,
             payload={"status": PointStatus.DELETED.value},
         )
 
     def hard_delete(self, point_id: str) -> bool:
-        """
-        Xóa cứng: Loại bỏ hoàn toàn vector và payload của point ra khỏi Qdrant.
-        """
+        """Xóa cứng: Loại bỏ hoàn toàn vector và payload của point khỏi collection."""
         self.client.delete(
             collection_name=self.collection_name,
             points_selector=PointIdsList(points=[point_id]),
@@ -170,9 +175,7 @@ class ImageRepository(BaseRepository):
         return True
 
     def count_points(self, filter_status: Optional[PointStatus] = None) -> int:
-        """
-        Đếm tổng số point trong collection. Có thể lọc theo trạng thái PointStatus.
-        """
+        """Đếm tổng số point trong collection. Có thể lọc theo PointStatus."""
         query_filter = None
         if filter_status is not None:
             query_filter = Filter(
@@ -197,10 +200,7 @@ class ImageRepository(BaseRepository):
         filter_status: Optional[PointStatus] = None,
         with_payload: bool = True,
     ) -> tuple[List[Record], Optional[Union[str, int]]]:
-        """
-        Phân trang duyệt danh sách Point từ Qdrant (scroll).
-        Trả về (records, next_offset).
-        """
+        """Phân trang duyệt danh sách Point từ Qdrant."""
         query_filter = None
         if filter_status is not None:
             query_filter = Filter(
@@ -222,9 +222,7 @@ class ImageRepository(BaseRepository):
         return records, next_offset
 
     def get_collection_info(self) -> Dict[str, Any]:
-        """
-        Lấy thông tin tổng quan của collection: trạng thái, số lượng point, v.v.
-        """
+        """Lấy thông tin tổng quan của collection: trạng thái, số lượng point, v.v."""
         try:
             info = self.client.get_collection(collection_name=self.collection_name)
             return {
@@ -237,10 +235,7 @@ class ImageRepository(BaseRepository):
             return {}
 
     def reset_collection(self) -> bool:
-        """
-        Xóa sạch collection hiện tại và tạo lại collection rỗng với cấu hình chuẩn
-        (vector_size và distance được lấy từ settings.qdrant).
-        """
+        """Xóa sạch dữ liệu trong collection hiện tại và tạo lại collection rỗng."""
         if self.client.collection_exists(self.collection_name):
             self.client.delete_collection(collection_name=self.collection_name)
 
@@ -259,15 +254,75 @@ class ImageRepository(BaseRepository):
         )
         return True
 
+    def delete_this_collection(self) -> bool:
+        """Xóa vĩnh viễn collection này khỏi Qdrant."""
+        return delete_collection(self.collection_name)
 
 
-# Singleton instance cho ImageRepository
-_image_repository: Optional[ImageRepository] = None
+# Registry cache cho ImageRepository theo collection_name
+_image_repositories: Dict[str, ImageRepository] = {}
 
 
-def get_image_repository() -> ImageRepository:
-    """Dependency injector / Singleton accessor cho ImageRepository."""
-    global _image_repository
-    if _image_repository is None:
-        _image_repository = ImageRepository()
-    return _image_repository
+def get_image_repository(collection_name: Optional[str] = None) -> ImageRepository:
+    """Dependency injector / Factory accessor cho ImageRepository."""
+    target_name = collection_name or settings.qdrant.collection_name
+    if target_name not in _image_repositories:
+        _image_repositories[target_name] = ImageRepository(collection_name=target_name)
+    return _image_repositories[target_name]
+
+
+def list_all_collections() -> List[str]:
+    """Lấy danh sách tên tất cả các collection hiện có trên Qdrant."""
+    client = get_qdrant_client()
+    try:
+        res = client.get_collections()
+        return [c.name for c in res.collections]
+    except Exception as e:
+        logger.error(f"Lỗi lấy danh sách collections từ Qdrant: {e}")
+        return []
+
+
+def create_new_collection(
+    collection_name: str,
+    vector_size: Optional[int] = None,
+    distance: Optional[str] = None,
+) -> bool:
+    """Tạo mới 1 collection trên Qdrant với cấu hình chỉ định (hoặc mặc định)."""
+    client = get_qdrant_client()
+    clean_name = collection_name.strip()
+    if not clean_name:
+        raise ValueError("Tên collection không được để trống.")
+
+    if client.collection_exists(clean_name):
+        return True
+
+    v_size = vector_size or settings.qdrant.vector_size
+    dist_str = (distance or settings.qdrant.distance).lower()
+    dist_choice = Distance.COSINE
+    if dist_str == "euclid":
+        dist_choice = Distance.EUCLID
+    elif dist_str == "dot":
+        dist_choice = Distance.DOT
+
+    client.create_collection(
+        collection_name=clean_name,
+        vectors_config=VectorParams(
+            size=v_size,
+            distance=dist_choice,
+        ),
+    )
+    logger.info(f"Đã tạo thành công collection mới '{clean_name}' trên Qdrant.")
+    return True
+
+
+def delete_collection(collection_name: str) -> bool:
+    """Xóa sổ vĩnh viễn một collection khỏi Qdrant."""
+    client = get_qdrant_client()
+    clean_name = collection_name.strip()
+    if client.collection_exists(clean_name):
+        client.delete_collection(collection_name=clean_name)
+        if clean_name in _image_repositories:
+            del _image_repositories[clean_name]
+        logger.info(f"Đã xóa hoàn toàn collection '{clean_name}' khỏi Qdrant.")
+        return True
+    return False

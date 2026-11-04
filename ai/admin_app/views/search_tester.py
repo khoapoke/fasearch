@@ -5,25 +5,24 @@ import streamlit as st
 from PIL import Image
 
 from src.core.config import BASE_DIR
-from src.services.search_service import search_by_text, search_by_image, search_multimodal
-from admin_app.components.ui_helpers import (
-    resolve_image_path,
-    get_status_badge,
-    get_catalog_badge,
-)
+from src.services.search_service import SearchService
+from admin_app.components.image_card import render_search_result_card
 
 
-def render_search_tester():
+def render_search_tester(search_srv: SearchService) -> None:
     """
     Trang 3: Sân chơi thử nghiệm tìm kiếm đa phương thức (Text-to-Image, Image-to-Image và Multimodal).
+    Thực hiện truy vấn trực tiếp trên collection của search_srv.
     """
-    st.subheader("🔍 Thử nghiệm Tìm kiếm Đa phương thức (Search Playground)")
+    current_col = search_srv.collection_name
+    st.subheader(f"Các phương thức tìm kiếm")
+    st.caption(f"Collection: `{current_col}`")
     st.caption("Kiểm thử tính năng trích xuất vector embedding và truy vấn độ tương đồng Cosine trong Qdrant.")
 
     # ==========================================
     # CẤU HÌNH THAM SỐ TÌM KIẾM
     # ==========================================
-    with st.expander("⚙️ Tham số truy vấn (Search Parameters)", expanded=True):
+    with st.expander("Tham số truy vấn (Search Parameters)", expanded=True):
         col_p1, col_p2, col_p3 = st.columns(3)
         with col_p1:
             top_k = st.slider("Số lượng kết quả (Top K)", min_value=1, max_value=24, value=6)
@@ -45,9 +44,9 @@ def render_search_tester():
 
     tab_text, tab_image, tab_multimodal = st.tabs(
         [
-            "💬 Tìm bằng Văn bản (Text-to-Image)",
-            "🖼️ Tìm bằng Hình ảnh (Image-to-Image)",
-            "✨ Tìm kết hợp Đa phương thức (Multimodal: Ảnh + Chữ)",
+            "Tìm bằng Văn bản (Text-to-Image)",
+            "Tìm bằng Hình ảnh (Image-to-Image)",
+            "Tìm kết hợp Đa phương thức (Multimodal: Ảnh + Chữ)",
         ]
     )
 
@@ -69,29 +68,29 @@ def render_search_tester():
                 label_visibility="collapsed",
             )
         with col_q2:
-            btn_text_search = st.button("🔎 Tìm kiếm", key="btn_search_text", type="primary", use_container_width=True)
+            btn_text_search = st.button("Tìm kiếm", key="btn_search_text", type="primary", width="stretch")
 
         # Gợi ý truy vấn nhanh
         st.caption("Gợi ý từ khóa mẫu:")
         c1, c2, c3, c4 = st.columns(4)
-        if c1.button("👔 áo sơ mi trắng"):
+        if c1.button("áo sơ mi trắng"):
             query_text = "áo sơ mi trắng"
             btn_text_search = True
-        if c2.button("🧥 black jacket"):
+        if c2.button("black jacket"):
             query_text = "black jacket"
             btn_text_search = True
-        if c3.button("👗 floral dress"):
+        if c3.button("floral dress"):
             query_text = "floral dress"
             btn_text_search = True
-        if c4.button("👖 blue jeans"):
+        if c4.button("blue jeans"):
             query_text = "blue jeans"
             btn_text_search = True
 
         if btn_text_search and query_text.strip():
-            with st.spinner("Đang trích xuất vector từ text và tìm kiếm trong Qdrant..."):
+            with st.spinner(f"Đang tìm kiếm trong collection '{current_col}'..."):
                 start_t = time.time()
                 try:
-                    results = search_by_text(
+                    results = search_srv.search_by_text(
                         query_text=query_text.strip(),
                         limit=top_k,
                         exclude_deleted=exclude_deleted,
@@ -119,10 +118,10 @@ def render_search_tester():
             with col_preview:
                 st.image(uploaded_query_img, caption="Ảnh truy vấn", width=180)
             with col_btn:
-                btn_img_search = st.button("🔍 Tìm sản phẩm tương đồng", type="primary")
+                btn_img_search = st.button("Tìm sản phẩm tương đồng", type="primary")
 
             if btn_img_search:
-                with st.spinner("Đang trích xuất vector từ ảnh mẫu và tìm kiếm..."):
+                with st.spinner(f"Đang tìm kiếm trong collection '{current_col}'..."):
                     temp_dir = BASE_DIR / "storage" / "uploads"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_file = temp_dir / f"test_query_{uuid.uuid4().hex[:8]}.jpg"
@@ -132,7 +131,7 @@ def render_search_tester():
                             f.write(uploaded_query_img.getbuffer())
 
                         start_t = time.time()
-                        results = search_by_image(
+                        results = search_srv.search_by_image(
                             image_path=str(temp_file),
                             limit=top_k,
                             exclude_deleted=exclude_deleted,
@@ -184,14 +183,14 @@ def render_search_tester():
                 key="multi_text_weight_slider",
             )
             st.caption(
-                f"⚖️ Tỷ trọng hiện tại: **Ảnh {(1.0 - text_weight)*100:.0f}%** — **Văn bản {text_weight*100:.0f}%**"
+                f"Tỷ trọng hiện tại: **Ảnh {(1.0 - text_weight)*100:.0f}%** — **Văn bản {text_weight*100:.0f}%**"
             )
 
         btn_multi_search = st.button(
-            "✨ Tìm kiếm Đa phương thức",
+            "Tìm kiếm Đa phương thức",
             key="btn_search_multimodal",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
         if btn_multi_search:
@@ -200,7 +199,7 @@ def render_search_tester():
             elif not multi_query_text or not multi_query_text.strip():
                 st.error("Vui lòng nhập văn bản mô tả để kết hợp tìm kiếm.")
             else:
-                with st.spinner("Đang trích xuất và kết hợp vector đặc trưng (Ảnh + Chữ)..."):
+                with st.spinner(f"Đang tìm kiếm đa phương thức trong '{current_col}'..."):
                     temp_dir = BASE_DIR / "storage" / "uploads"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_file = temp_dir / f"test_multi_{uuid.uuid4().hex[:8]}.jpg"
@@ -210,7 +209,7 @@ def render_search_tester():
                             f.write(uploaded_multi_img.getbuffer())
 
                         start_t = time.time()
-                        results = search_multimodal(
+                        results = search_srv.search_multimodal(
                             image_path=str(temp_file),
                             query_text=multi_query_text.strip(),
                             limit=top_k,
@@ -238,7 +237,7 @@ def render_search_tester():
     if results is not None:
         st.divider()
         st.markdown(
-            f"##### 🎯 Kết quả tìm kiếm cho {query_display} "
+            f"##### Kết quả tìm kiếm trong `{current_col}` cho {query_display} "
             f"`({len(results)} kết quả trong {elapsed_ms:.1f}ms)`"
         )
 
@@ -247,39 +246,9 @@ def render_search_tester():
         else:
             cols_per_row = 3
             for i in range(0, len(results), cols_per_row):
-                chunk = results[i:i + cols_per_row]
+                chunk = results[i : i + cols_per_row]
                 grid_cols = st.columns(cols_per_row)
 
                 for col, item in zip(grid_cols, chunk):
                     with col:
-                        score = item.get("score", 0.0)
-                        score_pct = max(0.0, min(1.0, score)) * 100
-                        raw_img = item.get("image_path", "")
-                        file_name = item.get("file_name", "Unknown")
-                        catalog = item.get("catalog", "FASHION_PRODUCT")
-                        item_id = item.get("id", "")
-
-                        with st.container(border=True):
-                            # Preview ảnh kết quả
-                            resolved = resolve_image_path(raw_img)
-                            if resolved:
-                                try:
-                                    st.image(str(resolved), width="stretch")
-                                except Exception:
-                                    st.warning("Lỗi hiển thị ảnh.")
-                            else:
-                                st.markdown(
-                                    f"""<div style="height:140px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; color:#9ca3af; border-radius:6px;">
-                                        <span>📷 File ảnh: {file_name}</span>
-                                    </div>""",
-                                    unsafe_allow_html=True,
-                                )
-
-                            # Thanh điểm Cosine Similarity
-                            st.progress(score_pct / 100.0)
-                            st.markdown(f"**Độ tương đồng:** `{score:.4f}` ({score_pct:.1f}%)")
-
-                            # Metadata
-                            st.markdown(f"**{file_name}**")
-                            st.markdown(f"{get_catalog_badge(catalog)}", unsafe_allow_html=True)
-                            st.caption(f"ID: `{item_id[:16]}...`")
+                        render_search_result_card(item=item)

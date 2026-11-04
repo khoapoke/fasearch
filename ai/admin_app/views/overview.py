@@ -5,17 +5,24 @@ from pathlib import Path
 
 from src.core.config import settings, BASE_DIR
 from src.db.enums import PointStatus
-from src.repositories import get_image_repository
+from src.services.point_service import PointService
+from admin_app.components.seeder_box import render_seeder_box
+from admin_app.components.dialog import confirm_reset_dialog, confirm_delete_dialog
 
-
-def render_overview():
+def render_overview(point_srv: PointService) -> None:
     """
     Trang 1: Thống kê trạng thái hệ thống, GPU, Qdrant và chỉnh sửa cấu hình database.yaml.
+    Toàn bộ số liệu và thao tác gắn liền với collection được chỉ định qua point_srv.
     """
-    st.subheader("Hệ thống & Cấu hình ")
-    st.caption("Giám sát trạng thái phần cứng, Vector Database và chỉnh sửa trực quan file cấu hình.")
-    st.caption("Truy cập đường dẫn http://localhost:6333/dashboard để xem chi tiết collection trong db")
-    repo = get_image_repository()
+    current_col = point_srv.collection_name
+    default_col = settings.qdrant.collection_name
+    is_default = (current_col == default_col)
+
+    st.subheader(f"Tổng quan Collection: `{current_col}`")
+    st.caption("Giám sát trạng thái phần cứng, Vector Database và cấu hình hệ thống.")
+    st.caption("Xem dashboard trực tiếp tại: http://localhost:6333/dashboard")
+
+    repo = point_srv.repo
 
     # ==========================================
     # PHẦN 1: THẺ THỐNG KÊ NHANH (METRICS CARDS)
@@ -48,9 +55,9 @@ def render_overview():
         st.metric(
             label="Trạng thái Qdrant",
             value=f"{status_str}",
-            delta=f"Cổng gRPC: {settings.qdrant.grpc_port}",
+            delta=f"Collection: {current_col}",
         )
-        st.caption(f"Host: {settings.qdrant.host} | Collection: {repo.collection_name}")
+        st.caption(f"Host: {settings.qdrant.host}:{settings.qdrant.grpc_port}")
 
     # 3. Thống kê Points
     try:
@@ -81,119 +88,93 @@ def render_overview():
 
     st.divider()
 
-    # ==========================================
-    # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML (CÁCH A)
-    # ==========================================
-    st.subheader("Chỉnh sửa Cấu hình (`configs/database.yaml`)", )
-    st.markdown(
-        "Trực quan hóa và chỉnh sửa cấu hình hệ thống. Nội dung được validate cú pháp YAML an toàn trước khi ghi đĩa."
-    )
+    # # ==========================================
+    # # PHẦN 2: CHỈNH SỬA FILE CẤU HÌNH YAML
+    # # ==========================================
+    # st.subheader("Cấu hình Mặc định Hệ thống (`configs/database.yaml`)")
+    # st.caption("File cấu hình này đóng vai trò cung cấp collection và thông số vector mặc định (fallback) cho toàn bộ hệ thống.")
 
-    yaml_path = BASE_DIR / "configs" / "database.yaml"
+    # yaml_path = BASE_DIR / "configs" / "database.yaml"
 
-    if not yaml_path.exists():
-        st.error(f"Không tìm thấy file cấu hình tại `{yaml_path}`")
-        return
+    # if yaml_path.exists():
+    #     with open(yaml_path, "r", encoding="utf-8") as f:
+    #         current_yaml = f.read()
 
-    # Đọc file YAML
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        current_yaml = f.read()
+    #     with st.form("yaml_edit_form"):
+    #         edited_yaml = st.text_area(
+    #             label="Nội dung file YAML",
+    #             value=current_yaml,
+    #             height=220,
+    #             help="Sửa các tham số cấu hình mặc định. Hãy chú ý thụt dòng chuẩn YAML.",
+    #         )
+    #         submitted = st.form_submit_button("Lưu cấu hình mặc định", type="primary")
 
-    # Hiển thị form chỉnh sửa
-    with st.form("yaml_edit_form"):
-        edited_yaml = st.text_area(
-            label="Nội dung file YAML",
-            value=current_yaml,
-            height=280,
-            help="Sửa các tham số cấu hình của Qdrant hoặc AI model. Hãy chú ý thụt dòng chuẩn YAML.",
-        )
+    #         if submitted:
+    #             try:
+    #                 parsed_data = yaml.safe_load(edited_yaml)
+    #                 if not isinstance(parsed_data, dict):
+    #                     st.error("Cấu hình YAML phải là một cấu trúc dạng key-value hợp lệ.")
+    #                 else:
+    #                     with open(yaml_path, "w", encoding="utf-8") as f:
+    #                         f.write(edited_yaml)
+    #                     st.success("Đã lưu cấu hình `configs/database.yaml` thành công!")
+    #             except yaml.YAMLError as err:
+    #                 st.error(f"Lỗi cú pháp YAML: {err}")
+    #             except Exception as ex:
+    #                 st.error(f"Có lỗi khi ghi file: {ex}")
 
-        col_save, col_info = st.columns([1, 4])
-        with col_save:
-            submitted = st.form_submit_button("Lưu cấu hình", type="primary")
-
-        if submitted:
-            try:
-                # 1. Validate cú pháp YAML an toàn
-                parsed_data = yaml.safe_load(edited_yaml)
-
-                if not isinstance(parsed_data, dict):
-                    st.error("Cấu hình YAML phải là một cấu trúc dạng key-value hợp lệ.")
-                else:
-                    # 2. Ghi đè file
-                    with open(yaml_path, "w", encoding="utf-8") as f:
-                        f.write(edited_yaml)
-                    st.success("✅ Đã lưu cấu hình `configs/database.yaml` thành công! Cấu hình mới sẽ áp dụng khi khởi động lại tiến trình tương ứng.")
-            except yaml.YAMLError as err:
-                st.error(f"❌ Lỗi cú pháp YAML, không thể lưu: {err}")
-            except Exception as ex:
-                st.error(f"❌ Có lỗi khi ghi file: {ex}")
-
-    st.divider()
+    # st.divider()
 
     # ==========================================
-    # PHẦN 3: VÙNG NGUY HIỂM: RESET COLLECTION & SEEDING (DANGER ZONE)
+    # PHẦN 3: VÙNG NGUY HIỂM DÀNH CHO COLLECTION
     # ==========================================
-    st.subheader("🚨 Vùng nguy hiểm: Database")
-    st.markdown("Xóa toàn bộ vector point cũ trong collection và tái tạo lại từ đầu, hoặc chạy nạp lại dữ liệu chuẩn.")
+    st.subheader(f"Vùng nguy hiểm: Collection `{current_col}`")
+    st.markdown("Các thao tác xóa và nạp dữ liệu dưới đây chỉ áp dụng cho collection đang chọn.")
 
     with st.container(border=True):
         col_d1, col_d2 = st.columns([1, 1])
 
-        # Cột 1: Xóa & Tạo mới Collection
+        # Cột 1: Xóa dữ liệu (Reset / Xóa hẳn)
         with col_d1:
-            st.markdown("##### Reset Database (Drop & Recreate)")
-            st.caption(
-                f"Xóa vĩnh viễn collection `{repo.collection_name}` trên Qdrant và tạo lại bảng rỗng với vector_size: {settings.qdrant.vector_size} (Cosine)."
-            )
+            st.markdown("##### Quản lý Dữ liệu Collection")
+            st.caption(f"Collection đang chọn: `{current_col}` ({'Mặc định' if is_default else 'Tùy chỉnh'})")
+
+            # 1. Reset dữ liệu (Drop & Recreate rỗng) - Dành cho mọi collection
             confirm_reset = st.checkbox(
-                "⚠️ Tôi hiểu và xác nhận muốn xóa toàn bộ vector cũ",
+                f"Xác nhận RESET toàn bộ dữ liệu",
                 key="chk_confirm_reset",
             )
-            btn_reset = st.button(
-                "🗑️ Drop & Recreate Collection",
+            if st.button(
+                "Reset Data",
                 type="primary",
                 disabled=not confirm_reset,
-                help="Chỉ mở khi đã tích chọn xác nhận bên trên.",
-            )
+                width="stretch",
+            ):
+               confirm_reset_dialog(current_col, point_srv)
 
-            if btn_reset:
-                with st.spinner("Đang xóa và khởi tạo lại collection trên Qdrant..."):
-                    try:
-                        repo.reset_collection()
-                        st.success("✅ Đã reset collection rỗng thành công!")
-                        st.rerun()
-                    except Exception as ex:
-                        st.error(f"Lỗi khi reset collection: {ex}")
+            # 2. Xóa hẳn collection - Chỉ mở cho collection tùy chỉnh (không phải mặc định)
+            if not is_default:
+                st.divider()
+                st.markdown("##### Xóa Collection ")
+                st.caption(f"Xóa vĩnh viễn collection `{current_col}` khỏi Qdrant.")
+                confirm_drop = st.checkbox(
+                    f"Xác nhận xóa",
+                    key="chk_confirm_drop",
+                )
+                if st.button(
+                    f"Delete from Qdrant",
+                    type="primary",
+                    disabled=not confirm_drop,
+                    width="stretch",
+                ):
+                   confirm_delete_dialog(
+                    current_col=current_col,
+                    point_srv=point_srv,
+                    default_col=default_col
+                   )
+            else:
+                st.info("Đây là collection mặc định của hệ thống: Chỉ hỗ trợ Reset dữ liệu, được bảo vệ không thể xóa hẳn.")
 
-        # Cột 2: Nạp lại dữ liệu mẫu (Seeder)
+        # Cột 2: Nạp dữ liệu vào collection này (Ủy quyền cho Seeder Box component)
         with col_d2:
-            st.markdown("##### 🌱 Nạp lại dữ liệu mẫu (Run Seeder)")
-            st.caption("Quét ảnh trong thư mục chỉ định của dataset và nạp dữ liệu vector chuẩn vào Qdrant.")
-
-            col_opt1, col_opt2 = st.columns(2)
-            with col_opt1:
-                subfolder_choice = st.selectbox(
-                    "Thư mục nguồn:",
-                    options=["test", "raw", "Toàn bộ dataset"],
-                    index=0,
-                )
-            with col_opt2:
-                batch_size_choice = st.selectbox(
-                    "Kích thước Batch:",
-                    options=[16, 32, 64],
-                    index=1,
-                )
-
-            btn_seed = st.button("Bắt đầu Nạp Dữ liệu Mẫu", key="btn_run_seeder",type="primary")
-            if btn_seed:
-                target_sub = None if subfolder_choice == "Toàn bộ dataset" else subfolder_choice
-                with st.spinner(f"Đang nạp ảnh từ thư mục `{subfolder_choice}` theo batch {batch_size_choice}..."):
-                    try:
-                        from scripts.seed_data import seed_data
-                        seed_data(subfolder=target_sub, batch_size=batch_size_choice)
-                        st.success("Nạp dữ liệu hoàn tất thành công!", icon=":material/check:")
-                        st.rerun()
-                    except Exception as ex:
-                        st.error(f"Lỗi trong quá trình nạp dữ liệu: {ex}")
-
+            render_seeder_box(point_srv=point_srv)
