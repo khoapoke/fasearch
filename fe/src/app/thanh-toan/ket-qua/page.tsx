@@ -149,6 +149,10 @@ function PaymentResultContent() {
     error: "Không tải được kết quả",
   };
 
+  // Online (re)payment is only offered by the order page for PENDING orders; COD/confirmed/
+  // completed/cancelled orders must not be sent back to pay.
+  const canRepay = !order || order.status === "PENDING";
+
   return (
     <StorefrontShell active="/thanh-toan" themed palette="customer" header="customer" footer="none">
       <div className="commercePage">
@@ -162,10 +166,10 @@ function PaymentResultContent() {
               <h2>{headline[verdict]}</h2>
               {verdict === "success" ? <p>Đơn hàng của bạn đã được ghi nhận thanh toán qua kênh an toàn. Hóa đơn và điểm thưởng (nếu có) được chốt bởi máy chủ.</p> : null}
               {verdict === "pending" ? <p>Giao dịch đang chờ webhook/IPN đã ký từ cổng thanh toán. Trang tự kiểm tra lại trong khoảng 1 phút; làm mới không tạo đơn mới và không trừ tiền thêm.</p> : null}
-              {verdict === "unpaid" ? <p>Đơn hàng đã được ghi nhận nhưng chưa có thanh toán trực tuyến nào được xác nhận. Nếu bạn chọn thanh toán khi nhận hàng (COD), bạn trả tiền khi nhận; nếu muốn trả online, hãy thanh toán từ trang đơn hàng.</p> : null}
+              {verdict === "unpaid" ? <p>Đơn hàng đã được ghi nhận nhưng chưa có thanh toán trực tuyến nào được xác nhận. Nếu bạn chọn thanh toán khi nhận hàng (COD), bạn trả tiền khi nhận.{canRepay ? " Nếu muốn trả online, hãy thanh toán từ trang đơn hàng." : ""}</p> : null}
               {verdict === "failed" ? <p>Giao dịch báo thất bại. Đơn hàng vẫn giữ nguyên, bạn có thể thử lại từ trang đơn hàng.</p> : null}
               {verdict === "expired" ? <p>Phiên thanh toán đã hết hạn. Đơn hàng vẫn giữ nguyên, bạn có thể tạo phiên mới từ trang đơn hàng.</p> : null}
-              {verdict === "cancelled" ? <p>Bạn đã hủy thanh toán tại cổng. Đơn hàng vẫn giữ nguyên, bạn có thể thanh toán lại sau.</p> : null}
+              {verdict === "cancelled" ? <p>{order?.status === "CANCELLED" ? "Đơn hàng này đã bị hủy nên không còn thanh toán." : "Bạn đã hủy thanh toán tại cổng. Đơn hàng vẫn giữ nguyên, bạn có thể thanh toán lại sau."}</p> : null}
               {verdict === "review" ? <p>Giao dịch đến sau khi đơn đã khóa; máy chủ giữ lại để đối soát thủ công, không tự hoàn tất. Liên hệ hỗ trợ kèm mã đơn.</p> : null}
               {verdict === "missing" ? <p>Đường dẫn thiếu mã đơn/mã phiên (ví dụ mở trực tiếp). Mở đơn hàng của bạn để xem trạng thái mới nhất.</p> : null}
               {verdict === "error" ? <p>{errorStatus === 403 ? "Phiên này thuộc về tài khoản khác." : error}</p> : null}
@@ -180,7 +184,7 @@ function PaymentResultContent() {
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
                 {orderId ? <Link className="commerce-primary" href={`/don-hang/${orderId}`}>Về đơn hàng →</Link> : <Link className="commerce-primary" href="/don-hang">Về danh sách đơn hàng →</Link>}
                 {verdict === "pending" || verdict === "error" ? <button className="commerce-ghost" type="button" onClick={() => void refresh()}>Kiểm tra lại{polls > 0 ? ` (${polls})` : ""}</button> : null}
-                {verdict === "failed" || verdict === "expired" || verdict === "cancelled" || verdict === "unpaid" ? (orderId ? <Link className="commerce-ghost" href={`/don-hang/${orderId}`}>Thanh toán lại từ đơn hàng</Link> : null) : null}
+                {canRepay && (verdict === "failed" || verdict === "expired" || verdict === "cancelled" || verdict === "unpaid") ? (orderId ? <Link className="commerce-ghost" href={`/don-hang/${orderId}`}>Thanh toán lại từ đơn hàng</Link> : null) : null}
               </div>
             </div>
           )}

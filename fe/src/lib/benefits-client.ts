@@ -3,7 +3,7 @@
 // diemDuocPhep, maChinhSach/phienBanChinhSach, BAT/TAT, SO_TIEN. Không mock trong app;
 // test-only fixtures nằm trong tests/*.test.mjs và có nhãn rõ.
 
-import { beFetch, beWrite, unwrap } from "./mgmt-client.ts";
+import { beFetch, unwrap } from "./mgmt-client.ts";
 import type {
   LoyaltyBalance, LoyaltyHistoryEntry, LoyaltyPolicy, PolicyState, VoucherOffer,
 } from "./benefits.ts";
@@ -153,37 +153,6 @@ export async function fetchCampaigns(query: string): Promise<Paged<Campaign>> {
 
 export async function fetchCampaign(id: number | string): Promise<Campaign> {
   const r = await beFetch(`v1/khuyen-mai/${encodeURIComponent(String(id))}`);
-  return unwrap<Campaign>(r);
-}
-
-export async function createCampaign(body: {
-  tenCtkm: string; loaiGiam: string; giaTriGiam: number;
-  ngayBatDau: string; ngayKetThuc: string; maSpApDung?: number[];
-}): Promise<Campaign> {
-  const r = await beWrite("v1/khuyen-mai", "POST", body);
-  return unwrap<Campaign>(r);
-}
-
-export type CreatedCode = {
-  maVoucher: number; maCode: string; soLuongPhatHanh: number | null; daSuDung: number; soLuongGiuCho?: number | null;
-};
-
-export async function addCampaignCode(id: number | string, body: {
-  maCode: string; soLuongPhatHanh: number | null;
-}): Promise<CreatedCode> {
-  const r = await beWrite(`v1/khuyen-mai/${encodeURIComponent(String(id))}/codes`, "POST", body);
-  return unwrap<CreatedCode>(r);
-}
-
-export type CampaignUpdate = {
-  phienBan: number;
-  tenCtkm?: string; loaiGiam?: string; giaTriGiam?: number;
-  ngayBatDau?: string; ngayKetThuc?: string; dieuKienApDung?: string;
-  maSpApDung?: number[]; trangThai?: "HOAT_DONG" | "TAM_DUNG";
-};
-
-export async function updateCampaign(id: number | string, body: CampaignUpdate): Promise<Campaign> {
-  const r = await beWrite(`v1/khuyen-mai/${encodeURIComponent(String(id))}`, "PUT", body);
   return unwrap<Campaign>(r);
 }
 

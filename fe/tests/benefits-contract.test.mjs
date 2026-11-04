@@ -105,26 +105,6 @@ describe("benefits adapters hit contract paths with envelope", () => {
     assert.equal(calls[0].method, "PUT");
   });
 
-  it("campaign PUT {phienBan, trangThai} (+field edit uses same shape)", async () => {
-    const { updateCampaign } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("PUT /api/be/v1/khuyen-mai/1", jsonResponse(200, envelope({ maKm: 1, trangThai: "TAM_DUNG", phienBan: 2 })));
-    const c = await updateCampaign(1, { phienBan: 1, trangThai: "TAM_DUNG" });
-    assert.equal(c.trangThai, "TAM_DUNG");
-    const put = calls.find((x) => x.method === "PUT");
-    assert.ok(put);
-    assert.match(put.body, /"trangThai":"TAM_DUNG"/);
-    assert.match(put.body, /"phienBan":1/);
-  });
-
-  it("campaign codes POST {maCode, soLuongPhatHanh}", async () => {
-    const { addCampaignCode } = await import("../src/lib/benefits-client.ts");
-    fixtures.set("POST /api/be/v1/khuyen-mai/1/codes", jsonResponse(200, envelope({ maKm: 1 })));
-    await addCampaignCode(1, { maCode: "TEST10", soLuongPhatHanh: null });
-    const post = calls.find((x) => x.method === "POST" && x.url.includes("/codes"));
-    assert.ok(post);
-    assert.match(post.body, /"maCode":"TEST10"/);
-  });
-
   it("policy PUT sends the contract version and full new money/status values", async () => {
     const { updateLoyaltyPolicy } = await import("../src/lib/benefits-client.ts");
     fixtures.set("PUT /api/admin/loyalty/policies/3", jsonResponse(200, envelope({ policyId: 3, version: 4, earnCurrencyPerPoint: 50000, redeemCurrencyPerPoint: 1000, status: "ENABLED", createdAt: "2026-10-18T00:00:00" })));

@@ -100,13 +100,13 @@ describe("bề mặt pilot dùng theme search-studio", () => {
 
   it("ba pilot bật scope studio", () => {
     const ai = read("src/app/tim-kiem-ai/search-view.tsx");
-    const listing = read("src/app/listings.tsx");
+    const listing = read("src/app/nam/catalog-listing.tsx");
     const detail = read("src/app/san-pham/[id]/page.tsx");
     const pos = read("src/app/kenh-ban/pos/page.tsx");
     assert.match(ai, /<StorefrontShell[\s\S]*?themed/, "pilot AI phải bật theme");
     assert.match(detail, /<StorefrontShell[^>]*themed/, "pilot chi tiết sản phẩm phải bật theme");
     assert.match(pos, /<MerchantShell[\s\S]*?themed/, "pilot POS phải bật theme");
-    assert.match(listing, /themed: true/, "pilot danh sách /nam phải bật theme");
+    assert.match(listing, /<StorefrontShell[^>]*themed/, "pilot danh sách /nam phải bật theme");
   });
 
   it("vỏ bán hàng và kênh bán có chỗ đặt control giao diện", () => {
