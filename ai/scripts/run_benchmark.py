@@ -16,7 +16,6 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import torch
 from src.core.config import settings
-from src.core.exceptions import GroundTruthMissingError
 from src.repositories import get_image_repository
 from src.services.point_service import batch_create_from_directory
 from src.services.evaluation_service import (
@@ -81,15 +80,7 @@ def main():
     # 3. Chay Benchmark
     k_list = [1, 3, 5, 10]
     print(f"[*] Dang thuc thi {len(DEFAULT_BENCHMARK_CASES)} kich ban kiem thu o cac moc K = {k_list}...")
-    try:
-        summary = run_full_benchmark(k_list=k_list)
-    except GroundTruthMissingError as e:
-        print("\n[!] KHONG THE DANH GIA - THIEU GROUND TRUTH")
-        print(f"[!] {e}")
-        print("[!] Khong in bang KPI vi 0.00% se gay hieu nham. Thoat voi ma loi 2.\n")
-        sys.exit(2)
-    if summary.skipped_queries:
-        print(f"[!] Bo qua {len(summary.skipped_queries)} truy van khong co san pham dung nao trong collection (khong tinh vao trung binh).")
+    summary = run_full_benchmark(k_list=k_list)
 
     # 4. Bang chi tiet tung cau truy van
     print("\n" + "=" * 92)

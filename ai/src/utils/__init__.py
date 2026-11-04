@@ -16,7 +16,6 @@ from src.utils.metrics import (
 )
 from src.utils.csv_helpers import (
     load_ground_truth,
-    require_ground_truth,
     get_available_article_types,
     get_available_test_images,
     TEST_DATASET_DIR,
@@ -44,7 +43,6 @@ __all__ = [
     "calculate_mean_latency",
     # CSV & Ground truth helpers
     "load_ground_truth",
-    "require_ground_truth",
     "get_available_article_types",
     "get_available_test_images",
     "TEST_DATASET_DIR",

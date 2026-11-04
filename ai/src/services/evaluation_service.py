@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Any, Union
 
 from src.core.config import settings
-from src.core.exceptions import GroundTruthMissingError
 from src.schemas.evaluation import (
     MetricAtK,
     EvaluatedItem,
@@ -24,7 +23,6 @@ from src.utils.metrics import (
 )
 from src.utils.csv_helpers import (
     load_ground_truth,
-    require_ground_truth,
     get_available_test_images,
     get_available_article_types,
     TEST_DATASET_DIR,
@@ -51,10 +49,6 @@ class EvaluationService:
         self.collection_name = collection_name or settings.qdrant.collection_name
         self.search_srv = SearchService(collection_name=self.collection_name)
 
-    def get_indexed_file_names(self) -> Set[str]:
-        """Tập file_name của các point (chưa xóa mềm) đang có trong collection được đánh giá."""
-        return self.search_srv.repo.list_indexed_file_names(exclude_deleted=True)
-
     def evaluate_query(
         self,
         query_text: str,
@@ -63,7 +57,6 @@ class EvaluationService:
         limit: int = 10,
         ground_truth: Optional[Dict[str, Dict[str, str]]] = None,
         csv_path: Optional[Union[str, Path]] = None,
-        indexed_files: Optional[Set[str]] = None,
     ) -> QueryEvaluationResult:
         """
         Thực hiện 1 truy vấn văn bản, so khớp nhãn Ground Truth (styles.csv) và tính các chỉ số đo lường.
@@ -75,26 +68,13 @@ class EvaluationService:
         else:
             k_list = sorted(list(set(list(k_list) + [limit])))
 
-        gt = ground_truth if ground_truth is not None else require_ground_truth(csv_path)
-        if not gt:
-            raise GroundTruthMissingError("Thiếu dữ liệu nhãn Ground Truth (ground_truth rỗng).")
+        gt = ground_truth or load_ground_truth(csv_path)
         target_clean = target_article_type.strip().lower()
 
-        # Recall chỉ tính trên các sản phẩm ĐANG CÓ trong collection (không phải toàn bộ styles.csv)
-        if indexed_files is None:
-            indexed_files = self.get_indexed_file_names()
-        indexed_with_labels = [name for name in indexed_files if os.path.basename(name) in gt]
-        if not indexed_with_labels:
-            raise GroundTruthMissingError(
-                f"Không có ảnh nào trong collection '{self.collection_name}' khớp với file nhãn Ground Truth "
-                f"(0/{len(indexed_files)} ảnh có nhãn). Ground Truth dùng tên file '<id>.jpg' của styles.csv; "
-                "hãy nạp đúng bộ ảnh test hoặc chọn collection/CSV tương ứng."
-            )
-
-        # Tổng số sản phẩm đúng nhãn THỰC SỰ có trong collection
+        # Tổng số sản phẩm có nhãn này trong Ground Truth
         total_relevant = sum(
-            1 for name in indexed_with_labels
-            if gt[os.path.basename(name)].get("articleType", "").strip().lower() == target_clean
+            1 for meta in gt.values()
+            if meta.get("articleType", "").strip().lower() == target_clean
         )
 
         # Thực hiện tìm kiếm và đo thời gian Latency trên collection chỉ định
@@ -178,17 +158,9 @@ class EvaluationService:
             k_list = sorted(list(set(k_list)))
         cases = test_cases or DEFAULT_BENCHMARK_CASES
 
-        gt = require_ground_truth(csv_path)
-        indexed_files = self.get_indexed_file_names()
-        evaluated_images = sum(1 for name in indexed_files if os.path.basename(name) in gt)
-        if evaluated_images == 0:
-            raise GroundTruthMissingError(
-                f"Không có ảnh nào trong collection '{self.collection_name}' khớp với file nhãn Ground Truth "
-                f"(0/{len(indexed_files)} ảnh có nhãn). Hãy nạp đúng bộ ảnh test hoặc chọn collection/CSV tương ứng."
-            )
+        gt = load_ground_truth(csv_path)
 
         query_results: List[QueryEvaluationResult] = []
-        skipped_queries: List[str] = []
         ap_scores: List[float] = []
         rr_scores: List[float] = []
         latencies: List[float] = []
@@ -206,28 +178,15 @@ class EvaluationService:
                 k_list=k_list,
                 ground_truth=gt,
                 csv_path=csv_path,
-                indexed_files=indexed_files,
             )
             query_results.append(res)
-            if res.total_relevant_in_db == 0:
-                # Không có sản phẩm đúng nào trong collection -> không đánh giá được, loại khỏi trung bình
-                skipped_queries.append(q_text)
-                continue
             ap_scores.append(res.ap)
             rr_scores.append(res.rr)
             latencies.append(res.latency_ms)
 
             for k, metric in res.metrics_at_k.items():
-                # evaluate_query luôn thêm `limit` vào k_list; chỉ gom các ngưỡng K người dùng yêu cầu
-                if k in accum_precision:
-                    accum_precision[k].append(metric.precision)
-                    accum_recall[k].append(metric.recall)
-
-        if not ap_scores:
-            raise GroundTruthMissingError(
-                f"Không câu truy vấn nào có sản phẩm đúng nhãn trong collection '{self.collection_name}' "
-                "(total_relevant = 0 cho mọi nhãn kỳ vọng)."
-            )
+                accum_precision[k].append(metric.precision)
+                accum_recall[k].append(metric.recall)
 
         # Tính điểm trung bình toàn hệ thống qua các hàm metrics chuẩn (Mean Metrics)
         mean_precision = calculate_mean_metrics_at_k(accum_precision)
@@ -238,14 +197,13 @@ class EvaluationService:
 
         return BenchmarkSummary(
             total_queries=len(query_results),
-            evaluated_images_count=evaluated_images,
+            evaluated_images_count=len(gt),
             mean_precision_at_k=mean_precision,
             mean_recall_at_k=mean_recall,
             map_score=mean_map,
             mrr_score=mean_mrr,
             avg_latency_ms=avg_latency,
             query_results=query_results,
-            skipped_queries=skipped_queries,
         )
 
 
@@ -272,7 +230,6 @@ def evaluate_query(
         limit=limit,
         ground_truth=ground_truth,
         csv_path=csv_path,
-        indexed_files=available_images,
     )
 
 

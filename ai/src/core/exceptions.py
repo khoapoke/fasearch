@@ -8,6 +8,3 @@ Service ném các ngoại lệ này khi đầu vào không hợp lệ; tầng AP
 class InvalidInputError(ValueError):
     """Đầu vào của người dùng không hợp lệ (query rỗng, ảnh hỏng, limit sai, ...)."""
 
-
-class GroundTruthMissingError(RuntimeError):
-    """Thiếu dữ liệu nhãn Ground Truth (styles.csv) hoặc không khớp với collection đang đánh giá."""

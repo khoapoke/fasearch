@@ -121,13 +121,9 @@ Với Qdrant đang chạy:
 python scripts\init_qdrant.py
 ```
 
-Mặc định script **không xóa dữ liệu**: chỉ tạo collection nếu chưa có (cosine). Muốn xóa sạch và tạo lại, phải truyền cờ tường minh `--reset`:
+Script hiện gọi `init_db(reset=True)`, nên sẽ xóa collection `image_gallery` cũ và tạo lại collection với khoảng cách cosine. Chỉ chạy lệnh này khi muốn reset toàn bộ dữ liệu vector.
 
-```powershell
-python scripts\init_qdrant.py --reset
-```
-
-Tên collection lấy từ `configs\database.yaml`, hoặc biến môi trường `QDRANT_COLLECTION` nếu được đặt (biến môi trường ưu tiên hơn YAML).
+Tên collection lấy từ `configs\database.yaml`, hoặc biến môi trường `QDRANT_COLLECTION` nếu được đặt (biến môi trường ưu tiên hơn YAML). **Lưu ý:** khi đặt `QDRANT_COLLECTION` trỏ vào collection thật, đừng chạy script này.
 
 ## 8. Nạp dataset kiểm thử
 
@@ -259,10 +255,10 @@ docker compose down
 Xóa toàn bộ vector collection:
 
 ```powershell
-python scripts\init_qdrant.py --reset
+python scripts\init_qdrant.py
 ```
 
-Lệnh trên chỉ reset khi có cờ `--reset`; hãy xác nhận đúng Qdrant/collection trước khi chạy trên dữ liệu dùng chung.
+Lệnh cuối có tác dụng reset vì script đang hard-code `reset=True`; hãy xác nhận trước khi chạy trên dữ liệu dùng chung.
 
 ## 13. Sự cố thường gặp
 

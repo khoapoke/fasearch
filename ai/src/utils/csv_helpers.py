@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
 
 from src.core.config import BASE_DIR
-from src.core.exceptions import GroundTruthMissingError
 
 logger = logging.getLogger(__name__)
 
@@ -71,19 +70,3 @@ def get_available_article_types(csv_path: Optional[Union[str, Path]] = None) -> 
     gt = load_ground_truth(csv_path)
     types = {meta.get("articleType", "").strip() for meta in gt.values() if meta.get("articleType")}
     return sorted(types)
-
-
-def require_ground_truth(csv_path: Optional[Union[str, Path]] = None) -> Dict[str, Dict[str, str]]:
-    """
-    Như load_ground_truth nhưng báo lỗi rõ ràng (GroundTruthMissingError) khi thiếu / rỗng file nhãn,
-    thay vì trả {} để benchmark in ra 0.00% gây hiểu nhầm.
-    """
-    target_csv = Path(csv_path).resolve() if csv_path else STYLES_CSV_PATH
-    gt = load_ground_truth(target_csv)
-    if not gt:
-        raise GroundTruthMissingError(
-            f"Thiếu dữ liệu nhãn Ground Truth: không đọc được '{target_csv}'. "
-            "Cần file styles.csv (cột id, articleType, ...) đặt tại dataset/test/styles.csv "
-            "hoặc truyền đường dẫn qua csv_path. Không thể tính Precision/Recall khi chưa có nhãn."
-        )
-    return gt

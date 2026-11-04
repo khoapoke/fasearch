@@ -1,6 +1,4 @@
-import os
 import re
-import sys
 import uuid
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
@@ -85,17 +83,6 @@ def save_admin_uploaded_image(uploaded_file) -> Tuple[str, str, Path]:
 
     web_path = f"/dataset/admin/{file_name}"
     return web_path, file_name, dest_path
-
-
-def native_dialog_available() -> bool:
-    """True nếu máy có thể mở hộp thoại chọn file/thư mục (Windows/macOS, hoặc Linux có DISPLAY và tkinter)."""
-    if sys.platform.startswith("linux") and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
-        return False
-    try:
-        import tkinter  # noqa: F401
-    except Exception:
-        return False
-    return True
 
 
 def open_folder_dialog(initial_dir: Optional[Path] = None) -> Optional[str]:

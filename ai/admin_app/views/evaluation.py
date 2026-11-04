@@ -15,7 +15,7 @@ from src.services.evaluation_service import (
     FULL_SEARCH_BENCHMARK_CASES,
     get_benchmark_cases,
 )
-from admin_app.components.ui_helpers import resolve_image_path, open_csv_file_dialog, native_dialog_available
+from admin_app.components.ui_helpers import resolve_image_path, open_csv_file_dialog
 
 
 def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> None:
@@ -55,7 +55,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
     with st.expander("Cấu hình File nhãn Ground Truth (styles.csv)", expanded=False):
         col_c1, col_c2 = st.columns([3, 1])
         with col_c1:
-            if st.button("Mở cửa sổ Browse chọn file CSV nhãn (Windows)", width="stretch", type="secondary", disabled=not native_dialog_available(), help=None if native_dialog_available() else "Không khả dụng trên máy không có giao diện đồ họa — hãy nhập đường dẫn vào ô bên dưới."):
+            if st.button("Mở cửa sổ Browse chọn file CSV nhãn (Windows)", width="stretch", type="secondary"):
                 initial_dir = Path(st.session_state["eval_gt_csv_path"]).parent
                 selected_csv = open_csv_file_dialog(initial_dir=initial_dir)
                 if selected_csv:
@@ -74,12 +74,6 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
     current_csv_path = Path(st.session_state["eval_gt_csv_path"])
     gt_map = load_ground_truth(current_csv_path)
     available_article_types = get_available_article_types(current_csv_path)
-
-    if not gt_map:
-        st.warning(
-            f"Chưa tải được nhãn Ground Truth từ '{current_csv_path}'. "
-            "Cần file styles.csv (cột id, articleType, ...) — nếu thiếu, các chỉ số Precision/Recall không có ý nghĩa nên hệ thống sẽ từ chối chạy đánh giá."
-        )
 
     # Thẻ thông tin môi trường đánh giá
     with st.container(border=True):

@@ -80,11 +80,3 @@ def test_max_search_limit_default_is_24():
     )
     assert out.stdout.strip() == "24"
 
-
-def test_init_qdrant_does_not_reset_by_default():
-    out = subprocess.run(
-        [sys.executable, "scripts/init_qdrant.py", "--help"], cwd=AI_DIR, capture_output=True, text=True, check=True,
-    )
-    assert "--reset" in out.stdout
-    src = (AI_DIR / "scripts" / "init_qdrant.py").read_text(encoding="utf-8")
-    assert "init_db(reset=True)" not in src
