@@ -46,6 +46,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\venv312\Scripts\Activate.ps1
 ```
 
+Máy **không có GPU NVIDIA** (Linux/WSL/server CPU): dùng `pip install -r requirements-cpu.txt` thay cho `requirements.txt` (cùng phiên bản thư viện, chỉ khác bản PyTorch CPU).
+
 Mỗi terminal mới cần activate lại môi trường trước khi chạy Python.
 
 ## 4. Cấu hình biến môi trường cho Docker
@@ -58,7 +60,7 @@ STORAGE_DOCKER=D:/DockerData/qdrant
 
 `STORAGE_DOCKER` là thư mục trên máy host dùng để lưu dữ liệu Qdrant. Nên dùng đường dẫn tuyệt đối và bảo đảm Docker Desktop có quyền truy cập thư mục đó.
 
-File `.env` chỉ phục vụ nội suy biến của Docker Compose. Ứng dụng Python hiện đọc cấu hình chính từ `configs\database.yaml`, không đọc các giá trị Qdrant từ `.env`.
+File `.env` chỉ phục vụ nội suy biến của Docker Compose. Ứng dụng Python đọc cấu hình chính từ `configs\database.yaml`; riêng tên collection có thể ghi đè bằng biến môi trường `QDRANT_COLLECTION`, và giới hạn `limit` tối đa của API search bằng `MAX_SEARCH_LIMIT` (mặc định 24; FE hiện chỉ gửi 1–5).
 
 ## 5. Khởi động Qdrant
 
@@ -119,7 +121,13 @@ Với Qdrant đang chạy:
 python scripts\init_qdrant.py
 ```
 
-Script hiện gọi `init_db(reset=True)`, nên sẽ xóa collection `image_gallery` cũ và tạo lại collection với khoảng cách cosine. Chỉ chạy lệnh này khi muốn reset toàn bộ dữ liệu vector.
+Mặc định script **không xóa dữ liệu**: chỉ tạo collection nếu chưa có (cosine). Muốn xóa sạch và tạo lại, phải truyền cờ tường minh `--reset`:
+
+```powershell
+python scripts\init_qdrant.py --reset
+```
+
+Tên collection lấy từ `configs\database.yaml`, hoặc biến môi trường `QDRANT_COLLECTION` nếu được đặt (biến môi trường ưu tiên hơn YAML).
 
 ## 8. Nạp dataset kiểm thử
 
@@ -251,10 +259,10 @@ docker compose down
 Xóa toàn bộ vector collection:
 
 ```powershell
-python scripts\init_qdrant.py
+python scripts\init_qdrant.py --reset
 ```
 
-Lệnh cuối có tác dụng reset vì script đang hard-code `reset=True`; hãy xác nhận trước khi chạy trên dữ liệu dùng chung.
+Lệnh trên chỉ reset khi có cờ `--reset`; hãy xác nhận đúng Qdrant/collection trước khi chạy trên dữ liệu dùng chung.
 
 ## 13. Sự cố thường gặp
 

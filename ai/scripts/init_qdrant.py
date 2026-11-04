@@ -1,3 +1,5 @@
+import argparse
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from src.core.config import settings
@@ -31,7 +33,15 @@ def init_db(reset=False):
         print(f"[*] Collection '{COLLECTION_NAME}' đã tồn tại, giữ nguyên dữ liệu.")
 
 if __name__ == "__main__":
-    # Đặt reset=True để dọn sạch DB khi chạy script này
-    init_db(reset=True)
+    parser = argparse.ArgumentParser(description="Khởi tạo collection Qdrant (mặc định KHÔNG xóa dữ liệu).")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="NGUY HIỂM: xóa collection hiện có rồi tạo lại rỗng (mất toàn bộ point).",
+    )
+    args = parser.parse_args()
+    if args.reset:
+        print(f"[!] --reset: collection '{COLLECTION_NAME}' trên {QDRANT_HOST}:{QDRANT_PORT} sẽ bị xóa sạch.")
+    init_db(reset=args.reset)
 
 
