@@ -34,6 +34,40 @@ class QueryEvaluationResult(BaseModel):
     latency_ms: float = Field(..., description="Thời gian thực thi tìm kiếm tính bằng mili-giây")
     retrieved_items: List[EvaluatedItem] = Field(default_factory=list)
 
+    def get_metric_at_k(self, k: int) -> MetricAtK:
+        """Lấy chỉ số Precision & Recall tại ngưỡng K bất kỳ.
+        
+        Nếu K đã có trong metrics_at_k, trả về kết quả đã tính toán.
+        Nếu K chưa có, tự động tính toán động từ retrieved_items để không bị ràng buộc K cố định.
+        """
+        if k in self.metrics_at_k:
+            return self.metrics_at_k[k]
+
+        if k <= 0:
+            return MetricAtK(
+                k=k,
+                precision=0.0,
+                recall=0.0,
+                hit_count=0,
+                total_relevant=self.total_relevant_in_db,
+            )
+
+        sub_items = self.retrieved_items[:k]
+        hit_count = sum(1 for item in sub_items if item.is_hit)
+        precision = hit_count / k
+        recall = (
+            hit_count / self.total_relevant_in_db
+            if self.total_relevant_in_db > 0
+            else 0.0
+        )
+        return MetricAtK(
+            k=k,
+            precision=round(precision, 4),
+            recall=round(recall, 4),
+            hit_count=hit_count,
+            total_relevant=self.total_relevant_in_db,
+        )
+
 
 class BenchmarkSummary(BaseModel):
     """Báo cáo tổng kết toàn diện của toàn bộ phiên kiểm thử Benchmark."""

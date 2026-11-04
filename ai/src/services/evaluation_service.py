@@ -91,7 +91,9 @@ class EvaluationService:
         Tự động loại trừ các bản ghi có trạng thái DELETED (xóa mềm).
         """
         if k_list is None:
-            k_list = [1, 3, 5, 10]
+            k_list = sorted(list(set([1, 3, 5, 10, limit])))
+        else:
+            k_list = sorted(list(set(list(k_list) + [limit])))
 
         gt = ground_truth or load_ground_truth(csv_path)
         target_clean = target_article_type.strip().lower()
@@ -111,7 +113,7 @@ class EvaluationService:
         )
         latency_ms = (time.perf_counter() - start_time) * 1000.0
 
-        retrieved_hits: List[bool] = []
+        retrieved_hits: List[bool] = [] # [True, True, False, True, False,...] đại diện cho từng vị trí kết quả đúng và sai 
         evaluated_items: List[EvaluatedItem] = []
 
         for item in raw_results:
@@ -179,6 +181,8 @@ class EvaluationService:
         """
         if k_list is None:
             k_list = [1, 3, 5, 10]
+        else:
+            k_list = sorted(list(set(k_list)))
         cases = test_cases or DEFAULT_BENCHMARK_CASES
 
         gt = load_ground_truth(csv_path)

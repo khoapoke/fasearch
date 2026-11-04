@@ -39,15 +39,17 @@ def calculate_average_precision(retrieved_hits: List[bool], total_relevant: int)
 
     running_hits = 0
     precision_sum = 0.0
-
+    
     for i, is_hit in enumerate(retrieved_hits):
         if is_hit:
             running_hits += 1
             precision_at_i = running_hits / (i + 1)
             precision_sum += precision_at_i
 
-    # Chuẩn AP@K: chuẩn hóa theo min(K, total_relevant)
+    # Chuẩn AP@K: chuẩn hóa theo min(K, total_relevant) quốc tế
     denominator = min(len(retrieved_hits), total_relevant)
+    # # tính bình thường 
+    # denominator= retrieved_hits.count(True)
     return precision_sum / float(denominator) if denominator > 0 else 0.0
 
 

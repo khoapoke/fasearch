@@ -306,7 +306,6 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                             query_text=clean_q,
                             target_article_type=custom_target_type,
                             limit=custom_top_k,
-                            k_list=[1, 3, 5, 10],
                             csv_path=current_csv_path,
                         )
                         st.session_state[custom_cache_key] = res
@@ -322,30 +321,36 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
             st.caption(f"Nhãn kỳ vọng: **{custom_res.target_label}** | Tổng sản phẩm đúng trong DB: **{custom_res.total_relevant_in_db:,}**")
 
             # Chỉ số chi tiết
-            cq_col1, cq_col2, cq_col3, cq_col4 = st.columns(4)
+            metric_k = custom_res.get_metric_at_k(custom_top_k)
+
+            cq_col1, cq_col2, cq_col3, cq_col4, cq_col5 = st.columns(5)
             with cq_col1:
                 st.metric(
-                    label="Average Precision (AP)",
+                    label="AP",
                     value=f"{custom_res.ap:.4f}",
-                    help="AP (Average Precision): Điểm số đánh giá chất lượng xếp hạng của RIÊNG câu truy vấn này. Càng nhiều ảnh đúng xuất hiện ở các vị trí đầu thì AP càng cao (tối đa 1.0). Khi lấy trung bình cộng AP của nhiều câu sẽ tạo thành mAP.",
+                    help="Average Precision: Điểm số đánh giá chất lượng xếp hạng của 1 câu truy vấn này.",
                 )
             with cq_col2:
                 first_hit_str = f"Rank #{int(1 / custom_res.rr)}" if custom_res.rr > 0 else "Không tìm thấy"
                 st.metric(
-                    label="Reciprocal Rank (RR)",
+                    label="RR",
                     value=f"{custom_res.rr:.4f}",
                     delta=first_hit_str,
-                    help="RR (Reciprocal Rank): Vị trí của kết quả đúng đầu tiên trong câu này (RR = 1/Rank). Nếu ảnh đúng xuất hiện ngay vị trí #1 thì RR = 1.0; nếu ở vị trí #2 thì RR = 0.5. Khi lấy trung bình cộng RR của nhiều câu sẽ tạo thành MRR.",
+                    help="Reciprocal Rank: chỉ số đánh giá kết quả ",
                 )
             with cq_col3:
-                p_val = custom_res.metrics_at_k.get(custom_top_k)
-                p_str = f"{p_val.precision * 100:.1f}%" if p_val else "N/A"
                 st.metric(
                     label=f"Precision@{custom_top_k}",
-                    value=p_str,
-                    help=f"Precision@{custom_top_k}: Tỷ lệ % sản phẩm đúng nhãn trong số {custom_top_k} kết quả hiển thị trên màn hình của câu này.",
+                    value=f"{metric_k.precision * 100:.1f}%",
+                    help=f"Precision@{custom_top_k}: Tỷ lệ % sản phẩm đúng nhãn trong số {custom_top_k} kết quả hiển thị trên màn hình ({metric_k.hit_count}/{custom_top_k} đúng).",
                 )
             with cq_col4:
+                st.metric(
+                    label=f"Recall@{custom_top_k}",
+                    value=f"{metric_k.recall * 100:.1f}%",
+                    help=f"Recall@{custom_top_k}: Tỷ lệ % sản phẩm đúng tìm thấy ({metric_k.hit_count} sản phẩm) trên tổng số {custom_res.total_relevant_in_db:,} sản phẩm đúng có trong cơ sở dữ liệu.",
+                )
+            with cq_col5:
                 st.metric(
                     label="Thời gian phản hồi",
                     value=f"{custom_res.latency_ms:.1f} ms",
