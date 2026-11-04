@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { isMotionEnabled, readMotionPreference } from "@/lib/home-motion";
+import { useLayoutEffect, useRef } from "react";
+import { useHomeMotion } from "@/lib/home-motion";
 
 /**
  * Nền trượt báo mục đang chọn (danh mục / thương hiệu).
@@ -31,19 +31,9 @@ export function SlideOptions({
   const prevFp = useRef<string | null>(null);
   const lastW = useRef(0);
   const pointerMode = useRef(false);
-  const [motionOK, setMotionOK] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setMotionOK(isMotionEnabled(readMotionPreference(window.localStorage), mq.matches));
-    apply();
-    mq.addEventListener("change", apply);
-    window.addEventListener("storage", apply);
-    return () => {
-      mq.removeEventListener("change", apply);
-      window.removeEventListener("storage", apply);
-    };
-  }, []);
+  // Một nguồn chuyển động dùng chung toàn site: đổi Motion Off/On ở menu giao diện
+  // cập nhật underlay ngay trong cùng tab (prefers-reduced-motion cũng gộp trong `enabled`).
+  const { enabled: motionOK } = useHomeMotion();
 
   useLayoutEffect(() => {
     const box = boxRef.current;
