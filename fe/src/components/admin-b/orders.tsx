@@ -17,10 +17,10 @@ export function OrdersClient() {
   const [page, setPage] = useState(0); const [data, setData] = useState<Page | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const pending = useRef(false);
   useEffect(() => { const s = new URLSearchParams(window.location.search); void Promise.resolve().then(() => { setStatus(s.get("status") ?? ""); setOrderCode(s.get("orderCode") ?? ""); setPhone(s.get("customerPhone") ?? ""); }); }, []);
-  const load = async (nextPage = page, nextStatus = status) => {
+  const load = async (nextPage = page, nextStatus = status, clear = false) => {
     if (pending.current) return; pending.current = true; setLoading(true); setError("");
     const q = new URLSearchParams({ page: String(nextPage), size: "10", sort: "orderDate,desc" });
-    if (nextStatus) q.set("status", nextStatus); if (orderCode.trim()) q.set("orderCode", orderCode.trim()); if (phone.trim()) q.set("customerPhone", phone.trim());
+    if (!clear && nextStatus) q.set("status", nextStatus); if (!clear && orderCode.trim()) q.set("orderCode", orderCode.trim()); if (!clear && phone.trim()) q.set("customerPhone", phone.trim());
     try { const r = await fetch(`/api/admin/orders?${q}`, { cache: "no-store" }); const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được đơn."); setData(j.result as Page); }
     catch (e) { setError(e instanceof Error ? e.message : "Không tải được đơn."); }
     finally { pending.current = false; setLoading(false); }
@@ -35,7 +35,7 @@ export function OrdersClient() {
       <div className="review-filter"><label htmlFor="admin-order-code">Mã đơn</label><input id="admin-order-code" className="control" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="DH-…" /></div>
       <div className="review-filter"><label htmlFor="admin-order-phone">Số điện thoại</label><input id="admin-order-phone" className="control" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" /></div>
       <button className="primary" type="submit" style={{ alignSelf: "end" }}>Lọc</button>
-      <button className="text-link" type="button" onClick={() => { setOrderCode(""); setPhone(""); setStatus(""); setPage(0); void load(0, ""); }}>Đặt lại</button>
+      <button className="text-link" type="button" onClick={() => { setOrderCode(""); setPhone(""); setStatus(""); setPage(0); void load(0, "", true); }}>Đặt lại</button>
     </form>
     <nav className="review-filters" aria-label="Lọc trạng thái">{FILTERS.map((f) => <button key={f.v || "all"} className={`text-link${status === f.v ? " active" : ""}`} type="button" aria-pressed={status === f.v} onClick={() => { setStatus(f.v); setPage(0); }}>{f.l}</button>)}</nav>
     {loading ? <p className="meta" role="status">Đang tải đơn…</p> : null}

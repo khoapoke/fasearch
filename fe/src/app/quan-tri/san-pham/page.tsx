@@ -14,10 +14,10 @@ export default function AdminProductsPage() {
   const [data, setData] = useState<ProductPage | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const req = useRef(0);
   useEffect(() => { const c = new AbortController(); getCategories(c.signal).then(setCategories).catch(() => setCategories([])); return () => c.abort(); }, []);
-  async function load(nextPage = page) {
+  async function load(nextPage = page, clear = false) {
     const my = ++req.current; setLoading(true); setError("");
     const q = new URLSearchParams({ page: String(nextPage), size: "10" });
-    if (keyword.trim()) q.set("keyword", keyword.trim()); if (categoryId) q.set("categoryId", categoryId); if (status) q.set("status", status);
+    if (!clear && keyword.trim()) q.set("keyword", keyword.trim()); if (!clear && categoryId) q.set("categoryId", categoryId); if (!clear && status) q.set("status", status);
     try { const result = await getProductPage(q.toString()); if (req.current === my) setData(result); }
     catch (e) { if (req.current === my) setError(e instanceof Error ? e.message : "Không tải được sản phẩm."); }
     finally { if (req.current === my) setLoading(false); }
@@ -31,7 +31,7 @@ export default function AdminProductsPage() {
       <div className="catalog-field"><label htmlFor="p-keyword">Từ khóa</label><input id="p-keyword" className="catalog-input" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Tên sản phẩm" /></div>
       <div className="catalog-field"><label htmlFor="p-category">Danh mục</label><select id="p-category" className="catalog-input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">Tất cả</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.categoryName}</option>)}</select></div>
       <div className="catalog-field"><label htmlFor="p-status">Trạng thái</label><select id="p-status" className="catalog-input" value={status} onChange={(e) => setStatus(e.target.value)}>{STATUS.map((s) => <option key={s || "all"} value={s}>{s ? STATUS_LABEL[s] : "Tất cả"}</option>)}</select></div>
-      <button className="primary" type="submit">Lọc</button><button className="text-link" type="button" onClick={() => { setKeyword(""); setCategoryId(""); setStatus(""); setPage(0); void load(0); }}>Đặt lại</button>
+      <button className="primary" type="submit">Lọc</button><button className="text-link" type="button" onClick={() => { setKeyword(""); setCategoryId(""); setStatus(""); setPage(0); void load(0, true); }}>Đặt lại</button>
     </form>
     {loading ? <p className="meta" role="status">Đang tải sản phẩm…</p> : null}
     {error ? <div className="order-empty" role="alert"><strong>Không tải được sản phẩm</strong><p>{error}</p><button className="text-link" type="button" onClick={() => load(page)}>Thử lại (giữ lọc)</button></div> : null}

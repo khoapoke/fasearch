@@ -13,11 +13,11 @@ export default function StocktakeListPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  async function load(next = page) {
+  async function load(next = page, clear = false) {
     setLoading(true); setError("");
     const q = new URLSearchParams({ page: String(next), size: "10" });
-    if (code.trim()) q.set("stocktakeCode", code.trim());
-    if (status) q.set("status", status);
+    if (!clear && code.trim()) q.set("stocktakeCode", code.trim());
+    if (!clear && status) q.set("status", status);
     try { setData(await getStocktakePage(q.toString())); } catch (e) { setError(e instanceof Error ? e.message : "Không tải được phiếu kiểm kê."); } finally { setLoading(false); }
   }
   // Initial load only; filters apply on submit.
@@ -29,7 +29,7 @@ export default function StocktakeListPage() {
     <form className="stock-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0); }}>
       <div className="catalog-field"><label htmlFor="st-code">Mã phiếu</label><input id="st-code" className="catalog-input" value={code} onChange={(e) => setCode(e.target.value)} /></div>
       <div className="catalog-field"><label htmlFor="st-status">Trạng thái</label><select id="st-status" className="catalog-input" value={status} onChange={(e) => setStatus(e.target.value)}>{STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-      <button className="primary" type="submit">Lọc</button><button className="text-link" type="button" onClick={() => { setCode(""); setStatus(""); setPage(0); void load(0); }}>Đặt lại</button>
+      <button className="primary" type="submit">Lọc</button><button className="text-link" type="button" onClick={() => { setCode(""); setStatus(""); setPage(0); void load(0, true); }}>Đặt lại</button>
     </form>
     {loading ? <p className="meta" role="status">Đang tải phiếu kiểm kê…</p> : null}
     {error ? <div className="order-empty" role="alert"><strong>Không tải được phiếu kiểm kê</strong><p>{error}</p><button className="text-link" type="button" onClick={() => load(page)}>Thử lại (giữ lọc)</button></div> : null}
