@@ -6,9 +6,9 @@ class MetricAtK(BaseModel):
     """Chỉ số đánh giá tại điểm cắt K cụ thể (Top K)."""
     k: int = Field(..., description="Ngưỡng Top K đánh giá (ví dụ: 1, 3, 5, 10)")
     precision: float = Field(..., description="Độ chính xác: Tỷ lệ sản phẩm đúng trong Top K")
-    recall: float = Field(..., description="Độ bao phủ: Tỷ lệ sản phẩm đúng tìm được so với tổng số đúng trong DB")
+    recall: float = Field(..., description="Độ bao phủ: Tỷ lệ sản phẩm đúng tìm được so với tổng số sản phẩm đúng THỰC SỰ có trong collection đang đánh giá")
     hit_count: int = Field(..., description="Số lượng kết quả đúng nằm trong Top K")
-    total_relevant: int = Field(..., description="Tổng số sản phẩm đúng thực tế trong Database")
+    total_relevant: int = Field(..., description="Tổng số sản phẩm đúng thực tế có trong collection đang đánh giá (có nhãn Ground Truth)")
 
 
 class EvaluatedItem(BaseModel):
@@ -79,4 +79,8 @@ class BenchmarkSummary(BaseModel):
     mrr_score: float = Field(default=0.0, description="Mean Reciprocal Rank (MRR) trung bình toàn bộ hệ thống")
     avg_latency_ms: float
     query_results: List[QueryEvaluationResult]
+    skipped_queries: List[str] = Field(
+        default_factory=list,
+        description="Câu truy vấn không có sản phẩm đúng nào trong collection nên bị loại khỏi các giá trị trung bình",
+    )
 

@@ -4,7 +4,7 @@ import streamlit as st
 from src.core.config import BASE_DIR
 from src.db.enums import PointStatus, CatalogCategory
 from src.services.point_service import PointService
-from admin_app.components.ui_helpers import open_folder_dialog, scan_folder_direct_images
+from admin_app.components.ui_helpers import native_dialog_available, open_folder_dialog, scan_folder_direct_images
 
 
 def render_seeder_box(point_srv: PointService) -> None:
@@ -27,7 +27,7 @@ def render_seeder_box(point_srv: PointService) -> None:
 
     col_btn_browse, col_btn_clear = st.columns([3, 1])
     with col_btn_browse:
-        if st.button("Mở cửa sổ Browse chọn thư mục (Windows)", width="stretch", type="secondary"):
+        if st.button("Mở cửa sổ Browse chọn thư mục (Windows)", width="stretch", type="secondary", disabled=not native_dialog_available(), help=None if native_dialog_available() else "Không khả dụng trên máy không có giao diện đồ họa — hãy nhập đường dẫn vào ô bên dưới."):
             selected_dir = open_folder_dialog(initial_dir=Path(st.session_state["seed_custom_folder"]))
             if selected_dir:
                 st.session_state["seed_custom_folder"] = selected_dir

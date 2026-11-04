@@ -222,6 +222,34 @@ class ImageRepository(BaseRepository):
         )
         return records, next_offset
 
+    def list_indexed_file_names(self, exclude_deleted: bool = True) -> set:
+        """Tập tên file (file_name) của các point đang có trong collection (mặc định bỏ qua DELETED)."""
+        names = set()
+        offset = None
+        query_filter = None
+        if exclude_deleted:
+            query_filter = Filter(
+                must_not=[
+                    FieldCondition(key="status", match=MatchValue(value=PointStatus.DELETED.value))
+                ]
+            )
+        while True:
+            records, offset = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=512,
+                offset=offset,
+                scroll_filter=query_filter,
+                with_payload=["file_name"],
+                with_vectors=False,
+            )
+            for rec in records:
+                name = (rec.payload or {}).get("file_name")
+                if name:
+                    names.add(str(name))
+            if offset is None:
+                break
+        return names
+
     def get_collection_info(self) -> Dict[str, Any]:
         """Lấy thông tin tổng quan của collection: trạng thái, số lượng point, v.v."""
         try:
