@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { authLogout, authMe, AuthApiError, type AuthIdentity } from "@/lib/customer-auth-client";
 import { Icon } from "./icons";
@@ -16,6 +16,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
   const [authRetry, setAuthRetry] = useState(0);
   const navRef = useRef<HTMLElement>(null);
   const navToggleRef = useRef<HTMLButtonElement>(null);
@@ -81,7 +82,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
   }
 
   const role = state.identity.role;
-  const adminOnly = ["employees", "internalAccounts", "promotions", "loyalty", "reports"].includes(active);
+  const adminOnly = ["/quan-tri/nhan-vien", "/quan-tri/tai-khoan-noi-bo", "/quan-tri/khuyen-mai", "/quan-tri/chinh-sach-diem", "/quan-tri/bao-cao"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
   return (
     <div className={`admB font-inter${dark ? " dark" : ""}${navOpen ? " nav-open" : ""}${role === "STAFF" ? " role-staff" : ""}`}>
       <a className="skip" href="#main">Bỏ qua tới nội dung</a>
