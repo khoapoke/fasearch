@@ -14,6 +14,7 @@ from src.db.enums import CatalogCategory, PointStatus
 from src.db.models import ImagePointPayload
 from src.repositories import ImageRepository, get_image_repository
 from src.utils import normalize_slash, to_system_path, to_web_path
+from src.utils.point_id import PointId, normalize_point_id
 
 logger = logging.getLogger(__name__)
 
@@ -92,14 +93,14 @@ class PointService:
         status: Union[PointStatus, str] = PointStatus.ACTIVE,
         product_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        point_id: Optional[str] = None,
-    ) -> str:
+        point_id: Optional[PointId] = None,
+    ) -> PointId:
         """
         Tạo mới 1 Vector Point từ file ảnh trong collection:
         1. Trích xuất vector đặc trưng bằng mô hình CLIP (chuẩn hóa L2).
         2. Đóng gói Entity ImagePointPayload.
         3. Lưu trữ vào collection tương ứng trên Qdrant qua Repository.
-        Trả về: point_id (UUID).
+        Trả về: point_id (UUID tự sinh, hoặc ID số/UUID do caller chỉ định).
         """
         path_obj = to_system_path(image_path)
         if not path_obj.exists() or not path_obj.is_file():
@@ -111,7 +112,7 @@ class PointService:
         # 2. Xây dựng web_path phục vụ web client (/dataset/...)
         web_path = to_web_path(path_obj)
         file_name = path_obj.name
-        assigned_id = point_id or str(uuid.uuid4())
+        assigned_id = normalize_point_id(point_id) if point_id is not None else str(uuid.uuid4())
 
         catalog_enum = CatalogCategory(catalog) if isinstance(catalog, str) else catalog
         status_enum = PointStatus(status) if isinstance(status, str) else status
@@ -136,7 +137,7 @@ class PointService:
         )
         return assigned_id
 
-    def delete_point(self, point_id: str, hard_delete: bool = False) -> bool:
+    def delete_point(self, point_id: PointId, hard_delete: bool = False) -> bool:
         """
         Xóa 1 point trong collection:
         - hard_delete = False (mặc định): Xóa mềm (chuyển status = DELETED).
@@ -151,7 +152,7 @@ class PointService:
             logger.info(f"Đã xóa MỀM Point ID '{point_id}' (status: DELETED) trong collection '{self.collection_name}'")
             return res
 
-    def update_point_payload(self, point_id: str, payload_updates: Dict[str, Any]) -> bool:
+    def update_point_payload(self, point_id: PointId, payload_updates: Dict[str, Any]) -> bool:
         """Cập nhật các trường payload cho một point cụ thể."""
         return self.repo.update_payload(point_id=point_id, payload=payload_updates)
 
