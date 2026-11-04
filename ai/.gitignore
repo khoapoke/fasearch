@@ -2,5 +2,4 @@
 /venv312
 __pycache__/
 storage/
-test
 .env
