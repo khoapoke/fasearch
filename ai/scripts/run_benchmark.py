@@ -135,6 +135,7 @@ def main():
     print(f"  * Mean Recall@5 (R@5)        : {summary.mean_recall_at_k.get(5, 0.0) * 100:>6.2f}%")
     print(f"  * Mean Recall@10 (R@10)      : {summary.mean_recall_at_k.get(10, 0.0) * 100:>6.2f}%")
     print(f"  * Mean Average Precision(mAP): {summary.map_score * 100:>6.2f}%  (Gold Metric)")
+    print(f"  * Mean Reciprocal Rank (MRR) : {summary.mrr_score * 100:>6.2f}%")
     print(f"  * Thoi gian phan hoi trung binh: {summary.avg_latency_ms:>5.1f} ms / query")
     print("=" * 92)
 
