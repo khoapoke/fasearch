@@ -2035,3 +2035,7 @@
 .admB .detail-grid dd{margin:3px 0 0;overflow-wrap:anywhere;word-break:break-word;}
 .admB .people-mask{font-variant-numeric:tabular-nums;white-space:nowrap;}
 @media(max-width:680px){.admB .employee-grid{grid-template-columns:1fr;}.admB .employee-form .catalog-field{grid-template-columns:1fr;align-items:start;}.admB .detail-grid{grid-template-columns:1fr;}}
+
+.admB .draft-preview-grid{display:grid;gap:24px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;}
+.admB .draft-preview-grid > *{min-width:0;overflow-wrap:anywhere;}
+@media(max-width:680px){.admB .draft-preview-grid{grid-template-columns:minmax(0,1fr);}}

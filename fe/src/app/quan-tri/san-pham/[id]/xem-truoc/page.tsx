@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
 import { ProductImage } from "@/components/admin-b/product-image";
 import { getDraft, listDrafts, type AdminDraft } from "@/lib/admin-catalog-client";
@@ -28,14 +28,23 @@ function asText(value: unknown): string | null {
 }
 
 export default function DraftPreviewPage() {
+  return <Suspense fallback={<p role="status">Đang tải bản nháp…</p>}><DraftPreviewContent /></Suspense>;
+}
+
+function DraftPreviewContent() {
   const params = useParams<{ id: string }>();
   const productId = Number(params?.id ?? "");
+  const searchParams = useSearchParams();
+  // New drafts have their own ID space; only an explicit query selects one.
+  const draftParam = searchParams.get("draftId");
+  const explicitDraftId = draftParam === null ? null : Number(draftParam);
   const [draft, setDraft] = useState<AdminDraft | null>(null);
   const [state, setState] = useState<"loading" | "none" | "ready" | "error">("loading");
   const [message, setMessage] = useState("");
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    if (!Number.isSafeInteger(productId) || productId < 1) {
+    if (!Number.isSafeInteger(productId) || productId < 1 || (explicitDraftId !== null && (!Number.isSafeInteger(explicitDraftId) || explicitDraftId < 1))) {
       setState("error");
       setMessage("Mã sản phẩm chưa hợp lệ.");
       return;
@@ -43,22 +52,22 @@ export default function DraftPreviewPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        // `id` có thể là productId (bản nháp sửa) hoặc draftId (bản nháp mới):
-        // thử đọc trực tiếp như draftId trước, rồi mới tra theo productId.
+        setState("loading");
         let full: AdminDraft | null = null;
-        try {
-          full = await getDraft(productId, controller.signal);
-        } catch {
-          full = null;
-        }
-        if (!full) {
-          const drafts = await listDrafts("page=0&size=50", controller.signal);
-          const mine = drafts.find((d) => d.productId === productId);
-          if (!mine) {
+        if (explicitDraftId !== null) {
+          full = await getDraft(explicitDraftId, controller.signal);
+        } else {
+          // Product links always resolve by productId, never by a coinciding draftId.
+          for (let page = 0; !controller.signal.aborted; page++) {
+            const drafts = await listDrafts(`page=${page}&size=50`, controller.signal);
+            const mine = drafts.find((d) => d.productId === productId);
+            if (mine) { full = await getDraft(mine.draftId, controller.signal); break; }
+            if (drafts.length < 50) break;
+          }
+          if (!full) {
             if (!controller.signal.aborted) setState("none");
             return;
           }
-          full = await getDraft(mine.draftId, controller.signal);
         }
         if (!controller.signal.aborted) {
           setDraft(full);
@@ -71,9 +80,10 @@ export default function DraftPreviewPage() {
       }
     })();
     return () => controller.abort();
-  }, [productId]);
+  }, [productId, explicitDraftId, reload]);
 
-  const product = (draft?.product ?? {}) as DraftProduct;
+  const product = (draft?.product ?? draft ?? {}) as DraftProduct;
+  const backHref = explicitDraftId !== null && !draft?.productId ? `/quan-tri/san-pham/nhap/${explicitDraftId}` : `/quan-tri/san-pham/${draft?.productId ?? productId}`;
   const name = asText(product.productName) ?? "Bản nháp";
   const price = typeof product.price === "number" ? product.price : null;
   const image = asText(product.imageUrl);
@@ -85,7 +95,7 @@ export default function DraftPreviewPage() {
           <h1>Xem trước bản nháp</h1>
           <p className="meta">Bố cục Customer · dữ liệu bản nháp từ BE · khách hàng không truy cập được nội dung này.</p>
         </div>
-        <Link className="text-link" href={`/quan-tri/san-pham/${productId}`}>← Về chi tiết sản phẩm</Link>
+        <Link className="text-link" href={backHref}>← Về {explicitDraftId !== null && !draft?.productId ? "bản nháp" : "chi tiết sản phẩm"}</Link>
       </div>
 
       {state === "loading" ? <p className="meta" role="status">Đang tải bản nháp…</p> : null}
@@ -95,14 +105,14 @@ export default function DraftPreviewPage() {
           <p>Sửa metadata ở trang chi tiết để mở bản nháp, rồi quay lại xem trước.</p>
         </div>
       ) : null}
-      {state === "error" ? <p className="catalog-error" role="alert">{message}</p> : null}
+      {state === "error" ? <div className="catalog-error" role="alert"><p>{message}</p><button type="button" className="text-link" onClick={() => setReload((n) => n + 1)}>Thử lại</button></div> : null}
 
       {state === "ready" && draft ? (
         <section className="workbench" aria-label={`Xem trước ${name}`}>
           <p className="meta" style={{ marginBottom: 12 }}>
-            Bản nháp #{draft.draftId} · phiên bản {draft.version} · trạng thái {draft.status}
+            Bản nháp #{draft.draftId} · phiên bản {draft.version} · trạng thái {String(draft.draftState ?? draft.status)}
           </p>
-          <div style={{ display: "grid", gap: 24, gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", alignItems: "start" }}>
+          <div className="draft-preview-grid">
             <div>{image ? <ProductImage src={image} alt={name} /> : <p className="meta">Bản nháp chưa có ảnh.</p>}</div>
             <div>
               {asText(product.brandName) ? <p className="meta">{asText(product.brandName)}</p> : null}

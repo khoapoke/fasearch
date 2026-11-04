@@ -183,7 +183,7 @@ export default function NewDraftPage() {
                 <p className="meta">#{draft.draftId} · phiên bản {draft.version} · {String(draft.draftState ?? draft.status)}</p>
               </div>
               <div className="catalog-inline">
-                <Link className="text-link" href={`/quan-tri/san-pham/${draft.draftId}/xem-truoc`}>Xem trước bản nháp</Link>
+                <Link className="text-link" href={`/quan-tri/san-pham/${draft.draftId}/xem-truoc?draftId=${draft.draftId}`}>Xem trước bản nháp</Link>
                 <button className="primary" type="button" disabled={busy} aria-disabled={busy} onClick={() => void publish()}>
                   {busy ? "Đang xử lý…" : "Xuất bản"}
                 </button>
