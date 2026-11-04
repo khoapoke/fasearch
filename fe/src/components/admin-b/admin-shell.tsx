@@ -17,7 +17,6 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
   const [logoutError, setLogoutError] = useState("");
   const router = useRouter();
   const pathname = usePathname();
-  const [authRetry, setAuthRetry] = useState(0);
   const navRef = useRef<HTMLElement>(null);
   const navToggleRef = useRef<HTMLButtonElement>(null);
 
@@ -32,7 +31,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
     const saved = localStorage.getItem("fasearch-admin-theme");
     if (saved === "dark" || saved === "light") void Promise.resolve().then(() => setDark(saved === "dark"));
     return () => controller.abort();
-  }, [authRetry]);
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && navOpen) { setNavOpen(false); navToggleRef.current?.focus(); } };
@@ -75,7 +74,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
     return <div className="admB font-inter"><div className="admB-gate"><h1>Không gian quản trị</h1><p>Cần đăng nhập bằng tài khoản ADMIN hoặc STAFF.</p><Link className="primary" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div></div>;
   }
   if (state.kind === "error") {
-    return <div className="admB font-inter"><div className="admB-gate" role="alert"><h1>Chưa kiểm tra được phiên đăng nhập</h1><p>Dịch vụ tạm thời không sẵn sàng. Thử lại để kiểm tra quyền quản trị.</p><button className="primary" type="button" onClick={() => { setState({ kind: "loading" }); setAuthRetry((n) => n + 1); }}>Thử lại</button></div></div>;
+    return <div className="admB font-inter"><div className="admB-gate" role="alert"><h1>Chưa kiểm tra được phiên đăng nhập</h1><p>Dịch vụ tạm thời không sẵn sàng. Thử lại để kiểm tra quyền quản trị.</p><button className="primary" type="button" onClick={() => window.location.reload()}>Thử lại</button></div></div>;
   }
   if (state.kind === "denied") {
     return <div className="admB font-inter"><div className="admB-gate"><p className="section-label">FaSearch · Không gian nội bộ</p><h1>Không có quyền truy cập</h1><p>Tài khoản hiện tại không phải ADMIN hoặc STAFF. Dữ liệu quản trị không được tải.</p><Link className="text-link" href="/">Về trang chủ</Link></div></div>;
