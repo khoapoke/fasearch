@@ -13,6 +13,7 @@ from admin_app.components.ui_helpers import (
     get_catalog_badge,
     save_admin_uploaded_image,
     open_folder_dialog,
+    open_csv_file_dialog,
     scan_folder_direct_images,
 )
 
@@ -28,5 +29,6 @@ __all__ = [
     "get_catalog_badge",
     "save_admin_uploaded_image",
     "open_folder_dialog",
+    "open_csv_file_dialog",
     "scan_folder_direct_images",
 ]

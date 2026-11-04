@@ -14,6 +14,8 @@ from src.services.evaluation_service import (
     calculate_precision_recall_at_k,
     calculate_average_precision,
     calculate_reciprocal_rank,
+    calculate_map,
+    calculate_mrr,
     evaluate_query,
     run_full_benchmark,
 )
@@ -46,6 +48,8 @@ __all__ = [
     "calculate_precision_recall_at_k",
     "calculate_average_precision",
     "calculate_reciprocal_rank",
+    "calculate_map",
+    "calculate_mrr",
     "evaluate_query",
     "run_full_benchmark",
     # Point CUD functions

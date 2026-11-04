@@ -9,11 +9,10 @@ from src.services.point_service import PointService
 from src.services.evaluation_service import (
     EvaluationService,
     load_ground_truth,
-    get_available_test_images,
     get_available_article_types,
     DEFAULT_BENCHMARK_CASES,
 )
-from admin_app.components.ui_helpers import resolve_image_path
+from admin_app.components.ui_helpers import resolve_image_path, open_csv_file_dialog
 
 
 def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> None:
@@ -26,7 +25,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
     st.subheader(f"Môi trường Đánh giá Chỉ số Hệ thống — Collection: `{current_col}`")
     st.caption(
         "Đo lường độ chính xác (Precision@K, Recall@K), mAP (Mean Average Precision), "
-        "MRR (Mean Reciprocal Rank) và thời gian phản hồi (Latency) dựa trên Ground Truth từ dataset/test/styles.csv."
+        "MRR (Mean Reciprocal Rank) và thời gian phản hồi (Latency) dựa trên Ground Truth từ file styles.csv."
     )
 
     # 1. Kiểm tra số lượng Point hợp lệ trong Collection (loại trừ DELETED)
@@ -45,24 +44,44 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
         )
         return
 
-    # 2. Tải thông tin tập dữ liệu nhãn Ground Truth
-    gt_map = load_ground_truth()
-    test_images = get_available_test_images()
-    available_article_types = get_available_article_types()
+    # 2. Cấu hình file nhãn Ground Truth (styles.csv)
+    default_csv = str(BASE_DIR / "dataset" / "test" / "styles.csv")
+    if "eval_gt_csv_path" not in st.session_state:
+        st.session_state["eval_gt_csv_path"] = default_csv
+
+    with st.expander("Cấu hình File nhãn Ground Truth (styles.csv)", expanded=False):
+        col_c1, col_c2 = st.columns([3, 1])
+        with col_c1:
+            if st.button("Mở cửa sổ Browse chọn file CSV nhãn (Windows)", width="stretch", type="secondary"):
+                initial_dir = Path(st.session_state["eval_gt_csv_path"]).parent
+                selected_csv = open_csv_file_dialog(initial_dir=initial_dir)
+                if selected_csv:
+                    st.session_state["eval_gt_csv_path"] = selected_csv
+                    st.rerun()
+        with col_c2:
+            if st.button("CSV Mặc định", width="stretch", help="Khôi phục về styles.csv mặc định"):
+                st.session_state["eval_gt_csv_path"] = default_csv
+                st.rerun()
+
+        st.text_input(
+            "Đường dẫn file nhãn Ground Truth (.csv):",
+            key="eval_gt_csv_path",
+        )
+
+    current_csv_path = Path(st.session_state["eval_gt_csv_path"])
+    gt_map = load_ground_truth(current_csv_path)
+    available_article_types = get_available_article_types(current_csv_path)
 
     # Thẻ thông tin môi trường đánh giá
     with st.container(border=True):
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             st.markdown(f"**Collection:** `{current_col}`")
-            st.caption(f"Points hợp lệ: **{valid_points}** (Active: {active_count}, Seeded: {seeded_count})")
+            st.caption(f"Points hợp lệ: **{valid_points:,}** (Active: {active_count}, Seeded: {seeded_count})")
         with col_m2:
-            st.markdown("**File Ground Truth:** `styles.csv`")
-            st.caption(f"Tổng số nhãn nạp: **{len(gt_map)}** sản phẩm")
+            st.markdown(f"**File Ground Truth:** `{current_csv_path.name}`")
+            st.caption(f"Tổng số nhãn nạp: **{len(gt_map):,}** sản phẩm")
         with col_m3:
-            st.markdown("**Thư mục ảnh Test:** `dataset/test/`")
-            st.caption(f"Ảnh test khả dụng: **{len(test_images)}** files")
-        with col_m4:
             st.markdown("**Số loại trang phục (Article Types):**")
             st.caption(f"**{len(available_article_types)}** danh mục nhãn chuẩn")
 
@@ -121,6 +140,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                         summary = eval_srv.run_full_benchmark(
                             test_cases=DEFAULT_BENCHMARK_CASES,
                             k_list=sorted(selected_k_values),
+                            csv_path=current_csv_path,
                         )
                         st.session_state[suite_cache_key] = summary
                         st.toast("Đã hoàn tất đánh giá hệ thống!")
@@ -139,13 +159,13 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 st.metric(
                     label="mAP (Mean Average Precision)",
                     value=f"{summary_res.map_score * 100:.2f}%",
-                    help="Thước đo vàng xếp hạng: Trung bình AP của toàn bộ các câu truy vấn.",
+                    help="mAP (Mean Average Precision): Trung bình cộng (Mean) điểm AP của toàn bộ các câu truy vấn. Thước đo vàng đánh giá chất lượng xếp hạng tổng thể của hệ thống Search.",
                 )
             with kpi_col2:
                 st.metric(
                     label="MRR (Mean Reciprocal Rank)",
                     value=f"{summary_res.mrr_score * 100:.2f}%",
-                    help="Vị trí trung bình của kết quả đúng đầu tiên trong danh sách trả về.",
+                    help="MRR (Mean Reciprocal Rank): Trung bình cộng (Mean) điểm RR của toàn bộ các câu truy vấn. Đo lường mức độ ưu tiên đưa kết quả đúng lên vị trí số #1 của toàn hệ thống.",
                 )
             with kpi_col3:
                 p1_val = summary_res.mean_precision_at_k.get(1, 0.0) * 100
@@ -153,13 +173,13 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 st.metric(
                     label="Mean P@1 / Mean P@5",
                     value=f"{p1_val:.1f}% / {p5_val:.1f}%",
-                    help="Độ chính xác trung bình tại vị trí Top 1 và Top 5.",
+                    help="Mean Precision@K: Trung bình cộng tỷ lệ % sản phẩm đúng nhãn trong Top 1 và Top 5 qua toàn bộ các câu truy vấn.",
                 )
             with kpi_col4:
                 st.metric(
                     label="Độ trễ trung bình",
                     value=f"{summary_res.avg_latency_ms:.1f} ms",
-                    help="Thời gian phản hồi tìm kiếm trung bình mỗi câu truy vấn.",
+                    help="Mean Latency: Thời gian phản hồi tìm kiếm trung bình (ms) cho mỗi câu truy vấn.",
                 )
 
             # Bảng chi tiết từng câu truy vấn (Per-query breakdown)
@@ -169,12 +189,12 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 row_data = {
                     "Câu truy vấn": q.query,
                     "Nhãn kỳ vọng": q.target_label,
-                    "Tổng đúng trong DB": q.total_relevant_in_db,
+                    "Tổng đúng trong DB": f"{q.total_relevant_in_db:,}",
                     "P@1 (%)": f"{q.metrics_at_k.get(1).precision * 100:.1f}%" if 1 in q.metrics_at_k else "N/A",
                     "P@3 (%)": f"{q.metrics_at_k.get(3).precision * 100:.1f}%" if 3 in q.metrics_at_k else "N/A",
                     "P@5 (%)": f"{q.metrics_at_k.get(5).precision * 100:.1f}%" if 5 in q.metrics_at_k else "N/A",
                     "P@10 (%)": f"{q.metrics_at_k.get(10).precision * 100:.1f}%" if 10 in q.metrics_at_k else "N/A",
-                    "R@5 (%)": f"{q.metrics_at_k.get(5).recall * 100:.1f}%" if 5 in q.metrics_at_k else "N/A",
+                    "R@5 (%)": f"{q.metrics_at_k.get(5).recall * 100:.2f}%" if 5 in q.metrics_at_k else "N/A",
                     "AP": f"{q.ap:.4f}",
                     "RR": f"{q.rr:.4f}",
                     "Độ trễ": f"{q.latency_ms:.1f}ms",
@@ -198,7 +218,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
             st.caption(
                 f"Truy vấn: **\"{chosen_q_res.query}\"** | "
                 f"Kỳ vọng: **{chosen_q_res.target_label}** | "
-                f"Tổng đúng trong DB: **{chosen_q_res.total_relevant_in_db}** | "
+                f"Tổng đúng trong DB: **{chosen_q_res.total_relevant_in_db:,}** | "
                 f"AP: **{chosen_q_res.ap:.4f}** | "
                 f"RR: **{chosen_q_res.rr:.4f}**"
             )
@@ -210,7 +230,6 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 for rank, item in enumerate(chosen_q_res.retrieved_items, start=1):
                     col = grid_cols[(rank - 1) % len(grid_cols)]
                     with col:
-                        # Đường dẫn ảnh
                         img_path = item.image_path or f"/dataset/test/images/{item.file_name}"
                         resolved = resolve_image_path(img_path)
 
@@ -262,7 +281,6 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
 
             col_sub1, col_sub2 = st.columns(2)
             with col_sub1:
-                # Tìm index mặc định hợp lý nếu có Shirts
                 def_idx = available_article_types.index("Shirts") if "Shirts" in available_article_types else 0
                 custom_target_type = st.selectbox(
                     "Nhãn danh mục kỳ vọng (Target Article Type):",
@@ -289,6 +307,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                             target_article_type=custom_target_type,
                             limit=custom_top_k,
                             k_list=[1, 3, 5, 10],
+                            csv_path=current_csv_path,
                         )
                         st.session_state[custom_cache_key] = res
                         st.toast("Đã hoàn tất đánh giá câu truy vấn!")
@@ -300,21 +319,38 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
         if custom_res:
             st.divider()
             st.markdown(f"#### Kết quả Đánh giá cho: *\"{custom_res.query}\"*")
-            st.caption(f"Nhãn kỳ vọng: **{custom_res.target_label}** | Tổng sản phẩm đúng trong DB: **{custom_res.total_relevant_in_db}**")
+            st.caption(f"Nhãn kỳ vọng: **{custom_res.target_label}** | Tổng sản phẩm đúng trong DB: **{custom_res.total_relevant_in_db:,}**")
 
             # Chỉ số chi tiết
             cq_col1, cq_col2, cq_col3, cq_col4 = st.columns(4)
             with cq_col1:
-                st.metric("Average Precision (AP)", f"{custom_res.ap:.4f}")
+                st.metric(
+                    label="Average Precision (AP)",
+                    value=f"{custom_res.ap:.4f}",
+                    help="AP (Average Precision): Điểm số đánh giá chất lượng xếp hạng của RIÊNG câu truy vấn này. Càng nhiều ảnh đúng xuất hiện ở các vị trí đầu thì AP càng cao (tối đa 1.0). Khi lấy trung bình cộng AP của nhiều câu sẽ tạo thành mAP.",
+                )
             with cq_col2:
                 first_hit_str = f"Rank #{int(1 / custom_res.rr)}" if custom_res.rr > 0 else "Không tìm thấy"
-                st.metric("Reciprocal Rank (RR)", f"{custom_res.rr:.4f}", delta=first_hit_str)
+                st.metric(
+                    label="Reciprocal Rank (RR)",
+                    value=f"{custom_res.rr:.4f}",
+                    delta=first_hit_str,
+                    help="RR (Reciprocal Rank): Vị trí của kết quả đúng đầu tiên trong câu này (RR = 1/Rank). Nếu ảnh đúng xuất hiện ngay vị trí #1 thì RR = 1.0; nếu ở vị trí #2 thì RR = 0.5. Khi lấy trung bình cộng RR của nhiều câu sẽ tạo thành MRR.",
+                )
             with cq_col3:
                 p_val = custom_res.metrics_at_k.get(custom_top_k)
                 p_str = f"{p_val.precision * 100:.1f}%" if p_val else "N/A"
-                st.metric(f"Precision@{custom_top_k}", p_str)
+                st.metric(
+                    label=f"Precision@{custom_top_k}",
+                    value=p_str,
+                    help=f"Precision@{custom_top_k}: Tỷ lệ % sản phẩm đúng nhãn trong số {custom_top_k} kết quả hiển thị trên màn hình của câu này.",
+                )
             with cq_col4:
-                st.metric("Thời gian phản hồi", f"{custom_res.latency_ms:.1f} ms")
+                st.metric(
+                    label="Thời gian phản hồi",
+                    value=f"{custom_res.latency_ms:.1f} ms",
+                    help="Query Latency: Thời gian AI trích xuất vector CLIP và truy vấn Qdrant cho câu này tính bằng mili-giây.",
+                )
 
             # Hiển thị danh sách ảnh kết quả
             st.markdown("##### Danh sách sản phẩm được xếp hạng trả về:")
@@ -360,4 +396,3 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                             st.caption(f"Loại: **{item.article_type or 'Unknown'}**")
                             if item.display_name:
                                 st.caption(f"Tên: {item.display_name[:24]}...")
-

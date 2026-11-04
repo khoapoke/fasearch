@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Set, Tuple, Any, Union
 
 from src.core.config import settings
 from src.schemas.evaluation import (
@@ -16,6 +16,10 @@ from src.utils.metrics import (
     calculate_average_precision,
     calculate_precision_recall_at_k,
     calculate_reciprocal_rank,
+    calculate_map,
+    calculate_mrr,
+    calculate_mean_metrics_at_k,
+    calculate_mean_latency,
 )
 from src.utils.csv_helpers import (
     load_ground_truth,
@@ -28,37 +32,37 @@ from src.utils.csv_helpers import (
 
 logger = logging.getLogger(__name__)
 
-# Bộ kịch bản kiểm thử mặc định chuẩn cho 10 ảnh thời trang mẫu trong dataset/test/
+# Bộ kịch bản kiểm thử mặc định chuẩn cho các nhóm thời trang chính
 DEFAULT_BENCHMARK_CASES = [
     {
-        "query": "áo sơ mi nam nữ casual",
+        "query": "áo sơ mi nam nữ",
         "target_article_type": "Shirts",
-        "description": "Tìm kiếm áo sơ mi (Shirts)",
+        "description": "Tìm kiếm áo sơ mi",
     },
     {
-        "query": "áo thun nam phông trơn t-shirt",
+        "query": "áo thun nam phông trơn",
         "target_article_type": "Tshirts",
-        "description": "Tìm kiếm áo thun (Tshirts)",
+        "description": "Tìm kiếm áo thun",
     },
     {
         "query": "quần jeans xanh nam",
         "target_article_type": "Jeans",
-        "description": "Tìm kiếm quần bò (Jeans)",
+        "description": "Tìm kiếm quần bò ",
     },
     {
-        "query": "quần nỉ thể thao track pants",
+        "query": "quần nỉ thể thao",
         "target_article_type": "Track Pants",
-        "description": "Tìm kiếm quần thể thao (Track Pants)",
+        "description": "Tìm kiếm quần thể thao ",
     },
     {
-        "query": "đồng hồ đeo tay watches",
+        "query": "đồng hồ đeo tay",
         "target_article_type": "Watches",
-        "description": "Tìm kiếm đồng hồ (Watches)",
+        "description": "Tìm kiếm đồng hồ ",
     },
     {
-        "query": "đôi tất vớ nam socks",
+        "query": "đôi tất vớ nam",
         "target_article_type": "Socks",
-        "description": "Tìm kiếm tất chân (Socks)",
+        "description": "Tìm kiếm tất chân ",
     },
 ]
 
@@ -79,25 +83,24 @@ class EvaluationService:
         k_list: Optional[List[int]] = None,
         limit: int = 10,
         ground_truth: Optional[Dict[str, Dict[str, str]]] = None,
-        available_images: Optional[Set[str]] = None,
+        csv_path: Optional[Union[str, Path]] = None,
     ) -> QueryEvaluationResult:
         """
-        Thực hiện 1 truy vấn văn bản, so khớp với nhãn Ground Truth và tính các chỉ số đo lường.
+        Thực hiện 1 truy vấn văn bản, so khớp nhãn Ground Truth (styles.csv) và tính các chỉ số đo lường.
+        Một sản phẩm trả về là HIT nếu articleType trong styles.csv khớp với target_article_type.
         Tự động loại trừ các bản ghi có trạng thái DELETED (xóa mềm).
         """
         if k_list is None:
             k_list = [1, 3, 5, 10]
 
-        gt = ground_truth or load_ground_truth()
-        avail_imgs = available_images or get_available_test_images()
+        gt = ground_truth or load_ground_truth(csv_path)
+        target_clean = target_article_type.strip().lower()
 
-        # Xác định tập nhãn đúng (Relevant Set) trong số các ảnh khả dụng
-        relevant_filenames = {
-            fname for fname, meta in gt.items()
-            if (not avail_imgs or fname in avail_imgs)
-            and meta.get("articleType", "").strip().lower() == target_article_type.strip().lower()
-        }
-        total_relevant = len(relevant_filenames)
+        # Tổng số sản phẩm có nhãn này trong Ground Truth
+        total_relevant = sum(
+            1 for meta in gt.values()
+            if meta.get("articleType", "").strip().lower() == target_clean
+        )
 
         # Thực hiện tìm kiếm và đo thời gian Latency trên collection chỉ định
         start_time = time.perf_counter()
@@ -114,10 +117,13 @@ class EvaluationService:
         for item in raw_results:
             fname = item.get("file_name", "")
             clean_fname = os.path.basename(fname)
-            is_hit = clean_fname in relevant_filenames
-
-            retrieved_hits.append(is_hit)
             meta = gt.get(clean_fname, {})
+            item_article_type = meta.get("articleType", "").strip()
+
+            # So khớp trực tiếp nhãn: HIT nếu khớp target_article_type
+            is_hit = bool(item_article_type and item_article_type.lower() == target_clean)
+            retrieved_hits.append(is_hit)
+
             evaluated_items.append(
                 EvaluatedItem(
                     id=item.get("id", ""),
@@ -125,9 +131,9 @@ class EvaluationService:
                     score=float(item.get("score", 0.0)),
                     is_hit=is_hit,
                     image_path=item.get("image_path"),
-                    article_type=meta.get("articleType"),
-                    sub_category=meta.get("subCategory"),
-                    display_name=meta.get("productDisplayName"),
+                    article_type=item_article_type or None,
+                    sub_category=meta.get("subCategory") or None,
+                    display_name=meta.get("productDisplayName") or None,
                 )
             )
 
@@ -166,6 +172,7 @@ class EvaluationService:
         self,
         test_cases: Optional[List[Dict[str, str]]] = None,
         k_list: Optional[List[int]] = None,
+        csv_path: Optional[Union[str, Path]] = None,
     ) -> BenchmarkSummary:
         """
         Chạy toàn bộ bộ kiểm thử Benchmark, tổng hợp mAP, MRR và điểm trung bình Precision@K, Recall@K.
@@ -174,8 +181,7 @@ class EvaluationService:
             k_list = [1, 3, 5, 10]
         cases = test_cases or DEFAULT_BENCHMARK_CASES
 
-        gt = load_ground_truth()
-        avail_imgs = get_available_test_images()
+        gt = load_ground_truth(csv_path)
 
         query_results: List[QueryEvaluationResult] = []
         ap_scores: List[float] = []
@@ -194,7 +200,7 @@ class EvaluationService:
                 target_article_type=target,
                 k_list=k_list,
                 ground_truth=gt,
-                available_images=avail_imgs,
+                csv_path=csv_path,
             )
             query_results.append(res)
             ap_scores.append(res.ap)
@@ -205,23 +211,16 @@ class EvaluationService:
                 accum_precision[k].append(metric.precision)
                 accum_recall[k].append(metric.recall)
 
-        # Tính điểm trung bình (Mean Metrics)
-        total_q = len(query_results)
-        mean_precision = {
-            k: round(sum(vals) / total_q, 4) if total_q > 0 else 0.0
-            for k, vals in accum_precision.items()
-        }
-        mean_recall = {
-            k: round(sum(vals) / total_q, 4) if total_q > 0 else 0.0
-            for k, vals in accum_recall.items()
-        }
-        mean_map = round(sum(ap_scores) / total_q, 4) if total_q > 0 else 0.0
-        mean_mrr = round(sum(rr_scores) / total_q, 4) if total_q > 0 else 0.0
-        avg_latency = round(sum(latencies) / total_q, 2) if total_q > 0 else 0.0
+        # Tính điểm trung bình toàn hệ thống qua các hàm metrics chuẩn (Mean Metrics)
+        mean_precision = calculate_mean_metrics_at_k(accum_precision)
+        mean_recall = calculate_mean_metrics_at_k(accum_recall)
+        mean_map = calculate_map(ap_scores)
+        mean_mrr = calculate_mrr(rr_scores)
+        avg_latency = calculate_mean_latency(latencies)
 
         return BenchmarkSummary(
-            total_queries=total_q,
-            evaluated_images_count=len(avail_imgs) if avail_imgs else len(gt),
+            total_queries=len(query_results),
+            evaluated_images_count=len(gt),
             mean_precision_at_k=mean_precision,
             mean_recall_at_k=mean_recall,
             map_score=mean_map,
@@ -244,6 +243,7 @@ def evaluate_query(
     limit: int = 10,
     ground_truth: Optional[Dict[str, Dict[str, str]]] = None,
     available_images: Optional[Set[str]] = None,
+    csv_path: Optional[Union[str, Path]] = None,
 ) -> QueryEvaluationResult:
     """Hàm module-level tương thích ngược cho scripts/run_benchmark.py."""
     return evaluation_service.evaluate_query(
@@ -252,16 +252,17 @@ def evaluate_query(
         k_list=k_list,
         limit=limit,
         ground_truth=ground_truth,
-        available_images=available_images,
+        csv_path=csv_path,
     )
 
 
 def run_full_benchmark(
     test_cases: Optional[List[Dict[str, str]]] = None,
     k_list: Optional[List[int]] = None,
+    csv_path: Optional[Union[str, Path]] = None,
 ) -> BenchmarkSummary:
     """Hàm module-level tương thích ngược cho scripts/run_benchmark.py."""
-    return evaluation_service.run_full_benchmark(test_cases=test_cases, k_list=k_list)
+    return evaluation_service.run_full_benchmark(test_cases=test_cases, k_list=k_list, csv_path=csv_path)
 
 
 __all__ = [
@@ -280,6 +281,10 @@ __all__ = [
     "calculate_precision_recall_at_k",
     "calculate_average_precision",
     "calculate_reciprocal_rank",
+    "calculate_map",
+    "calculate_mrr",
+    "calculate_mean_metrics_at_k",
+    "calculate_mean_latency",
     # Module-level benchmark runners
     "evaluate_query",
     "run_full_benchmark",

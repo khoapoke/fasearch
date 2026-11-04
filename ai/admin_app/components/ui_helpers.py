@@ -111,6 +111,32 @@ def open_folder_dialog(initial_dir: Optional[Path] = None) -> Optional[str]:
         return None
 
 
+def open_csv_file_dialog(initial_dir: Optional[Path] = None) -> Optional[str]:
+    """
+    Mở hộp thoại chọn file CSV nhãn chuẩn Ground Truth (Windows File Explorer).
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        start_dir = str(initial_dir or BASE_DIR / "dataset")
+        file_selected = filedialog.askopenfilename(
+            initialdir=start_dir,
+            title="Chọn file nhãn Ground Truth (.csv)",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+        )
+        root.destroy()
+
+        if file_selected and file_selected.strip():
+            return str(Path(file_selected).resolve())
+        return None
+    except Exception:
+        return None
+
+
 def scan_folder_direct_images(folder_path: Union[str, Path]) -> List[Path]:
     """
     Chỉ quét các file ảnh trực tiếp nằm trong thư mục chỉ định (KHÔNG quét thư mục con).
