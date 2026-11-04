@@ -30,41 +30,14 @@ from src.utils.csv_helpers import (
     TEST_IMAGES_DIR,
 )
 
-logger = logging.getLogger(__name__)
+from test.benchmarks.search_cases import (
+    DEFAULT_BENCHMARK_CASES,
+    CORE_SEARCH_BENCHMARK_CASES,
+    FULL_SEARCH_BENCHMARK_CASES,
+    get_benchmark_cases,
+)
 
-# Bộ kịch bản kiểm thử mặc định chuẩn cho các nhóm thời trang chính
-DEFAULT_BENCHMARK_CASES = [
-    {
-        "query": "áo sơ mi nam nữ",
-        "target_article_type": "Shirts",
-        "description": "Tìm kiếm áo sơ mi",
-    },
-    {
-        "query": "áo thun nam phông trơn",
-        "target_article_type": "Tshirts",
-        "description": "Tìm kiếm áo thun",
-    },
-    {
-        "query": "quần jeans xanh nam",
-        "target_article_type": "Jeans",
-        "description": "Tìm kiếm quần bò ",
-    },
-    {
-        "query": "quần nỉ thể thao",
-        "target_article_type": "Track Pants",
-        "description": "Tìm kiếm quần thể thao ",
-    },
-    {
-        "query": "đồng hồ đeo tay",
-        "target_article_type": "Watches",
-        "description": "Tìm kiếm đồng hồ ",
-    },
-    {
-        "query": "đôi tất vớ nam",
-        "target_article_type": "Socks",
-        "description": "Tìm kiếm tất chân ",
-    },
-]
+logger = logging.getLogger(__name__)
 
 
 class EvaluationService:
@@ -274,6 +247,9 @@ __all__ = [
     "EvaluationService",
     "evaluation_service",
     "DEFAULT_BENCHMARK_CASES",
+    "CORE_SEARCH_BENCHMARK_CASES",
+    "FULL_SEARCH_BENCHMARK_CASES",
+    "get_benchmark_cases",
     # Re-exported CSV & Ground truth helpers
     "load_ground_truth",
     "get_available_test_images",

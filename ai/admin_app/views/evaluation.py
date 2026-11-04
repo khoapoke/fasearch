@@ -11,6 +11,9 @@ from src.services.evaluation_service import (
     load_ground_truth,
     get_available_article_types,
     DEFAULT_BENCHMARK_CASES,
+    CORE_SEARCH_BENCHMARK_CASES,
+    FULL_SEARCH_BENCHMARK_CASES,
+    get_benchmark_cases,
 )
 from admin_app.components.ui_helpers import resolve_image_path, open_csv_file_dialog
 
@@ -99,18 +102,34 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
     # TAB 1: ĐÁNH GIÁ TOÀN DIỆN (BENCHMARK SUITE)
     # =========================================================================
     with tab_suite:
-        st.markdown("##### Bộ kịch bản kiểm thử mặc định (6 ca kiểm thử chuẩn):")
+        suite_mode = st.radio(
+            "Phạm vi kịch bản kiểm thử:",
+            options=[
+                f"Trọng tâm ({len(CORE_SEARCH_BENCHMARK_CASES)} ngành hàng chính - >96% dữ liệu)",
+                f"Toàn diện (Tất cả {len(FULL_SEARCH_BENCHMARK_CASES)} danh mục trong styles.csv)",
+            ],
+            index=0,
+            horizontal=True,
+            help="Chọn bộ kịch bản kiểm thử mong muốn. Toàn bộ câu truy vấn đã được chuẩn hóa tiếng Anh cho mô hình CLIP.",
+        )
+        active_cases = (
+            CORE_SEARCH_BENCHMARK_CASES
+            if "Trọng tâm" in suite_mode
+            else FULL_SEARCH_BENCHMARK_CASES
+        )
+
+        st.markdown(f"##### Danh sách ca kiểm thử ({len(active_cases)} kịch bản):")
 
         # Hiển thị tóm tắt các ca kiểm thử
         suite_df = pd.DataFrame(
             [
                 {
                     "STT": idx + 1,
-                    "Câu truy vấn": c["query"],
+                    "Câu truy vấn (Query)": c["query"],
                     "Nhãn kỳ vọng (Target)": c["target_article_type"],
-                    "Mô tả": c["description"],
+                    "Mô tả mục đích": c["description"],
                 }
-                for idx, c in enumerate(DEFAULT_BENCHMARK_CASES)
+                for idx, c in enumerate(active_cases)
             ]
         )
         st.dataframe(suite_df, hide_index=True, width="stretch")
@@ -135,10 +154,10 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
             if not selected_k_values:
                 st.error("Vui lòng chọn ít nhất một ngưỡng K để đánh giá.")
             else:
-                with st.spinner(f"Đang thực thi các kịch bản kiểm thử trên collection '{current_col}'..."):
+                with st.spinner(f"Đang thực thi {len(active_cases)} kịch bản kiểm thử trên collection '{current_col}'..."):
                     try:
                         summary = eval_srv.run_full_benchmark(
-                            test_cases=DEFAULT_BENCHMARK_CASES,
+                            test_cases=active_cases,
                             k_list=sorted(selected_k_values),
                             csv_path=current_csv_path,
                         )
