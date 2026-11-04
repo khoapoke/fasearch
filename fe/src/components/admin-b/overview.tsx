@@ -4,56 +4,92 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./icons";
 import { AdminShellB } from "./admin-shell";
-import {
-  CURRENT, CURRENT_RANGE, GROWTH, INVENTORY_ROWS, MISSING_DAYS,
-  MISSING_LINES, PEAK, PREVIOUS, PREVIOUS_DAYS, PREVIOUS_RANGE, REVENUE_DAYS,
-  TODAY, dateText, money,
-} from "./fixtures";
 
 type Counts = Record<string, number>;
 type QueueOrder = { orderId: number; orderCode: string; status: string; customerName: string | null; totalAmount: number; createdAt: string };
 type Group = { total: number; rows: QueueOrder[] };
 type Overview = { role: "ADMIN" | "STAFF"; counts: Counts; queueTotal: number; groups: Record<string, Group>; fetchedAt: string };
+type RevenuePoint = { date: string; revenue: number; orders: number };
+type RevenueResult = { summary: { totalRevenue: number; totalOrders: number; averageOrderValue: number; totalCogs: number | null; grossProfit: number | null }; timeline: RevenuePoint[] };
+type StockException = { skuId: number; productId: number; productName: string; color: string | null; size: string | null; barcode: string | null; physicalStock: number; reservedStock: number; availableStock: number; minThreshold: number };
+type StockSummary = { totalSkus: number; outOfStock: number; lowStock: number; healthyStock: number; physicalTotal: number; reservedTotal: number; availableTotal: number; exceptionsTotal: number; limit: number; exceptions: StockException[] };
 const STAGES = [
   { code: "PENDING", label: "Mới tạo", lower: "mới tạo" },
   { code: "CONFIRMED", label: "Đã xác nhận", lower: "đã xác nhận" },
   { code: "PACKING", label: "Đang đóng gói", lower: "đang đóng gói" },
 ];
 const STATUS_LABEL: Record<string, string> = { PENDING: "Mới tạo", CONFIRMED: "Đã xác nhận", PACKING: "Đang đóng gói", SHIPPING: "Đang giao", COMPLETED: "Hoàn thành", CANCELLED: "Đã hủy", RETURNED: "Đã trả lại" };
+// Múi giờ hiển thị/kỳ báo cáo: Asia/Ho_Chi_Minh (ngày YYYY-MM-DD theo lịch Việt Nam).
+function todayLocal(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  return parts;
+}
+function shift(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00+07:00`); d.setDate(d.getDate() + days);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+function rangeText(start: string, end: string) { return `${dayText(start)} – ${dayText(end)}`; }
 function amount(v: number) { return v.toLocaleString("vi-VN"); }
 function Money({ v }: { v: number }) { return <span className="money">{amount(v)}<span className="unit">VND</span></span>; }
-function dayText(v: string) { return dateText(v); }
-function Chart({ expanded = false }: { expanded?: boolean }) {
-  // Compact viewBox matches the rendered card (~290px) so the approved 12px
-  // SVG labels do not shrink to ~6px; expanded keeps the dialog proportions.
-  const w = expanded ? 900 : 300, h = expanded ? 360 : 200;
-  const margin = expanded ? { left: 54, right: 18, top: 14, bottom: 34 } : { left: 34, right: 10, top: 10, bottom: 26 };
+function dayText(v: string) {
+  const d = new Date(`${v}T00:00:00+07:00`);
+  return Number.isNaN(d.getTime()) ? v : new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(d);
+}
+async function fetchRevenue(startDate: string, endDate: string): Promise<RevenueResult> {
+  const q = new URLSearchParams({ period: "DAY", startDate, endDate, channel: "ALL" });
+  const r = await fetch(`/api/admin/reports/revenue?${q}`, { cache: "no-store" });
+  const j = await r.json();
+  if (!r.ok || !j.success) throw new Error(j.message || "Không tải được doanh thu.");
+  const s = j.result.summary ?? {}, t = Array.isArray(j.result.timeline) ? j.result.timeline : [];
+  return { summary: { totalRevenue: Number(s.totalRevenue ?? 0), totalOrders: Number(s.totalOrders ?? 0), averageOrderValue: Number(s.averageOrderValue ?? 0), totalCogs: s.totalCogs ?? null, grossProfit: s.grossProfit ?? s.totalGrossProfit ?? null }, timeline: t.map((p: RevenuePoint) => ({ date: String(p.date), revenue: Number(p.revenue ?? 0), orders: Number(p.orders ?? 0) })) };
+}
+function Chart({ current, previous, maxLabel }: { current: RevenuePoint[]; previous: RevenuePoint[]; maxLabel: string }) {
+  const expanded = false;
+  const w = 300, h = 200;
+  const margin = { left: 34, right: 10, top: 10, bottom: 26 };
   const pw = w - margin.left - margin.right, ph = h - margin.top - margin.bottom;
-  const max = 8000000;
-  const x = (i: number) => margin.left + pw * i / 29;
+  const n = Math.max(current.length, previous.length, 1);
+  const peak = Math.max(0, ...current.map((p) => p.revenue), ...previous.map((p) => p.revenue));
+  const max = peak <= 0 ? 1 : Math.ceil(peak * 1.1 / 1000000) * 1000000;
+  const x = (i: number) => margin.left + (n === 1 ? pw / 2 : pw * i / (n - 1));
   const y = (v: number) => margin.top + ph * (1 - v / max);
-  const points = (rows: typeof REVENUE_DAYS) => rows.map((d, i) => `${x(i).toFixed(2)},${y(d.tongThu).toFixed(2)}`).join(" ");
+  const points = (rows: RevenuePoint[]) => rows.map((d, i) => `${x(i).toFixed(2)},${y(d.revenue).toFixed(2)}`).join(" ");
+  const ticks = [0, max / 2, max];
+  const idx = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
   return (
-    <figure className={`chart chart-${expanded ? "expanded" : "compact"}`}>
-      <div className="chart-frame" data-chart={expanded ? "expanded" : "compact"}>
-        <svg role="img" viewBox={`0 0 ${w} ${h}`} aria-label={`Doanh thu 30 ngày kỳ này và kỳ trước, thang 0 đến 8 triệu VND`}>
+    <figure className="chart chart-compact">
+      <div className="chart-frame" data-chart="compact">
+        <svg role="img" viewBox={`0 0 ${w} ${h}`} aria-label={`Doanh thu theo ngày, thang 0 đến ${maxLabel}`}>
           <title>Doanh thu theo ngày</title>
-          <desc>30 điểm kỳ 26/09 đến 25/10/2026 và 30 điểm kỳ 27/08 đến 25/09/2026, thang 0 đến 8 triệu VND.</desc>
-          <g className="chart-grid">{[[0, "0"], [2000000, "2 tr"], [4000000, "4 tr"], [6000000, "6 tr"], [8000000, "8 tr"]].map(([v, l]) => <g key={String(v)}><line x1={margin.left} x2={w - margin.right} y1={y(Number(v))} y2={y(Number(v))} /><text x={margin.left - 9} y={y(Number(v)) + 4} textAnchor="end">{l}</text></g>)}</g>
-          <polyline className="previous-line" points={points(PREVIOUS_DAYS)} />
-          <polyline className="current-line" points={points(REVENUE_DAYS)} />
-          <circle className="last-dot" cx={x(29)} cy={y(REVENUE_DAYS[29].tongThu)} r="3.5" />
-          <g className="chart-axis">{[0, 14, 29].map((i) => <text key={i} x={x(i)} y={h - 9} textAnchor={i === 0 ? "start" : i === 29 ? "end" : "middle"}>{dayText(REVENUE_DAYS[i].date).slice(0, 5)}</text>)}</g>
+          <g className="chart-grid">{ticks.map((v) => <g key={String(v)}><line x1={margin.left} x2={w - margin.right} y1={y(v)} y2={y(v)} /><text x={margin.left - 9} y={y(v) + 4} textAnchor="end">{v >= 1000000 ? `${v / 1000000} tr` : String(Math.round(v))}</text></g>)}</g>
+          {previous.length > 0 ? <polyline className="previous-line" points={points(previous)} /> : null}
+          {current.length > 0 ? <polyline className="current-line" points={points(current)} /> : null}
+          {current.length > 0 ? <circle className="last-dot" cx={x(current.length - 1)} cy={y(current[current.length - 1].revenue)} r="3.5" /> : null}
+          <g className="chart-axis">{idx.map((i) => current[i] ? <text key={i} x={x(i)} y={h - 9} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}>{dayText(current[i].date).slice(0, 5)}</text> : null)}</g>
         </svg>
       </div>
-      <figcaption className="chart-legend"><span><i className="swatch current" />{CURRENT_RANGE}</span><span><i className="swatch previous" />{PREVIOUS_RANGE}</span><small>So sánh theo ngày trong kỳ.</small></figcaption>
     </figure>
   );
 }
-function FinancePreview() {
+function FinanceLive({ start, end }: { start: string; end: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const chartButtonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const [cur, setCur] = useState<RevenueResult | null>(null);
+  const [prev, setPrev] = useState<RevenueResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const c = new AbortController();
+    setLoading(true); setError("");
+    const len = Math.round((new Date(`${end}T00:00:00+07:00`).getTime() - new Date(`${start}T00:00:00+07:00`).getTime()) / 86400000) + 1;
+    const prevEnd = shift(start, -1), prevStart = shift(start, -len);
+    Promise.all([fetchRevenue(start, end), fetchRevenue(prevStart, prevEnd)])
+      .then(([a, b]) => { if (!c.signal.aborted) { setCur(a); setPrev(b); } })
+      .catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được doanh thu."); })
+      .finally(() => { if (!c.signal.aborted) setLoading(false); });
+    return () => c.abort();
+  }, [start, end]);
   const show = () => { dialogRef.current?.showModal(); setOpen(true); };
   const close = () => { dialogRef.current?.close(); setOpen(false); };
   useEffect(() => {
@@ -61,40 +97,60 @@ function FinancePreview() {
     const onClose = () => { setOpen(false); chartButtonRef.current?.focus(); };
     d.addEventListener("close", onClose); return () => d.removeEventListener("close", onClose);
   }, []);
+  if (loading) return <aside className="finance-desk" aria-labelledby="finance-title"><p className="section-label">Kinh doanh · LIVE</p><p className="meta" role="status">Đang tải doanh thu…</p></aside>;
+  if (error || !cur || !prev) return <aside className="finance-desk" aria-labelledby="finance-title"><p className="section-label">Kinh doanh · LIVE</p><div className="order-empty" role="alert"><strong>Không tải được doanh thu</strong><p>{error}</p></div></aside>;
+  const growth = prev.summary.totalRevenue > 0 ? ((cur.summary.totalRevenue - prev.summary.totalRevenue) / prev.summary.totalRevenue) * 100 : null;
+  const peak = cur.timeline.reduce<RevenuePoint | null>((best, p) => (!best || p.revenue > best.revenue ? p : best), null);
+  const last = cur.timeline[cur.timeline.length - 1] ?? null;
+  const prevLen = prev.timeline.length, curLen = cur.timeline.length, rows = Math.max(curLen, prevLen);
+  const maxLabel = `${Math.ceil(Math.max(0, ...cur.timeline.map((p) => p.revenue)) * 1.1 / 1000000) * 1000000 / 1000000} triệu VND`;
   return (
     <aside className="finance-desk" aria-labelledby="finance-title">
-      <p className="section-label">Kinh doanh · PREVIEW</p>
-      <h2 className="metric-label" id="finance-title">Doanh thu 30 ngày</h2>
-      <div className="revenue">{money(CURRENT)}</div>
-      <p className="meta period">{CURRENT_RANGE}</p>
-      <div className="comparison"><span className="trend"><Icon name="arrow-up-right" />+{GROWTH}%</span><span>so với kỳ trước <b>{money(PREVIOUS)}</b><small>{PREVIOUS_RANGE}</small></span></div>
-      <p className="meta preview-mark">Fixture canonical · không phải KPI live từ BE</p>
-      <div className="chart-heading"><h3>Doanh thu theo ngày</h3><span className="meta">0–8 triệu VND</span></div>
-      <Chart />
+      <p className="section-label">Kinh doanh · LIVE</p>
+      <h2 className="metric-label" id="finance-title">Doanh thu {curLen} ngày</h2>
+      <div className="revenue">{amount(cur.summary.totalRevenue)}<span className="unit">VND</span></div>
+      <p className="meta period">{rangeText(start, end)} · {cur.summary.totalOrders} hóa đơn đã thanh toán · AOV {amount(Math.round(cur.summary.averageOrderValue))} VND</p>
+      <div className="comparison">{growth === null ? <span>kỳ trước chưa có doanh thu · không tính tăng trưởng</span> : <span><span className="trend"><Icon name="arrow-up-right" />{growth >= 0 ? "+" : ""}{growth.toFixed(1)}%</span><span>so với kỳ trước <b>{amount(prev.summary.totalRevenue)} VND</b></span></span>}</div>
+      <p className="meta preview-mark">Kỳ trước: {rangeText(shift(start, -Math.max(rows, 1)), shift(start, -1))} · cùng độ dài · kênh ALL</p>
+      <div className="chart-heading"><h3>Doanh thu theo ngày</h3></div>
+      {curLen === 0 ? <p className="meta">Chưa đủ dữ liệu trong kỳ đã chọn.</p> : <Chart current={cur.timeline} previous={prev.timeline} maxLabel={maxLabel} />}
       <button ref={chartButtonRef} className="chart-open" type="button" onClick={show} aria-haspopup="dialog" aria-controls="chart-dialog" aria-expanded={open}><Icon name="chart-no-axes-combined" />Xem biểu đồ lớn</button>
-      <p className="peak meta">Đỉnh kỳ: <b><Money v={PEAK.tongThu} /></b> · {dayText(PEAK.date)}</p>
-      <div className="today"><div><span className="meta">Hôm nay · {dayText(TODAY.date)}</span><strong><Money v={TODAY.total} /></strong></div><span className="bill-count">{TODAY.invoices} hóa đơn</span></div>
-      <details className="cost"><summary><Icon name="triangle-alert" /><span><strong>Chưa đủ dữ liệu giá vốn</strong><small>{MISSING_LINES} dòng trong {MISSING_DAYS.length} ngày</small></span><Icon name="chevron-down" /></summary><div className="cost-body"><div className="cost-dates">{MISSING_DAYS.map((d) => <div key={d.date}><span>{dayText(d.date)}</span><b>{d.dongThieuVon} dòng thiếu</b></div>)}</div><p>Chưa thể hiển thị tổng lãi gộp đầy đủ. Giá vốn thiếu không được coi là 0.</p></div></details>
+      {peak ? <p className="peak meta">Đỉnh kỳ: <b><Money v={peak.revenue} /></b> · {dayText(peak.date)}</p> : null}
+      {last ? <div className="today"><div><span className="meta">Cuối kỳ · {dayText(last.date)}</span><strong><Money v={last.revenue} /></strong></div><span className="bill-count">{last.orders} hóa đơn</span></div> : null}
+      <details className="cost"><summary><Icon name="triangle-alert" /><span><strong>Chưa đủ dữ liệu giá vốn</strong><small>BE không có lịch sử giá vốn</small></span><Icon name="chevron-down" /></summary><div className="cost-body"><p>Giá vốn (COGS) và lãi gộp là <b>null</b> trên mọi kỳ · không được coi là 0. Mở rộng chi tiết theo ngày nằm trong bảng bên dưới.</p></div></details>
       <dialog ref={dialogRef} id="chart-dialog" aria-labelledby="chart-dialog-title">
         <div className="dialog-head"><h2 id="chart-dialog-title" tabIndex={-1}>Doanh thu theo ngày</h2><button className="icon-btn" type="button" aria-label="Đóng biểu đồ lớn" onClick={close}><Icon name="x" /></button></div>
-        <p className="dialog-meta">30 ngày mỗi kỳ · thang 0–8 triệu VND · {CURRENT_RANGE} so với {PREVIOUS_RANGE}</p>
-        <Chart expanded />
+        <p className="dialog-meta">{rangeText(start, end)} so với kỳ trước cùng độ dài · kênh ALL</p>
+        {curLen === 0 ? <p className="meta">Chưa đủ dữ liệu trong kỳ đã chọn.</p> : <Chart current={cur.timeline} previous={prev.timeline} maxLabel={maxLabel} />}
         <p className="dialog-note">Bảng số liệu đầy đủ nằm bên dưới Overview.</p>
       </dialog>
+      <details className="paired-data"><summary><Icon name="table-2" /><span>Bảng số liệu hai kỳ · {rows} ngày</span><Icon name="chevron-down" /></summary><div className="table-scroll" tabIndex={0} aria-label="Bảng doanh thu hai kỳ"><table><caption>Doanh thu live kỳ {rangeText(start, end)} và kỳ trước cùng độ dài · VND · giá vốn null trên mọi dòng.</caption><thead><tr><th>Ngày kỳ này</th><th className="num">Doanh thu</th><th className="num">Hóa đơn</th><th>Giá vốn kỳ này</th><th>Ngày kỳ trước</th><th className="num">Doanh thu kỳ trước</th><th>Giá vốn kỳ trước</th></tr></thead><tbody>{Array.from({ length: rows }, (_, i) => { const a = cur.timeline[i] ?? null, b = prev.timeline[i] ?? null; return <tr key={a?.date ?? `cur-${i}`}><td>{a ? dayText(a.date) : "—"}</td><td className="num">{a ? amount(a.revenue) : "—"}</td><td className="num">{a ? a.orders : "—"}</td><td>Chưa đủ dữ liệu</td><td>{b ? dayText(b.date) : "—"}</td><td className="num">{b ? amount(b.revenue) : "—"}</td><td>Chưa đủ dữ liệu</td></tr>; })}</tbody></table></div></details>
     </aside>
   );
 }
-function DataPreview() {
-  return <section className="data-section" aria-labelledby="paired-title"><details className="paired-data"><summary><Icon name="table-2" /><span id="paired-title">Bảng số liệu hai kỳ · 30 ngày</span><Icon name="chevron-down" /></summary><div className="table-scroll" tabIndex={0} aria-label="Bảng doanh thu hai kỳ"><table><caption>Doanh thu hai kỳ · VND · PREVIEW fixture. Ngày căn theo vị trí trong kỳ, không phải cùng ngày lịch; giá vốn thiếu không được coi là 0.</caption><thead><tr><th>Ngày kỳ này</th><th className="num">Doanh thu</th><th>Giá vốn kỳ này</th><th>Ngày kỳ trước</th><th className="num">Doanh thu kỳ trước</th><th>Giá vốn kỳ trước</th></tr></thead><tbody>{REVENUE_DAYS.map((d, i) => <tr key={d.date}><td>{dayText(d.date)}</td><td className="num">{amount(d.tongThu)}</td><td>{d.covered ? "Đủ dữ liệu" : `Thiếu ${d.dongThieuVon} dòng`}</td><td>{dayText(PREVIOUS_DAYS[i].date)}</td><td className="num">{amount(PREVIOUS_DAYS[i].tongThu)}</td><td>Đủ dữ liệu</td></tr>)}</tbody></table></div></details></section>;
-}
-function InventoryPreview() {
-  return <section className="inventory" aria-labelledby="stock-title"><div className="section-head"><div><h2 id="stock-title">Tồn kho cần chú ý</h2><p className="meta">PREVIEW fixture · 1 kho · 3 SKU</p></div><p className="exception-label"><Icon name="triangle-alert" />Theo kho: 2 mục hết hàng · 1 mục sắp hết</p></div><div className="table-scroll" tabIndex={0} aria-label="Danh sách tồn kho preview"><table><caption>PREVIEW canonical, không phải API tồn kho live; mỗi dòng là một SKU tại một kho, xếp theo quy tắc ưu tiên.</caption><thead><tr><th>SKU / Sản phẩm</th><th>Kho</th><th className="num">Tồn hiện tại</th><th className="num">Ngưỡng</th><th>Trạng thái</th></tr></thead><tbody>{INVENTORY_ROWS.map((r) => <tr key={`${r.sku}-${r.warehouse}`}><td><strong className="sku">{r.sku}</strong><small className="product-name">{r.name}</small><small className="warehouse-inline">{r.warehouse}</small></td><td className="warehouse">{r.warehouse}</td><td className={`num stock-number${r.state === "out" ? " zero" : ""}`}>{r.stock}</td><td className="num">{r.threshold}</td><td><span className={`badge ${r.state}`}>{r.state === "out" ? "Hết hàng" : "Sắp hết"}</span></td></tr>)}</tbody></table></div></section>;
+function InventoryLive() {
+  const [data, setData] = useState<StockSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const c = new AbortController();
+    fetch("/api/admin/stock-summary?limit=20", { cache: "no-store", signal: c.signal }).then(async (r) => { const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được tồn kho."); return j.result as StockSummary; }).then((s) => { if (!c.signal.aborted) setData(s); }).catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được tồn kho."); }).finally(() => { if (!c.signal.aborted) setLoading(false); });
+    return () => c.abort();
+  }, []);
+  return <section className="inventory" aria-labelledby="stock-title"><div className="section-head"><div><h2 id="stock-title">Tồn kho cần chú ý</h2><p className="meta">LIVE · toàn danh mục {data ? `${amount(data.totalSkus)} SKU` : "…"}</p></div>{data ? <p className="exception-label"><Icon name="triangle-alert" />{amount(data.outOfStock)} hết hàng · {amount(data.lowStock)} sắp hết · {amount(data.healthyStock)} ổn định</p> : null}</div>
+    {loading ? <p className="meta" role="status">Đang tải tồn kho…</p> : null}
+    {error ? <div className="order-empty" role="alert"><strong>Không tải được tồn kho</strong><p>{error}</p></div> : null}
+    {data ? <><div className="table-scroll" tabIndex={0} aria-label="Danh sách tồn kho cần chú ý"><table><caption>Live từ hợp đồng tồn kho · tối đa {data.limit} dòng ưu tiên tồn thấp nhất · tổng {amount(data.exceptionsTotal)} ngoại lệ.</caption><thead><tr><th>SKU / Sản phẩm</th><th className="num">Tồn hiện tại</th><th className="num">Đang giữ</th><th className="num">Ngưỡng SKU</th><th>Trạng thái</th></tr></thead><tbody>{data.exceptions.map((r) => { const out = r.availableStock <= 0; return <tr key={r.skuId}><td><strong className="sku">#{r.skuId}</strong><small className="product-name">{r.productName}{r.color ? ` · ${r.color}` : ""}{r.size ? ` · ${r.size}` : ""}</small></td><td className={`num stock-number${out ? " zero" : ""}`}>{r.availableStock}</td><td className="num">{r.reservedStock}</td><td className="num">{r.minThreshold}</td><td><span className={`badge ${out ? "out" : "low"}`}>{out ? "Hết hàng" : "Sắp hết"}</span></td></tr>; })}</tbody></table></div><p className="meta">Ngưỡng là giá trị tồn tại của từng SKU (minThreshold) · hợp đồng không có danh tính kho và không có ngưỡng toàn cục · <Link className="text-link" href="/quan-tri/ton-kho">Xem danh sách tồn kho</Link></p></> : null}
+  </section>;
 }
 export function OverviewClient() {
   const [data, setData] = useState<Overview | null>(null);
   const [stage, setStage] = useState("PENDING");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [end, setEnd] = useState(todayLocal());
+  const [start, setStart] = useState(() => shift(todayLocal(), -2));
+  const [applied, setApplied] = useState(() => ({ start: shift(todayLocal(), -2), end: todayLocal() }));
   useEffect(() => {
     const c = new AbortController();
     fetch("/api/admin/overview", { cache: "no-store", signal: c.signal }).then(async (r) => { const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được tổng quan."); return j.result as Overview; }).then(setData).catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được tổng quan."); }).finally(() => { if (!c.signal.aborted) setLoading(false); });
@@ -116,8 +172,15 @@ export function OverviewClient() {
     const next = event.key === "Home" ? 0 : event.key === "End" ? STAGES.length - 1 : event.key === "ArrowRight" ? (index + 1) % STAGES.length : (index - 1 + STAGES.length) % STAGES.length;
     selectStage(STAGES[next].code);
   };
+  const applyRange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) { setError("Khoảng ngày chưa hợp lệ (YYYY-MM-DD, từ ngày ≤ đến ngày)."); return; }
+    setError("");
+    setApplied({ start, end });
+  };
+  const resetRange = () => { const t = todayLocal(); setStart(shift(t, -2)); setEnd(t); setApplied({ start: shift(t, -2), end: t }); setError(""); };
   return <AdminShellB active="overview" title="Tổng quan">
-    <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Đơn cập nhật từ BE · {freshness ?? "chưa có thời điểm tải thành công"}</p></div>{admin ? <details className="date-control"><summary><Icon name="calendar-days" /><span>{CURRENT_RANGE}</span><Icon name="chevron-down" /></summary><div className="date-popover"><strong>Kỳ doanh thu</strong><p className="meta">30 ngày hoàn chỉnh · PREVIEW fixture</p><div className="period-selected">{CURRENT_RANGE}</div><p className="meta">So sánh: {PREVIOUS_RANGE}</p><p className="meta">Kỳ doanh thu chỉ thuộc khối preview; danh sách đơn luôn gồm mọi ngày tạo.</p></div></details> : null}</div>
+    <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Đơn cập nhật từ BE · {freshness ?? "chưa có thời điểm tải thành công"}</p></div>{admin ? <form className="date-control" onSubmit={applyRange}><label>Từ ngày<input type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} /></label><label>Đến ngày<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" type="submit">Áp dụng</button><button className="text-link" type="button" onClick={resetRange}>Đặt lại</button><p className="meta">Kỳ theo lịch Asia/Ho_Chi_Minh · kênh ALL</p></form> : null}</div>
     {loading ? <p className="meta">Đang tải hàng đợi đơn…</p> : null}
     {error ? <div className="order-empty" role="alert"><strong>Không tải được tổng quan</strong><p>{error}</p><Link className="text-link" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div> : null}
     {data ? <div className="desk-grid"><div className="operations">
@@ -129,8 +192,7 @@ export function OverviewClient() {
         <div className="work-footer" id="work-footer"><span className="preview-count">Hiển thị {queue.length}/{group.total} đơn {STAGES.find((item) => item.code === stage)?.lower ?? ""} · tổng {data.queueTotal}</span>{group.total > 0 ? <Link className="text-link preview-link" href={`/quan-tri/don-hang?status=${stage}`}>Xem tất cả<Icon name="arrow-right" /></Link> : null}</div>
       </section>
       <div className="desk-continuations"><div className="continuation"><Icon name="truck" /><span><strong>Giao &amp; thu COD</strong><small>Chưa có dữ liệu kênh/thanh toán trong DTO</small></span><b>—</b></div><div className="continuation"><Icon name="monitor" /><span><strong>Nháp POS</strong><small>Ngoài phạm vi read pilot</small></span><b>—</b></div></div>
-      <InventoryPreview />
-    </div>{admin ? <FinancePreview /> : null}</div> : null}
-    {admin ? <DataPreview /> : null}
+      <InventoryLive />
+    </div>{admin ? <FinanceLive start={applied.start} end={applied.end} /> : null}</div> : null}
   </AdminShellB>;
 }
