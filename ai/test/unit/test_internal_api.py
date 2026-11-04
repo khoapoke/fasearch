@@ -47,7 +47,7 @@ def test_upsert_search_roundtrip_returns_product_id(client, mem_repo):
     assert res.json()["data"]["results"][0]["product_id"] == "812"
 
 
-@pytest.mark.parametrize("pid", ["abc", "-1", "12.5", " "])
+@pytest.mark.parametrize("pid", ["abc", "-1", "12.5", " ", "1234567890123456789012", "²"])
 def test_upsert_rejects_non_numeric_product_id(client, mem_repo, pid):
     assert _upsert(client, product_id=pid, name="x").status_code == 400
 
@@ -71,6 +71,7 @@ def test_delete_removes_point_and_is_idempotent(client, mem_repo):
     assert mem_repo.get_by_id(806) is None
     assert client.delete("/internal/v1/index/products/806").status_code == 200
     assert client.delete("/internal/v1/index/products/abc").status_code == 400
+    assert client.delete("/internal/v1/index/products/1234567890123456789012").status_code == 400
 
 
 def test_health_reports_collection_and_points(client, mem_repo):

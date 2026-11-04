@@ -36,9 +36,12 @@ def _require_loopback(request: Request) -> None:
 
 def _numeric_product_id(product_id: str) -> int:
     text = (product_id or "").strip()
-    if not text.isdigit():
+    if not (text.isascii() and text.isdigit()):
         raise HTTPException(status_code=400, detail="product_id phải là số nguyên")
-    return int(normalize_point_id(text))
+    try:
+        return int(normalize_point_id(text))
+    except InvalidInputError:
+        raise HTTPException(status_code=400, detail="product_id không hợp lệ (tối đa 18 chữ số)")
 
 
 @internal_router.post("/internal/v1/index/upsert")
