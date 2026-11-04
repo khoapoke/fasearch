@@ -139,3 +139,14 @@ def test_upload_temp_file_is_cleaned_up(client, seeded):
     _post_image(client, filename="a.jpg", data=b"bad", limit=5)
     _post_image(client, limit=5)
     assert set(os.listdir(UPLOAD_DIR)) == before
+
+
+@pytest.mark.parametrize("name", ["../../etc/x.jpg", "a/b/c.png", "áo sơ mi 1.jpg", "..\\..\\x.png"])
+def test_odd_upload_filenames_do_not_break_or_escape(client, seeded, name):
+    import os
+    from src.api.endpoints import UPLOAD_DIR
+
+    res = _post_image(client, filename=name, limit=5)
+    assert res.status_code == 200, res.text
+    assert _post_multi(client, filename=name, limit=5, query="x").status_code == 200
+    assert os.listdir(UPLOAD_DIR) == [] or all(not os.path.isdir(os.path.join(UPLOAD_DIR, n)) for n in os.listdir(UPLOAD_DIR))

@@ -69,7 +69,8 @@ async def api_search_image(file: UploadFile = File(...), limit: int = Form(5)):
         )
 
     # 3. Tạo tên file tạm ngẫu nhiên bằng UUID để chống Race Condition khi nhiều client upload cùng lúc
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    # Chỉ dùng phần mở rộng đã kiểm tra: tên file do client gửi (có thể chứa ../ hoặc ký tự lạ) không đi vào đường dẫn
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_location = os.path.join(UPLOAD_DIR, unique_filename)
 
     try:
@@ -139,7 +140,8 @@ async def api_search_multimodal(
         )
 
     # 4. Tạo tên file tạm ngẫu nhiên bằng UUID để chống Race Condition
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    # Chỉ dùng phần mở rộng đã kiểm tra: tên file do client gửi (có thể chứa ../ hoặc ký tự lạ) không đi vào đường dẫn
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_location = os.path.join(UPLOAD_DIR, unique_filename)
 
     try:
