@@ -83,6 +83,7 @@ function FinanceLive({ start, end }: { start: string; end: string }) {
   const [prev, setPrev] = useState<RevenueResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     const c = new AbortController();
     setLoading(true); setError("");
@@ -93,7 +94,7 @@ function FinanceLive({ start, end }: { start: string; end: string }) {
       .catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được doanh thu."); })
       .finally(() => { if (!c.signal.aborted) setLoading(false); });
     return () => c.abort();
-  }, [start, end]);
+  }, [start, end, retry]);
   const show = () => { dialogRef.current?.showModal(); setOpen(true); };
   const close = () => { dialogRef.current?.close(); setOpen(false); };
   useEffect(() => {
@@ -102,7 +103,7 @@ function FinanceLive({ start, end }: { start: string; end: string }) {
     d.addEventListener("close", onClose); return () => d.removeEventListener("close", onClose);
   }, []);
   if (loading) return <aside className="finance-desk" aria-labelledby="finance-title"><p className="section-label">Kinh doanh · LIVE</p><p className="meta" role="status">Đang tải doanh thu…</p></aside>;
-  if (error || !cur || !prev) return <aside className="finance-desk" aria-labelledby="finance-title"><p className="section-label">Kinh doanh · LIVE</p><div className="order-empty" role="alert"><strong>Không tải được doanh thu</strong><p>{error}</p></div></aside>;
+  if (error || !cur || !prev) return <aside className="finance-desk" aria-labelledby="finance-title"><p className="section-label">Kinh doanh · LIVE</p><div className="order-empty" role="alert"><strong>Không tải được doanh thu</strong><p>{error}</p><button className="text-link" type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại doanh thu</button></div></aside>;
   const growth = prev.summary.totalRevenue > 0 ? ((cur.summary.totalRevenue - prev.summary.totalRevenue) / prev.summary.totalRevenue) * 100 : null;
   const peak = cur.timeline.reduce<RevenuePoint | null>((best, p) => (!best || p.revenue > best.revenue ? p : best), null);
   const last = cur.timeline[cur.timeline.length - 1] ?? null;
@@ -136,14 +137,16 @@ function InventoryLive() {
   const [data, setData] = useState<StockSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     const c = new AbortController();
+    setLoading(true); setError("");
     fetch("/api/admin/stock-summary?limit=20", { cache: "no-store", signal: c.signal }).then(async (r) => { const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được tồn kho."); return j.result as StockSummary; }).then((s) => { if (!c.signal.aborted) setData(s); }).catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được tồn kho."); }).finally(() => { if (!c.signal.aborted) setLoading(false); });
     return () => c.abort();
-  }, []);
+  }, [retry]);
   return <section className="inventory" aria-labelledby="stock-title"><div className="section-head"><div><h2 id="stock-title">Tồn kho cần chú ý</h2><p className="meta">LIVE · toàn danh mục {data ? `${amount(data.totalSkus)} SKU` : "…"}</p></div>{data ? <p className="exception-label"><Icon name="triangle-alert" />{amount(data.outOfStock)} hết hàng · {amount(data.lowStock)} sắp hết · {amount(data.healthyStock)} ổn định</p> : null}</div>
     {loading ? <p className="meta" role="status">Đang tải tồn kho…</p> : null}
-    {error ? <div className="order-empty" role="alert"><strong>Không tải được tồn kho</strong><p>{error}</p></div> : null}
+    {error ? <div className="order-empty" role="alert"><strong>Không tải được tồn kho</strong><p>{error}</p><button className="text-link" type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại tồn kho</button></div> : null}
     {data ? <><div className="table-scroll" tabIndex={0} aria-label="Danh sách tồn kho cần chú ý"><table><caption>Live từ hợp đồng tồn kho · tối đa {data.limit} dòng ưu tiên tồn thấp nhất · tổng {amount(data.exceptionsTotal)} ngoại lệ.</caption><thead><tr><th>SKU / Sản phẩm</th><th className="num">Tồn hiện tại</th><th className="num">Đang giữ</th><th className="num">Ngưỡng SKU</th><th>Trạng thái</th></tr></thead><tbody>{data.exceptions.map((r) => { const out = r.availableStock <= 0; return <tr key={r.skuId}><td><strong className="sku">#{r.skuId}</strong><small className="product-name">{r.productName}{r.color ? ` · ${r.color}` : ""}{r.size ? ` · ${r.size}` : ""}</small></td><td className={`num stock-number${out ? " zero" : ""}`}>{r.availableStock}</td><td className="num">{r.reservedStock}</td><td className="num">{r.minThreshold}</td><td><span className={`badge ${out ? "out" : "low"}`}>{out ? "Hết hàng" : "Sắp hết"}</span></td></tr>; })}</tbody></table></div><p className="meta">Ngưỡng là giá trị tồn tại của từng SKU (minThreshold) · hợp đồng không có danh tính kho và không có ngưỡng toàn cục · <Link className="text-link" href="/quan-tri/ton-kho">Xem danh sách tồn kho</Link></p></> : null}
   </section>;
 }
@@ -151,15 +154,17 @@ export function OverviewClient() {
   const [data, setData] = useState<Overview | null>(null);
   const [stage, setStage] = useState("PENDING");
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [end, setEnd] = useState(todayLocal());
   const [start, setStart] = useState(() => shift(todayLocal(), -2));
   const [applied, setApplied] = useState(() => ({ start: shift(todayLocal(), -2), end: todayLocal() }));
   useEffect(() => {
     const c = new AbortController();
+    setLoading(true); setError("");
     fetch("/api/admin/overview", { cache: "no-store", signal: c.signal }).then(async (r) => { const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được tổng quan."); return j.result as Overview; }).then(setData).catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được tổng quan."); }).finally(() => { if (!c.signal.aborted) setLoading(false); });
     return () => c.abort();
-  }, []);
+  }, [retry]);
   const admin = data?.role === "ADMIN";
   const counts = data?.counts ?? {};
   const group = data?.groups?.[stage] ?? { total: 0, rows: [] };
@@ -186,7 +191,7 @@ export function OverviewClient() {
   return <AdminShellB active="overview" title="Tổng quan">
     <div className="page-heading"><div><h1>Tổng quan</h1><p className="meta">Đơn cập nhật từ BE · {freshness ?? "chưa có thời điểm tải thành công"}</p></div>{admin ? <form className="date-control date-range" onSubmit={applyRange}><div className="catalog-field"><label htmlFor="ov-start">Từ ngày</label><input id="ov-start" className="catalog-input" type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} /></div><div className="catalog-field"><label htmlFor="ov-end">Đến ngày</label><input id="ov-end" className="catalog-input" type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></div><div className="date-actions"><button className="primary" type="submit">Áp dụng</button><button className="text-link" type="button" onClick={resetRange}>Đặt lại</button></div><p className="meta date-note">Kỳ theo lịch Asia/Ho_Chi_Minh · kênh ALL</p></form> : null}</div>
     {loading ? <p className="meta">Đang tải hàng đợi đơn…</p> : null}
-    {error ? <div className="order-empty" role="alert"><strong>Không tải được tổng quan</strong><p>{error}</p><Link className="text-link" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div> : null}
+    {error ? <div className="order-empty" role="alert"><strong>Không tải được tổng quan</strong><p>{error}</p><button className="text-link" type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại tổng quan</button></div> : null}
     {data ? <div className="desk-grid"><div className="operations">
       <section className="workbench" aria-labelledby="work-title"><div className="work-title"><span className="work-count">{data.queueTotal}</span><div><h2 id="work-title">đơn cần xử lý</h2><p className="meta scope">Đơn từ BE · chưa có kênh/thanh toán · cũ nhất trước</p></div></div>
         <div className="stage-tabs" role="tablist" aria-label="Trạng thái đơn cần xử lý">{STAGES.map((item, index) => <button key={item.code} id={`tab-${item.code}`} type="button" role="tab" aria-selected={stage === item.code} aria-controls="order-panel" tabIndex={stage === item.code ? 0 : -1} onClick={() => selectStage(item.code)} onKeyDown={(event) => onTabKey(event, index)}>{item.label}<span>{counts[item.code] ?? 0}</span></button>)}</div>

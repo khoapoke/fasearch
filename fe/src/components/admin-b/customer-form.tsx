@@ -9,11 +9,16 @@ export function CustomerForm({ mode, customer }: { mode: "create" | "edit"; cust
   const [values, setValues] = useState<Values>(customer ? { firstName: customer.firstName ?? "", lastName: customer.lastName, phoneNumber: customer.phoneNumber, gender: customer.gender ?? "", dob: customer.dob ?? "", address: customer.address ?? "" } : EMPTY);
   const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const busyRef = useRef(false); const [focus, setFocus] = useState("");
   function set(key: keyof Values, value: string) { setValues((v) => ({ ...v, [key]: value })); if (focus === key) setFocus(""); }
+  function invalid(field: keyof Values, message: string) {
+    setError(message); setFocus(field);
+    const ids: Partial<Record<keyof Values, string>> = { lastName: "cust-last", phoneNumber: "cust-phone", dob: "cust-dob" };
+    requestAnimationFrame(() => document.getElementById(ids[field] ?? "")?.focus());
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); if (busyRef.current) return;
-    if (!values.lastName.trim()) { setError("Nhập tên khách hàng."); setFocus("lastName"); return; }
-    if (!/^(0|\+84)[0-9]{9}$/.test(values.phoneNumber.trim())) { setError("Số điện thoại không đúng định dạng Việt Nam."); setFocus("phoneNumber"); return; }
-    if (values.dob && !/^\d{4}-\d{2}-\d{2}$/.test(values.dob)) { setError("Ngày sinh phải có dạng YYYY-MM-DD."); setFocus("dob"); return; }
+    if (!values.lastName.trim()) { invalid("lastName", "Nhập tên khách hàng."); return; }
+    if (!/^(0|\+84)[0-9]{9}$/.test(values.phoneNumber.trim())) { invalid("phoneNumber", "Số điện thoại không đúng định dạng Việt Nam."); return; }
+    if (values.dob && !/^\d{4}-\d{2}-\d{2}$/.test(values.dob)) { invalid("dob", "Ngày sinh phải có dạng YYYY-MM-DD."); return; }
     busyRef.current = true; setBusy(true); setError("");
     try {
       const body = { firstName: values.firstName.trim(), lastName: values.lastName.trim(), phoneNumber: values.phoneNumber.trim(), ...(values.gender ? { gender: values.gender } : {}), ...(values.dob ? { dob: values.dob } : {}), address: values.address.trim() };
