@@ -1,4 +1,5 @@
 import os
+import math
 import uuid
 import shutil
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -6,6 +7,7 @@ from src.schemas.common import ApiResponse
 from src.schemas.search import SearchTextRequest, SearchData
 from src.services.search_service import search_by_text, search_by_image, search_multimodal
 from src.core.config import settings, BASE_DIR
+from src.core.exceptions import InvalidInputError
 
 router = APIRouter()
 
@@ -26,7 +28,14 @@ async def api_search_text(request: SearchTextRequest):
             detail=f"Tham số limit phải nằm trong khoảng từ 1 đến {MAX_SEARCH_LIMIT}"
         )
 
-    results = search_by_text(request.query, request.limit)
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Chuỗi tìm kiếm (query) không được để trống")
+
+    try:
+        results = search_by_text(query, request.limit)
+    except InvalidInputError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {
         "success": True,
         "status_code": 200,
@@ -67,7 +76,10 @@ async def api_search_image(file: UploadFile = File(...), limit: int = Form(5)):
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
 
-        results = search_by_image(file_location, limit)
+        try:
+            results = search_by_image(file_location, limit)
+        except InvalidInputError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return {
             "success": True,
             "status_code": 200,
@@ -120,7 +132,7 @@ async def api_search_multimodal(
         )
 
     # 3. Ràng buộc tham số text_weight
-    if text_weight < 0.0 or text_weight > 1.0:
+    if math.isnan(text_weight) or text_weight < 0.0 or text_weight > 1.0:
         raise HTTPException(
             status_code=400,
             detail="Tham số text_weight phải nằm trong khoảng từ 0.0 đến 1.0"
@@ -134,12 +146,15 @@ async def api_search_multimodal(
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
 
-        results = search_multimodal(
-            image_path=file_location,
-            query_text=query.strip(),
-            limit=limit,
-            text_weight=text_weight,
-        )
+        try:
+            results = search_multimodal(
+                image_path=file_location,
+                query_text=query.strip(),
+                limit=limit,
+                text_weight=text_weight,
+            )
+        except InvalidInputError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return {
             "success": True,
             "status_code": 200,

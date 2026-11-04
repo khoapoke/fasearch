@@ -68,7 +68,7 @@ class ModelConfig(ConfigSection):
 class AppConfig(ConfigSection):
     upload_dir: str = Field(default_factory=lambda: os.getenv("UPLOAD_DIR", "storage/uploads"))
     raw_data_dir: str = Field(default_factory=lambda: os.getenv("RAW_DATA_DIR", "dataset"))
-    max_search_limit: int = Field(default_factory=lambda: int(os.getenv("MAX_SEARCH_LIMIT", 5)))
+    max_search_limit: int = Field(default_factory=lambda: int(os.getenv("MAX_SEARCH_LIMIT", 24)))
     vector_size: int = 512
 
 
