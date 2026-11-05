@@ -28,3 +28,12 @@ export async function discoverSkus(admin, need = 2, minAvailable = 3) {
   if (picked.length < need) throw new Error(`need ${need} SKUs with availableStock>=${minAvailable}`);
   return picked;
 }
+
+/** SKUs the receipt/stocktake forms can actually select: those forms load only the first 50 stock rows (page=0&size=50). */
+export async function discoverUiSkus(admin, need = 2) {
+  if (cfg.skuIds.length >= need) return cfg.skuIds.slice(0, need);
+  const r = await admin.req("GET", "/api/admin/stock?page=0&size=50");
+  const rows = (res(r.j)?.content ?? []).slice(0, need);
+  if (rows.length < need) throw new Error(`admin stock list has fewer than ${need} rows`);
+  return rows.map((x) => x.skuId);
+}

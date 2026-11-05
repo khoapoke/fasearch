@@ -12,19 +12,19 @@ import { suite } from "../lib/suite.mjs";
 import { launch, loginContext } from "../lib/browser.mjs";
 import { Client } from "../lib/http.mjs";
 import { requireCreds } from "../lib/fixtures.mjs";
-import { discoverSkus, discoverProduct } from "../lib/data.mjs";
+import { discoverSkus, discoverProduct, discoverUiSkus } from "../lib/data.mjs";
 import { checkout } from "../lib/commerce.mjs";
 import { step, res } from "../lib/steps.mjs";
 import { saveState } from "../lib/state.mjs";
 
 suite("admin", "ADMIN write flows (clone DB)", () => {
-  let browser, admin, p, skus, pid;
+  let browser, admin, p, skus, orderSku, pid;
   const ids = {}; const stamp = Date.now().toString().slice(-7); const label = "E2E " + stamp;
   before(async () => {
     browser = await launch(); admin = await loginContext(browser, "ADMIN");
     p = await admin.c.newPage(); p.setDefaultTimeout(10000); p.on("dialog", (d) => d.accept());
     const g = new Client(); pid = await discoverProduct(g);
-    const a = new Client(); const f = requireCreds("ADMIN"); await a.login(f.username, f.password); skus = (await discoverSkus(a)).map(String);
+    const a = new Client(); const f = requireCreds("ADMIN"); await a.login(f.username, f.password); skus = (await discoverUiSkus(a, 2)).map(String); orderSku = (await discoverSkus(a, 1))[0]; // skus: selectable in the receipt forms (first 50 rows); orderSku: has stock for the order flow
   });
   after(async () => { saveState({ adminRoutes: Object.entries({ "san-pham/nhap": ids.draft, "kiem-ke": ids.stocktake, "phieu-nhap": ids.import, "phieu-xuat": ids.export, "khach-hang": ids.customer, "nhan-vien": ids.employee }).filter(([, v]) => v).map(([k, v]) => `${k}/${v}`) }); await admin?.c.close(); await browser?.close(); });
 
@@ -40,7 +40,7 @@ suite("admin", "ADMIN write flows (clone DB)", () => {
   test("people, accounts, categories, products", { timeout: 600000 }, async (t) => {
     await step(t, "customer create", async () => { await go("/quan-tri/khach-hang/moi"); await p.fill("#cust-first", "Kiểm thử"); await p.fill("#cust-last", label); await p.fill("#cust-phone", "09" + stamp.padStart(8, "0")); const x = await writeClick(p.getByRole("button", { name: "Tạo khách hàng", exact: true }), "/api/admin/customers"); ids.customer = x.id; await p.waitForURL("**/khach-hang/" + x.id); });
     await step(t, "customer edit persists", async () => { await go("/quan-tri/khach-hang/" + ids.customer); await p.fill("#cust-address", "E2E clone — địa chỉ kiểm thử"); await writeClick(p.getByRole("button", { name: "Lưu thay đổi", exact: true }), "/api/admin/customers/"); const x = await admin.req("/api/admin/customers/" + ids.customer); assert.ok(x.data.address.includes("E2E"), "not persisted"); });
-    await step(t, "employee create", async () => { await go("/quan-tri/nhan-vien/moi"); await p.fill("#emp-first", "Kiểm thử"); await p.fill("#emp-last", label); await p.fill("#emp-phone", "08" + stamp.padStart(8, "0")); await p.fill("#emp-cccd", "07900" + stamp); const x = await writeClick(p.getByRole("button", { name: "Tạo nhân viên", exact: true }), "/api/admin/employees"); ids.employee = x.id; await p.waitForURL("**/nhan-vien/" + x.id); });
+    await step(t, "employee create", async () => { await go("/quan-tri/nhan-vien/moi"); await p.fill("#emp-first", "Kiểm thử"); await p.fill("#emp-last", label); await p.fill("#emp-phone", "08" + stamp.padStart(8, "0")); await p.fill("#emp-cccd", "07900" + stamp); const x = await writeClick(p.getByRole("button", { name: "Tạo hồ sơ nhân sự", exact: true }), "/api/admin/employees"); ids.employee = x.id; await p.waitForURL("**/nhan-vien/" + x.id); });
     await step(t, "employee edit persists", async () => { await go("/quan-tri/nhan-vien/" + ids.employee); await p.getByRole("button", { name: "Sửa hồ sơ", exact: true }).click(); await p.fill("#emp-address", "E2E clone"); await writeClick(p.getByRole("button", { name: "Lưu hồ sơ", exact: true }), "/api/admin/employees/"); const x = await admin.req("/api/admin/employees/" + ids.employee); assert.ok(x.data.address.includes("E2E"), "not persisted"); });
     await step(t, "internal (STAFF) account create via UI (credentials stay in memory)", async () => { await go("/quan-tri/tai-khoan-noi-bo"); await p.getByRole("button", { name: "Tạo tài khoản", exact: true }).click(); await p.fill("#acct-username", "e2e_staff_" + stamp); await p.fill("#acct-email", `e2e_${stamp}@example.invalid`); await p.fill("#acct-password", randomUUID() + "Aa1!"); const x = await writeClick(p.locator("form.catalog-form").getByRole("button", { name: "Tạo tài khoản", exact: true }), "/api/admin/accounts"); assert.ok(x.id); });
     await step(t, "category create", async () => { await go("/quan-tri/danh-muc"); await p.fill("#category-name", label); const x = await writeClick(p.getByRole("button", { name: "Tạo danh mục", exact: true }), "/api/admin/catalog/categories"); ids.category = x.id; });
@@ -81,7 +81,7 @@ suite("admin", "ADMIN write flows (clone DB)", () => {
     });
     // Orders: create fresh PENDING orders as the fixture CUSTOMER (COD), then drive the admin UI.
     const cust = new Client(); const cf = requireCreds("CUSTOMER"); await cust.login(cf.username, cf.password);
-    const mk = async (note) => { const { o } = await checkout(cust, Number(skus[1]), 1, { note }); const id = res(o.j)?.orderId; assert.ok(id, "could not create fixture order: http " + o.code); return id; };
+    const mk = async (note) => { const { o } = await checkout(cust, Number(orderSku), 1, { note }); const id = res(o.j)?.orderId; assert.ok(id, "could not create fixture order: http " + o.code); return id; };
     const a = new Client(); const af = requireCreds("ADMIN"); await a.login(af.username, af.password);
     await step(t, "order advance PENDING -> CONFIRMED (UI)", async () => { const id = await mk("e2e advance"); await go("/quan-tri/don-hang/" + id); await p.getByRole("button", { name: "Xác nhận đơn", exact: true }).click(); const x = await writeClick(p.getByRole("button", { name: "Xác nhận đơn hàng", exact: true }), "/api/admin/orders/" + id + "/status"); assert.equal(x.status, "CONFIRMED"); });
     await step(t, "order cancel (UI, with reason)", async () => { const id = await mk("e2e cancel"); await go("/quan-tri/don-hang/" + id); await p.getByRole("button", { name: "Hủy đơn", exact: true }).click(); await p.fill("#admin-cancel-reason", label); const x = await writeClick(p.getByRole("button", { name: "Xác nhận hủy", exact: true }), "/api/admin/orders/" + id + "/cancel"); assert.equal(x.status, "CANCELLED"); });
