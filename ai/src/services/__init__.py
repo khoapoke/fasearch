@@ -29,6 +29,13 @@ from src.services.point_service import (
     batch_create_from_directory,
     scan_directory_images,
 )
+from src.services.query_translation import (
+    QueryTranslation,
+    apply_glossary,
+    detect_query_language,
+    translate_for_search,
+    translate_query,
+)
 
 __all__ = [
     # Classes & Singletons
@@ -59,4 +66,10 @@ __all__ = [
     "clear_all_points",
     "batch_create_from_directory",
     "scan_directory_images",
+    # Query translation (VI -> EN cho CLIP)
+    "QueryTranslation",
+    "apply_glossary",
+    "detect_query_language",
+    "translate_for_search",
+    "translate_query",
 ]

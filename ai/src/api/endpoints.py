@@ -6,6 +6,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from src.schemas.common import ApiResponse
 from src.schemas.search import SearchTextRequest, SearchData
 from src.services.search_service import search_by_text, search_by_image, search_multimodal
+from src.services.query_translation import translate_query
 from src.core.config import settings, BASE_DIR
 from src.core.exceptions import InvalidInputError
 
@@ -36,13 +37,20 @@ async def api_search_text(request: SearchTextRequest):
         results = search_by_text(query, request.limit)
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    # Field dịch non-breaking: lỗi dịch không được làm hỏng search (fallback).
+    try:
+        translation = translate_query(query)
+    except Exception:
+        translation = None
     return {
         "success": True,
         "status_code": 200,
         "message": "Tìm kiếm theo văn bản thành công",
         "data": {
             "total": len(results),
-            "results": results
+            "results": results,
+            "translated_query": translation.translated_query if translation else query,
+            "query_language": translation.query_language if translation else "en",
         },
         "errors": None
     }
@@ -157,13 +165,19 @@ async def api_search_multimodal(
             )
         except InvalidInputError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        try:
+            translation = translate_query(query.strip())
+        except Exception:
+            translation = None
         return {
             "success": True,
             "status_code": 200,
             "message": "Tìm kiếm đa phương thức kết hợp thành công",
             "data": {
                 "total": len(results),
-                "results": results
+                "results": results,
+                "translated_query": translation.translated_query if translation else query.strip(),
+                "query_language": translation.query_language if translation else "en",
             },
             "errors": None
         }

@@ -9,6 +9,7 @@ from src.core.ai_model import get_ai_model
 from src.core.config import settings
 from src.core.exceptions import InvalidInputError
 from src.repositories import ImageRepository, get_image_repository
+from src.services.query_translation import translate_for_search
 from src.utils import to_system_path
 
 logger = logging.getLogger(__name__)
@@ -76,13 +77,19 @@ class SearchService:
         limit: int = 5,
         exclude_deleted: bool = True,
         score_threshold: Optional[Union[torch.Tensor, float]] = None,
+        use_translation: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Trích xuất vector text và tìm kiếm ảnh tương đồng trong collection."""
+        """Trích xuất vector text và tìm kiếm ảnh tương đồng trong collection.
+
+        Query tiếng Việt được dịch sang tiếng Anh (glossary + MarianMT offline)
+        trước khi encode CLIP; lỗi dịch fallback về query gốc, không bao giờ 500.
+        """
         _validate_limit(limit)
         query_text = _validate_query(query_text)
+        search_text = translate_for_search(query_text, enabled=use_translation) or query_text
         device, model, processor = get_ai_model()
 
-        text_inputs = processor(text=[query_text], return_tensors="pt", padding=True, truncation=True).to(device)
+        text_inputs = processor(text=[search_text], return_tensors="pt", padding=True, truncation=True).to(device)
 
         with torch.no_grad():
             text_features = model.get_text_features(**text_inputs)
@@ -143,6 +150,7 @@ class SearchService:
         text_weight: float = 0.5,
         exclude_deleted: bool = True,
         score_threshold: Optional[Union[torch.Tensor, float]] = None,
+        use_translation: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Trích xuất vector kết hợp đa phương thức (Ảnh + Văn bản) bằng mô hình CLIP
@@ -155,6 +163,7 @@ class SearchService:
         """
         _validate_limit(limit)
         query_text = _validate_query(query_text)
+        search_text = translate_for_search(query_text, enabled=use_translation) or query_text
         device, model, processor = get_ai_model()
         sys_path = to_system_path(image_path)
 
@@ -166,8 +175,8 @@ class SearchService:
             image_features = model.get_image_features(**image_inputs)
             image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
 
-        # 2. Trích xuất vector đặc trưng từ văn bản
-        text_inputs = processor(text=[query_text], return_tensors="pt", padding=True, truncation=True).to(device)
+        # 2. Trích xuất vector đặc trưng từ văn bản (đã dịch sang tiếng Anh)
+        text_inputs = processor(text=[search_text], return_tensors="pt", padding=True, truncation=True).to(device)
         with torch.no_grad():
             text_features = model.get_text_features(**text_inputs)
             text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
