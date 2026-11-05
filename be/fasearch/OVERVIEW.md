@@ -39,7 +39,7 @@ Tài liệu này cung cấp bức tranh toàn cảnh về **bối cảnh kinh do
 | Đối tượng | Vai trò trong hệ thống | Giá trị mang lại |
 | :--- | :--- | :--- |
 | **Khách hàng** (`CUSTOMER`) | Người mua sắm trực tuyến hoặc tại quầy | Trải nghiệm tìm kiếm sản phẩm thông minh, đặt hàng nhanh chóng, tích điểm thăng hạng và hưởng voucher giảm giá đồng bộ. |
-| **Nhân viên bán hàng / Thu ngân** (`STAFF`) | Nhân sự tại cửa hàng vật lý | Thao tác bán hàng tại quầy (POS) tiện lợi qua quét mã vạch, tra cứu nhanh thông tin khách hàng bằng SĐT, áp dụng ưu đãi và in hóa đơn tức thì. |
+| **Quản lý** (`STAFF`, trước đây gọi là Nhân viên bán hàng / Thu ngân) | Nhân sự tại cửa hàng vật lý | Thao tác bán hàng tại quầy (POS) tiện lợi qua quét mã vạch, tra cứu nhanh thông tin khách hàng bằng SĐT, áp dụng ưu đãi và in hóa đơn tức thì. |
 | **Quản trị viên / Chủ chuỗi cửa hàng** (`ADMIN`) | Quản lý vận hành hệ thống | Giám sát tập trung sản phẩm, danh mục, xuất - nhập kho, quản lý phân quyền nhân sự, cấu hình khuyến mãi và xem báo cáo doanh thu theo kênh. |
 
 ---

@@ -170,7 +170,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 ## 5. Xóa mềm khách hàng (FR-13)
 
 - **Endpoint:** `DELETE /api/v1/users/customers/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Cập nhật `da_xoa = true`, không xóa vật lý khỏi CSDL nhằm bảo toàn lịch sử hóa đơn.
 
 ### Response Thành công (HTTP 200 OK)
@@ -218,12 +218,13 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 
 ### 7.1. Xem danh sách nhân viên (FR-15)
 - **Endpoint:** `GET /api/v1/users/employees`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Query Parameters:** `page`, `size`, `sort`, `keyword` (Tên/SĐT/CCCD).
 
 ### 7.2. Thêm mới nhân viên (FR-16)
 - **Endpoint:** `POST /api/v1/users/employees`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
+- **Phân quyền (Quản lý):** `STAFF` (Quản lý) chỉ được tạo/sửa **hồ sơ** nhân sự; gửi `accountId` (liên kết tài khoản đăng nhập) yêu cầu `ADMIN`, nếu không trả `403 ACCESS_DENIED`.
 - **Request Body:**
 ```json
 {
@@ -240,11 +241,13 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 
 ### 7.3. Cập nhật nhân viên (FR-16)
 - **Endpoint:** `PATCH /api/v1/users/employees/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
+- **Phân quyền (Quản lý):** `STAFF` không được đổi liên kết `accountId` (giá trị trùng liên kết hiện tại thì bỏ qua); đổi liên kết yêu cầu `ADMIN` (`403`).
 - **Mô tả:** cập nhật từng phần (partial part) cho nhân viên tránh việc không để field bị cập nhật thành null hết
 ### 7.4. Xóa mềm nhân viên (FR-17)
 - **Endpoint:** `DELETE /api/v1/users/employees/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
+- **Phân quyền (Quản lý):** hồ sơ đang liên kết tài khoản đăng nhập khi xóa sẽ khóa tài khoản đó, nên chỉ `ADMIN` xóa được hồ sơ có liên kết; `STAFF` chỉ xóa hồ sơ chưa liên kết tài khoản (`403` nếu vi phạm).
 - **Mô tả:** Đánh dấu nhân viên nghỉ việc (`da_xoa = true`), đồng thời khóa tài khoản tương ứng.
 
 ---

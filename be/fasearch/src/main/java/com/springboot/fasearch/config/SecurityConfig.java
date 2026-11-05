@@ -72,14 +72,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 
-                        // 2. Nhóm quyền Admin
-                        .requestMatchers("/api/v1/khuyen-mai", "/api/v1/khuyen-mai/**").hasRole(RoleType.ADMIN.name())
-                        .requestMatchers("/api/v1/admin/**").hasRole(RoleType.ADMIN.toString())
-                        .requestMatchers("/api/v1/auth/accounts/**").hasRole(RoleType.ADMIN.name())
-                        .requestMatchers("/api/v1/categories/**").hasRole(RoleType.ADMIN.name())
-                        .requestMatchers("/api/v1/products/**").hasRole(RoleType.ADMIN.name())
+                        // 2. Nhóm quyền nghiệp vụ cửa hàng: Quản trị viên (ADMIN) hoặc Quản lý (STAFF)
+                        .requestMatchers("/api/v1/khuyen-mai", "/api/v1/khuyen-mai/**")
+                                .hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/categories/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/products/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
 
-                        // 3. Nhóm quyền Nhân viên hoặc Admin
+                        // 2b. Tài khoản đăng nhập & phân quyền: CHỈ Quản trị viên hệ thống (ADMIN)
+                        .requestMatchers("/api/v1/auth/accounts/**").hasRole(RoleType.ADMIN.name())
+
+                        // 3. Nhóm quyền Quản lý (STAFF) hoặc Admin
                         .requestMatchers("/api/v1/staff/**").hasAnyRole(RoleType.ADMIN.toString(), RoleType.STAFF.toString())
                         .requestMatchers("/api/v1/users/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
                         .requestMatchers("/api/v1/inventory/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())

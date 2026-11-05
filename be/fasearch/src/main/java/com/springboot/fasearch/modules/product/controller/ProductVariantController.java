@@ -55,7 +55,7 @@ public class ProductVariantController {
   
     @PostMapping("/{productId}/variants")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<VariantRes> addVariant(
             @PathVariable Long productId,
@@ -67,7 +67,7 @@ public class ProductVariantController {
  
     @RequestMapping(value = "/variants/{variantId}", method = {RequestMethod.PATCH, RequestMethod.PUT})
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<VariantRes> updateVariant(
             @PathVariable Long variantId,
@@ -79,7 +79,7 @@ public class ProductVariantController {
 
     @DeleteMapping("/variants/{variantId}")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Boolean> deleteVariant(@PathVariable Long variantId) {
         productVariantService.deleteVariant(variantId);

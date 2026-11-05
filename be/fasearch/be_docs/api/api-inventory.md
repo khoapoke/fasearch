@@ -62,7 +62,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 ## 2. Lập phiếu nhập kho từ Nhà cung cấp (FR-30)
 
 - **Endpoint:** `POST /api/v1/inventory/import-receipts`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Khởi tạo phiếu nhập hàng, tự động cộng dồn số lượng tồn kho theo từng mã SKU sau khi duyệt phiếu.
 
 ### Request Body
@@ -109,7 +109,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 ## 3. Lập phiếu xuất / Chuyển kho / Hủy hàng (FR-31)
 
 - **Endpoint:** `POST /api/v1/inventory/export-receipts`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Trừ số lượng tồn kho khi xuất hủy (hàng lỗi, rách, hỏng) hoặc chuyển kho sang chi nhánh khác.
 
 ### Request Body

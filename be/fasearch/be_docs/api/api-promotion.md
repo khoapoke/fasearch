@@ -42,7 +42,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi, giả
 ## 2. Thêm mới chương trình khuyến mãi & Mã Voucher (FR-45)
 
 - **Endpoint:** `POST /api/v1/promotions`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Khởi tạo chiến dịch ưu đãi mới và tự động sinh danh sách mã voucher phát hành kèm số lượng giới hạn.
 
 ### Request Body
@@ -86,12 +86,12 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi, giả
 
 ### 3.1. Cập nhật thông tin khuyến mãi
 - **Endpoint:** `PUT /api/v1/promotions/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Thay đổi điều kiện áp dụng, thời gian diễn ra hoặc giá trị chiết khấu.
 
 ### 3.2. Tạm dừng / Kích hoạt lại khuyến mãi
 - **Endpoint:** `PATCH /api/v1/promotions/{id}/status`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Request Body:**
 ```json
 {

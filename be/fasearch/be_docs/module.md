@@ -23,8 +23,8 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 
 | Viết tắt | Vai trò | Mô tả |
 | :---: | :--- | :--- |
-| `A` | `ADMIN` | Quản trị viên hệ thống |
-| `S` | `STAFF` | Nhân viên bán hàng / Thu ngân |
+| `A` | `ADMIN` | Quản trị viên hệ thống (tài khoản đăng nhập, phân quyền, khóa/xóa tài khoản + mọi quyền của Quản lý) |
+| `S` | `STAFF` | **Quản lý** (mã vai trò `STAFF` giữ nguyên): toàn bộ nghiệp vụ cửa hàng — sản phẩm/danh mục, tồn kho, đơn hàng, khách hàng, hồ sơ nhân sự, khuyến mãi/voucher, tích điểm, báo cáo. KHÔNG quản lý tài khoản đăng nhập/phân quyền (chỉ `ADMIN`) |
 | `C` | `CUSTOMER` | Khách hàng mua sắm |
 | `P` | `PUBLIC` | Không cần đăng nhập (Công khai) |
 | `SYS` | `SYSTEM` | Hệ thống tự động xử lý (không cần giao diện) |

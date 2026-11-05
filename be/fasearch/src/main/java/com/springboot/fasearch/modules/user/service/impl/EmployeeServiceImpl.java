@@ -12,7 +12,9 @@ import org.springframework.util.StringUtils;
 import com.springboot.fasearch.common.enums.AccountStatus;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.common.enums.RoleType;
 import com.springboot.fasearch.modules.auth.entity.Account;
+import com.springboot.fasearch.security.SecurityUtils;
 import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 import com.springboot.fasearch.modules.user.dto.request.EmployeeCreateReq;
 import com.springboot.fasearch.modules.user.dto.request.EmployeeUpdateReq;
@@ -79,6 +81,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Account account = null;
         if (req.getAccountId() != null) {
+            requireAdminForAccountLink();
             account = accountRepository.findById(req.getAccountId())
                     .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
@@ -118,6 +121,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (req.getAccountId() != null) {
             Long currentAccountId = employee.getAccount() != null ? employee.getAccount().getId() : null;
             if (!req.getAccountId().equals(currentAccountId)) {
+                requireAdminForAccountLink();
                 Account account = accountRepository.findById(req.getAccountId())
                         .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
@@ -146,6 +150,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         // Lock linked account upon employee resignation
         if (employee.getAccount() != null) {
+            // Locking a login account is account administration: ADMIN only (STAFF/Quản lý may delete unlinked profiles).
+            requireAdminForAccountLink();
             Account account = employee.getAccount();
             account.setStatus(AccountStatus.LOCKED);
             accountRepository.save(account);
@@ -154,5 +160,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         employeeRepository.save(employee);
         log.info("Soft deleted employee successfully with ID: {}", id);
+    }
+
+    // Linking/unlinking a login account to a profile (and the account lock on deletion) is reserved for ADMIN,
+    // so a STAFF (Quản lý) caller cannot reach account administration through the profile endpoints.
+    private void requireAdminForAccountLink() {
+        if (!SecurityUtils.hasRole(RoleType.ADMIN.name())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
     }
 }

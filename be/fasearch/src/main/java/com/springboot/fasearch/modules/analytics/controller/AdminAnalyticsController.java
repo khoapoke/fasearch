@@ -25,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 /** Admin-only read-only reports over existing paid snapshots. No writes, no schema change. */
 @RestController
 @RequestMapping("/api/v1/analytics")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 @RequiredArgsConstructor
 public class AdminAnalyticsController {
 

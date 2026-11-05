@@ -7,7 +7,7 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
 ## 1. Báo cáo Doanh thu & Lợi nhuận (FR-52)
 
 - **Endpoint:** `GET /api/v1/analytics/revenue`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Thống kê tổng doanh thu thực tế, chi phí nhập hàng, lợi nhuận gộp và số lượng đơn hàng theo chu kỳ thời gian (Ngày / Tuần / Tháng / Năm), phân tách giữa kênh bán lẻ tại quầy POS và kênh đặt hàng Online.
 - **Query Parameters:**
   - `period`: Chu kỳ thống kê (`DAY`, `WEEK`, `MONTH`, `YEAR`).
@@ -64,7 +64,7 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
 ## 2. Báo cáo Hiệu quả Sản phẩm & Hàng tồn (FR-53)
 
 - **Endpoint:** `GET /api/v1/analytics/top-products`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Xếp hạng danh sách Top N sản phẩm mang lại doanh thu cao nhất hoặc danh sách các SKU tồn kho chậm luân chuyển (không có đơn bán trong 30/60 ngày).
 - **Query Parameters:**
   - `type`: Tiêu chí (`BEST_SELLER`, `SLOW_MOVING`).
@@ -107,7 +107,7 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
 ## 3. Báo cáo Xuất - Nhập - Tồn kho (FR-54)
 
 - **Endpoint:** `GET /api/v1/analytics/inventory-movement`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Báo cáo chi tiết biến động số lượng tồn theo từng biến thể SKU trong một kỳ kế toán: Tồn đầu kỳ, Tổng nhập, Tổng xuất bán, Xuất hủy/hao hụt và Tồn cuối kỳ.
 - **Query Parameters:**
   - `page`: Số trang (mặc định: `0`).

@@ -53,7 +53,7 @@ public class CategoryController {
 
     @PostMapping
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CategoryRes> createCategory(@Valid @RequestBody CategoryReq req) {
         CategoryRes result = categoryService.createCategory(req);
@@ -62,7 +62,7 @@ public class CategoryController {
 
     @RequestMapping(value = "/{id}", method = {RequestMethod.PATCH, RequestMethod.PUT})
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CategoryRes> updateCategory(
             @PathVariable Long id,
@@ -73,7 +73,7 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Boolean> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);

@@ -109,3 +109,10 @@ Mọi phản hồi từ máy chủ đều được chuẩn hóa theo định d�
 | `500` | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không xác định từ phía hệ thống |
 
 S2 loyalty adds stable business codes `4201`–`4208` and reuses S1 `4107`–`4109`; these numeric `ApiResponse.code` values are independent of their HTTP status (the loyalty conflicts use HTTP 409). See [api-user.md](./api-user.md), [api-order.md](./api-order.md), [api-payment.md](./api-payment.md), and [api-promotion.md](./api-promotion.md).
+
+## Phân quyền theo vai trò (rev. role-manager-20261105)
+
+Mã vai trò không đổi (`ADMIN`, `STAFF`, `CUSTOMER`); tên hiển thị: `ADMIN` = Quản trị viên hệ thống, `STAFF` = **Quản lý**, `CUSTOMER` = Khách hàng.
+- `STAFF` (Quản lý) dùng được mọi nghiệp vụ cửa hàng: danh mục/sản phẩm/biến thể/ảnh/bản nháp & publish, tồn kho (nhập, xuất, kiểm kê), đơn hàng & thu tiền, khách hàng (CRUD, xóa mềm), hồ sơ nhân sự, khuyến mãi & voucher, chính sách/hạng tích điểm, báo cáo.
+- Chỉ `ADMIN`: `/api/v1/auth/accounts/**` (tạo/sửa/khóa/xóa tài khoản, gán vai trò) và `POST /api/v1/quan-tri/thanh-vien/mo-dau` (mở số dư tích điểm cũ, một lần). Liên kết `accountId` của hồ sơ nhân sự và xóa hồ sơ đã liên kết tài khoản cũng chỉ `ADMIN`.
+- Ma trận đầy đủ từng endpoint (trước/sau): `.agent/tasks/role-manager-20261105/live/be/AUTHZ-MATRIX.md`.

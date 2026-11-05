@@ -78,7 +78,7 @@ public class InventoryController {
     }
 
     @PostMapping("/import-receipts")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ImportReceiptDetailRes> createImportReceipt(@Valid @RequestBody ImportReceiptCreateReq req) {
         ImportReceiptDetailRes result = inventoryService.createImportReceipt(req);
@@ -106,7 +106,7 @@ public class InventoryController {
     }
 
     @PostMapping("/export-receipts")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ExportReceiptDetailRes> createExportReceipt(@Valid @RequestBody ExportReceiptCreateReq req) {
         ExportReceiptDetailRes result = inventoryService.createExportReceipt(req);

@@ -29,7 +29,7 @@ public class ProductImageController {
 
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<String> uploadProductImage(
             @PathVariable Long id,
@@ -40,7 +40,7 @@ public class ProductImageController {
 
     @DeleteMapping("/{id}/image")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> removeProductImage(@PathVariable Long id) {
         productImageService.removeImage(id);

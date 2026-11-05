@@ -78,7 +78,7 @@ public class UserController {
     }
 
     @DeleteMapping("/customers/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Boolean> deleteCustomer(@PathVariable Long id) {
         userService.deleteCustomer(id);

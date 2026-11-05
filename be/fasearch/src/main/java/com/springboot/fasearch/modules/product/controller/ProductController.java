@@ -89,7 +89,7 @@ public class ProductController {
 
     @PostMapping
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ProductDetailRes> createProduct(@Valid @RequestBody ProductCreateReq req) {
         ProductDetailRes result = productService.createProduct(req);
@@ -98,7 +98,7 @@ public class ProductController {
 
     @RequestMapping(value = "/{id}", method = {RequestMethod.PATCH, RequestMethod.PUT})
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ProductDetailRes> updateProduct(
             @PathVariable Long id,
@@ -109,7 +109,7 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Boolean> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);

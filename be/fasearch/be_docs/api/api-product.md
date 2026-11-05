@@ -32,7 +32,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 ### 1.2. Thêm mới danh mục
 - **Endpoint:** `POST /api/v1/categories`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Request Body:**
 ```json
 {
@@ -42,11 +42,11 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 ### 1.3. Cập nhật danh mục
 - **Endpoint:** `PUT /api/v1/categories/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 
 ### 1.4. Xóa danh mục
 - **Endpoint:** `DELETE /api/v1/categories/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 
 ---
 
@@ -140,7 +140,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 ### 2.3. Thêm mới sản phẩm (FR-23)
 - **Endpoint:** `POST /api/v1/products`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Request Body:**
 ```json
 {
@@ -167,11 +167,11 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 ### 2.4. Cập nhật sản phẩm (FR-24)
 - **Endpoint:** `PUT /api/v1/products/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 
 ### 2.5. Xóa / Tạm ẩn sản phẩm (FR-25)
 - **Endpoint:** `DELETE /api/v1/products/{id}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Chuyển trạng thái sang `DISCONTINUED` và cập nhật `da_xoa = true`.
 
 ---
@@ -226,7 +226,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 #### 3.1.3. Thêm biến thể cho sản phẩm
 - **Endpoint:** `POST /api/v1/products/{id}/variants`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Request Body:**
 ```json
 {
@@ -257,7 +257,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 #### 3.1.4. Cập nhật biến thể
 - **Endpoint:** `PATCH /api/v1/products/variants/{variantId}` (hoặc `PUT`)
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Request Body:**
 ```json
 {
@@ -286,7 +286,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 #### 3.1.5. Xóa biến thể
 - **Endpoint:** `DELETE /api/v1/products/variants/{variantId}`
-- **Quyền hạn:** `ADMIN`
+- **Quyền hạn:** `ADMIN`, `STAFF`
 - **Mô tả:** Xóa mềm biến thể (`da_xoa = true`).
 - **Response Thành công (HTTP 200 OK):**
 ```json
@@ -339,7 +339,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 ### POST /api/v1/products/{id}/image
 Tải ảnh sản phẩm lên (multipart/form-data, field `file`).
 
-**Quyền hạn:** `ADMIN`
+**Quyền hạn:** `ADMIN`, `STAFF`
 
 **Validation:**
 - Loại file: PNG, JPG, JPEG, WEBP
@@ -358,7 +358,7 @@ Phục vụ ảnh sản phẩm đã tải lên (cache private, max-age 3600).
 ### DELETE /api/v1/products/{id}/image
 Xóa ảnh sản phẩm. Xóa file trên đĩa và đặt imageUrl về rỗng.
 
-**Quyền hạn:** `ADMIN`
+**Quyền hạn:** `ADMIN`, `STAFF`
 
 **Response:** HTTP 200 với message "Xóa ảnh sản phẩm thành công".
 
