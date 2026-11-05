@@ -15,9 +15,13 @@ export async function discoverProduct(client) {
 export async function discoverSkus(admin, need = 2, minAvailable = 3) {
   if (cfg.skuIds.length >= need) return cfg.skuIds.slice(0, need);
   const picked = [];
-  for (let page = 0; page < 30 && picked.length < need; page++) {
+  // The stock list is not sorted by availability: on the full-size catalog the first SKU with stock can sit past page 190,
+  // so walk every page (bounded by the reported totalPages) instead of a fixed 30.
+  let totalPages = 500;
+  for (let page = 0; page < totalPages && picked.length < need; page++) {
     const r = await admin.req("GET", `/api/admin/stock?page=${page}&size=50`);
     const rows = res(r.j)?.content ?? [];
+    if (Number.isInteger(res(r.j)?.totalPages)) totalPages = Math.min(res(r.j).totalPages, 500);
     if (!rows.length) break;
     for (const x of rows) if ((x.availableStock ?? 0) >= minAvailable && picked.length < need) picked.push(x.skuId);
   }
