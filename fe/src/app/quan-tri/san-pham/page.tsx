@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
 import { ProductImage } from "@/components/admin-b/product-image";
-import { useAdminRole } from "@/components/admin-b/use-admin-role";
+import { useAdminRole, canManage } from "@/components/admin-b/use-admin-role";
 import { getCategories, getProductPage, type Category, type ProductPage } from "@/lib/admin-catalog-client";
 const STATUS = ["", "DRAFT", "ACTIVE", "OUT_OF_STOCK", "DISCONTINUED"];
 const STATUS_LABEL: Record<string, string> = { DRAFT: "Nháp", ACTIVE: "Đang bán", OUT_OF_STOCK: "Tạm hết hàng", DISCONTINUED: "Ngừng kinh doanh" };
@@ -26,7 +26,7 @@ export default function AdminProductsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void Promise.resolve().then(() => load(0)); }, []);
   return <AdminShellB active="products" title="Sản phẩm" eyebrow="Vận hành · catalog thật từ BE">
-    <div className="page-heading"><div><h1>Sản phẩm</h1><p className="meta">Danh sách thật · lọc/phân trang server · {role === "ADMIN" ? "ADMIN có quyền sửa" : "STAFF chỉ đọc"}</p></div>{role === "ADMIN" ? <Link className="primary" href="/quan-tri/san-pham/new">Tạo sản phẩm</Link> : null}</div>
+    <div className="page-heading"><div><h1>Sản phẩm</h1><p className="meta">Danh sách thật · lọc/phân trang server · {canManage(role) ? "Quản trị viên và Quản lý có quyền sửa" : "Tài khoản hiện tại chỉ đọc"}</p></div>{canManage(role) ? <Link className="primary" href="/quan-tri/san-pham/new">Tạo sản phẩm</Link> : null}</div>
     <form className="catalog-toolbar" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0); }}>
       <div className="catalog-field"><label htmlFor="p-keyword">Từ khóa</label><input id="p-keyword" className="catalog-input" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Tên sản phẩm" /></div>
       <div className="catalog-field"><label htmlFor="p-category">Danh mục</label><select id="p-category" className="catalog-input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">Tất cả</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.categoryName}</option>)}</select></div>

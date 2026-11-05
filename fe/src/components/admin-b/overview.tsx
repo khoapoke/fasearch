@@ -165,7 +165,7 @@ export function OverviewClient() {
     fetch("/api/admin/overview", { cache: "no-store", signal: c.signal }).then(async (r) => { const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được tổng quan."); return j.result as Overview; }).then(setData).catch((e) => { if (!c.signal.aborted) setError(e instanceof Error ? e.message : "Không tải được tổng quan."); }).finally(() => { if (!c.signal.aborted) setLoading(false); });
     return () => c.abort();
   }, [retry]);
-  const admin = data?.role === "ADMIN";
+  const admin = data?.role === "ADMIN" || data?.role === "STAFF";
   const counts = data?.counts ?? {};
   const group = data?.groups?.[stage] ?? { total: 0, rows: [] };
   const queue = group.rows;

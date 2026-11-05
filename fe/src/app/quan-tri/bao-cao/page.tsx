@@ -61,7 +61,7 @@ export default function ReportsPage() {
       setState({
         kind: "error",
         status: st,
-        message: st === 401 ? "Phiên đăng nhập đã hết. Đăng nhập lại." : st === 403 ? "Tài khoản không có quyền xem báo cáo (ADMIN)." : e instanceof Error ? e.message : "Không tải được báo cáo.",
+        message: st === 401 ? "Phiên đăng nhập đã hết. Đăng nhập lại." : st === 403 ? "Tài khoản không có quyền xem báo cáo (cần Quản trị viên hoặc Quản lý)." : e instanceof Error ? e.message : "Không tải được báo cáo.",
       });
       setTimeout(() => errorRef.current?.focus(), 0);
     }

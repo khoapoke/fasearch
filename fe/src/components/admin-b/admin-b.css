@@ -1405,9 +1405,6 @@
   font-size: var(--small-size);
   line-height: var(--small-lh);
 }
-.admB .role-staff .desk-grid{
-  grid-template-columns: minmax(0, 1fr);
-}
 .admB .review-page{
   background: var(--canvas);
 }

@@ -8,7 +8,7 @@ const bad = (message: string, status: number) =>
   Response.json({ success: false, code: status, message, result: null }, { status, headers: { "cache-control": "no-store" } });
 
 /**
- * GET /api/admin/reports/inventory-movement?page&size&month&sku (BE CONTRACT v1, ADMIN only).
+ * GET /api/admin/reports/inventory-movement?page&size&month&sku (BE CONTRACT v1, ADMIN + STAFF (Quản lý)).
  * FE contract keeps month=MM-YYYY; this BFF translates to the BE-required
  * year+month integers (F-ABR-01: missing params fell through to /error and
  * surfaced as a misleading 401). Omitted month defaults to the current HCMC

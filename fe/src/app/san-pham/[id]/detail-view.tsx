@@ -172,7 +172,7 @@ export function DetailView({ id }: { id: string }) {
         setAddNotice("Đang chuyển tới đăng nhập để giữ món này trong giỏ của bạn…");
         router.push("/dang-nhap?next=%2Fgio-hang");
       } else if (failure instanceof CommerceError && failure.status === 403) {
-        setAddError("Tài khoản của bạn có vai trò Quản trị viên/Nhân viên. Chức năng mua hàng trực tuyến chỉ dành cho tài khoản Khách hàng. Vui lòng chuyển sang tài khoản Khách hàng để đặt đơn.");
+        setAddError("Tài khoản của bạn có vai trò Quản trị viên/Quản lý. Chức năng mua hàng trực tuyến chỉ dành cho tài khoản Khách hàng. Vui lòng chuyển sang tài khoản Khách hàng để đặt đơn.");
       } else {
         setAddError(failure instanceof Error ? failure.message : "Không thêm được vào giỏ. Thử lại.");
       }

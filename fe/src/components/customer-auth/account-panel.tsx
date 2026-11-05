@@ -15,7 +15,7 @@ type State =
   | { kind: "ready"; identity: AuthIdentity }
   | { kind: "error"; message: string };
 
-const ROLE_LABEL: Record<string, string> = { CUSTOMER: "Khách hàng", STAFF: "Nhân viên", ADMIN: "Quản trị" };
+const ROLE_LABEL: Record<string, string> = { CUSTOMER: "Khách hàng", STAFF: "Quản lý", ADMIN: "Quản trị viên" };
 const STATUS_LABEL: Record<string, string> = { ACTIVE: "Đang hoạt động", INACTIVE: "Chưa hoạt động", LOCKED: "Đang bị khóa", DELETED: "Đã vô hiệu hóa" };
 
 /**

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
+import { useAdminRole } from "@/components/admin-b/use-admin-role";
 import "@/components/admin/admin.css";
 import {
   createLoyaltyPolicy, fetchLoyaltyPolicy, fetchTierList, openLegacyBalance, policyId, updateLoyaltyPolicy,
@@ -10,6 +11,7 @@ import {
 import { benefitErrorMessage, type PolicyState } from "@/lib/benefits";
 
 export default function LoyaltyPolicyPage() {
+  const role = useAdminRole();
   const [policy, setPolicy] = useState<LoyaltyPolicyAdmin | null>(null);
   const [missing, setMissing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -222,6 +224,7 @@ export default function LoyaltyPolicyPage() {
             {issue ? <p className="adNote" role="alert">{issue}</p> : null}
             {notice ? <p className="adNote" role="status">{notice}</p> : null}
           </section>
+          {role === "ADMIN" ? (
           <section className="adCard" aria-label="Ghi nhận số dư legacy">
             <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>Ghi nhận số dư legacy (một lần/khách)</h2>
             <div className="adFilters">
@@ -229,6 +232,7 @@ export default function LoyaltyPolicyPage() {
               <button className="adBtn" type="button" disabled={busy} onClick={submitMoDau}>Ghi nhận mở đầu</button>
             </div>
           </section>
+          ) : null}
           <section className="adCard" aria-label="Ngưỡng hạng">
             <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>Ngưỡng hạng (chọn hạng + ngưỡng doanh số tích lũy VNĐ)</h2>
             <p className="adNote">Ngưỡng là doanh số đã thanh toán tích lũy, dùng phiên bản mới nhất của từng hạng; dữ liệu thiếu vẫn hiển thị là chưa xác định.</p>

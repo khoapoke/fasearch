@@ -235,7 +235,7 @@ function CheckoutPageContent() {
             <div className="commerce-empty" role="alert">
               <h2>{cartError.includes("quyền") ? "Khu vực mua sắm dành cho khách hàng" : "Không tải được giỏ hàng"}</h2>
               <p>{cartError.includes("quyền")
-                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Nhân viên nên không thể tạo đơn hàng mua sắm. Vui lòng đăng nhập bằng tài khoản Khách hàng để thanh toán hoặc quay lại trang Quản trị."
+                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Quản lý nên không thể tạo đơn hàng mua sắm. Vui lòng đăng nhập bằng tài khoản Khách hàng để thanh toán hoặc quay lại trang Quản trị."
                 : cartError}</p>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
                 {cartError.includes("quyền") ? (

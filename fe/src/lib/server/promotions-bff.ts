@@ -28,14 +28,13 @@ function jsonError(status: number, code: number | string, message: string): Resp
 }
 
 /**
- * S2 analytics read-only proxy (BE CONTRACT v1). ADMIN only; allowlisted
+ * S2 analytics read-only proxy (BE CONTRACT v1). ADMIN + STAFF (Quản lý); allowlisted
  * narrow report routes call this with a pre-validated BE path. Never invents
  * numbers: BE 4xx/5xx surfaces as honest errors, nulls pass through.
  */
 export async function analyticsUpstream(request: NextRequest, path: string): Promise<Response> {
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
-  if (who.identity.role !== "ADMIN") return jsonError(403, 403, "Chỉ ADMIN được xem báo cáo.");
   const token = authCookie(request);
   if (!token) return jsonError(401, 401, "Thiếu phiên quản trị.");
   let base: string;
@@ -114,7 +113,6 @@ export async function promotionsUpstream(
   }
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
-  if (who.identity.role !== "ADMIN") return jsonError(403, 403, "Chỉ ADMIN được quản lý khuyến mãi.");
   const token = authCookie(request);
   if (!token) return jsonError(401, 401, "Thiếu phiên quản trị.");
   let base: string;

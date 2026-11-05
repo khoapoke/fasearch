@@ -6,3 +6,5 @@ export function useAdminRole() {
   useEffect(() => { const c = new AbortController(); authMe(c.signal).then((i) => setRole(i.role)).catch(() => setRole(null)); return () => c.abort(); }, []);
   return role;
 }
+
+export { canManage } from "@/lib/admin-roles";

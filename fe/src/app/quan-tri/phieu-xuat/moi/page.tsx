@@ -3,14 +3,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
-import { useAdminRole } from "@/components/admin-b/use-admin-role";
+import { useAdminRole, canManage } from "@/components/admin-b/use-admin-role";
 import { createExport, ExportError } from "@/lib/admin-export-client";
 import { getStockPage, type Stock } from "@/lib/admin-stock-client";
 type Line = { key: number; skuId: string; quantity: string; reason: string };
 const TYPE: Array<[string, string]> = [["DAMAGED", "Hàng hỏng"], ["OTHER", "Khác"]];
 export default function NewExportPage() {
   const role = useAdminRole(); const router = useRouter(); const [stock, setStock] = useState<Stock[]>([]); const [type, setType] = useState("DAMAGED"); const [note, setNote] = useState(""); const [lines, setLines] = useState<Line[]>([{ key: 1, skuId: "", quantity: "1", reason: "" }]); const [error, setError] = useState(""); const [uncertain, setUncertain] = useState(false); const [busy, setBusy] = useState(false); const busyRef = useRef(false); const nextKey = useRef(2);
-  useEffect(() => { if (role !== "ADMIN") return; const c = new AbortController(); getStockPage("page=0&size=50", c.signal).then((p) => setStock(p.content)).catch((e) => setError(e instanceof Error ? e.message : "Không tải được SKU.")); return () => c.abort(); }, [role]);
+  useEffect(() => { if (!canManage(role)) return; const c = new AbortController(); getStockPage("page=0&size=50", c.signal).then((p) => setStock(p.content)).catch((e) => setError(e instanceof Error ? e.message : "Không tải được SKU.")); return () => c.abort(); }, [role]);
   function update(key: number, field: keyof Line, value: string) { setLines((ls) => ls.map((l) => l.key === key ? { ...l, [field]: value } : l)); }
   function add() { setLines((ls) => [...ls, { key: nextKey.current++, skuId: "", quantity: "1", reason: "" }]); }
   function remove(key: number) { setLines((ls) => ls.length === 1 ? ls : ls.filter((l) => l.key !== key)); }
@@ -28,8 +28,8 @@ export default function NewExportPage() {
     catch (failure) { if (failure instanceof ExportError) setError(failure.message); else { setUncertain(true); setError("Chưa xác định được phiếu đã được tạo hay chưa. Không gửi lại tự động; mở danh sách phiếu xuất để đối soát."); } }
     finally { busyRef.current = false; setBusy(false); }
   }
-  return <AdminShellB active="exports" title="Tạo phiếu xuất" eyebrow="Vận hành · ADMIN"><div className="page-heading"><div><h1>Tạo phiếu xuất</h1><p className="meta">Phiếu COMPLETED trừ physical/available ngay; reserved giữ nguyên. Không phải draft/duyệt.</p></div><Link className="text-link" href="/quan-tri/phieu-xuat">← Danh sách</Link></div>
-    {role && role !== "ADMIN" ? <div className="order-empty"><strong>Chỉ ADMIN được tạo phiếu xuất</strong><p>STAFF chỉ đọc; form ghi không được hiển thị.</p><Link className="text-link" href="/quan-tri/phieu-xuat">Về danh sách</Link></div> : !role ? <p className="meta" role="status">Đang kiểm tra quyền…</p> : (
+  return <AdminShellB active="exports" title="Tạo phiếu xuất" eyebrow="Vận hành"><div className="page-heading"><div><h1>Tạo phiếu xuất</h1><p className="meta">Phiếu COMPLETED trừ physical/available ngay; reserved giữ nguyên. Không phải draft/duyệt.</p></div><Link className="text-link" href="/quan-tri/phieu-xuat">← Danh sách</Link></div>
+    {role && !canManage(role) ? <div className="order-empty"><strong>Chỉ Quản trị viên hoặc Quản lý được tạo phiếu xuất</strong><p>Tài khoản hiện tại chỉ đọc; form ghi không được hiển thị.</p><Link className="text-link" href="/quan-tri/phieu-xuat">Về danh sách</Link></div> : !role ? <p className="meta" role="status">Đang kiểm tra quyền…</p> : (
       <form className="catalog-form" onSubmit={submit} aria-busy={busy}>
         <div className="catalog-field"><label htmlFor="exp-type">Loại xuất *</label><select id="exp-type" className="catalog-input" value={type} onChange={(e) => setType(e.target.value)}>{TYPE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select><p className="meta">TRANSFER không có hợp đồng kho đích nên không hỗ trợ.</p></div>
         <div className="catalog-field"><label htmlFor="exp-note">Ghi chú</label><input id="exp-note" className="catalog-input" value={note} onChange={(e) => setNote(e.target.value)} /></div>

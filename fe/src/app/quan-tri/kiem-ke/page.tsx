@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
-import { useAdminRole } from "@/components/admin-b/use-admin-role";
+import { useAdminRole, canManage } from "@/components/admin-b/use-admin-role";
 import { getStocktakePage, statusLabel, type Page, type StocktakeSummary } from "@/lib/admin-stocktake-client";
 const STATUS = [["", "Tất cả"], ["PENDING_APPROVAL", "Chờ duyệt"], ["RECONCILED", "Đã đối soát"], ["CANCELLED", "Đã hủy"]];
 export default function StocktakeListPage() {
@@ -23,9 +23,9 @@ export default function StocktakeListPage() {
   // Initial load only; filters apply on submit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void Promise.resolve().then(() => load(0)); }, []);
-  const canWrite = role === "ADMIN" || role === "STAFF";
+  const canWrite = canManage(role);
   return <AdminShellB active="stocktakes" title="Kiểm kê" eyebrow="Vận hành · ghi nhận số đếm, không tự điều chỉnh tồn">
-    <div className="page-heading"><div><h1>Kiểm kê</h1><p className="meta">Phiếu chỉ ghi nhận · PENDING_APPROVAL · không có duyệt/áp dụng tồn · {canWrite ? "ADMIN và STAFF có thể tạo" : "đang kiểm tra quyền"}</p></div>{canWrite ? <Link className="primary" href="/quan-tri/kiem-ke/moi">Tạo phiếu kiểm kê</Link> : null}</div>
+    <div className="page-heading"><div><h1>Kiểm kê</h1><p className="meta">Phiếu chỉ ghi nhận · PENDING_APPROVAL · không có duyệt/áp dụng tồn · {canWrite ? "Quản trị viên và Quản lý có thể tạo" : "đang kiểm tra quyền"}</p></div>{canWrite ? <Link className="primary" href="/quan-tri/kiem-ke/moi">Tạo phiếu kiểm kê</Link> : null}</div>
     <form className="stock-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0); }}>
       <div className="catalog-field"><label htmlFor="st-code">Mã phiếu</label><input id="st-code" className="catalog-input" value={code} onChange={(e) => setCode(e.target.value)} /></div>
       <div className="catalog-field"><label htmlFor="st-status">Trạng thái</label><select id="st-status" className="catalog-input" value={status} onChange={(e) => setStatus(e.target.value)}>{STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>

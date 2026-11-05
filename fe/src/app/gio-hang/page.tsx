@@ -121,7 +121,7 @@ export default function CartPage() {
             <div className="commerce-empty" role="alert">
               <h2>{loadError.includes("quyền") ? "Khu vực mua sắm dành cho khách hàng" : "Không tải được giỏ hàng"}</h2>
               <p>{loadError.includes("quyền")
-                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Nhân viên nên không thể sử dụng giỏ hàng mua sắm. Vui lòng đăng nhập bằng tài khoản Khách hàng để mua hàng hoặc quay lại trang Quản trị."
+                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Quản lý nên không thể sử dụng giỏ hàng mua sắm. Vui lòng đăng nhập bằng tài khoản Khách hàng để mua hàng hoặc quay lại trang Quản trị."
                 : loadError}</p>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
                 {loadError.includes("quyền") ? (

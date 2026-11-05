@@ -12,7 +12,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!Number.isSafeInteger(n) || n < 1) return Response.json({ success: false, code: 400, message: "Mã sản phẩm chưa hợp lệ.", result: null }, { status: 400, headers: { "cache-control": "no-store" } });
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
-  if (who.identity.role !== "ADMIN") return Response.json({ success: false, code: 403, message: "Chỉ ADMIN được tải ảnh sản phẩm.", result: null }, { status: 403, headers: { "cache-control": "no-store" } });
   const token = authCookie(request);
   if (!token) return Response.json({ success: false, code: 401, message: "Thiếu phiên quản trị.", result: null }, { status: 401, headers: { "cache-control": "no-store" } });
   const contentType = request.headers.get("content-type");

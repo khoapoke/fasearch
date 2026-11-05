@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { authLogout, authMe, AuthApiError, type AuthIdentity } from "@/lib/customer-auth-client";
+import { roleLabel } from "@/lib/admin-people-client";
 import { Icon } from "./icons";
 import "./admin-b.css";
 
@@ -71,19 +72,19 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
 
   if (state.kind === "loading") return <div className="admB font-inter"><div className="workspace"><main id="main" className="admB-loading">Đang kiểm tra quyền quản trị…</main></div></div>;
   if (state.kind === "guest") {
-    return <div className="admB font-inter"><div className="admB-gate"><h1>Không gian quản trị</h1><p>Cần đăng nhập bằng tài khoản ADMIN hoặc STAFF.</p><Link className="primary" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div></div>;
+    return <div className="admB font-inter"><div className="admB-gate"><h1>Không gian quản trị</h1><p>Cần đăng nhập bằng tài khoản Quản trị viên hoặc Quản lý.</p><Link className="primary" href="/dang-nhap?next=%2Fquan-tri">Đăng nhập quản trị</Link></div></div>;
   }
   if (state.kind === "error") {
     return <div className="admB font-inter"><div className="admB-gate" role="alert"><h1>Chưa kiểm tra được phiên đăng nhập</h1><p>Dịch vụ tạm thời không sẵn sàng. Thử lại để kiểm tra quyền quản trị.</p><button className="primary" type="button" onClick={() => window.location.reload()}>Thử lại</button></div></div>;
   }
   if (state.kind === "denied") {
-    return <div className="admB font-inter"><div className="admB-gate"><p className="section-label">FaSearch · Không gian nội bộ</p><h1>Không có quyền truy cập</h1><p>Tài khoản hiện tại không phải ADMIN hoặc STAFF. Dữ liệu quản trị không được tải.</p><Link className="text-link" href="/">Về trang chủ</Link></div></div>;
+    return <div className="admB font-inter"><div className="admB-gate"><p className="section-label">FaSearch · Không gian nội bộ</p><h1>Không có quyền truy cập</h1><p>Tài khoản hiện tại không phải Quản trị viên hoặc Quản lý. Dữ liệu quản trị không được tải.</p><Link className="text-link" href="/">Về trang chủ</Link></div></div>;
   }
 
   const role = state.identity.role;
-  const adminOnly = ["/quan-tri/nhan-vien", "/quan-tri/tai-khoan-noi-bo", "/quan-tri/khuyen-mai", "/quan-tri/chinh-sach-diem", "/quan-tri/bao-cao"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const adminOnly = ["/quan-tri/tai-khoan-noi-bo"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
   return (
-    <div className={`admB font-inter${dark ? " dark" : ""}${navOpen ? " nav-open" : ""}${role === "STAFF" ? " role-staff" : ""}`}>
+    <div className={`admB font-inter${dark ? " dark" : ""}${navOpen ? " nav-open" : ""}`}>
       <a className="skip" href="#main">Bỏ qua tới nội dung</a>
       <div className="shell">
         <aside className="sidebar" id="nav" ref={navRef}>
@@ -93,7 +94,7 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <div className="nav-group">Vận hành</div>
             <Link className={`nav-item${active === "orders" ? " active" : ""}`} href="/quan-tri/don-hang" aria-current={active === "orders" ? "page" : undefined}><Icon name="shopping-bag" /><span>Đơn hàng</span></Link>
             <Link className={`nav-item${active === "customers" ? " active" : ""}`} href="/quan-tri/khach-hang" aria-current={active === "customers" ? "page" : undefined}><Icon name="users" /><span>Khách hàng</span></Link>
-            {role === "ADMIN" ? <Link className={`nav-item${active === "employees" ? " active" : ""}`} href="/quan-tri/nhan-vien" aria-current={active === "employees" ? "page" : undefined}><Icon name="users" /><span>Nhân viên</span></Link> : null}
+            <Link className={`nav-item${active === "employees" ? " active" : ""}`} href="/quan-tri/nhan-vien" aria-current={active === "employees" ? "page" : undefined}><Icon name="users" /><span>Nhân sự</span></Link>
             {role === "ADMIN" ? <Link className={`nav-item${active === "internalAccounts" ? " active" : ""}`} href="/quan-tri/tai-khoan-noi-bo" aria-current={active === "internalAccounts" ? "page" : undefined}><Icon name="scroll-text" /><span>Tài khoản nội bộ</span></Link> : null}
             <Link className={`nav-item${active === "products" ? " active" : ""}`} href="/quan-tri/san-pham" aria-current={active === "products" ? "page" : undefined}><Icon name="package" /><span>Sản phẩm</span></Link>
             <Link className={`nav-item${active === "categories" ? " active" : ""}`} href="/quan-tri/danh-muc" aria-current={active === "categories" ? "page" : undefined}><Icon name="clipboard-list" /><span>Danh mục</span></Link>
@@ -101,12 +102,12 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             <Link className={`nav-item${active === "imports" ? " active" : ""}`} href="/quan-tri/phieu-nhap" aria-current={active === "imports" ? "page" : undefined}><Icon name="truck" /><span>Phiếu nhập</span></Link>
             <Link className={`nav-item${active === "exports" ? " active" : ""}`} href="/quan-tri/phieu-xuat" aria-current={active === "exports" ? "page" : undefined}><Icon name="package" /><span>Phiếu xuất</span></Link>
             <Link className={`nav-item${active === "stocktakes" ? " active" : ""}`} href="/quan-tri/kiem-ke" aria-current={active === "stocktakes" ? "page" : undefined}><Icon name="clipboard-list" /><span>Kiểm kê</span></Link>
-            {role === "ADMIN" ? <div className="nav-group">Ưu đãi &amp; Báo cáo</div> : null}
-            {role === "ADMIN" ? <Link className={`nav-item${active === "promotions" ? " active" : ""}`} href="/quan-tri/khuyen-mai" aria-current={active === "promotions" ? "page" : undefined}><Icon name="calendar-days" /><span>Khuyến mãi</span></Link> : null}
-            {role === "ADMIN" ? <Link className={`nav-item${active === "loyalty" ? " active" : ""}`} href="/quan-tri/chinh-sach-diem" aria-current={active === "loyalty" ? "page" : undefined}><Icon name="scroll-text" /><span>Chính sách điểm</span></Link> : null}
-            {role === "ADMIN" ? <Link className={`nav-item${active === "reports" ? " active" : ""}`} href="/quan-tri/bao-cao" aria-current={active === "reports" ? "page" : undefined}><Icon name="chart-no-axes-combined" /><span>Báo cáo</span></Link> : null}
+            <div className="nav-group">Ưu đãi &amp; Báo cáo</div>
+            <Link className={`nav-item${active === "promotions" ? " active" : ""}`} href="/quan-tri/khuyen-mai" aria-current={active === "promotions" ? "page" : undefined}><Icon name="calendar-days" /><span>Khuyến mãi</span></Link>
+            <Link className={`nav-item${active === "loyalty" ? " active" : ""}`} href="/quan-tri/chinh-sach-diem" aria-current={active === "loyalty" ? "page" : undefined}><Icon name="scroll-text" /><span>Chính sách điểm</span></Link>
+            <Link className={`nav-item${active === "reports" ? " active" : ""}`} href="/quan-tri/bao-cao" aria-current={active === "reports" ? "page" : undefined}><Icon name="chart-no-axes-combined" /><span>Báo cáo</span></Link>
           </nav>
-          <div className="sidebar-bottom"><span className="fixture-dot" />Vận hành nội bộ · STAFF/ADMIN</div>
+          <div className="sidebar-bottom"><span className="fixture-dot" />Vận hành nội bộ · Quản trị viên/Quản lý</div>
         </aside>
         <div className="workspace">
           <header className="appbar">
@@ -116,14 +117,14 @@ export function AdminShellB({ active, title, eyebrow, children }: { active: "ove
             </div>
             <div className="utilities">
               <button className="icon-btn" type="button" onClick={toggleTheme} aria-label={dark ? "Chuyển giao diện sáng" : "Chuyển giao diện tối"}><Icon name={dark ? "sun" : "moon"} /></button>
-              <span className="user"><span className="avatar">{role === "STAFF" ? "NV" : "QT"}</span>{role === "STAFF" ? "Nhân viên" : "Quản trị"}</span>
+              <span className="user"><span className="avatar">{role === "STAFF" ? "QL" : "QT"}</span>{roleLabel(role)}</span>
               <button className="logout-btn" type="button" onClick={logout} disabled={loggingOut} aria-busy={loggingOut} aria-label={loggingOut ? "Đang đăng xuất" : "Đăng xuất khỏi phiên trình duyệt này"} title="Đăng xuất khỏi phiên trình duyệt này"><Icon name="log-out" /><span>{loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}</span></button>
             </div>
           </header>
           {logoutError ? <p className="logout-error" role="alert">{logoutError}</p> : null}
           <main id="main" tabIndex={-1}>
             {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
-            {role === "STAFF" && adminOnly ? <div className="order-empty" role="status"><h1>Chỉ ADMIN được truy cập mục này</h1><p>Tài khoản STAFF không có quyền quản lý nội dung này.</p><Link className="text-link" href="/quan-tri">Về Tổng quan</Link></div> : children}
+            {role === "STAFF" && adminOnly ? <div className="order-empty" role="status"><h1>Chỉ Quản trị viên hệ thống được truy cập mục này</h1><p>Tài khoản Quản lý không có quyền quản lý tài khoản và vai trò.</p><Link className="text-link" href="/quan-tri">Về Tổng quan</Link></div> : children}
           </main>
         </div>
       </div>

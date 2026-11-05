@@ -28,7 +28,6 @@ export async function catalogWrite(request: NextRequest, path: string, method: "
   if (guard) return guard;
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
-  if (who.identity.role !== "ADMIN") return Response.json({ success: false, code: 403, message: "Chỉ ADMIN được sửa catalog.", result: null }, { status: 403 });
   const token = authCookie(request);
   if (!token) return Response.json({ success: false, code: 401, message: "Thiếu phiên quản trị.", result: null }, { status: 401 });
   try {
@@ -41,7 +40,6 @@ export async function catalogWrite(request: NextRequest, path: string, method: "
 export async function catalogDelete(request: NextRequest, path: string): Promise<Response> {
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
-  if (who.identity.role !== "ADMIN") return Response.json({ success: false, code: 403, message: "Chỉ ADMIN được xóa catalog.", result: null }, { status: 403, headers: { "cache-control": "no-store" } });
   const token = authCookie(request);
   if (!token) return Response.json({ success: false, code: 401, message: "Thiếu phiên quản trị.", result: null }, { status: 401, headers: { "cache-control": "no-store" } });
   try {

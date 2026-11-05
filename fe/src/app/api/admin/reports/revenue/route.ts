@@ -9,7 +9,7 @@ const bad = (message: string, status: number) =>
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** GET /api/admin/reports/revenue?period&startDate&endDate&channel (BE CONTRACT v1, ADMIN only). */
+/** GET /api/admin/reports/revenue?period&startDate&endDate&channel (BE CONTRACT v1, ADMIN + STAFF (Quản lý)). */
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams;
   const period = q.get("period") ?? "DAY";

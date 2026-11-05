@@ -18,9 +18,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
-  if (who.identity.role !== "ADMIN") {
-    return authError("Chỉ ADMIN được tải ảnh bản nháp.", 403);
-  }
   const token = authCookie(request);
   if (!token) return authError("Thiếu phiên quản trị.", 401);
   const contentType = request.headers.get("content-type");

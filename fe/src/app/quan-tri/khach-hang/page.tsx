@@ -2,16 +2,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
-import { useAdminRole } from "@/components/admin-b/use-admin-role";
+import { useAdminRole, canManage } from "@/components/admin-b/use-admin-role";
 import { getCustomerPage, genderLabel, type Customer, type Page } from "@/lib/admin-customer-client";
 export default function AdminCustomersPage() {
   const role = useAdminRole(); const [data, setData] = useState<Page<Customer> | null>(null); const [page, setPage] = useState(0); const [keyword, setKeyword] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   async function load(next = page, clear = false) { setLoading(true); setError(""); const q = new URLSearchParams({ page: String(next), size: "10" }); if (!clear && keyword.trim()) q.set("keyword", keyword.trim()); try { setData(await getCustomerPage(q.toString())); } catch (e) { setError(e instanceof Error ? e.message : "Không tải được khách hàng."); } finally { setLoading(false); } }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void Promise.resolve().then(() => load(0)); }, []);
-  const canWrite = role === "ADMIN" || role === "STAFF";
+  const canWrite = canManage(role);
   return <AdminShellB active="customers" title="Khách hàng" eyebrow="Vận hành · hồ sơ khách hàng">
-    <div className="page-heading"><div><h1>Khách hàng</h1><p className="meta">Hồ sơ liên hệ thật từ BE · hạng/điểm chỉ đọc · {canWrite ? "ADMIN và STAFF có thể tạo/sửa" : "đang kiểm tra quyền"}</p></div>{canWrite ? <Link className="primary" href="/quan-tri/khach-hang/moi">Tạo khách hàng</Link> : null}</div>
+    <div className="page-heading"><div><h1>Khách hàng</h1><p className="meta">Hồ sơ liên hệ thật từ BE · hạng/điểm chỉ đọc · {canWrite ? "Quản trị viên và Quản lý có thể tạo/sửa" : "đang kiểm tra quyền"}</p></div>{canWrite ? <Link className="primary" href="/quan-tri/khach-hang/moi">Tạo khách hàng</Link> : null}</div>
     <form className="stock-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0); }}><div className="catalog-field"><label htmlFor="cust-search">Tìm theo tên / SĐT</label><input id="cust-search" className="catalog-input" maxLength={100} value={keyword} onChange={(e) => setKeyword(e.target.value)} /></div><button className="primary" type="submit">Tìm</button><button className="text-link" type="button" onClick={() => { setKeyword(""); setPage(0); void load(0, true); }}>Đặt lại</button></form>
     {loading ? <p className="meta" role="status">Đang tải khách hàng…</p> : null}{error ? <div className="order-empty" role="alert"><strong>Không tải được khách hàng</strong><p>{error}</p><button className="text-link" type="button" onClick={() => load(page)}>Thử lại</button></div> : null}
     {!loading && !error && data?.content.length === 0 ? <div className="order-empty"><strong>Không có khách hàng khớp</strong><p>Thử từ khóa khác.</p></div> : null}

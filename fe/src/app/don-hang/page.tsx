@@ -104,7 +104,7 @@ export default function OrdersPage() {
             <div className="commerce-empty" role="alert">
               <h2>{errorStatus === 403 ? "Khu vực này dành cho khách hàng mua sắm" : "Không tải được đơn hàng"}</h2>
               <p>{errorStatus === 403
-                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Nhân viên. Đơn mua hàng trực tuyến cá nhân chỉ hiển thị cho tài khoản Khách hàng. Bạn có thể mở trang Quản trị đơn hàng để quản lý toàn bộ đơn trong hệ thống."
+                ? "Tài khoản của bạn hiện có vai trò Quản trị viên/Quản lý. Đơn mua hàng trực tuyến cá nhân chỉ hiển thị cho tài khoản Khách hàng. Bạn có thể mở trang Quản trị đơn hàng để quản lý toàn bộ đơn trong hệ thống."
                 : error}</p>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
                 {errorStatus === 403 ? (

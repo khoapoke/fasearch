@@ -11,7 +11,7 @@ export const getEmployeePage = async (q: string, signal?: AbortSignal) => parse<
 export const getEmployee = async (id: string, signal?: AbortSignal) => parse<Employee>(await fetch(`/api/admin/employees/${id}`, { cache: "no-store", signal }));
 export const createEmployee = async (body: Record<string, unknown>) => parse<Employee>(await fetch("/api/admin/employees", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
 export const updateEmployee = async (id: string, body: Record<string, unknown>) => parse<Employee>(await fetch(`/api/admin/employees/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
-export const roleLabel = (v: string | null) => v === "ADMIN" ? "Quản trị" : v === "STAFF" ? "Nhân viên" : v === "CUSTOMER" ? "Khách hàng" : v ?? "—";
+export const roleLabel = (v: string | null) => v === "ADMIN" ? "Quản trị viên" : v === "STAFF" ? "Quản lý" : v === "CUSTOMER" ? "Khách hàng" : v ?? "—";
 export const statusLabel = (v: string) => v === "ACTIVE" ? "Hoạt động" : v === "INACTIVE" ? "Chưa hoạt động" : v === "LOCKED" ? "Đã khóa" : v === "DELETED" ? "Đã xóa" : v;
 export const genderLabel = (v: string | null) => v === "MALE" ? "Nam" : v === "FEMALE" ? "Nữ" : v === "OTHER" ? "Khác" : "—";
 export const maskCccd = (v: string) => v.length === 12 ? `••••••••${v.slice(-4)}` : "—";
