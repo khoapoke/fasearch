@@ -12,7 +12,7 @@ import { readCommerceResponse } from "../src/lib/customer-commerce-client.ts";
 describe("Customer & Admin Core Journey Polish - Contract & Error Verification", () => {
   it("maps raw backend English errors to human Vietnamese messages", () => {
     const rawErrors = [
-      { raw: "Insufficient stock for requested SKU 56", expected: "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho." },
+      { raw: "Insufficient stock for requested SKU 56", expected: "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé." },
       { raw: "Cart is empty", expected: "Giỏ hàng hiện đang trống." },
       { raw: "Access denied: insufficient permissions", expected: "Tài khoản không có quyền thực hiện thao tác này." },
       { raw: "Invoice before completion required", expected: "Đơn hàng cần được ghi nhận thu tiền (hóa đơn) trước khi hoàn tất." },
@@ -21,7 +21,7 @@ describe("Customer & Admin Core Journey Polish - Contract & Error Verification",
     for (const { raw, expected } of rawErrors) {
       let mapped = "";
       if (/insufficient.*stock|hết hàng|tồn kho/i.test(raw)) {
-        mapped = "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.";
+        mapped = "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé.";
       } else if (/cart.*empty|giỏ hàng.*trống/i.test(raw)) {
         mapped = "Giỏ hàng hiện đang trống.";
       } else if (/access denied|forbidden|không có quyền|permission/i.test(raw)) {
@@ -110,7 +110,7 @@ describe("Customer & Admin Core Journey Polish - Contract & Error Verification",
     // 1. Safe commerce call fixture (safeErrors = true)
     const safeResult = formatCommerceUpstreamError(400, upstreamPayload, true);
     assert.equal(safeResult.status, 400);
-    assert.equal(safeResult.body.message, "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.");
+    assert.equal(safeResult.body.message, "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé.");
     assert.equal(safeResult.body.errors, undefined, "safeErrors policy MUST strip raw upstream errors array");
 
     // Client readCommerceResponse on safe call
@@ -121,14 +121,14 @@ describe("Customer & Admin Core Journey Polish - Contract & Error Verification",
     const safeErr = await readCommerceResponse(safeResponse, (v) => v).catch((e) => e);
     assert.ok(safeErr instanceof CommerceError);
     assert.equal(safeErr.status, 400);
-    assert.match(safeErr.message, /Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho\./);
+    assert.match(safeErr.message, /Lựa chọn này tạm hết hàng/);
     assert.equal(safeErr.message.includes(rawEnglishReason), false, "Customer-visible error MUST NOT contain raw English reason");
     assert.equal(safeErr.message.includes("SKU 56"), false, "Customer-visible error MUST NOT contain raw backend SKU");
 
     // 2. Non-safe commerce call fixture (safeErrors = false)
     const nonSafeResult = formatCommerceUpstreamError(400, upstreamPayload, false);
     assert.equal(nonSafeResult.status, 400);
-    assert.equal(nonSafeResult.body.message, "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.");
+    assert.equal(nonSafeResult.body.message, "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé.");
     assert.ok(Array.isArray(nonSafeResult.body.errors), "Non-safe call preserves errors on envelope");
 
     // Client readCommerceResponse sanitizes raw reasons even if envelope retained them
@@ -139,7 +139,7 @@ describe("Customer & Admin Core Journey Polish - Contract & Error Verification",
     const nonSafeErr = await readCommerceResponse(nonSafeResponse, (v) => v).catch((e) => e);
     assert.ok(nonSafeErr instanceof CommerceError);
     assert.equal(nonSafeErr.status, 400);
-    assert.match(nonSafeErr.message, /Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho\./);
+    assert.match(nonSafeErr.message, /Lựa chọn này tạm hết hàng/);
     assert.equal(nonSafeErr.message.includes(rawEnglishReason), false, "Client MUST NOT concatenate raw upstream reason into customer-visible error");
     assert.equal(nonSafeErr.message.includes("SKU 56"), false);
 
