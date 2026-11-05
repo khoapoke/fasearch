@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { authMe, AuthApiError, isAuthAbort, type AuthIdentity } from "@/lib/customer-auth-client";
+import { AuthApiError, type AuthIdentity } from "@/lib/customer-auth-client";
+import { getAccountIdentity } from "@/lib/account-identity-cache";
 import { fetchCustomerOrders } from "@/lib/customer-commerce-client";
 import { formatMoney, orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
 import "./auth.css";
@@ -93,21 +94,22 @@ export function useAccountHub() {
   const [ordersError, setOrdersError] = useState("");
 
   useEffect(() => {
-    const controller = new AbortController();
-    authMe(controller.signal)
+    // Identity dùng chung với khung tài khoản (không fetch lại mỗi route con).
+    let live = true;
+    getAccountIdentity()
       .then((identity) => {
-        if (controller.signal.aborted) return;
+        if (!live) return;
         setState(identity.role === "CUSTOMER" || identity.role === "STAFF" || identity.role === "ADMIN"
           ? { kind: "ready", identity }
           : { kind: "forbidden", message: "Tài khoản này không có quyền xem khu vực tài khoản." });
       })
       .catch((failure) => {
-        if (controller.signal.aborted || isAuthAbort(failure)) return;
+        if (!live) return;
         setState(failure instanceof AuthApiError && failure.status === 401
           ? { kind: "guest" }
           : { kind: "error", message: "Không tải được thông tin tài khoản. Thử lại." });
       });
-    return () => controller.abort();
+    return () => { live = false; };
   }, [retry]);
 
   useEffect(() => {

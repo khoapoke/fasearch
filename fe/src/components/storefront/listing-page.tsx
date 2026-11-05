@@ -300,7 +300,7 @@ export function ListingPage({
                   <button key={c.hex} type="button" className="pgSwatch" style={{ background: c.hex }} aria-label={`Màu ${c.label}`} aria-pressed={color === c.hex} onClick={() => setColor(color === c.hex ? "" : c.hex)} />
                 ))}
               </div>
-              <p className="mpMuted" style={{ fontSize: 12, marginTop: 8 }}>Danh mục/giá lọc toàn shop qua máy chủ. Size/màu lọc trong trang đang hiện theo biến thể shop khai báo (chưa có tham số máy chủ — xem CONTRACT_GAPS).</p>
+              <p className="mpMuted" style={{ fontSize: 12, marginTop: 8 }}>Danh mục và giá lọc cho toàn shop. Lọc size/màu áp dụng cho sản phẩm đang hiển thị.</p>
             </>
           )}
           <button className="pgApply" type="button" onClick={apply}>Áp dụng bộ lọc</button>

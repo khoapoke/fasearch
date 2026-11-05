@@ -10,7 +10,7 @@ import {
   formatVnd,
   type CatalogProductDetail,
 } from "@/lib/customer-catalog";
-import { resolveSelection } from "@/lib/variant-select";
+import { axisLabel, resolveSelection } from "@/lib/variant-select";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { addCustomerCartItem } from "@/lib/customer-commerce-client";
 import { CommerceError } from "@/lib/customer-commerce";
@@ -121,6 +121,10 @@ export function DetailView({ id }: { id: string }) {
   const selection = resolveSelection(variants, color, size);
   const colors = selection.colors;
   const sizesForColor = selection.sizes;
+  // Nhãn trục trung thực: mau_sac đôi khi mang chữ nguồn không phải màu
+  // (đặt cọc/đặt hàng) — khi đó nhãn trung tính, không bao giờ hiện "Màu".
+  const colorAxisLabel = axisLabel(colors, "color");
+  const sizeAxisLabel = axisLabel(sizesForColor, "size");
   const selected = selection.selected;
   const price = product ? product.price + (selected?.additionalPrice ?? 0) : 0;
   const needColor = selection.needColor;
@@ -243,12 +247,12 @@ export function DetailView({ id }: { id: string }) {
               <h1>{product.name}</h1>
               <p className="cat-detail-price">{formatVnd(price)}</p>
               {selected && selected.additionalPrice > 0 ? (
-                <p className="cat-price-note">Giá tham khảo theo biến thể đã chọn (giá gốc + phụ thu).</p>
+                <p className="cat-price-note">Giá theo lựa chọn của bạn (đã gồm phụ thu nếu có).</p>
               ) : null}
 
               {colors.length > 1 ? (
                 <div className="cat-option-block">
-                  <h2>Màu <span>{color || "Chọn"}</span></h2>
+                  <h2>{colorAxisLabel} <span>{color || "Chọn"}</span></h2>
                   <div className="cat-option-options">
                     {colors.map((option) => (
                       <button
@@ -268,7 +272,7 @@ export function DetailView({ id }: { id: string }) {
 
               {sizesForColor.length > 1 ? (
                 <div className="cat-option-block">
-                  <h2>Kích cỡ <span>{size || "Chọn"}</span></h2>
+                  <h2>{sizeAxisLabel} <span>{size || "Chọn"}</span></h2>
                   <div className="cat-option-options">
                     {sizesForColor.map((option) => (
                       <button
@@ -297,17 +301,19 @@ export function DetailView({ id }: { id: string }) {
                   <span aria-live="polite"><span key={quantity} className="qty-tick">{quantity}</span></span>
                   <button type="button" aria-label="Tăng số lượng" disabled={quantity >= MAX_LINE_QTY} onClick={() => setQuantity((q) => Math.min(MAX_LINE_QTY, q + 1))}>+</button>
                 </div>
-                <button className="cat-button cat-primary" type="button" disabled={!selected || addBusy} aria-describedby="cat-buy-note" onClick={addToCart}>
+                <button className="cat-button cat-primary" type="button" disabled={!selected || addBusy} aria-describedby="cat-stock-note" onClick={addToCart}>
                   {addBusy ? "Đang thêm…" : "Thêm vào giỏ"}
                 </button>
               </div>
               {needColor || needSize || (!selected && variants.length > 0 && !ambiguous) || ambiguous ? (
                 <p className="cat-readonly-note" role="status" id="cat-buy-note">
-                  {needColor ? "Chọn màu để thêm vào giỏ." : needSize ? "Chọn kích cỡ để thêm vào giỏ." : "Phiên bản chưa xác định được — liên hệ cửa hàng để được tư vấn."}
+                  {needColor ? `Chọn ${colorAxisLabel.toLowerCase()} để thêm vào giỏ.` : needSize ? `Chọn ${sizeAxisLabel.toLowerCase()} để thêm vào giỏ.` : "Phiên bản chưa xác định được — liên hệ cửa hàng để được tư vấn."}
                 </p>
               ) : null}
               {addNotice ? <p className="cat-readonly-note" role="status">{addNotice}{addNotice.includes("Đăng nhập") ? <> <Link className="cat-text-button" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập →</Link></> : null}</p> : null}
-              {addError ? <p className="cat-error" role="alert">{addError}</p> : null}
+              {/* Warm stock note: small inline copy under the add-to-cart row,
+                  always in DOM with min-height so success/error swaps cause no layout jump. */}
+              <p className="cat-stock-note" id="cat-stock-note" role="status" aria-live="polite">{addError}</p>
 
               <div className="cat-disclosures">
                 <details>

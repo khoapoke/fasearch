@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { AccountCenterShell } from "@/components/storefront/account-center-shell";
 import { LocationPicker, type DeliveryLocation } from "@/components/customer-commerce/location-picker";
 import { getSelfProfile, updateSelfProfile, type CustomerProfile } from "@/lib/customer-profile-client";
 import { fetchShippingQuote } from "@/lib/customer-commerce-client";
@@ -37,16 +36,18 @@ export default function AddressesPage() {
     catch (e) { setMessage(e instanceof Error ? e.message : "Không lưu được địa chỉ."); }
     finally { setBusy(false); }
   }
-  return <AccountCenterShell active="/tai-khoan/dia-chi" title="Địa chỉ nhận hàng">
-    <p className="mpMuted">Địa chỉ và vị trí này được điền sẵn khi thanh toán. Bạn có thể thay đổi cho từng đơn.</p>
-    {profile ? <form onSubmit={save} className="pvAddr">
-      <p><b>{[profile.lastName, profile.firstName].filter(Boolean).join(" ")}</b> · {profile.phoneNumber}</p>
-      <label htmlFor="delivery-address">Địa chỉ nhận hàng</label>
-      <input id="delivery-address" value={address} onChange={(e) => { setAddress(e.target.value); setLocation(null); setQuote(null); }} maxLength={255} required minLength={5} style={{ width: "100%", padding: 12, boxSizing: "border-box" }} autoComplete="street-address" />
-      <LocationPicker value={location} onChange={setLocation} onAddress={setAddress} />
-      {quote ? <p aria-live="polite">{quote.distanceKm?.toLocaleString("vi-VN")} km · {quote.method === "google" ? "Theo tuyến đường" : "Ước tính"} · {formatMoney(quote.shippingFee)} / kiện đến 2 kg. Phí cuối cùng được tính khi thanh toán.</p> : null}
-      <button className="auth-button is-primary" type="submit" disabled={busy}>{busy ? "Đang lưu…" : "Lưu địa chỉ"}</button>
-    </form> : null}
-    {message ? <p role="status" aria-live="polite">{message}</p> : null}
-  </AccountCenterShell>;
+  return (
+    <>
+      <p className="mpMuted">Địa chỉ và vị trí này được điền sẵn khi thanh toán. Bạn có thể thay đổi cho từng đơn.</p>
+      {profile ? <form onSubmit={save} className="pvAddr">
+        <p><b>{[profile.lastName, profile.firstName].filter(Boolean).join(" ")}</b> · {profile.phoneNumber}</p>
+        <label htmlFor="delivery-address">Địa chỉ nhận hàng</label>
+        <input id="delivery-address" value={address} onChange={(e) => { setAddress(e.target.value); setLocation(null); setQuote(null); }} maxLength={255} required minLength={5} style={{ width: "100%", padding: 12, boxSizing: "border-box" }} autoComplete="street-address" />
+        <LocationPicker value={location} onChange={setLocation} onAddress={setAddress} />
+        {quote ? <p aria-live="polite">{quote.distanceKm?.toLocaleString("vi-VN")} km · {quote.method === "google" ? "Theo tuyến đường" : "Ước tính"} · {formatMoney(quote.shippingFee)} / kiện đến 2 kg. Phí cuối cùng được tính khi thanh toán.</p> : null}
+        <button className="auth-button is-primary" type="submit" disabled={busy}>{busy ? "Đang lưu…" : "Lưu địa chỉ"}</button>
+      </form> : null}
+      {message ? <p role="status" aria-live="polite">{message}</p> : null}
+    </>
+  );
 }

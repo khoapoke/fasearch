@@ -119,6 +119,30 @@ export function loyaltyActionLabel(type: string): string {
   }
 }
 
+/** Tên hạng hiển thị duy nhất (nguồn: loyalty summary) — dùng chung cho
+ *  trang điểm thưởng, hồ sơ và hub tài khoản. Không bịa tên khi thiếu. */
+export function loyaltyTierDisplayName(balance: LoyaltyBalance): string {
+  if (balance.salesTierName) return balance.salesTierName;
+  return balance.salesTierStatus === "HISTORY_UNKNOWN" ? "Chưa đủ dữ liệu" : "Chưa xếp hạng";
+}
+
+/** dd/MM/yyyy HH:mm cho lịch sử điểm — không bao giờ hiện ISO thô. */
+export function formatVnDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Chuỗi số điểm có dấu cho lịch sử: OPENING là số dư nền (+N, trung tính). */
+export function loyaltyHistoryAmount(type: string, points: number): { text: string; direction: "up" | "down" | "flat" } {
+  if (type === "OPENING") return { text: `+${points} điểm`, direction: "flat" };
+  const signed = loyaltySignedPoints(type, points);
+  if (signed > 0) return { text: `+${points} điểm`, direction: "up" };
+  if (signed < 0) return { text: `−${points} điểm`, direction: "down" };
+  return { text: `${points} điểm`, direction: "flat" };
+}
+
 /** OPENING is a baseline, while HOLD/RELEASE only move the available balance. */
 export function loyaltySignedPoints(type: string, points: number): number {
   if (type === "OPENING") return 0;

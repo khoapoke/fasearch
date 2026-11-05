@@ -9,6 +9,8 @@ import {
   profileGenderLabel,
   type CustomerProfile,
 } from "@/lib/customer-profile-client";
+import { fetchOwnLoyalty, type OwnLoyalty } from "@/lib/benefits-client";
+import { loyaltyTierDisplayName } from "@/lib/benefits";
 
 type Values = {
   firstName: string;
@@ -32,6 +34,9 @@ function valuesOf(p: CustomerProfile): Values {
 
 export function ProfileEditor() {
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  // Hạng/điểm hiển thị lấy từ loyalty summary (cùng nguồn với trang điểm
+  // thưởng); hồ sơ BE chỉ là dự phòng khi loyalty chưa tải được.
+  const [loyalty, setLoyalty] = useState<OwnLoyalty | null>(null);
   const [values, setValues] = useState<Values | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
@@ -83,6 +88,15 @@ export function ProfileEditor() {
       noticeRef.current.focus();
     }
   }, [notice]);
+
+  useEffect(() => {
+    if (editing || !profile) return;
+    let live = true;
+    fetchOwnLoyalty()
+      .then((data) => { if (live) setLoyalty(data); })
+      .catch(() => { if (live) setLoyalty(null); });
+    return () => { live = false; };
+  }, [editing, profile]);
 
   function set(key: keyof Values, value: string) {
     setValues((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -200,8 +214,10 @@ export function ProfileEditor() {
           <div className="acct-row">
             <dt>Hạng thành viên</dt>
             <dd>
-              <strong>{profile.tierName ?? "Thành viên"}</strong>
-              {typeof profile.accumulatePoint === "number" ? ` · ${profile.accumulatePoint} điểm tích lũy` : ""}
+              <strong>{loyalty ? loyaltyTierDisplayName(loyalty.balance) : (profile.tierName ?? "Thành viên")}</strong>
+              {loyalty?.balance.availablePoints != null
+                ? ` · ${loyalty.balance.availablePoints.toLocaleString("vi-VN")} điểm khả dụng`
+                : (typeof profile.accumulatePoint === "number" ? ` · ${profile.accumulatePoint} điểm tích lũy` : "")}
             </dd>
           </div>
         </dl>

@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { AccountCenterShell } from "@/components/storefront/account-center-shell";
 import { ProfileEditor } from "@/components/customer-auth/profile-editor";
 
 export const metadata = {
@@ -9,10 +7,8 @@ export const metadata = {
 
 export default function ProfilePage() {
   return (
-    <AccountCenterShell active="/tai-khoan/thong-tin" title="Thông tin cá nhân">
-      <section aria-label="Thông tin cá nhân">
-        <ProfileEditor />
-      </section>
-    </AccountCenterShell>
+    <section aria-label="Thông tin cá nhân">
+      <ProfileEditor />
+    </section>
   );
 }

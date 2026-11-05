@@ -1,0 +1,101 @@
+/* Thẻ thành viên FaSearch — CSS-only, token chữ theo hạng, tương phản cố định
+ * (nền gradient đục nên màu chữ cố định, đúng cả light/dark). Không animation:
+ * tôn trọng sẵn reduced-motion/Motion Off. Dùng token --st-* cho phần nền
+ * surface để khớp cả hai theme. */
+
+.lyCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 22px 22px 20px;
+  color: #fff;
+}
+/* Họa tiết trang trí thuần CSS: hai vòng tròn mờ, không ảnh, không chuyển động. */
+.lyCard::before,
+.lyCard::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+.lyCard::before { width: 220px; height: 220px; right: -70px; top: -90px; }
+.lyCard::after { width: 140px; height: 140px; right: 60px; bottom: -80px; }
+
+.lyTier-dong { background: linear-gradient(135deg, #8a5a24 0%, #5e3c14 100%); color: #fff7e8; }
+.lyTier-dong .lyCard-sub { color: #f0d9ae; }
+.lyTier-bac { background: linear-gradient(135deg, #eef0f2 0%, #a9b0b9 100%); color: #14171a; }
+.lyTier-bac .lyCard-sub { color: #3c4247; }
+.lyTier-bac::before, .lyTier-bac::after { background: rgba(20, 23, 26, 0.08); }
+.lyTier-vang { background: linear-gradient(135deg, #dfb62a 0%, #8a6a0e 100%); color: #241c02; }
+.lyTier-vang .lyCard-sub { color: #4a3c08; }
+.lyTier-vang::before, .lyTier-vang::after { background: rgba(36, 28, 2, 0.1); }
+.lyTier-kimcuong { background: linear-gradient(135deg, #2b3070 0%, #5a61d6 100%); color: #ffffff; }
+.lyTier-kimcuong .lyCard-sub { color: #cfd3ff; }
+.lyTier-other { background: linear-gradient(135deg, #3730d8 0%, #211d86 100%); color: #ffffff; }
+.lyTier-other .lyCard-sub { color: #cfcdfd; }
+
+.lyCard-top { display: flex; align-items: center; gap: 10px; }
+.lyCard-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; letter-spacing: 0.01em; }
+.lyCard-brand svg { width: 26px; height: 26px; }
+.lyCard-tier {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lyCard-name { margin: 16px 0 2px; font-size: 15px; font-weight: 500; }
+.lyCard-sub { margin: 0; font-size: 12.5px; }
+.lyCard-points { margin: 10px 0 0; font-size: clamp(30px, 5vw, 40px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.lyCard-points small { font-size: 14px; font-weight: 500; letter-spacing: 0; }
+
+.lyStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.lyStat {
+  border: 1px solid var(--st-line);
+  border-radius: 14px;
+  background: var(--st-surface);
+  padding: 14px 14px 12px;
+}
+.lyStat b { display: block; font-size: clamp(20px, 3.4vw, 28px); font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.lyStat span { display: block; margin-top: 4px; color: var(--st-ink-soft); font-size: 13px; }
+
+.lyProgress { margin-top: 14px; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface); padding: 14px; }
+.lyProgress p { margin: 0; font-size: 14px; }
+.lyProgress p strong { font-weight: 700; }
+.lyBar { height: 10px; border-radius: 999px; background: var(--st-select); margin-top: 10px; overflow: hidden; }
+.lyBar i { display: block; height: 100%; border-radius: 999px; background: var(--st-brand); }
+.lyProgress small { display: block; margin-top: 8px; color: var(--st-ink-soft); font-size: 12.5px; }
+
+.lyHowto { margin: 14px 0 0; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface); padding: 14px; }
+.lyHowto h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.lyHowto p { margin: 4px 0; font-size: 14px; }
+.lyHowto .lyCard-sub2 { color: var(--st-ink-soft); font-size: 13px; }
+
+.lyHist { margin: 14px 0 0; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface); padding: 6px 14px 10px; }
+.lyHist h2 { margin: 8px 0 4px; font-size: 15px; font-weight: 600; }
+.lyHist-empty { color: var(--st-ink-soft); font-size: 14px; }
+.lyHist-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--st-line); }
+.lyHist-row:last-child { border-bottom: 0; }
+.lyHist-row > div { min-width: 0; }
+.lyHist-row b { display: block; font-size: 14px; font-weight: 600; }
+.lyHist-row small { color: var(--st-ink-soft); font-size: 12.5px; }
+.lyHist-amt { white-space: nowrap; font-weight: 700; font-size: 14px; }
+.lyHist-amt.up { color: var(--st-ok-text); }
+.lyHist-amt.down { color: var(--st-err-text); }
+
+.lyError { border: 1px solid var(--st-err-border, var(--st-line)); border-radius: 14px; background: var(--st-err-bg, var(--st-surface)); color: var(--st-err-text, var(--st-ink)); padding: 14px; }
+.lyError:focus { outline: none; }
+
+.lyFoot { margin: 12px 0 0; color: var(--st-ink-soft); font-size: 13px; }
+
+@media (max-width: 560px) {
+  .lyStats { grid-template-columns: minmax(0, 1fr); }
+  .lyCard { padding: 18px 16px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyCard::before, .lyCard::after, .lyBar i { animation: none; transition: none; }
+}

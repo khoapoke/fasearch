@@ -15,7 +15,7 @@ import {
   type AuthIdentity,
 } from "@/lib/customer-auth-client";
 
-const NAV: Array<{ href: string; label: string; icon: UiIcon }> = [
+export const ACCOUNT_NAV: Array<{ href: string; label: string; icon: UiIcon }> = [
   { href: "/don-hang", label: "Đơn hàng", icon: "bag" },
   { href: "/yeu-thich", label: "Sản phẩm yêu thích", icon: "heart" },
   { href: "/lich-su-ai", label: "Lịch sử tìm kiếm AI", icon: "camera" },
@@ -104,7 +104,7 @@ export function AccountCenterShell({
                 <p className="acct-note">{state === "loading" ? "Đang tải…" : "Chưa đăng nhập"}</p>
               )}
               <nav className="acct-nav" aria-label="Quản lý tài khoản">
-              {NAV.map((item) => (
+              {ACCOUNT_NAV.map((item) => (
                 <Link key={item.href} href={item.href} aria-current={active === item.href ? "page" : undefined}>
                   <Icon name={item.icon} size={18} />
                   <span style={{ flex: 1 }}>{item.label}</span>

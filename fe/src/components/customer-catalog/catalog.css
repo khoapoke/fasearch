@@ -445,6 +445,11 @@
 .catPage .cat-buy-row { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
 .catPage .cat-buy-row .cat-button { flex: 1; }
 .catPage .cat-readonly-note { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 12px; }
+/* Warm stock note under the add-to-cart row: same 12px PDP voice as
+   readonly-note, always in DOM with a one-line reserve so error/success
+   swaps never shift the disclosures below (no layout jump). */
+.catPage .cat-stock-note { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 12px; line-height: 1.5; min-height: 18px; }
+.catPage .cat-stock-note:empty::before { content: "\00a0"; visibility: hidden; }
 .catPage .cat-size-guide { margin: 16px 0 0; border: 1px solid var(--st-line); border-radius: 8px; }
 .catPage .cat-size-guide > summary { min-height: 44px; padding: 10px 14px; font-size: 14px; cursor: pointer; }
 .catPage .cat-size-guide-body { padding: 0 14px 14px; color: var(--st-ink-soft); font-size: 13px; }

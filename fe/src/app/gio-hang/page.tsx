@@ -51,8 +51,8 @@ export default function CartPage() {
     if (failed > 0) {
       setActionError(
         failed === 1
-          ? "1 món đã chọn chưa thêm được vào giỏ vì không đủ tồn kho. Món đó vẫn được giữ trên thiết bị này để bạn chọn lại."
-          : `${failed} món đã chọn chưa thêm được vào giỏ vì không đủ tồn kho. Chúng vẫn được giữ trên thiết bị này.`,
+          ? "1 món đã chọn chưa thêm được vào giỏ vì tạm hết hàng. Món đó vẫn được giữ trên thiết bị này để bạn chọn lại."
+          : `${failed} món đã chọn chưa thêm được vào giỏ vì tạm hết hàng. Chúng vẫn được giữ trên thiết bị này.`,
       );
     }
   }, [authState, cart, setCart]);
@@ -111,7 +111,7 @@ export default function CartPage() {
             <Link href="/">Trang chủ</Link><span aria-hidden="true">›</span><span aria-current="page">Giỏ hàng</span>
           </nav>
           <h1 className="commerce-title">Giỏ hàng</h1>
-          <p className="commerce-sub">Giá và tổng tiền được xác nhận khi bạn đăng nhập, đúng theo tồn kho hiện tại.</p>
+          <p className="commerce-sub">Giá và tổng tiền được xác nhận khi bạn đăng nhập, theo số lượng còn bán hiện tại.</p>
 
           {notice ? <p className="commerce-status" role="status">{notice}</p> : null}
           {actionError ? <p className="commerce-status is-error" role="alert">{actionError}</p> : null}
@@ -162,13 +162,13 @@ export default function CartPage() {
                   <ul className="commerce-lines commerce-guest">
                     {guest.map((line) => (
                       <li className="commerce-line" key={`${line.id}-${line.meta ?? ""}`}>
-                        <div><p className="commerce-line-name"><Link className="commerce-link" href={`/san-pham/${line.id}`}>{line.name}</Link></p><p className="commerce-line-meta">{line.meta ?? "Chưa rõ biến thể"} · SL {line.qty}</p><p className="commerce-line-price">{formatMoney(line.price * line.qty)}</p></div>
+                        <div><p className="commerce-line-name"><Link className="commerce-link" href={`/san-pham/${line.id}`}>{line.name}</Link></p><p className="commerce-line-meta">{line.meta ?? "Chưa rõ lựa chọn"} · SL {line.qty}</p><p className="commerce-line-price">{formatMoney(line.price * line.qty)}</p></div>
                         <button className="commerce-remove" type="button" onClick={() => { const next = guest.filter((item) => item !== line); setGuest(next); writeCart(next as GuestItem[]); }}>Xóa</button>
                       </li>
                     ))}
                   </ul>
                 )}
-                <p className="commerce-note">Đăng nhập để giữ các món này trong giỏ của bạn. Món chưa chọn đủ biến thể sẽ không được tự đoán.</p>
+                <p className="commerce-note">Đăng nhập để giữ các món này trong giỏ của bạn. Món chưa chọn đủ màu/cỡ sẽ được giữ nguyên — shop không tự đoán thay bạn.</p>
                 <Link className="commerce-primary" href="/dang-nhap?next=%2Fgio-hang">Đăng nhập để tiếp tục →</Link>
               </section>
             </div>
@@ -177,7 +177,7 @@ export default function CartPage() {
           {authState === "authenticated" && cart ? (
             <div className="commerce-layout">
               <section className="commerce-panel" aria-label="Sản phẩm trong giỏ hàng">
-                <div className="commerce-toolbar"><p>Cập nhật theo tồn kho hiện tại</p><span>{cart.totalItems} món</span></div>
+                <div className="commerce-toolbar"><p>Cập nhật theo số lượng còn bán</p><span>{cart.totalItems} món</span></div>
                 {lines.length === 0 ? (
                   <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Thêm sản phẩm từ trang chi tiết để bắt đầu.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div>
                 ) : (
@@ -191,7 +191,7 @@ export default function CartPage() {
                         <div>
                           <p className="commerce-line-name">{line.productName}</p>
                           <p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · Đơn giá {formatMoney(line.unitPrice)}</p>
-                          <p className="commerce-line-price">{[line.color, line.size].filter(Boolean).join(" · ") ? "Đã chọn biến thể" : "Một phiên bản"}</p>
+                          <p className="commerce-line-price">{[line.color, line.size].filter(Boolean).join(" · ") ? "Đã chọn màu/cỡ" : "Một lựa chọn"}</p>
                         </div>
                         <div className="commerce-line-side">
                           <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>

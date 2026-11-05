@@ -107,3 +107,81 @@ export function resolveSelection(
     sizes.length === 0;
   return { colors, sizes, effColor, effSize, candidates, selected, needColor, needSize, ambiguous };
 }
+
+/**
+ * Nhãn trục trung thực — cột mau_sac đôi khi mang chữ nguồn không phải màu
+ * (ví dụ điều khoản đặt cọc/đặt hàng ở 3128/3129). Không bao giờ gọi một trục
+ * là "Màu" trừ khi giá trị của nó đọc như màu thật; tương tự với "Kích cỡ".
+ * Chỉ đổi nhãn hiển thị — không ảnh hưởng chọn SKU/giỏ hàng.
+ */
+
+function foldToken(raw: string): string {
+  return raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+function wordTokens(value: string): string[] {
+  return value
+    .normalize("NFC")
+    .toLowerCase()
+    .split(/[^\p{L}0-9]+/u)
+    .map((w) => w.trim())
+    .filter(Boolean);
+}
+
+// Token màu VI + EN thường gặp trong feed (cả dạng không dấu để chịu typo
+// như "TRẮNG"/"Trắng"). Một giá trị được coi là màu khi chứa ÍT NHẤT MỘT
+// token màu — "Kem (Chấm Bi)", "Black/White", "Xanh Navy" vẫn là màu.
+const COLOR_TOKENS = new Set([
+  "den", "trang", "kem", "xam", "ghi", "hong", "do", "xanh", "vang",
+  "tim", "cam", "nau", "be", "beige", "da", "reu", "cham", "lam",
+  "ngoc", "chai", "com", "dong", "bac", "kim", "duong", "mau",
+  "navy", "black", "white", "gray", "grey", "red", "blue", "green",
+  "yellow", "pink", "purple", "orange", "brown", "khaki", "lavender",
+  "taupe", "cream", "ivory", "maroon", "olive", "teal", "cyan",
+  "magenta", "gold", "silver", "nude", "denim", "charcoal", "mint",
+  "mustard", "coral", "salmon", "turquoise", "burgundy", "wine",
+  "coffee", "chocolate", "camel", "sand", "stone", "color", "colour",
+]);
+
+/** true khi giá trị đọc như tên màu (chứa token màu đã biết). */
+export function isColorValue(value: string | null): boolean {
+  if (value === null) return false;
+  const words = wordTokens(value);
+  if (words.length === 0) return false;
+  return words.some((w) => COLOR_TOKENS.has(w) || COLOR_TOKENS.has(foldToken(w)));
+}
+
+const SIZE_TOKENS = new Set([
+  "xs", "s", "m", "l", "xl", "xxl", "xxxl", "xxxxl", "xxs",
+  "f", "os", "onesize", "freesize", "free", "size",
+]);
+
+/** true khi giá trị đọc như cỡ (chữ cỡ, số cỡ giày/áo, free/one size). */
+export function isSizeValue(value: string | null): boolean {
+  if (value === null) return false;
+  const text = value.normalize("NFC").trim().toLowerCase();
+  if (!text) return false;
+  const nospace = text.replace(/[\s._-]+/g, "");
+  if (SIZE_TOKENS.has(nospace) || SIZE_TOKENS.has(foldToken(nospace))) return true;
+  if (/^\d+([.,]\d+)?$/.test(nospace)) return true;
+  return false;
+}
+
+export type AxisKind = "color" | "size";
+
+/**
+ * Nhãn trục hiển thị: "Màu"/"Kích cỡ" chỉ khi MỌI giá trị đều đọc đúng
+ * loại; ngược lại nhãn trung tính ("Tuỳ chọn"/"Phiên bản") và không bao
+ * giờ hiện chữ "Màu". Dùng cho cả tiêu đề khối lẫn câu gợi ý chọn.
+ */
+export function axisLabel(values: string[], kind: AxisKind): string {
+  if (kind === "color") {
+    return values.length > 0 && values.every(isColorValue) ? "Màu" : "Tuỳ chọn";
+  }
+  return values.length > 0 && values.every(isSizeValue) ? "Kích cỡ" : "Phiên bản";
+}

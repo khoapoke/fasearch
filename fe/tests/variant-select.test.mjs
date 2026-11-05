@@ -3,7 +3,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { isPlaceholder, resolveSelection } from "../src/lib/variant-select.ts";
+import { axisLabel, isColorValue, isPlaceholder, isSizeValue, resolveSelection } from "../src/lib/variant-select.ts";
 
 const V = (skuId, color, size, additionalPrice = 0) => ({
   skuId,
@@ -91,5 +91,51 @@ describe("resolveSelection", () => {
     const vs = [V(1, "Dù", "M"), V(2, "Dù", "L"), V(3, "Da", "M")];
     const r = resolveSelection(vs, "Da", "M");
     assert.equal(r.selected?.skuId, 3);
+  });
+});
+
+describe("axisLabel (honest axis names — no fake Màu/Kích cỡ)", () => {
+  it("real colors keep Màu, real sizes keep Kích cỡ", () => {
+    assert.equal(axisLabel(["Đen", "Trắng"], "color"), "Màu");
+    assert.equal(axisLabel(["Xanh Navy", "Kem (Chấm Bi)"], "color"), "Màu");
+    assert.equal(axisLabel(["Black", "White"], "color"), "Màu");
+    assert.equal(axisLabel(["M", "L", "XL"], "size"), "Kích cỡ");
+    assert.equal(axisLabel(["36", "42.5", "Freesize"], "size"), "Kích cỡ");
+  });
+
+  it("3129 pre-order text never shows Màu — neutral Tuỳ chọn", () => {
+    assert.equal(
+      axisLabel(["Đặt hàng trong 2 tuần (cọc 20%)", "Đặt hàng trong 1 tuần (cọc 40%)"], "color"),
+      "Tuỳ chọn",
+    );
+  });
+
+  it("mixed color + non-color goes neutral (never half-Màu)", () => {
+    assert.equal(axisLabel(["Đen", "Đặt hàng trong 1 tuần (cọc 40%)"], "color"), "Tuỳ chọn");
+  });
+
+  it("non-size text on the size axis goes neutral Phiên bản", () => {
+    assert.equal(axisLabel(["Đợt 1", "Đợt 2"], "size"), "Phiên bản");
+  });
+});
+
+describe("isColorValue / isSizeValue", () => {
+  it("spots colors incl. diacritic/typo variants, rejects prose", () => {
+    assert.equal(isColorValue("Trắng"), true);
+    assert.equal(isColorValue("TRẮNG"), true);
+    assert.equal(isColorValue("XANH DƯƠNG"), true);
+    assert.equal(isColorValue("Ve chai"), true);
+    assert.equal(isColorValue("Đặt hàng trong 2 tuần (cọc 20%)"), false);
+    assert.equal(isColorValue("Cái"), false);
+    assert.equal(isColorValue(""), false);
+    assert.equal(isColorValue(null), false);
+  });
+
+  it("spots sizes, rejects prose", () => {
+    assert.equal(isSizeValue("M"), true);
+    assert.equal(isSizeValue("42.5"), true);
+    assert.equal(isSizeValue("Freesize"), true);
+    assert.equal(isSizeValue("Đợt 1"), false);
+    assert.equal(isSizeValue("Không xác định"), false);
   });
 });

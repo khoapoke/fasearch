@@ -105,6 +105,25 @@ export function isCustomerSafeReason(reason: unknown): reason is string {
   return true;
 }
 
+/** Warm PDP/cart stock copy — no "biến thể" / "tồn kho" jargon. */
+export const STOCK_OUT_MESSAGE =
+  "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé.";
+
+export function stockMessageFor(haystack: string): string {
+  const m =
+    haystack.match(/còn\s*:?\s*(\d+)/i) ??
+    haystack.match(/\bcon\b\s*:?\s*(\d+)/i) ??
+    haystack.match(/remaining\D*(\d+)/i) ??
+    haystack.match(/available\D*(\d+)/i);
+  if (m) {
+    const n = Number(m[1]);
+    if (Number.isSafeInteger(n) && n > 0) {
+      return `Chỉ còn ${n} sản phẩm cho lựa chọn này — bạn giảm số lượng rồi thử lại nhé.`;
+    }
+  }
+  return STOCK_OUT_MESSAGE;
+}
+
 export function formatCommerceUpstreamError(
   status: number,
   payload: { code?: unknown; message?: unknown; errors?: unknown } | null,
@@ -145,7 +164,7 @@ export function formatCommerceUpstreamError(
   let message = typeof code === "number" && messages[code] ? messages[code] : "";
   if (!message && upstreamMessage) {
     if (/insufficient.*stock|hết hàng|tồn kho/i.test(upstreamMessage)) {
-      message = "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.";
+      message = stockMessageFor(upstreamMessage);
     } else if (/cart.*empty|giỏ hàng.*trống/i.test(upstreamMessage)) {
       message = "Giỏ hàng hiện đang trống.";
     } else if (/access denied|forbidden|không có quyền|permission/i.test(upstreamMessage)) {
@@ -164,7 +183,7 @@ export function formatCommerceUpstreamError(
   if (!message && errors?.length) {
     for (const err of errors) {
       if (/insufficient.*stock|hết hàng|tồn kho/i.test(err.reason)) {
-        message = "Sản phẩm hoặc biến thể này hiện không đủ số lượng tồn kho.";
+        message = stockMessageFor(errors.map((e) => e.reason).join(" ") + " " + upstreamMessage);
         break;
       } else if (/cart.*empty|giỏ hàng.*trống/i.test(err.reason)) {
         message = "Giỏ hàng hiện đang trống.";

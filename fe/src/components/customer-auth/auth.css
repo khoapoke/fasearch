@@ -208,6 +208,13 @@
 .acctPage .acct-state h2 { margin: 0; font-size: 22px; font-weight: 500; }
 .acctPage .acct-state p { margin: 0; color: var(--st-ink-soft); font-size: 14px; }
 .acctPage .acct-logout { min-height: 40px; padding: 6px 0; border: 0; color: var(--st-ink-soft); background: transparent; font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* Đăng xuất trong sidebar: cùng lề trái, baseline icon/chữ và nhịp với nav
+   (icon 18px + gap 10px + padding 10px 12px như .acct-nav a) nhưng vẫn phụ
+   (chữ nhỏ, gạch chân, mực mềm) so với các mục điều hướng. */
+.acctPage .acct-nav-wrap > .acct-logout { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 10px 12px; font-size: 13px; line-height: 1.55; text-decoration: underline; text-underline-offset: 3px; }
+.acctPage .acct-nav-wrap > button.acct-logout { width: 100%; text-align: left; }
+.acctPage .acct-nav-wrap > .acct-logout:hover { color: var(--st-ink); }
+.acctPage .acct-nav-wrap > .acct-logout:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: -2px; }
 /* Account center (favorites/history/voucher/profile) reuses the approved
    account styles but renders links instead of buttons, so mirror the same
    tokens for anchors and page-level actions. */

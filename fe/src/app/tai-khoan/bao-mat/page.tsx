@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AccountCenterShell } from "@/components/storefront/account-center-shell";
 import { PasswordForm } from "./password-form";
 import { SecurityEmailStatus } from "./verification-status";
 
@@ -10,12 +9,12 @@ export const metadata = {
 
 export default function SecurityPage() {
   return (
-    <AccountCenterShell active="/tai-khoan/bao-mat" title="Bảo mật tài khoản">
+    <>
       <section aria-label="Xác thực email">
         <h2>Email xác thực</h2>
         <SecurityEmailStatus />
       </section>
-      <section aria-label="Đổi mật khẩu">
+      <section aria-label="Form đổi mật khẩu">
         <PasswordForm />
       </section>
       <section className="acct-note" aria-label="Tính năng chưa hỗ trợ">
@@ -29,6 +28,6 @@ export default function SecurityPage() {
         </p>
         <p><Link href="/tai-khoan">Quay lại trung tâm tài khoản →</Link></p>
       </section>
-    </AccountCenterShell>
+    </>
   );
 }

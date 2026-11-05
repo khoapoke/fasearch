@@ -77,3 +77,16 @@ describe("appliedBenefitsChanged (R3-F1: dirty-trip must not stick the submit bu
     assert.equal(appliedBenefitsChanged(null, 0, "FEE2E10", 0), true);
   });
 });
+
+describe("formatVnDateTime + loyaltyHistoryAmount (readable loyalty history)", () => {
+  it("formats ISO as dd/MM/yyyy HH:mm, passes garbage through", async () => {
+    const { formatVnDateTime, loyaltyHistoryAmount } = await import("../src/lib/benefits.ts");
+    assert.match(formatVnDateTime("2026-11-05T08:04:09"), /^\d{2}\/11\/2026 \d{2}:\d{2}$/);
+    assert.equal(formatVnDateTime("not-a-date"), "not-a-date");
+    assert.deepEqual(loyaltyHistoryAmount("EARN", 50), { text: "+50 điểm", direction: "up" });
+    assert.deepEqual(loyaltyHistoryAmount("RELEASE", 20), { text: "+20 điểm", direction: "up" });
+    assert.deepEqual(loyaltyHistoryAmount("HOLD", 20), { text: "−20 điểm", direction: "down" });
+    assert.deepEqual(loyaltyHistoryAmount("REDEEM", 20), { text: "−20 điểm", direction: "down" });
+    assert.deepEqual(loyaltyHistoryAmount("OPENING", 184), { text: "+184 điểm", direction: "flat" });
+  });
+});
