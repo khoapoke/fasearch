@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LocationPicker, type DeliveryLocation } from "@/components/customer-commerce/location-picker";
+import { PaymentCards, PointsToggle, VoucherPicker, etaLabel, variantLabel } from "@/components/customer-commerce/checkout-parts";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
@@ -9,16 +10,20 @@ import { useCustomerCart } from "@/components/customer-commerce/customer-cart-pr
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
 import { createStripeCheckout, createVnpayCheckout } from "@/lib/customer-payments-client";
 import { getSelfProfile } from "@/lib/customer-profile-client";
-import { CommerceError, formatMoney, DEFAULT_WEIGHT_PER_ITEM_GRAM, calculateCartWeightGram, type CustomerCartQuote } from "@/lib/customer-commerce";
-import { validatePointsInput } from "@/lib/benefits";
+import { fetchPublicOffers } from "@/lib/offers-client";
+import type { PublicOffer } from "@/lib/offers";
+import { CommerceError, formatMoney, calculateCartWeightGram, type CustomerCartQuote } from "@/lib/customer-commerce";
 import { newOperationKey } from "@/lib/commerce";
 import "@/components/customer-commerce/commerce.css";
+import "@/components/customer-commerce/checkout.css";
 
-const WEIGHT_PER_ITEM_GRAM = DEFAULT_WEIGHT_PER_ITEM_GRAM;
 const DEFAULT_PROVINCE = "TP. Hồ Chí Minh";
 const DEFAULT_DISTRICT = "Quận 1";
+const QUOTE_DEBOUNCE_MS = 300;
+const SHIPPING_DEBOUNCE_MS = 400;
 
 type Quote = import("@/lib/customer-commerce").ShippingQuote & { key: string };
+type CartQuoteState = { quote: CustomerCartQuote; cartSignature: string; code: string; pointsOn: boolean };
 
 export default function CheckoutPage() {
   return <Suspense fallback={<StorefrontShell active="/thanh-toan" themed palette="customer" header="customer" footer="none"><div className="commercePage"><p className="commerce-status" role="status">Đang tải dữ liệu thanh toán…</p></div></StorefrontShell>}><CheckoutPageContent /></Suspense>;
@@ -37,12 +42,14 @@ function CheckoutPageContent() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [quoteError, setQuoteError] = useState("");
-  const initialVoucher = useSearchParams().get("voucher") ?? "";
-  const [voucherCode, setVoucherCode] = useState(initialVoucher);
-  const [pointsRaw, setPointsRaw] = useState("0");
-  const [cartQuote, setCartQuote] = useState<{ quote: CustomerCartQuote; cartSignature: string } | null>(null);
+  const initialVoucher = (useSearchParams().get("voucher") ?? "").trim().toUpperCase();
+  const [appliedCode, setAppliedCode] = useState(initialVoucher);
+  const [pointsOn, setPointsOn] = useState(false);
+  const [cartQuote, setCartQuote] = useState<CartQuoteState | null>(null);
   const [voucherBusy, setVoucherBusy] = useState(false);
   const [voucherError, setVoucherError] = useState("");
+  const [offers, setOffers] = useState<PublicOffer[]>([]);
+  const [offersState, setOffersState] = useState<"loading" | "ready" | "error">("loading");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
@@ -52,32 +59,39 @@ function CheckoutPageContent() {
   const pending = useRef(false);
   const quoteReq = useRef(0);
   const voucherReq = useRef(0);
-  const initialQuoteRequested = useRef(false);
   const checkoutAttempt = useRef<{ signature: string; key: string } | null>(null);
 
   const weight = calculateCartWeightGram(cart?.totalItems ?? 0);
-  const key = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weight}|${JSON.stringify(location)}|${voucherCode.trim().toUpperCase()}`;
+  const key = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weight}|${JSON.stringify(location)}|${appliedCode}`;
   const cartSignature = JSON.stringify(cart?.items.map(({ skuId, quantity, unitPrice, totalPrice }) => [skuId, quantity, unitPrice, totalPrice]) ?? []);
-  const pointsRequested = pointsRaw.trim() === "" ? 0 : /^\d+$/.test(pointsRaw.trim()) && Number.isSafeInteger(Number(pointsRaw)) ? Number(pointsRaw) : null;
-  const currentCartQuote = cartQuote?.cartSignature === cartSignature
-    && (cartQuote.quote.voucherCode ?? "") === voucherCode.trim().toUpperCase()
-    && pointsRequested !== null && cartQuote.quote.redeemedPoints === pointsRequested ? cartQuote.quote : null;
+  // The server quote is the truth: it is "current" only for this exact cart, voucher and points choice.
+  const shownQuote = cartQuote && cartQuote.cartSignature === cartSignature ? cartQuote : null;
+  const currentCartQuote = shownQuote && shownQuote.code === appliedCode && shownQuote.pointsOn === pointsOn ? shownQuote.quote : null;
   const quoteIsCurrent = Boolean(currentCartQuote);
+  const displayQuote = shownQuote?.quote ?? null;
+  const shippingFresh = quote?.key === key && !quoteBusy;
 
-  const applyQuote = useCallback(async (code: string | null, redeemedPoints: number) => {
-    if (!cart?.items.length) return null;
+  const requestCartQuote = useCallback(async (code: string, usePoints: boolean) => {
+    if (!cart?.items.length) return;
     const my = ++voucherReq.current;
-    setVoucherBusy(true); setVoucherError(""); setCartQuote(null);
+    setVoucherBusy(true);
     try {
-      const result = await quoteCustomerCart(code, redeemedPoints);
-      if (voucherReq.current !== my) return null;
-      setCartQuote({ quote: result, cartSignature }); checkoutAttempt.current = null; setError("");
-      return result;
+      // First ask for the cap (0 points), then re-quote with the points the server allows.
+      let result = await quoteCustomerCart(code || null, 0);
+      if (voucherReq.current !== my) return;
+      if (usePoints && result.allowedRedeemedPoints > 0) {
+        result = await quoteCustomerCart(code || null, result.allowedRedeemedPoints);
+        if (voucherReq.current !== my) return;
+      }
+      setCartQuote({ quote: result, cartSignature, code, pointsOn: usePoints });
+      checkoutAttempt.current = null; setError("");
     } catch (failure) {
-      if (voucherReq.current !== my) return null;
-      setCartQuote(null);
-      setVoucherError(failure instanceof Error ? failure.message : "Không thể báo giá voucher.");
-      return null;
+      if (voucherReq.current !== my) return;
+      const message = failure instanceof Error ? failure.message : "Không thể báo giá ưu đãi.";
+      setVoucherError(message);
+      // A rejected voucher is dropped so the order can still be quoted without it.
+      if (code) setAppliedCode("");
+      else setCartQuote(null);
     } finally {
       if (voucherReq.current === my) setVoucherBusy(false);
     }
@@ -86,21 +100,30 @@ function CheckoutPageContent() {
   const calculate = useCallback(async () => {
     if (!province.trim() || !district.trim() || !cart?.items.length) return null;
     const my = ++quoteReq.current;
-    setQuote(null); setQuoteBusy(true); setQuoteError("");
+    setQuoteBusy(true); setQuoteError("");
     try {
-      const result = await fetchShippingQuote(province.trim(), district.trim(), weight, undefined, location, voucherCode.trim().toUpperCase());
+      const result = await fetchShippingQuote(province.trim(), district.trim(), weight, undefined, location, appliedCode);
       if (quoteReq.current !== my) return null;
       const next = { ...result, key };
       setQuote(next);
       return next;
     } catch (failure) {
       if (quoteReq.current !== my) return null;
+      setQuote(null);
       setQuoteError(failure instanceof Error ? failure.message : "Không tính được phí giao hàng.");
       return null;
     } finally {
       if (quoteReq.current === my) setQuoteBusy(false);
     }
-  }, [cart?.items.length, district, province, weight, location, voucherCode, key]);
+  }, [cart?.items.length, district, province, weight, location, appliedCode, key]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPublicOffers(controller.signal)
+      .then(({ offers: list }) => { setOffers(list); setOffersState("ready"); })
+      .catch(() => { if (!controller.signal.aborted) setOffersState("error"); });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (authState !== "authenticated") return;
@@ -123,14 +146,19 @@ function CheckoutPageContent() {
     return () => c.abort();
   }, [authState]);
 
+  // Auto re-quote (debounced) whenever cart, voucher or points choice changes.
   useEffect(() => {
-    if (!cart?.items.length) { initialQuoteRequested.current = false; return; }
-    if (!initialQuoteRequested.current) {
-      initialQuoteRequested.current = true;
-      void applyQuote(null, 0);
-    }
-    void Promise.resolve().then(() => calculate());
-  }, [applyQuote, calculate, cart?.items.length, cartSignature]);
+    if (!cart?.items.length) return;
+    const timer = window.setTimeout(() => { void requestCartQuote(appliedCode, pointsOn); }, QUOTE_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [requestCartQuote, appliedCode, pointsOn, cart?.items.length]);
+
+  // Auto re-quote shipping when address pin / area / voucher changes.
+  useEffect(() => {
+    if (!cart?.items.length) return;
+    const timer = window.setTimeout(() => { void calculate(); }, SHIPPING_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [calculate, cart?.items.length, cartSignature]);
 
   // Ô nhập sai được focus trực tiếp; effect chỉ focus khối lỗi khi lỗi KHÔNG
   // gắn với một ô cụ thể (nếu không, nó sẽ cướp focus khỏi ô vừa trỏ tới).
@@ -145,6 +173,11 @@ function CheckoutPageContent() {
   useEffect(() => { if (voucherError) voucherErrorRef.current?.focus(); }, [voucherError]);
 
   const zeroDue = Boolean(currentCartQuote && quote && currentCartQuote.merchandiseAmountDue + quote.shippingFee <= 0);
+
+  function chooseVoucher(code: string) {
+    setVoucherError(""); checkoutAttempt.current = null;
+    setAppliedCode(code);
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -165,13 +198,13 @@ function CheckoutPageContent() {
       document.getElementById(firstInvalid)?.focus();
       return;
     }
-    if (!currentCartQuote) { setError("Hãy áp dụng ưu đãi hoặc báo giá lại trước khi đặt hàng."); return; }
+    if (!currentCartQuote) { setError("Giá đang được cập nhật. Thử lại sau giây lát."); return; }
     const current = quote?.key === key ? quote : await calculate();
-    if (!current) { setError("Chưa có phí giao hàng hợp lệ. Kiểm tra tỉnh/quận rồi thử lại."); return; }
+    if (!current) { setError("Chưa có phí giao hàng hợp lệ. Hãy chọn vị trí trên bản đồ hoặc kiểm tra tỉnh/quận rồi thử lại."); return; }
     pending.current = true;
     setBusy(true); setError(""); setUncertain(false); setCreatedOrderId(null);
     try {
-      const totalDue = (currentCartQuote?.merchandiseAmountDue ?? -1) + (quote?.shippingFee ?? 0);
+      const totalDue = currentCartQuote.merchandiseAmountDue + current.shippingFee;
       const payMethod = totalDue === 0 ? "COD" : method;
       const checkout = {
         ...location, deliveryAddress: address.trim(), receiverName: name.trim(), receiverPhone: phone.trim(),
@@ -210,6 +243,7 @@ function CheckoutPageContent() {
       if (failure instanceof CommerceError && failure.code === "4107") {
         setCartQuote(null); checkoutAttempt.current = null;
         setVoucherError(failure.message); setError("");
+        setAppliedCode("");
       } else if (failure instanceof CommerceError) setError(failure.message);
       else {
         setUncertain(true);
@@ -222,13 +256,18 @@ function CheckoutPageContent() {
   }
 
   const empty = authState === "authenticated" && cart && cart.items.length === 0;
+  const savings = (displayQuote ? displayQuote.voucherDiscount + displayQuote.pointsDiscount : 0) + (quote?.shippingDiscount ?? 0);
+  const total = displayQuote && quote ? displayQuote.merchandiseAmountDue + quote.shippingFee : null;
+  const updating = voucherBusy || quoteBusy || (quote !== null && quote.key !== key) || (shownQuote !== null && !currentCartQuote);
+  const payLabel = method === "COD" || zeroDue ? "Đặt hàng" : "Đặt đơn và mở cổng thanh toán";
+  const itemCount = cart?.totalItems ?? 0;
   return (
     <StorefrontShell active="/thanh-toan" themed palette="customer" header="customer" footer="none">
       <div className="commercePage">
         <div className="commerce-content">
           <nav className="commerce-crumbs" aria-label="Đường dẫn"><Link href="/gio-hang">Giỏ hàng</Link><span aria-hidden="true">›</span><span aria-current="page">Thanh toán</span></nav>
           <h1 className="commerce-title">Thanh toán</h1>
-          <p className="commerce-sub">Kiểm tra thông tin nhận hàng và tổng tiền trước khi đặt. Thanh toán khi nhận hàng (COD).</p>
+          <p className="commerce-sub">Kiểm tra thông tin nhận hàng và tổng tiền trước khi đặt.</p>
 
           {authState === "guest" ? (
             <div className="commerce-empty"><h2>Cần đăng nhập</h2><p>Đăng nhập để xem giỏ hàng và đặt đơn của bạn.</p><Link className="commerce-primary" href="/dang-nhap?next=%2Fthanh-toan">Đăng nhập →</Link></div>
@@ -255,67 +294,120 @@ function CheckoutPageContent() {
           {empty ? <div className="commerce-empty"><h2>Giỏ đang trống</h2><p>Thêm sản phẩm trước khi thanh toán.</p><Link className="commerce-link" href="/nam">Xem sản phẩm →</Link></div> : null}
 
           {authState === "authenticated" && cart && cart.items.length > 0 ? (
-            <div className="checkout-grid">
-              <form className="checkout-form-panel" onSubmit={submit} noValidate>
-                <h2>Thông tin nhận hàng</h2>
-                <div className="checkout-field"><label htmlFor="checkout-name">Người nhận</label><input id="checkout-name" className="checkout-input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div>
-                <div className="checkout-field"><label htmlFor="checkout-phone">Số điện thoại</label><input id="checkout-phone" className="checkout-input" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" /></div>
-                <div className="checkout-field"><label htmlFor="checkout-address">Địa chỉ</label><input id="checkout-address" className="checkout-input" value={address} onChange={(e) => { setAddress(e.target.value); setLocation(null); }} autoComplete="street-address" /></div>
-                <div className="checkout-grid-2">
-                  <div className="checkout-field"><label htmlFor="checkout-province">Tỉnh/Thành phố</label><input id="checkout-province" className="checkout-input" value={province} onChange={(e) => setProvince(e.target.value)} /></div>
-                  <div className="checkout-field"><label htmlFor="checkout-district">Quận/Huyện</label><input id="checkout-district" className="checkout-input" value={district} onChange={(e) => setDistrict(e.target.value)} /></div>
-                </div>
-                <div className="checkout-field"><label htmlFor="checkout-note">Ghi chú (không bắt buộc)</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} /></div>
-                <LocationPicker value={location} onChange={setLocation} onAddress={setAddress} />
-                <div className="checkout-field"><label htmlFor="checkout-voucher">Mã voucher / FREE-SHIP (không bắt buộc)</label><input id="checkout-voucher" className="checkout-input" value={voucherCode} onChange={(e) => { setVoucherCode(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} maxLength={50} autoComplete="off" /></div>
-                <div className="checkout-field"><label htmlFor="checkout-points">Điểm muốn đổi (không bắt buộc)</label><input id="checkout-points" className="checkout-input" value={pointsRaw} onChange={(e) => { setPointsRaw(e.target.value); voucherReq.current++; setVoucherBusy(false); setCartQuote(null); checkoutAttempt.current = null; setVoucherError(""); }} inputMode="numeric" /></div>
-                <div className="checkout-field">
-                  <span id="checkout-method-label">Phương thức thanh toán</span>
-                  <div role="radiogroup" aria-labelledby="checkout-method-label" style={{ display: "grid", gap: 8, marginTop: 6 }}>
-                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                      <input type="radio" name="pay-method" value="COD" checked={method === "COD"} onChange={() => setMethod("COD")} />
-                      <span><strong>Thanh toán khi nhận hàng (COD)</strong><br /><small>Thu tiền mặt khi giao hàng.</small></span>
-                    </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", opacity: zeroDue ? 0.5 : 1 }}>
-                      <input type="radio" name="pay-method" value="STRIPE" checked={method === "STRIPE"} onChange={() => setMethod("STRIPE")} disabled={zeroDue} />
-                      <span><strong>Thẻ quốc tế qua Stripe (thử nghiệm)</strong><br /><small>Chế độ test, thẻ công khai 4242; chỉ webhook đã ký mới ghi nhận thanh toán.</small></span>
-                    </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", opacity: zeroDue ? 0.5 : 1 }}>
-                      <input type="radio" name="pay-method" value="VNPAY" checked={method === "VNPAY"} onChange={() => setMethod("VNPAY")} disabled={zeroDue} />
-                      <span><strong>VNPAY sandbox</strong><br /><small>Kênh sandbox; kết quả cuối hiển thị sau đối soát IPN, đơn không tự đánh dấu đã trả.</small></span>
-                    </label>
+            <div className="checkout-grid co-grid">
+              <form id="checkout-form" className="checkout-form-panel co-form" onSubmit={submit} noValidate>
+                <section className="co-section" aria-labelledby="co-recipient">
+                  <h2 id="co-recipient">Người nhận</h2>
+                  <div className="checkout-grid-2">
+                    <div className="checkout-field"><label htmlFor="checkout-name">Họ và tên</label><input id="checkout-name" className="checkout-input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div>
+                    <div className="checkout-field"><label htmlFor="checkout-phone">Số điện thoại</label><input id="checkout-phone" className="checkout-input" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" /></div>
                   </div>
-                  {zeroDue ? <p className="commerce-note">Đơn 0đ chỉ thanh toán khi nhận hàng (COD).</p> : null}
-                </div>
-                <button className="commerce-ghost" type="button" disabled={voucherBusy} onClick={() => {
-                  setError("");
-                  try { void applyQuote(voucherCode.trim() || null, validatePointsInput(pointsRaw, Number.MAX_SAFE_INTEGER)); }
-                  catch (e) { setVoucherError(e instanceof Error ? e.message : "Điểm sử dụng chưa hợp lệ."); }
-                }}>{voucherBusy ? "Đang báo giá…" : "Áp dụng ưu đãi / báo giá lại"}</button>
-                <p className="checkout-test-note">Thanh toán khi nhận hàng (COD).</p>
-                {voucherError ? <p ref={voucherErrorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{voucherError}</p> : null}
-                {cartQuote && !quoteIsCurrent && !voucherBusy ? <p className="commerce-status" role="status">Giỏ hàng hoặc mã voucher đã thay đổi. Báo giá lại trước khi đặt đơn.</p> : null}
-                {quoteError ? <p className="commerce-status is-error" role="alert">{quoteError}</p> : null}
-                {error ? <p ref={errorRef} tabIndex={-1} className="commerce-status is-error" role="alert">{error}</p> : null}
-                {uncertain ? <p className="commerce-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href={createdOrderId ? `/don-hang/${createdOrderId}` : "/don-hang"}>Mở Đơn hàng để đối soát →</Link></p> : null}
-                <button className="commerce-primary" type="submit" disabled={busy || quoteBusy || voucherBusy || !quoteIsCurrent}>{busy ? (method === "COD" || zeroDue ? "Đang đặt đơn…" : "Đang mở cổng thanh toán…") : (method === "COD" || zeroDue ? "Đặt hàng (COD)" : "Đặt đơn và mở cổng thanh toán")}</button>
-                <p className="commerce-note">Giá và ưu đãi được xác nhận lại khi bạn đặt đơn.</p>
+                </section>
+
+                <section className="co-section" aria-labelledby="co-delivery">
+                  <h2 id="co-delivery">Giao đến</h2>
+                  <div className="checkout-field"><label htmlFor="checkout-address">Địa chỉ</label><input id="checkout-address" className="checkout-input" value={address} onChange={(e) => { setAddress(e.target.value); setLocation(null); }} autoComplete="street-address" /></div>
+                  <LocationPicker value={location} onChange={setLocation} onAddress={setAddress} />
+                  {!location ? (
+                    <div className="checkout-grid-2 co-area">
+                      <div className="checkout-field"><label htmlFor="checkout-province">Tỉnh/Thành phố</label><input id="checkout-province" className="checkout-input" value={province} onChange={(e) => setProvince(e.target.value)} /></div>
+                      <div className="checkout-field"><label htmlFor="checkout-district">Quận/Huyện</label><input id="checkout-district" className="checkout-input" value={district} onChange={(e) => setDistrict(e.target.value)} /></div>
+                    </div>
+                  ) : null}
+                  <div className={`co-ship${quote && shippingFresh ? "" : " is-updating"}`} aria-live="polite">
+                    {quote ? (
+                      <>
+                        <div className="co-ship-main">
+                          <span className="co-ship-fee">{formatMoney(quote.shippingFee)}</span>
+                          {(quote.shippingDiscount ?? 0) > 0 ? <span className="co-ship-free">FREE-SHIP −{formatMoney(quote.shippingDiscount ?? 0)}</span> : null}
+                        </div>
+                        <ul className="co-ship-facts">
+                          {quote.distanceKm != null ? <li><b>{quote.distanceKm.toLocaleString("vi-VN")} km</b> {quote.method === "google" ? "theo tuyến đường" : "ước tính"}</li> : <li>Tính theo khu vực</li>}
+                          {quote.estimatedDays ? <li>Giao trong <b>{etaLabel(quote.estimatedDays)}</b></li> : null}
+                        </ul>
+                      </>
+                    ) : quoteError ? <span className="co-ship-error">{quoteError}</span> : <span className="co-muted">{quoteBusy ? "Đang tính phí giao hàng…" : "Chọn vị trí để xem phí giao hàng."}</span>}
+                  </div>
+                  <div className="checkout-field"><label htmlFor="checkout-note">Ghi chú cho người giao (không bắt buộc)</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} /></div>
+                </section>
+
+                <section className="co-section" aria-labelledby="co-offers">
+                  <h2 id="co-offers">Ưu đãi và điểm</h2>
+                  <VoucherPicker offers={offers} offersState={offersState} appliedCode={appliedCode} busy={voucherBusy} error={voucherError} errorRef={voucherErrorRef} onApply={chooseVoucher} onClear={() => chooseVoucher("")} />
+                  <PointsToggle
+                    loaded={displayQuote !== null}
+                    policyEnabled={displayQuote?.policyStatus === "ENABLED"}
+                    available={displayQuote?.availablePoints ?? null}
+                    allowed={displayQuote?.allowedRedeemedPoints ?? 0}
+                    perPoint={displayQuote?.redeemCurrencyPerPoint ?? null}
+                    remaining={displayQuote?.remainingMerchandiseAmount ?? 0}
+                    on={pointsOn}
+                    appliedDiscount={currentCartQuote?.pointsDiscount ?? displayQuote?.pointsDiscount ?? 0}
+                    onToggle={(next) => { setPointsOn(next); setVoucherError(""); checkoutAttempt.current = null; }}
+                  />
+                </section>
+
+                <section className="co-section" aria-labelledby="co-pay">
+                  <h2 id="co-pay" className="co-sr">Phương thức thanh toán</h2>
+                  <PaymentCards method={method} onChange={setMethod} zeroDue={zeroDue} />
+                </section>
               </form>
-              <aside className="checkout-summary-panel" aria-label="Tóm tắt thanh toán">
-                <h2>Đơn của bạn</h2>
-                <ul className="checkout-lines">{cart.items.map((line) => { const quoted = currentCartQuote?.items.find((item) => item.skuId === line.skuId); return <li className="checkout-summary-line" key={line.skuId}><span>{line.productName} · {[line.color, line.size].filter(Boolean).join(" · ")} × {line.quantity}{quoted?.discountAmount ? <small style={{ display: "block" }}>Giảm theo voucher: {formatMoney(quoted.discountAmount)}</small> : null}</span><strong>{formatMoney(quoted?.totalPrice ?? line.totalPrice)}</strong></li>; })}</ul>
-                <div className="checkout-summary-line"><span>Tạm tính hàng hóa</span><strong>{formatMoney(currentCartQuote?.subTotal ?? cart.subTotal)}</strong></div>
-                {currentCartQuote?.voucherCode ? <div className="checkout-summary-line"><span>Voucher {currentCartQuote.voucherCode}</span><strong>−{formatMoney(currentCartQuote.voucherDiscount)}</strong></div> : null}
-                {currentCartQuote && currentCartQuote.pointsDiscount > 0 ? <div className="checkout-summary-line"><span>Đổi {currentCartQuote.redeemedPoints} điểm</span><strong>−{formatMoney(currentCartQuote.pointsDiscount)}</strong></div> : null}
-                {currentCartQuote && currentCartQuote.allowedRedeemedPoints > 0 ? <p className="commerce-note">Bạn có thể dùng tối đa {currentCartQuote.allowedRedeemedPoints.toLocaleString("vi-VN")} điểm cho đơn này.</p> : null}
-                <div className="checkout-summary-line"><span>Tiền hàng sau ưu đãi</span><strong>{currentCartQuote ? formatMoney(currentCartQuote.merchandiseAmountDue) : "—"}</strong></div>
-                <div className="checkout-summary-line"><span>Phí giao hàng {quote ? `(${quote.estimatedDays})` : ""}</span><strong>{quote ? formatMoney(quote.shippingFee) : quoteBusy ? "Đang tính…" : "—"}</strong></div>
-                {quote?.distanceKm != null ? <p className="commerce-note" aria-live="polite">Khoảng cách: {quote.distanceKm.toLocaleString("vi-VN")} km · {quote.method === "google" ? "Theo tuyến đường" : "Ước tính (đường chim bay × 1,3)"}</p> : null}
-                {quote && (quote.shippingDiscount ?? 0) > 0 ? <p className="commerce-note">Phí gốc {formatMoney(quote.baseFee ?? 0)} · FREE-SHIP −{formatMoney(quote.shippingDiscount ?? 0)}</p> : null}
-                <div className="checkout-total"><span>Tổng tạm tính</span><strong>{currentCartQuote && quote ? formatMoney(currentCartQuote.merchandiseAmountDue + quote.shippingFee) : "—"}</strong></div>
-                <div className="checkout-cod"><span>Thanh toán</span><strong>{zeroDue ? "COD — thu khi nhận (đơn 0đ)" : method === "COD" ? "COD — thu khi nhận" : method === "STRIPE" ? "Stripe (sandbox) — chuyển cổng sau khi đặt" : "VNPAY (sandbox) — chuyển cổng sau khi đặt"}</strong></div>
-                <button className="commerce-ghost" type="button" onClick={() => { setQuote(null); void calculate(); }} disabled={quoteBusy}>{quoteBusy ? "Đang tính phí…" : "Tính lại phí giao hàng"}</button>
-                <p className="commerce-note">Tổng cuối cùng hiển thị sau khi đơn được xác nhận.</p>
+
+              <aside className="checkout-summary-panel co-summary" aria-label="Tóm tắt thanh toán" aria-busy={updating}>
+                <h2>Đơn của bạn <span className="co-count">{itemCount} sản phẩm</span></h2>
+                <ul className="co-lines">
+                  {cart.items.map((line) => {
+                    const quoted = displayQuote?.items.find((item) => item.skuId === line.skuId);
+                    const variant = variantLabel(line.color, line.size);
+                    return (
+                      <li className="co-line" key={line.skuId}>
+                        {line.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- product image comes from the candidate BE
+                          <img className="co-line-img" src={line.imageUrl.replace(/^\/api\/v1\/products\/images\//, "/api/catalog/product-images/")} alt="" referrerPolicy="no-referrer" />
+                        ) : <span className="co-line-img" aria-hidden="true" />}
+                        <span className="co-line-body">
+                          <span className="co-line-name">{line.productName}</span>
+                          {variant ? <span className="co-line-variant">{variant}</span> : null}
+                          <span className="co-line-qty">Số lượng {line.quantity}</span>
+                        </span>
+                        <strong className="co-line-price">{formatMoney(quoted?.totalPrice ?? line.totalPrice)}</strong>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <dl className="co-rows">
+                  <div className="co-row"><dt>Tạm tính</dt><dd>{formatMoney(displayQuote?.subTotal ?? cart.subTotal)}</dd></div>
+                  {displayQuote?.voucherCode && displayQuote.voucherDiscount > 0 ? <div className="co-row is-save"><dt>Voucher {displayQuote.voucherCode}</dt><dd>−{formatMoney(displayQuote.voucherDiscount)}</dd></div> : null}
+                  {displayQuote && displayQuote.pointsDiscount > 0 ? <div className="co-row is-save"><dt>Điểm thưởng ({displayQuote.redeemedPoints.toLocaleString("vi-VN")})</dt><dd>−{formatMoney(displayQuote.pointsDiscount)}</dd></div> : null}
+                  <div className="co-row">
+                    <dt>Phí giao hàng{quote?.distanceKm != null ? ` · ${quote.distanceKm.toLocaleString("vi-VN")} km` : ""}</dt>
+                    <dd>
+                      {quote ? (
+                        <>
+                          {(quote.shippingDiscount ?? 0) > 0 ? <s className="co-was">{formatMoney(quote.baseFee ?? 0)}</s> : null}
+                          <span className={(quote.shippingDiscount ?? 0) > 0 ? "co-free" : undefined}>{quote.shippingFee === 0 ? "Miễn phí" : formatMoney(quote.shippingFee)}</span>
+                        </>
+                      ) : quoteBusy ? "Đang tính…" : "—"}
+                    </dd>
+                  </div>
+                </dl>
+
+                {savings > 0 ? <p className="co-saved">Bạn tiết kiệm <b>{formatMoney(savings)}</b></p> : null}
+
+                <div className="checkout-total co-total">
+                  <span>Tổng cộng</span>
+                  <strong className={updating ? "is-stale" : undefined}>{total !== null ? formatMoney(total) : "—"}</strong>
+                </div>
+                <p className="co-pay-note">{zeroDue || method === "COD" ? "Thanh toán khi nhận hàng" : method === "STRIPE" ? "Thẻ quốc tế (Stripe, thử nghiệm)" : "VNPay (sandbox)"}</p>
+
+                {quoteError && !quote ? <p className="commerce-status is-error co-inline-status" role="alert">{quoteError}</p> : null}
+                {error ? <p ref={errorRef} tabIndex={-1} className="commerce-status is-error co-inline-status" role="alert">{error}</p> : null}
+                {uncertain ? <p className="commerce-status co-inline-status" role="alert">Đơn có thể đã được tạo. <Link className="commerce-link" href={createdOrderId ? `/don-hang/${createdOrderId}` : "/don-hang"}>Mở Đơn hàng để đối soát →</Link></p> : null}
+                <button className="commerce-primary co-submit" type="submit" form="checkout-form" disabled={busy || updating || !quoteIsCurrent || !shippingFresh}>
+                  {busy ? (method === "COD" || zeroDue ? "Đang đặt đơn…" : "Đang mở cổng thanh toán…") : updating ? "Đang cập nhật giá…" : payLabel}
+                </button>
+                <p className="commerce-note">Giá và ưu đãi được xác nhận lại khi bạn đặt đơn.</p>
               </aside>
             </div>
           ) : null}
