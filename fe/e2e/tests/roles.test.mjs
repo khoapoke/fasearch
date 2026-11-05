@@ -1,5 +1,5 @@
 // [roles] Data-driven role boundary checks. The allow/deny matrix lives in JSON
-// (fixtures/roles-matrix.current.json, or E2E_ROLES_MATRIX for the coming 'Quản lý' rules).
+// (fixtures/roles-matrix.quan-ly.json = ADMIN / Quản lý (STAFF) / CUSTOMER on the role-manager baseline; E2E_ROLES_MATRIX overrides).
 // Ported from admin-quality-pass-20261105/live/staff-boundary.mjs, generalised per role.
 // Denied-write probes need valid bodies, so they run in write mode (clone DB) only and are skipped in readonly mode.
 import { test, before, after } from "node:test";
@@ -15,7 +15,7 @@ import { Client } from "../lib/http.mjs";
 import { step } from "../lib/steps.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const matrixFile = cfg.rolesMatrix || path.join(here, "..", "fixtures", "roles-matrix.current.json");
+const matrixFile = cfg.rolesMatrix || path.join(here, "..", "fixtures", "roles-matrix.quan-ly.json");
 const matrix = JSON.parse(fs.readFileSync(matrixFile, "utf8"));
 const canWrite = (() => { try { return writeMode(); } catch { return false; } })();
 
@@ -66,6 +66,11 @@ suite("roles", `role boundaries (${path.basename(matrixFile)})`, () => {
           // meaningful probe needs a valid body – which would create data if the rule regressed. Write mode only.
           if (!canWrite) { await t.test(name, { skip: "readonly mode: needs a valid body (would create data on regression)" }, () => {}); continue; }
           await step(t, name, async () => { const r = await s.req(w.path, "POST", w.body); assert.equal(r.http, 403, `http ${r.http} ${r.message ?? ""}`); });
+        }
+        for (const w of rule.allowedWrites ?? []) {
+          const name = `${role}: POST ${w.path} allowed`;
+          if (!canWrite) { await t.test(name, { skip: "readonly mode: would create data" }, () => {}); continue; }
+          await step(t, name, async () => { const body = JSON.parse(JSON.stringify(w.body).replaceAll("{{rand}}", Math.random().toString(36).slice(2, 8))); const r = await s.req(w.path, "POST", body); assert.ok((w.expect ?? [200, 201]).includes(r.http), `http ${r.http} ${r.message ?? ""}`); });
         }
       } finally { await s.c.close(); }
     });

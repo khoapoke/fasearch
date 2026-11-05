@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "description": "Allow/deny matrix for the role model on the role-manager baseline (873d9ab): ADMIN = Quản trị viên (everything), STAFF = Quản lý (all store business incl. promotions, loyalty policies, reports, receipts, catalog; NOT login-account/role administration and NOT linking an employee profile to a login account), CUSTOMER = no admin access. Source of truth: role-manager-20261105/live/be/AUTHZ-MATRIX.md. allowedWrites are executed in write mode only (clone DB). Fixture lookup: E2E_FIXTURES_DIR/<fixtureRole lower-case>.json or an entry in accounts.json with that role.",
+  "denyText": "Chỉ Quản trị viên hệ thống",
+  "roles": {
+    "ADMIN": {
+      "fixtureRole": "ADMIN",
+      "viewport": 1440,
+      "displayLabel": "Quản trị viên",
+      "allowedRoutes": [
+        {
+          "route": ""
+        },
+        {
+          "route": "don-hang"
+        },
+        {
+          "route": "khach-hang"
+        },
+        {
+          "route": "nhan-vien"
+        },
+        {
+          "route": "nhan-vien/moi"
+        },
+        {
+          "route": "tai-khoan-noi-bo"
+        },
+        {
+          "route": "khuyen-mai"
+        },
+        {
+          "route": "chinh-sach-diem"
+        },
+        {
+          "route": "bao-cao"
+        },
+        {
+          "route": "kiem-ke/moi",
+          "selector": "#st-note"
+        }
+      ],
+      "deniedRoutes": [],
+      "sidebarRequired": [
+        "/quan-tri/nhan-vien",
+        "/quan-tri/tai-khoan-noi-bo",
+        "/quan-tri/khuyen-mai",
+        "/quan-tri/chinh-sach-diem",
+        "/quan-tri/bao-cao"
+      ],
+      "sidebarForbidden": [],
+      "allowedReads": [
+        "/api/admin/overview",
+        "/api/admin/orders?page=0&size=1",
+        "/api/admin/employees?page=0&size=1",
+        "/api/admin/accounts?page=0&size=1",
+        "/api/admin/promotions",
+        "/api/admin/loyalty/policies"
+      ],
+      "deniedWrites": []
+    },
+    "STAFF": {
+      "fixtureRole": "STAFF",
+      "viewport": 390,
+      "displayLabel": "Quản lý",
+      "allowedRoutes": [
+        {
+          "route": "kiem-ke/moi",
+          "selector": "#st-note"
+        },
+        {
+          "route": "khuyen-mai"
+        },
+        {
+          "route": "chinh-sach-diem"
+        },
+        {
+          "route": "bao-cao"
+        },
+        {
+          "route": "nhan-vien"
+        }
+      ],
+      "deniedRoutes": [
+        {
+          "route": "tai-khoan-noi-bo",
+          "action": "Tạo tài khoản"
+        }
+      ],
+      "sidebarRequired": [
+        "/quan-tri/nhan-vien",
+        "/quan-tri/khuyen-mai",
+        "/quan-tri/chinh-sach-diem",
+        "/quan-tri/bao-cao"
+      ],
+      "sidebarForbidden": [
+        "/quan-tri/tai-khoan-noi-bo"
+      ],
+      "allowedReads": [
+        "/api/admin/stock?page=0&size=1",
+        "/api/admin/orders?page=0&size=1",
+        "/api/admin/employees?page=0&size=1",
+        "/api/admin/promotions",
+        "/api/admin/loyalty/policies"
+      ],
+      "deniedWrites": [
+        {
+          "path": "/api/admin/accounts",
+          "body": {
+            "username": "boundary_x",
+            "email": "boundary_x@example.invalid",
+            "password": "Aa1!boundaryOnly",
+            "role": "STAFF"
+          }
+        },
+        {
+          "path": "/api/admin/employees",
+          "body": {
+            "firstName": "Boundary",
+            "lastName": "Clone",
+            "phoneNumber": "0700000000",
+            "cccd": "078000000000",
+            "accountId": 1
+          }
+        }
+      ],
+      "journalPlaceholderText": "Chưa có nhật ký từ máy chủ",
+      "deniedReads": [
+        "/api/admin/accounts?page=0&size=1"
+      ],
+      "allowedWrites": [
+        {
+          "path": "/api/admin/catalog/categories",
+          "body": {
+            "categoryName": "Quản lý probe {{rand}}"
+          },
+          "expect": [
+            200,
+            201
+          ]
+        }
+      ]
+    },
+    "CUSTOMER": {
+      "fixtureRole": "CUSTOMER",
+      "viewport": 1440,
+      "displayLabel": null,
+      "allowedRoutes": [],
+      "deniedRoutes": [],
+      "sidebarRequired": [],
+      "sidebarForbidden": [],
+      "allowedReads": [
+        "/api/customer-commerce/cart"
+      ],
+      "deniedReads": [
+        "/api/admin/overview",
+        "/api/admin/orders",
+        "/api/admin/customers",
+        "/api/admin/employees",
+        "/api/admin/accounts"
+      ],
+      "deniedWrites": []
+    }
+  }
+}

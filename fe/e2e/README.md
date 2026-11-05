@@ -28,7 +28,7 @@ node e2e/run.mjs admin.sweep                         # one test file (substring 
 | `E2E_BASELINE_PORTS` | ports that are never written to (default `3191,18164,8024`); write mode refuses a `E2E_BASE_URL` / `E2E_API_URL` on them |
 | `E2E_GROUPS` | comma list of `customer,admin,roles,ai,payments` (default all) |
 | `E2E_FIXTURES_DIR` | directory with the private fixture files (below) |
-| `E2E_ROLES_MATRIX` | path to a roles matrix JSON (default `e2e/fixtures/roles-matrix.current.json`) |
+| `E2E_ROLES_MATRIX` | path to a roles matrix JSON (default `e2e/fixtures/roles-matrix.quan-ly.json`) |
 | `E2E_BROWSERS_PATH` | Playwright browsers dir (falls back to `PLAYWRIGHT_BROWSERS_PATH`) |
 | `E2E_REPORT_DIR` / `E2E_RUN_DIR` | where reports go (default `$TMPDIR/fasearch-e2e/<timestamp>`; outside Git) |
 | `E2E_PRODUCT_ID`, `E2E_SKU_IDS` | optional overrides; by default a product and two SKUs with stock are discovered |
@@ -60,13 +60,13 @@ Files under `E2E_FIXTURES_DIR`, read inside the test process only (not logged, n
 Browser feature probes: the catalog/motion UI checks are skipped (with the reason) on builds that lack the catalog
 filter panel / motion header (e.g. the frozen baseline).
 
-### Roles matrix (for the new "Quản lý" rules)
+### Roles matrix (ADMIN / Quản lý / CUSTOMER)
 
-Copy `fixtures/roles-matrix.current.json`, change `roles.<ROLE>` entries (`allowedRoutes`, `deniedRoutes` with the
-write control that must be absent, `sidebarRequired/Forbidden`, `allowedReads`, `deniedReads`, `deniedWrites`, optional
+Copy `fixtures/roles-matrix.quan-ly.json`, change `roles.<ROLE>` entries (`allowedRoutes`, `deniedRoutes` with the
+write control that must be absent, `sidebarRequired/Forbidden`, `allowedReads`, `deniedReads`, `deniedWrites` (must answer 403), `allowedWrites` (must succeed; `{{rand}}` in the body becomes a random suffix), optional
 `displayLabel` that must appear in the admin shell) and run `E2E_ROLES_MATRIX=/path/to/copy.json E2E_GROUPS=roles npm run e2e`.
-Add a `<role>.json` fixture for each new role. Denied-write probes send the matrix body only in write mode; in
-readonly mode they send `{}` so a regression can never create data on a protected environment.
+Add a `<role>.json` fixture for each new role. Denied-write and allowed-write probes run in write mode only (they need valid
+bodies, so a regression could create data); in readonly mode they are skipped.
 
 ## Reports
 
