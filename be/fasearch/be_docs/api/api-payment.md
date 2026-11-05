@@ -1,14 +1,16 @@
 # TÀI LIỆU API: MODULE PAYMENT (THANH TOÁN & HÓA ĐƠN)
 
-Module `payment` tính tiền, ghi nhận invoice/payment và bàn giao settlement loyalty/voucher cho transaction thanh toán. S2 loyalty behavior tuân theo contract v1.4; không có tỷ lệ tích/đổi mặc định.
+Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuyến mãi, điểm thưởng), tiếp nhận thanh toán tiền mặt tại quầy / khi nhận hàng, thanh toán trực tuyến qua cổng Stripe (test) và VNPAY (sandbox) và xuất hóa đơn bán lẻ.
 
 ---
 
-## 1. Tính toán thanh toán (FR-42)
+## 1. Tính toán giá trị thanh toán (FR-42)
 
 - **Endpoint:** `POST /api/v1/payments/calculate`
-- **Quyền hạn:** `ADMIN`, `STAFF`, `CUSTOMER` (CUSTOMER chỉ tính đơn của mình).
-- **Request Body:**
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ tính đơn của mình)
+- **Mô tả:** Xem trước số tiền thực trả của đơn hàng sau voucher, điểm và phí vận chuyển kèm VAT. Chỉ để hiển thị: không sửa đơn, không giữ điểm/voucher.
+
+### Request Body
 ```json
 {
   "orderId": 1001,
@@ -17,7 +19,13 @@ Module `payment` tính tiền, ghi nhận invoice/payment và bàn giao settleme
 }
 ```
 
-- **Response (HTTP 200):**
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `orderId` | Long | Có | ID đơn hàng |
+| `voucherCode` | String | Không | Mã giảm giá |
+| `redeemedPoints` | Number | Không | Số điểm muốn dùng (`>= 0`, số nguyên) |
+
+### Response Thành công (HTTP 200 OK)
 ```json
 {
   "success": true,
@@ -37,42 +45,81 @@ Module `payment` tính tiền, ghi nhận invoice/payment và bàn giao settleme
 }
 ```
 
-`calculate` là preview-only: không sửa tổng đơn, không giữ điểm/quota, không ghi ledger và không cho phép thu tiền dựa trên request preview.
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Đơn đã hủy / đã hoàn trả, điểm sai định dạng hoặc vượt số dư.
+- **HTTP 403 Forbidden:** `CUSTOMER` tính đơn của người khác.
+- **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
+- **HTTP 409 Conflict:** Điểm gửi lên không khớp snapshot của đơn (`4107 QUOTE_CHANGED`).
 
-- Với đơn có loyalty snapshot S2 đã lưu, response dùng snapshot persisted; bỏ `redeemedPoints` thì dùng điểm trên đơn, còn nếu gửi thì phải khớp snapshot hoặc trả HTTP 409 / `4107 QUOTE_CHANGED`.
-- Với đơn pre-S2 có snapshot voucher S1, dùng voucher discount persisted; điểm dương gửi riêng bị từ chối HTTP 400.
-- Với đơn pre-S2 không có voucher snapshot, giữ legacy non-voucher point calculation chỉ để hiển thị; đây không phải quyền redeem/settle và không đổi order/ledger.
-- `shippingFee` lấy từ đơn hiện có. Earning/tier (khi settle) dựa trên `Invoice.totalActualPaid`, không dựa trên tiền tender/change.
+---
 
-Response dùng `Cache-Control: no-store`. Field `pointDiscount` giữ tên legacy trên endpoint này; các quote/order snapshot dùng `pointsDiscount`.
-
-## 2. Danh sách phương thức thanh toán
+## 2. Danh sách phương thức thanh toán hỗ trợ (FR-43)
 
 - **Endpoint:** `GET /api/v1/payments/methods`
-- **Quyền hạn:** Public theo cấu hình hiện tại.
-- Trả các phương thức đang `ACTIVE`, gồm `CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO` nếu có trong DB. Việc phương thức xuất hiện trong danh sách không chứng minh đã cấu hình cổng thanh toán bên ngoài.
+- **Quyền hạn:** `PUBLIC`
+- **Mô tả:** Trả các phương thức thanh toán đang `ACTIVE` trong CSDL.
 
-## 3. Thực hiện thanh toán & xuất hóa đơn (FR-43)
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách phương thức thanh toán thành công",
+  "result": [
+    {
+      "id": 1,
+      "methodCode": "CASH",
+      "methodName": "Tiền mặt tại quầy",
+      "status": "ACTIVE",
+      "note": null
+    },
+    {
+      "id": 2,
+      "methodCode": "BANK_TRANSFER",
+      "methodName": "Chuyển khoản qua số tài khoản ngân hàng",
+      "status": "ACTIVE",
+      "note": null
+    }
+  ],
+  "errors": null,
+  "timestamp": "2026-10-25T15:30:00"
+}
+```
+
+- `methodCode`: `CASH`, `BANK_TRANSFER`, `E_WALLET`, `VNPAY_QR`, `MOMO`, `STRIPE`. Phương thức xuất hiện trong danh sách chưa chắc đã có cổng thanh toán tương ứng.
+
+---
+
+## 3. Thực hiện thanh toán & Xuất hóa đơn (FR-43)
 
 - **Endpoint:** `POST /api/v1/payments/process`
-- **Quyền hạn:** `ADMIN`, `STAFF`, `CUSTOMER`; CUSTOMER chỉ thanh toán đơn của chính mình. Đơn voucher COD chỉ do nhân viên thu CASH sau khi handoff.
-- **Request Body (online / legacy):**
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ thanh toán đơn của mình)
+- **Mô tả:** Thu tiền mặt, lập hóa đơn `hoa_don`, trừ tồn kho và chuyển đơn sang đã thanh toán. Chỉ nhận `CASH`; phương thức khác phải đi qua cổng thanh toán (mục 4 - 10). Gửi lại request POS y hệt trả lại hóa đơn cũ với HTTP 200.
+
+### Request Body
 ```json
 {
   "orderId": 1001,
   "paymentMethodCode": "CASH",
-  "amountPaid": 595000.00,
-  "note": "Khách thanh toán đủ"
+  "amountPaid": 600000.00,
+  "note": "Khách đưa 600.000đ",
+  "voucherCode": "SAVE10",
+  "redeemedPoints": 2,
+  "quoteFingerprint": "opaque-server-token"
 }
 ```
 
-Với POS, request có thể thêm `voucherCode`, `redeemedPoints` và `quoteFingerprint`; các trường benefit chỉ được nhận cho order POS (`POS-...`). Gửi fingerprint chính xác từ `POST /api/v1/orders/pos/{orderId}/quote`. POS chỉ thu CASH; customerless draft không redeem/earn. Điểm phải là số nguyên không âm; không nhận point input bị cắt/truncate.
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `orderId` | Long | Có | ID đơn hàng |
+| `paymentMethodCode` | String | Có | Mã phương thức (`CASH`) |
+| `amountPaid` | Number | Có | Số tiền khách đưa (`>= 0`) |
+| `note` | String | Không | Ghi chú |
+| `voucherCode` | String | Không | Chỉ đơn POS (`POS-...`), tối đa 50 ký tự |
+| `redeemedPoints` | Number | Không | Chỉ đơn POS, số nguyên `>= 0` |
+| `quoteFingerprint` | String | Không | Chỉ đơn POS, lấy từ `POST /api/v1/orders/pos/{orderId}/quote` |
 
-Service khóa order, tính lại quote draft nếu POS, và trong một transaction tạo invoice/payment, tiêu thụ voucher/điểm giữ chỗ, ghi earning ledger, cập nhật số dư và trừ tồn POS. Một order có tối đa một invoice. Request POS lặp giống hệt trả invoice hiện có với HTTP 200; thay đổi financial input trả HTTP 409 / `4108 IDEMPOTENCY_CONFLICT`. Request đầu thành công trả HTTP 201. Replay được nhận diện qua HTTP status; `InvoiceRes` không thêm cờ replay ngoài contract.
-
-`InvoiceRes` giữ các trường cũ và thêm trực tiếp các trường S2 nullable:
-`redeemedPoints`, `pointsDiscount`, `loyaltyPolicyId`, `loyaltyPolicyVersion`, `redeemCurrencyPerPointSnapshot`, `earnedPoints`.
-
+### Response Thành công (HTTP 201 Created)
 ```json
 {
   "success": true,
@@ -95,7 +142,7 @@ Service khóa order, tính lại quote draft nếu POS, và trong một transact
     "loyaltyPolicyVersion": 2,
     "redeemCurrencyPerPointSnapshot": 1000.00,
     "earnedPoints": 5,
-    "note": "Khách thanh toán đủ",
+    "note": "Khách đưa 600.000đ",
     "issuedAt": "2026-10-31T12:05:00"
   },
   "errors": null,
@@ -103,80 +150,274 @@ Service khóa order, tính lại quote draft nếu POS, và trong một transact
 }
 ```
 
-`totalActualPaid` là tiền invoice dùng để earn/tier; `cashReceived` và `cashChange` không phải earning basis. Với no-snapshot/pre-S2 invoice, loyalty fields giữ `null`; không tạo retroactive earning theo policy S2. Với S2 policy snapshot, earn floor theo rate đã chốt trên order, chỉ tính actual paid, và ghi tối đa một lần. Không có tỷ lệ earning mặc định; policy mới mặc định `DISABLED`. Nếu invoice actual paid là zero thì earned points bằng zero. Zero-due invoice không tạo payment row có số tiền giả.
+- Các trường điểm (`redeemedPoints` ... `earnedPoints`) là `null` với đơn không có snapshot loyalty. `totalActualPaid` là cơ sở tích điểm / xét hạng, không phải `cashReceived`.
 
-Legacy fixed-rate award (đơn pre-S2 không có loyalty snapshot và không có voucher) giữ nguyên tỷ lệ cũ `1 điểm / 100.000đ` tính trên `totalActualPaid`, nhưng được settle nguyên tử: khóa row khách hàng, cộng chính xác có kiểm tra tràn (`4208 LOYALTY_STATE_CONFLICT` khi vượt `Integer.MAX_VALUE`) và rollback toàn bộ invoice/payment/order nếu thất bại. Khi khách hàng đã có baseline `OPENING`, mỗi đơn ghi đúng một ledger `EARN` với `sourceKey = earn:<orderId>`, nên settle lặp lại không cộng trùng. Đơn không có baseline `OPENING` chỉ cập nhật số dư legacy, không sinh ledger history; đây là chủ ý, không phải thiếu history. Response vẫn trả `earnedPoints = null` cho đơn pre-S2 vì field này chỉ thuộc snapshot S2.
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Đơn đã thanh toán (`ORDER_ALREADY_PAID`), thiếu tiền (`PAYMENT_AMOUNT_INSUFFICIENT`), phương thức không phải tiền mặt, đơn không ở trạng thái thanh toán được, thiếu tồn kho (`INSUFFICIENT_STOCK`).
+- **HTTP 403 Forbidden:** `CUSTOMER` thanh toán đơn của người khác, đơn POS hoặc đơn có voucher COD.
+- **HTTP 404 Not Found:** Không tìm thấy đơn hàng hoặc phương thức thanh toán.
+- **HTTP 409 Conflict:** Fingerprint / điểm đã đổi (`4107 QUOTE_CHANGED`) hoặc gửi lại với dữ liệu tài chính khác (`4108 IDEMPOTENCY_CONFLICT`).
 
-## 4. Lỗi ổn định S2
+---
 
-`ApiResponse.code` là business code độc lập với HTTP status:
+## 4. Tạo Payment Attempt
 
-| Business code | Stable name | HTTP |
-|---:|---|---:|
-| 4107 | `QUOTE_CHANGED` | 409 |
-| 4108 | `IDEMPOTENCY_CONFLICT` | 409 |
-| 4201 | `LEGACY_OPENING_REQUIRED` | 409 |
-| 4202 | `LOYALTY_POLICY_UNAVAILABLE` | 409 |
-| 4203 | `LOYALTY_POLICY_DISABLED` | 409 |
-| 4204 | `INSUFFICIENT_POINTS` | 409 |
-| 4205 | `OPENING_ALREADY_RECORDED` | 409 |
-| 4206 | `LOYALTY_POLICY_VERSION_CHANGED` | 409 |
-| 4207 | `LOYALTY_TIER_VERSION_CHANGED` | 409 |
-| 4208 | `LOYALTY_STATE_CONFLICT` | 409 |
+- **Endpoint:** `POST /api/v1/payments/attempts`
+- **Quyền hạn:** `CUSTOMER` (chỉ đơn của mình)
+- **Mô tả:** Tạo lượt thanh toán trực tuyến cho đơn; số tiền lấy từ đơn hàng, không nhận từ client. Cùng `idempotencyKey` trả lại lượt cũ (xem mục 11).
 
-`4204` trả `errors[].reason` chứa `Allowed maximum: N`. Điểm âm/phân số/overflow là HTTP 400 / business code 400. Sensitive loyalty/payment responses và S2 conflict responses dùng `Cache-Control: no-store`.
+### Request Body
+```json
+{
+  "orderId": 1001,
+  "provider": "STRIPE",
+  "idempotencyKey": "pay-order-1001-STRIPE"
+}
+```
 
-## 5. Cổng thanh toán bên ngoài
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `orderId` | Long | Có | ID đơn hàng |
+| `provider` | String | Có | `STRIPE`, `VNPAY` |
+| `idempotencyKey` | String | Có | Khóa cố định cho mỗi đơn/cổng, tối đa 100 ký tự |
 
-Stripe (test mode) và VNPAY (sandbox) có endpoint checkout/webhook/IPN riêng — xem mục "Provider checkout (test/sandbox)" bên dưới; endpoint tạo URL và callback/IPN **có tồn tại** trong source (`StripeCheckoutController`, `StripeWebhookController`, `VnpayController`). MoMo **chưa** có endpoint. Các method code trong danh mục không tự hàm ý tích hợp provider; không dùng dữ liệu giả hay gửi giao dịch thật.
+### Response Thành công (HTTP 201 Created)
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Tạo payment attempt thành công",
+  "result": {
+    "id": 21,
+    "orderId": 1001,
+    "provider": "STRIPE",
+    "status": "CREATED",
+    "amount": 595000.00,
+    "currency": "VND",
+    "providerReference": "SKELETON-3f0c...",
+    "checkoutUrl": null,
+    "createdAt": "2026-11-05T09:00:00",
+    "expiresAt": null
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
 
-## Invoice code allocation (concurrency)
+- `status`: `CREATED`, `PENDING`, `SETTLEMENT_PENDING`, `SETTLED`, `FAILED`, `CANCELLED`, `EXPIRED`, `REVIEW_REQUIRED`.
 
-`Invoice.invoiceCode` is generated as `HD-YYYYMMDD-XXX` where `XXX` is the next sequential number for the current date. To prevent the TOCTOU race between `countByInvoiceCodeStartingWith` and `existsByInvoiceCode` under concurrent settlements, allocation is serialized per database transaction via `pg_advisory_xact_lock`. The lock is transaction-scoped and released automatically on commit or rollback, so no partial invoice or payment row can be left behind. Single-order settlement is unaffected; concurrent settlements now serialize at the code-allocation step instead of failing with a duplicate-key error.
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, đơn không thanh toán được / có tiền phải trả bằng 0, đơn đã có hóa đơn (`ORDER_ALREADY_PAID`).
+- **HTTP 403 Forbidden:** Đơn của người khác hoặc không phải `CUSTOMER`.
+- **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
+- **HTTP 409 Conflict:** `idempotencyKey` đã thuộc đơn hàng khác (`DATA_CONFLICT`).
 
+---
 
-## Payment attempt skeleton (provider pending)
+## 5. Xem Payment Attempt
 
-- `POST /api/v1/payments/attempts` — `CUSTOMER`, body `{orderId, provider, idempotencyKey}`; server derives amount/currency from the persisted order, enforces own-order ownership and returns `CREATED`.
-- `GET /api/v1/payments/attempts/{id}` — `CUSTOMER`, own attempt only.
-- Additive tables `payment_attempt` and `payment_event` (migration V15). Event dedup key is **`(provider, provider_event_id)`**, not a global event ID.
-- Late provider success after `CANCELLED`/`EXPIRED` becomes `REVIEW_REQUIRED`; no financial rule is invented. (Verified provider success now settles through the authoritative path described under "Provider checkout".)
-- `StripeSignatureVerifier` and `VnpaySignatureVerifier` implement the signature checks used by the webhook/IPN endpoints. Stripe/VNPAY sandbox E2E is tracked in the `payment-sandbox-readiness` packet, not here.
-- COD/cash settlement via `POST /api/v1/payments/process` is unchanged; non-cash methods are rejected there. Provider settlement happens only through the verified Stripe webhook / VNPAY IPN (see "Provider checkout").
-- Still unresolved policy: refunds/partials and double-payment of an order by two attempts. Do not mark `PAID` from a redirect.
+- **Endpoint:** `GET /api/v1/payments/attempts/{id}`
+- **Quyền hạn:** `CUSTOMER` (chỉ lượt thanh toán của mình)
+- **Mô tả:** Xem trạng thái một lượt thanh toán, cùng dạng `result` như mục 4.
 
-## Provider checkout (test/sandbox, candidate-only)
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy payment attempt thành công",
+  "result": {
+    "id": 21,
+    "orderId": 1001,
+    "provider": "STRIPE",
+    "status": "PENDING",
+    "amount": 595000.00,
+    "currency": "VND",
+    "providerReference": "cs_test_a1B2c3...",
+    "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1B2c3...",
+    "createdAt": "2026-11-05T09:00:00",
+    "expiresAt": null
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
 
-- `POST /api/v1/payments/stripe/checkout` — `CUSTOMER`, body `{orderId, idempotencyKey}`; server derives amount/currency from the persisted order; creates or reuses a customer-owned attempt, then creates a Stripe test-mode Hosted Checkout session and stores `providerReference`/`checkoutUrl`. Test keys only; live keys rejected.
-- `POST /api/v1/payments/stripe/webhook` — public route, verified by `Stripe-Signature` HMAC-SHA256 with timestamp tolerance; only `checkout.session.completed`/`async_payment_succeeded` (and failure/expired variants) are processed; unknown types are ignored. Verified success settles through the authoritative invoice/loyalty/stock path exactly once (see below); it never marks `PAID` from the redirect.
-- `POST /api/v1/payments/vnpay/checkout` — `CUSTOMER`, body `{orderId, idempotencyKey}`; server derives VND amount (×100) and signs canonical params with `vnp_HashSecret`; returns sandbox payment URL and stores `TxnRef`.
-- `GET /api/v1/payments/vnpay/return` — display-only result check, no settlement.
-- `GET /api/v1/payments/vnpay/ipn` — verifies HMAC-SHA512, merchant, amount/currency/order; success requires `vnp_ResponseCode == "00"` and `vnp_TransactionStatus == "00"`; dedup by `(provider, provider_event_id)`; failure/timeout/expiry handled without marking `PAID`.
-- Non-cash `POST /api/v1/payments/process` is rejected (`400`); CUSTOMER cannot mark `PAID` via an unverified request. COD/cash settlement remains unchanged.
-- Verified provider success settles via the existing authoritative path: order lock, amount/currency match to the persisted order total, invoice `PAID` + payment row (once per order), `checkoutBenefitService.consume`, `loyaltyService.settleOrder/settleLegacyEarn`, order `PENDING` → `CONFIRMED`. Retry/replay is idempotent: existing `PAID` invoice returns without double invoice/earn/stock/quota.
-- Late success after `CANCELLED`/`EXPIRED`/closed order stays `REVIEW_REQUIRED`; no automatic fulfillment, no refund module, no silent stock change.
-- Attempt `FAILURE`/`EXPIRED`/`CANCELLED` alone never cancels the order and never releases holds; holds release only via the authoritative `cancelOrder`/expiry path, exactly once.
-- Zero-due orders are rejected from external checkout and settle only through the existing local zero-settlement path; no fake external charge.
+### Response Lỗi thường gặp
+- **HTTP 403 Forbidden:** Lượt thanh toán của người khác.
+- **HTTP 404 Not Found:** Không tìm thấy payment attempt.
 
-## Re-pay after a terminal attempt (idempotent retry contract)
+---
 
-The storefront sends one stable `idempotencyKey` per order/provider (e.g. `pay-order-{orderId}-{provider}`). `payment_attempt` keeps `UNIQUE (provider, idempotency_key)` (V15), so the server resolves the *newest attempt of that key family* inside `PaymentAttemptServiceImpl#create` (used by `POST /payments/attempts`, `/payments/stripe/checkout`, `/payments/vnpay/checkout`):
+## 6. Tạo phiên Stripe Checkout (test mode)
 
-| Latest attempt of the key | Result of the next request with the same key |
+- **Endpoint:** `POST /api/v1/payments/stripe/checkout`
+- **Quyền hạn:** `CUSTOMER`
+- **Mô tả:** Tạo (hoặc lấy lại) lượt thanh toán Stripe và phiên Hosted Checkout. Chỉ nhận khóa `sk_test_`; số tiền lấy từ đơn hàng.
+
+### Request Body
+```json
+{
+  "orderId": 1001,
+  "idempotencyKey": "pay-order-1001-STRIPE"
+}
+```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `orderId` | Long | Có | ID đơn hàng |
+| `idempotencyKey` | String | Có | Khóa cố định cho mỗi đơn, tối đa 100 ký tự |
+
+### Response Thành công (HTTP 201 Created)
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Tạo Stripe Checkout thành công",
+  "result": {
+    "attemptId": 21,
+    "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1B2c3..."
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+- Lượt đang mở trả lại `checkoutUrl` đã lưu với message `Stripe Checkout đã tồn tại`.
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Đơn đã thanh toán, không thanh toán được hoặc Stripe từ chối (`PAYMENT_PROVIDER_REJECTED`).
+- **HTTP 403 Forbidden:** Đơn của người khác hoặc không phải `CUSTOMER`.
+- **HTTP 404 Not Found:** Không tìm thấy đơn hàng.
+- **HTTP 409 Conflict:** `idempotencyKey` đã thuộc đơn hàng khác.
+- **HTTP 503 Service Unavailable:** Stripe chưa cấu hình hoặc không khả dụng (`PAYMENT_PROVIDER_NOT_CONFIGURED`, `PAYMENT_PROVIDER_UNAVAILABLE`).
+
+---
+
+## 7. Stripe Webhook
+
+- **Endpoint:** `POST /api/v1/payments/stripe/webhook`
+- **Quyền hạn:** `PUBLIC` (Server-to-Server từ Stripe, xác thực bằng header `Stripe-Signature`)
+- **Mô tả:** Nhận sự kiện Stripe đã ký (HMAC-SHA256, lệch giờ tối đa 300 giây). Chỉ xử lý `checkout.session.completed` (khi `payment_status = paid`), `async_payment_succeeded`, `async_payment_failed`, `expired`; kiểm tra khớp số tiền / tiền tệ. `PAID` chỉ được ghi nhận từ sự kiện đã xác thực này, không từ trang redirect.
+
+### Request Body
+Payload sự kiện Stripe nguyên bản (raw JSON).
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "received": true
+}
+```
+
+- Loại sự kiện không xử lý trả `{ "received": true, "ignored": true }`. Response không bọc `ApiResponse`.
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Sai chữ ký, thiếu cấu hình secret, payload thiếu trường hoặc số tiền / tiền tệ không khớp.
+- **HTTP 404 Not Found:** Không tìm thấy payment attempt theo phiên Stripe.
+- **HTTP 409 Conflict:** Cùng event id nhưng payload đã thay đổi.
+
+---
+
+## 8. Tạo URL thanh toán VNPAY (sandbox)
+
+- **Endpoint:** `POST /api/v1/payments/vnpay/checkout`
+- **Quyền hạn:** `CUSTOMER`
+- **Mô tả:** Tạo (hoặc lấy lại) lượt thanh toán VNPAY và URL thanh toán đã ký HMAC-SHA512. Số tiền × 100 (VND nguyên); `vnp_TxnRef` = `VNPAY{attemptId}{yyyyMMddHHmmss}`, mỗi lượt mới có TxnRef mới.
+
+### Request Body
+```json
+{
+  "orderId": 1001,
+  "idempotencyKey": "pay-order-1001-VNPAY"
+}
+```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `orderId` | Long | Có | ID đơn hàng |
+| `idempotencyKey` | String | Có | Khóa cố định cho mỗi đơn, tối đa 100 ký tự |
+
+### Response Thành công (HTTP 201 Created)
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Tạo VNPAY checkout thành công",
+  "result": {
+    "attemptId": 22,
+    "checkoutUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=59500000&vnp_TxnRef=VNPAY2220261105090000&..."
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+- Lượt đang mở trả lại `checkoutUrl` đã lưu với message `VNPAY checkout đã tồn tại`.
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Đơn đã thanh toán hoặc không thanh toán được.
+- **HTTP 403 Forbidden:** Đơn của người khác hoặc không phải `CUSTOMER`.
+- **HTTP 404 Not Found:** Không tìm thấy đơn hàng.
+- **HTTP 409 Conflict:** `idempotencyKey` đã thuộc đơn hàng khác.
+- **HTTP 503 Service Unavailable:** VNPAY chưa cấu hình (`PAYMENT_PROVIDER_NOT_CONFIGURED`).
+
+---
+
+## 9. Kết quả trả về từ VNPAY (Return URL)
+
+- **Endpoint:** `GET /api/v1/payments/vnpay/return`
+- **Quyền hạn:** `PUBLIC` (trình duyệt khách quay về từ VNPAY, kèm các tham số `vnp_*`)
+- **Mô tả:** Chỉ kiểm tra chữ ký để hiển thị kết quả cho khách, **không** ghi nhận thanh toán.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "valid": true,
+  "displayOnly": true,
+  "responseCode": "00",
+  "transactionStatus": "00",
+  "txnRef": "VNPAY2220261105090000"
+}
+```
+
+- Response không bọc `ApiResponse`; `valid = false` khi sai chữ ký.
+
+---
+
+## 10. Xử lý IPN từ VNPAY
+
+- **Endpoint:** `GET /api/v1/payments/vnpay/ipn`
+- **Quyền hạn:** `PUBLIC` (Server-to-Server từ VNPAY, xác thực `vnp_SecureHash` HMAC-SHA512 và `vnp_TmnCode`)
+- **Mô tả:** Nhận kết quả giao dịch, kiểm tra chữ ký / merchant / số tiền, rồi ghi nhận thanh toán. Thành công khi `vnp_ResponseCode` và `vnp_TransactionStatus` đều `00`; sự kiện chống trùng theo `{txnRef}:{vnp_TransactionNo}`.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "RspCode": "00",
+  "Message": "Confirm Success"
+}
+```
+
+### Response Lỗi thường gặp
+Luôn trả HTTP 200, `RspCode` cho biết kết quả:
+- **`97`:** Sai chữ ký.
+- **`99`:** Sai merchant (`vnp_TmnCode`).
+- **`01`:** Không tìm thấy giao dịch theo `vnp_TxnRef`.
+- **`04`:** Sai số tiền hoặc tiền tệ.
+
+---
+
+## 11. Quy tắc thanh toán lại (Re-pay)
+
+FE gửi một `idempotencyKey` cố định cho mỗi đơn / cổng; server xét lượt mới nhất của khóa đó (áp dụng cho mục 4, 6 và 8).
+
+| Lượt mới nhất | Kết quả khi gửi lại cùng khóa |
 | :--- | :--- |
-| none | new attempt `CREATED` with the client key |
-| `CREATED`, `PENDING`, `SETTLEMENT_PENDING` (open) | same attempt returned; checkout endpoints return the stored `checkoutUrl` (idempotent) |
-| `SETTLED`, `REVIEW_REQUIRED` | same attempt returned (HTTP 201 with the stored attempt and its `checkoutUrl`, no new session, no error); never replaced. A re-pay after settlement therefore *returns the settled attempt*, it does not fail |
-| `FAILED`, `CANCELLED`, `EXPIRED` (terminal) | a **new** attempt `CREATED` is stored under the derived key `<clientKey>~r<n>` (`n` = 1, 2, …; the client key is clipped to 90 chars so the key fits `VARCHAR(100)`), with its own `providerReference`; the checkout endpoint then creates a **fresh** Stripe session / VNPAY `TxnRef` |
+| Chưa có | Tạo lượt `CREATED` mới |
+| `CREATED`, `PENDING`, `SETTLEMENT_PENDING` | Trả lại đúng lượt đó (cùng `checkoutUrl`) |
+| `SETTLED`, `REVIEW_REQUIRED` | Trả lại lượt đó (HTTP 201, không tạo phiên mới) |
+| `FAILED`, `CANCELLED`, `EXPIRED` | Tạo lượt mới với khóa nội bộ `<khóa>~r<n>` và phiên Stripe / `TxnRef` VNPAY mới |
 
-- Retry is rejected with `ORDER_ALREADY_PAID` (400) if the order already has an invoice; the key still conflicting with another order stays `DATA_CONFLICT` (409).
-- Ownership/payability is checked on a plain read first (a customer cannot row-lock someone else's order). The order row lock (`findByIdForUpdate`) is taken only when a new attempt may be written, and the key family is re-resolved under the lock, so two concurrent re-pay clicks open at most one retry **attempt** (see residual risk 2 for provider sessions).
-- No schema change and no FE change: the response shape (`attemptId`, `checkoutUrl`) is unchanged; the derived key is internal.
-- Webhook/IPN handling is unchanged: events are matched by `(provider, providerReference)`, so a late event for an old attempt only affects that old attempt; dedup key `(provider, provider_event_id)`, amount/currency check and PAID-only-via-verified-event are unchanged.
-
-### Known residual risks (accepted, no settlement-semantics change in this candidate)
-
-1. **Late success on a `FAILED` attempt still settles** (`settleVerifiedSuccess` only routes `CANCELLED`/`EXPIRED` late successes to `REVIEW_REQUIRED`). Since a fresh `K~r<n>` attempt can now be open beside an old `FAILED` one, a customer could be charged on both; the second verified success finds the invoice, is recorded `DUPLICATE`/`SETTLED`, and no review/refund is raised. Providers rarely send success after failure for one session; decide the rule (review on success-after-FAILED or when another attempt already settled the invoice) before any real money.
-2. **Concurrent first checkout can open two provider sessions for one attempt.** The order lock is released when `create` commits; the provider session is created and `attachProviderSession` runs afterwards, outside the lock and without a "URL already attached" check. Two simultaneous requests may both create sessions and the last attach wins; a payment on the overwritten session cannot be matched (webhook 404 / IPN `01`). The FE `paying` busy state mitigates it. Follow-up: attach only when `providerCheckoutUrl` is null, otherwise return the stored URL.
-3. **`ORDER_ALREADY_PAID` is checked only on the retry path.** If the latest attempt is open, its URL is returned even when a sibling provider attempt already paid the order.
-4. **Re-pay after settlement returns the settled attempt** (HTTP 201, stored `checkoutUrl`) instead of an error; clients must use `status` of the response (`SETTLED`) rather than assume a payable URL.
+- Đơn đã có hóa đơn → `400 ORDER_ALREADY_PAID`; khóa thuộc đơn khác → `409 DATA_CONFLICT`. Response không đổi, khóa nội bộ không lộ ra ngoài.
+- Thanh toán muộn sau khi lượt `CANCELLED` / `EXPIRED` chuyển sang `REVIEW_REQUIRED`, không tự hoàn tiền hay xử lý đơn.

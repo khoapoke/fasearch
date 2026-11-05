@@ -1,19 +1,22 @@
 # TÀI LIỆU API: MODULE ANALYTICS (BÁO CÁO & THỐNG KÊ)
 
-Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh doanh. S2 không triển khai hoặc sửa các route báo cáo này; S3 vẫn gate riêng sau independent S2 technical PASS. XNT acceptance giữ SKU×warehouse; schema hiện chưa có warehouse identity/movement history và không được suy diễn missing opening/cost/channel thành zero. Chỉ công bố các báo cáo sau khi có contract/data readiness riêng.
+Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức khỏe kinh doanh: tổng hợp doanh thu theo chu kỳ, xếp hạng sản phẩm bán chạy/tồn chậm và báo cáo biến động xuất - nhập - tồn kho. Toàn bộ endpoint yêu cầu Header `Authorization: Bearer <token>` và chỉ dành cho `ADMIN`, `STAFF (Quản lý)`.
 
 ---
 
-## 1. Báo cáo Doanh thu & Lợi nhuận (FR-52)
+## 1. Báo cáo Doanh thu (FR-52)
 
 - **Endpoint:** `GET /api/v1/analytics/revenue`
-- **Quyền hạn:** `ADMIN`, `STAFF`
-- **Mô tả:** Thống kê tổng doanh thu thực tế, chi phí nhập hàng, lợi nhuận gộp và số lượng đơn hàng theo chu kỳ thời gian (Ngày / Tuần / Tháng / Năm), phân tách giữa kênh bán lẻ tại quầy POS và kênh đặt hàng Online.
-- **Query Parameters:**
-  - `period`: Chu kỳ thống kê (`DAY`, `WEEK`, `MONTH`, `YEAR`).
-  - `startDate`: Ngày bắt đầu (`YYYY-MM-DD`).
-  - `endDate`: Ngày kết thúc (`YYYY-MM-DD`).
-  - `channel`: Kênh bán hàng (`ALL`, `POS`, `ONLINE`).
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Mô tả:** Thống kê tổng doanh thu thực thu (từ hóa đơn đã thanh toán), số đơn và giá trị đơn trung bình theo chu kỳ. Chi phí nhập (`totalCogs`) và lợi nhuận gộp (`grossProfit`) luôn là `null` vì chưa có lịch sử giá vốn; chưa tách được kênh POS / Online.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `period` | String | Không | Chu kỳ: `DAY`, `WEEK`, `MONTH`, `YEAR` (mặc định `DAY`) |
+| `startDate` | String | Có | Ngày bắt đầu `YYYY-MM-DD` |
+| `endDate` | String | Có | Ngày kết thúc `YYYY-MM-DD` |
+| `channel` | String | Không | Chỉ nhận `ALL` (mặc định); giá trị khác trả HTTP 400 |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -24,23 +27,11 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
   "result": {
     "summary": {
       "totalRevenue": 150000000.00,
-      "totalCogs": 90000000.00,
-      "grossProfit": 60000000.00,
       "totalOrders": 420,
-      "averageOrderValue": 357142.85
+      "averageOrderValue": 357142.85,
+      "totalCogs": null,
+      "grossProfit": null
     },
-    "breakdownByChannel": [
-      {
-        "channel": "POS",
-        "revenue": 95000000.00,
-        "orders": 280
-      },
-      {
-        "channel": "ONLINE",
-        "revenue": 55000000.00,
-        "orders": 140
-      }
-    ],
     "timeline": [
       {
         "date": "2026-10-01",
@@ -52,24 +43,41 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
         "revenue": 4800000.00,
         "orders": 14
       }
-    ]
+    ],
+    "coverage": {
+      "paidInvoices": 420,
+      "excludedPending": 6,
+      "excludedCancelledUnpaid": 3,
+      "softDeletedProductsAttributed": 0,
+      "channelNote": "Order rows carry no sales-channel column: channel is ALL only; POS/ONLINE split is not reported.",
+      "cogsNote": "No cost history in schema: totalCogs/grossProfit are null, never estimated.",
+      "openingStockNote": "No warehouse/opening history in schema ..."
+    }
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Thiếu / sai `startDate`, `endDate`, khoảng ngày không hợp lệ, `period` không hỗ trợ hoặc `channel` khác `ALL`.
+- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
+
 ---
 
 ## 2. Báo cáo Hiệu quả Sản phẩm & Hàng tồn (FR-53)
 
 - **Endpoint:** `GET /api/v1/analytics/top-products`
-- **Quyền hạn:** `ADMIN`, `STAFF`
-- **Mô tả:** Xếp hạng danh sách Top N sản phẩm mang lại doanh thu cao nhất hoặc danh sách các SKU tồn kho chậm luân chuyển (không có đơn bán trong 30/60 ngày).
-- **Query Parameters:**
-  - `type`: Tiêu chí (`BEST_SELLER`, `SLOW_MOVING`).
-  - `limit`: Số lượng sản phẩm hiển thị (mặc định: `10`).
-  - `startDate`, `endDate`: Khoảng thời gian phân tích.
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Mô tả:** Xếp hạng Top N sản phẩm bán chạy nhất hoặc danh sách sản phẩm bán chậm / tồn chậm luân chuyển trong khoảng thời gian phân tích.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `type` | String | Không | `BEST_SELLER`, `SLOW_MOVING` (mặc định `BEST_SELLER`) |
+| `limit` | Integer | Không | Số sản phẩm hiển thị (mặc định: `10`) |
+| `startDate` | String | Có | Ngày bắt đầu `YYYY-MM-DD` |
+| `endDate` | String | Có | Ngày kết thúc `YYYY-MM-DD` |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -85,7 +93,8 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
       "categoryName": "Áo sơ mi nam",
       "totalQuantitySold": 150,
       "totalRevenue": 52500000.00,
-      "currentInventory": 43
+      "currentInventory": 43,
+      "softDeleted": false
     },
     {
       "rank": 2,
@@ -94,7 +103,8 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
       "categoryName": "Áo Polo Unisex",
       "totalQuantitySold": 98,
       "totalRevenue": 27440000.00,
-      "currentInventory": 25
+      "currentInventory": 25,
+      "softDeleted": false
     }
   ],
   "errors": null,
@@ -102,18 +112,26 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
 }
 ```
 
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Thiếu / sai khoảng ngày, `limit` không hợp lệ hoặc `type` không hỗ trợ.
+- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
+
 ---
 
 ## 3. Báo cáo Xuất - Nhập - Tồn kho (FR-54)
 
 - **Endpoint:** `GET /api/v1/analytics/inventory-movement`
-- **Quyền hạn:** `ADMIN`, `STAFF`
-- **Mô tả:** Báo cáo chi tiết biến động số lượng tồn theo từng biến thể SKU trong một kỳ kế toán: Tồn đầu kỳ, Tổng nhập, Tổng xuất bán, Xuất hủy/hao hụt và Tồn cuối kỳ.
-- **Query Parameters:**
-  - `page`: Số trang (mặc định: `0`).
-  - `size`: Số bản ghi/trang (mặc định: `10`).
-  - `month`: Tháng kế toán (`MM-YYYY`, ví dụ: `10-2026`).
-  - `sku`: Lọc theo mã SKU cụ thể.
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Mô tả:** Báo cáo biến động tồn theo từng biến thể SKU trong một tháng. Hiện chỉ có `totalSold` và `closingStock` (tồn hiện tại); `openingStock`, `totalImport`, `totalDamaged` trả `null` vì chưa có lịch sử kho.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `year` | Integer | Có | Năm báo cáo, `2000` - `2100` |
+| `month` | Integer | Có | Tháng báo cáo, `1` - `12` |
+| `sku` | Long | Không | Lọc theo ID SKU cụ thể |
+| `page` | Integer | Không | Số trang (mặc định: `0`) |
+| `size` | Integer | Không | Số bản ghi/trang (mặc định: `10`) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -129,10 +147,10 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
         "color": "Xanh dương",
         "size": "L",
         "barcode": "893850123401",
-        "openingStock": 20,
-        "totalImport": 50,
+        "openingStock": null,
+        "totalImport": null,
         "totalSold": 38,
-        "totalDamaged": 2,
+        "totalDamaged": null,
         "closingStock": 30
       }
     ],
@@ -146,3 +164,7 @@ Module `analytics` tài liệu hóa các báo cáo theo dõi sức khỏe kinh d
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `year`, `month`, `page` hoặc `size` ngoài miền hợp lệ.
+- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.

@@ -3,7 +3,7 @@
 Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc Request, Response và quy chuẩn giao tiếp API của hệ thống **FaSearch Backend**.
 
 > 📌 **Tài liệu liên quan:**
-> - Danh mục 54 chức năng, ma trận Role (RBAC) & Tiến độ: **[module.md](../module.md)**
+> - Danh mục chức năng, ma trận Role (RBAC) & Tiến độ: **[module.md](../module.md)**
 > - Hướng dẫn quy tắc phát triển dành cho Agent: **[AGENTS.md](../../AGENTS.md)**
 
 ---
@@ -12,17 +12,19 @@ Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc R
 
 | STT | Phân hệ (Module) | File tài liệu | Mô tả |
 | :---: | :--- | :--- | :--- |
-| 1 | **Xác thực & Tài khoản** | [api-auth.md](./api-auth.md) | Đăng nhập, đăng ký, thông tin tài khoản, quản lý tài khoản & RBAC |
+| 1 | **Xác thực & Tài khoản** | [api-auth.md](./api-auth.md) | Đăng nhập, đăng ký, quên / đặt lại mật khẩu, xác thực email, quản lý tài khoản & RBAC |
 | 2 | **Người dùng & Khách hàng** | [api-user.md](./api-user.md) | Hồ sơ khách hàng, nhân viên, tích điểm & hạng thành viên |
-| 3 | **Sản phẩm & Danh mục** | [api-product.md](./api-product.md) | Danh mục, sản phẩm, biến thể SKU, mã vạch Barcode, tra cứu POS |
-| 4 | **Tìm kiếm thông minh (AI)** | [api-search.md](./api-search.md) | Tìm kiếm tự nhiên NLP, tìm kiếm bằng ảnh & tìm kiếm đa phương thức |
-| 5 | **Kho hàng & Tồn kho** | [api-inventory.md](./api-inventory.md) | Tra cứu tồn, nhập kho, xuất hủy/chuyển kho, kiểm kê & cảnh báo |
-| 6 | **Đơn hàng & Giỏ hàng** | [api-order.md](./api-order.md) | Giỏ hàng, đặt hàng Online, POS đơn tạm, cập nhật trạng thái đơn |
-| 7 | **Thanh toán & Hóa đơn** | [api-payment.md](./api-payment.md) | Tính tiền, phương thức thanh toán, xuất hóa đơn & VNPAY QR |
-| 8 | **Khuyến mãi & Giảm giá** | [api-promotion.md](./api-promotion.md) | Chương trình khuyến mãi, phát hành mã voucher & xác thực voucher |
-| 9 | **Đổi / Trả hàng** | [api-returnorder.md](./api-returnorder.md) | Tra cứu hóa đơn đổi trả, lập phiếu đổi trả & nhập kho thu hồi |
-| 10 | **Báo cáo & Thống kê** | [api-analytics.md](./api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn |
-| 11 | **Thương hiệu** | [api-brand.md](./api-brand.md) | Brand public list/logo, product brand filter, deterministic import contract |
+| 3 | **Sản phẩm & Danh mục** | [api-product.md](./api-product.md) | Danh mục, sản phẩm, biến thể SKU, mã vạch Barcode, ảnh sản phẩm, tra cứu POS |
+| 4 | **Bản nháp & Xuất bản** | [api-publish.md](./api-publish.md) | Bản nháp sản phẩm, nhập từ URL, xuất bản / gỡ xuất bản & đồng bộ AI |
+| 5 | **Thương hiệu** | [api-brand.md](./api-brand.md) | Danh sách thương hiệu công khai & logo |
+| 6 | **Tìm kiếm thông minh (AI)** | [api-search.md](./api-search.md) | Tìm kiếm tự nhiên NLP, tìm kiếm bằng ảnh, đa phương thức, lịch sử tìm kiếm & yêu thích |
+| 7 | **Kho hàng & Tồn kho** | [api-inventory.md](./api-inventory.md) | Tra cứu tồn, nhập kho, xuất hủy/chuyển kho, kiểm kê |
+| 8 | **Đơn hàng & Giỏ hàng** | [api-order.md](./api-order.md) | Giỏ hàng, báo giá ưu đãi, đặt hàng Online, POS đơn tạm, cập nhật trạng thái đơn |
+| 9 | **Vận chuyển & Bản đồ** | [api-shipping.md](./api-shipping.md) | Tính phí vận chuyển, gợi ý địa chỉ, tọa độ giao hàng, miễn phí ship |
+| 10 | **Thanh toán & Hóa đơn** | [api-payment.md](./api-payment.md) | Tính tiền, xuất hóa đơn, thanh toán Stripe / VNPAY |
+| 11 | **Khuyến mãi & Giảm giá** | [api-promotion.md](./api-promotion.md) | Chương trình khuyến mãi, phát hành mã voucher, ưu đãi công khai |
+| 12 | **Đổi / Trả hàng** | [api-returnorder.md](./api-returnorder.md) | Chưa triển khai |
+| 13 | **Báo cáo & Thống kê** | [api-analytics.md](./api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn |
 
 ---
 
@@ -38,7 +40,7 @@ Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc R
   Content-Type: application/json
   Accept: application/json
   ```
-- Với các endpoint cần xác thực (Role `ADMIN`, `STAFF`, `CUSTOMER`):
+- Với các endpoint cần xác thực (Role `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER`):
   ```http
   Authorization: Bearer <access_token>
   ```
@@ -106,13 +108,28 @@ Mọi phản hồi từ máy chủ đều được chuẩn hóa theo định d�
 | `403` | `FORBIDDEN` / `ACCESS_DENIED` | Tài khoản không có đủ quyền thực hiện hành động |
 | `404` | `RESOURCE_NOT_FOUND` / `*_NOT_FOUND` | Không tìm thấy tài nguyên theo ID hoặc điều kiện lọc |
 | `405` | `METHOD_NOT_ALLOWED` | Phương thức HTTP không được hỗ trợ trên endpoint này |
+| `409` | `DATA_CONFLICT` | Dữ liệu xung đột (trùng khóa, sai phiên bản) |
+| `429` | `TOO_MANY_REQUESTS` | Gọi quá nhiều lần trong thời gian ngắn |
 | `500` | `INTERNAL_SERVER_ERROR` | Lỗi nội bộ không xác định từ phía hệ thống |
+| `503` | `*_UNAVAILABLE` / `*_NOT_CONFIGURED` | Dịch vụ phụ thuộc (AI, thanh toán, bản đồ, email) không khả dụng |
 
-S2 loyalty adds stable business codes `4201`–`4208` and reuses S1 `4107`–`4109`; these numeric `ApiResponse.code` values are independent of their HTTP status (the loyalty conflicts use HTTP 409). See [api-user.md](./api-user.md), [api-order.md](./api-order.md), [api-payment.md](./api-payment.md), and [api-promotion.md](./api-promotion.md).
+#### Mã lỗi nghiệp vụ (`ApiResponse.code`)
 
-## Phân quyền theo vai trò (rev. role-manager-20261105)
+Các mã dưới đây độc lập với HTTP status (cột HTTP là status trả về):
 
-Mã vai trò không đổi (`ADMIN`, `STAFF`, `CUSTOMER`); tên hiển thị: `ADMIN` = Quản trị viên hệ thống, `STAFF` = **Quản lý**, `CUSTOMER` = Khách hàng.
-- `STAFF` (Quản lý) dùng được mọi nghiệp vụ cửa hàng: danh mục/sản phẩm/biến thể/ảnh/bản nháp & publish, tồn kho (nhập, xuất, kiểm kê), đơn hàng & thu tiền, khách hàng (CRUD, xóa mềm), hồ sơ nhân sự, khuyến mãi & voucher, chính sách/hạng tích điểm, báo cáo.
-- Chỉ `ADMIN`: `/api/v1/auth/accounts/**` (tạo/sửa/khóa/xóa tài khoản, gán vai trò) và `POST /api/v1/quan-tri/thanh-vien/mo-dau` (mở số dư tích điểm cũ, một lần). Liên kết `accountId` của hồ sơ nhân sự và xóa hồ sơ đã liên kết tài khoản cũng chỉ `ADMIN`.
-- Ma trận đầy đủ từng endpoint (trước/sau): `.agent/tasks/role-manager-20261105/live/be/AUTHZ-MATRIX.md`.
+| Mã | Error Code | HTTP | Ý nghĩa |
+| :---: | :--- | :---: | :--- |
+| `4101` - `4106` | `VOUCHER_*` | 400 / 404 / 409 | Voucher không tồn tại, tạm dừng, chưa bắt đầu, hết hạn, hết lượt hoặc không áp dụng |
+| `4107` | `QUOTE_CHANGED` | 409 | Giá, giỏ hàng, voucher, điểm hoặc phí ship đã đổi sau khi báo giá |
+| `4108` | `IDEMPOTENCY_CONFLICT` | 409 | Cùng khóa idempotency nhưng dữ liệu khác |
+| `4109` | `CAMPAIGN_VERSION_CHANGED` | 409 | Chương trình khuyến mãi đã đổi phiên bản |
+| `4201` - `4208` | `LOYALTY_*` / `INSUFFICIENT_POINTS` / `OPENING_ALREADY_RECORDED` | 409 | Lỗi chính sách, số dư và phiên bản tích điểm |
+| `4301` - `4303` | `MAPS_*` | 503 / 429 | Bản đồ chưa bật, đang bận hoặc vượt giới hạn tốc độ |
+
+### 5. Phân quyền theo vai trò
+
+| Vai trò | Tên hiển thị | Phạm vi |
+| :--- | :--- | :--- |
+| `ADMIN` | Quản trị viên hệ thống | Toàn quyền, gồm quản lý tài khoản đăng nhập / phân quyền (`/api/v1/auth/accounts/**`) và mở đầu điểm tích lũy (`POST /api/v1/quan-tri/thanh-vien/mo-dau`) |
+| `STAFF` | Quản lý | Toàn bộ nghiệp vụ cửa hàng: sản phẩm, tồn kho, đơn hàng, khách hàng, hồ sơ nhân sự, khuyến mãi, tích điểm, báo cáo; không quản lý tài khoản đăng nhập |
+| `CUSTOMER` | Khách hàng | Giỏ hàng, đặt hàng, thanh toán, hồ sơ và điểm của chính mình |

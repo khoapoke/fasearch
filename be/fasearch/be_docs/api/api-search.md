@@ -9,7 +9,7 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 ## 1. Tìm kiếm bằng văn bản / mô tả tự nhiên (FR-NC1)
 
 - **Endpoint:** `POST /api/v1/search/text`
-- **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`, `ADMIN`
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
 - **Mô tả:** Người dùng nhập câu lệnh mô tả (ví dụ: *"áo sơ mi trắng cổ bẻ công sở"*), hệ thống trích xuất vector đặc trưng CLIP và truy vấn các sản phẩm có độ tương đồng cosine cao nhất từ vector database Qdrant.
 
 ### Request Body (JSON)
@@ -53,12 +53,16 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 }
 ```
 
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Câu tìm kiếm trống (`INVALID_REQUEST`), `limit` ngoài khoảng `1` - `24`.
+- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
+
 ---
 
 ## 2. Tìm kiếm sản phẩm bằng hình ảnh (FR-NC2)
 
 - **Endpoint:** `POST /api/v1/search/image`
-- **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`, `ADMIN`
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
 - **Mô tả:** Khách hàng hoặc nhân viên tải ảnh một trang phục mẫu (chụp trực tiếp hoặc tải từ internet), hệ thống AI phân tích đặc trưng thị giác (CLIP Image Embeddings) để gợi ý các sản phẩm có kiểu dáng, màu sắc tương tự.
 - **Content-Type:** `multipart/form-data`
 
@@ -108,12 +112,16 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 }
 ```
 
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Chưa chọn file, file rỗng hoặc sai định dạng `.png, .jpg, .jpeg, .webp` (`INVALID_IMAGE_FILE`), dung lượng vượt 10MB.
+- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
+
 ---
 
 ## 3. Tìm kiếm đa phương thức kết hợp (FR-NC3)
 
 - **Endpoint:** `POST /api/v1/search/multimodal`
-- **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`, `ADMIN`
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
 - **Mô tả:** Kết hợp đồng thời cả **Hình ảnh mẫu gốc** và **Mô tả văn bản bổ sung** để điều hướng tìm kiếm (ví dụ: tải ảnh chiếc áo nhưng nhập thêm *"màu đỏ, phong cách vintage"*). Vector truy vấn được tổng hợp theo trọng số:
 $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alpha) \cdot \mathbf{v}_{\text{image}}$$
 - **Content-Type:** `multipart/form-data`
@@ -202,37 +210,34 @@ $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alph
 }
 ```
 
----
-
-## 4. Quy chuẩn URL hiển thị ảnh tĩnh (Static Full Image URL)
-
-URL hiển thị ảnh sản phẩm được Spring Boot tự động chuẩn hóa dựa trên `base-url` của AI Service:
-$$\text{FullImageUrl} = \text{base-url} + \text{image\_path}$$
-
-- Khi `imagePath = "/dataset/test/shirt1.jpg"`:
-  👉 `fullImageUrl = "http://localhost:8000/dataset/test/shirt1.jpg"`
-- Frontend có thể bind trực tiếp thuộc tính `fullImageUrl` vào thẻ `<img>` mà không cần xử lý thêm chuỗi URL.
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Chưa chọn file, file rỗng hoặc sai định dạng `.png, .jpg, .jpeg, .webp` (`INVALID_IMAGE_FILE`), dung lượng vượt 10MB.
+- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
 
 ---
 
-## 5. Quy chuẩn Mã lỗi ngoại lệ (Error Handling)
+## 4. Xem ảnh dataset kết quả tìm kiếm
 
-| HTTP Status | Mã lỗi | Tình huống | Thông báo mẫu |
-| :--- | :--- | :--- | :--- |
-| `400 Bad Request` | `INVALID_REQUEST` | Query trống hoặc file tải lên rỗng | *"Vui lòng chọn file ảnh hợp lệ"* |
-| `400 Bad Request` | `INVALID_IMAGE_FILE` | File không thuộc định dạng `.png, .jpg, .jpeg, .webp` | *"Định dạng file không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp"* |
-| `503 Service Unavailable` | `AI_SERVICE_UNAVAILABLE` | Server AI FastAPI (Port 8000) chưa bật hoặc mất kết nối | *"Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng kiểm tra server AI hoặc thử lại sau"* |
+- **Endpoint:** `GET /api/v1/search/images/{fileName}`
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Mô tả:** Backend tải ảnh sản phẩm từ AI Service và trả lại cho trình duyệt (`Cache-Control: private, max-age=3600`), không bọc `ApiResponse`.
+
+### Response Thành công (HTTP 200 OK)
+Nội dung nhị phân ảnh.
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Tên file hoặc phần mở rộng không hợp lệ.
+- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
 
 ---
 
-## 4. Lịch sử tìm kiếm tài khoản (STT6 P1)
+## 5. Ghi nhận lịch sử tìm kiếm
 
-### POST /api/v1/account/search-history
-Ghi nhận lịch sử tìm kiếm sau khi có kết quả thực tế.
+- **Endpoint:** `POST /api/v1/account/search-history`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (tài khoản đang đăng nhập)
+- **Mô tả:** Ghi nhận một lượt tìm kiếm sau khi có kết quả thực tế.
 
-**Quyền hạn:** `CUSTOMER`, `STAFF`, `ADMIN` (yêu cầu đăng nhập)
-
-**Request Body (JSON):**
+### Request Body
 ```json
 {
   "mode": "TEXT",
@@ -243,58 +248,216 @@ Ghi nhận lịch sử tìm kiếm sau khi có kết quả thực tế.
 }
 ```
 
-| Trường | Kiểu | Bắt buộc | Mô tả |
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `mode` | `TEXT`/`IMAGE`/`MULTIMODAL` | **Có** | Chế độ tìm kiếm |
-| `query` | `String` (max 500) | Không | Từ khóa tìm kiếm |
-| `resultCount` | `Integer` | Không | Số kết quả (mặc định 0) |
-| `resultRefs` | `String` (JSON array, max 4096 ký tự) | Không | Tham chiếu an toàn (không data URL, raw file, internal path, secret) |
-| `status` | `SUCCESS`/`FAILED`/`CANCELLED` | **Có** | Kết quả tìm kiếm |
+| `mode` | String | Có | `TEXT`, `IMAGE`, `MULTIMODAL` |
+| `query` | String | Không | Từ khóa tìm kiếm, tối đa 500 ký tự |
+| `resultCount` | Integer | Không | Số kết quả (mặc định 0) |
+| `resultRefs` | String | Không | Mảng JSON tham chiếu an toàn (tối đa 24 phần tử, 4096 ký tự; không chứa data URL, đường dẫn nội bộ hay bí mật) |
+| `status` | String | Có | `SUCCESS`, `FAILED`, `CANCELLED` |
 
-**Response:** HTTP 201 với `SearchHistoryRes` (id, mode, query, resultCount, resultRefs, status, occurredAt).
-
-### GET /api/v1/account/search-history?page=0&size=20
-Lấy lịch sử tìm kiếm của tài khoản hiện tại (phân trang, mới nhất trước).
-
-### DELETE /api/v1/account/search-history/{id}
-Xóa mềm một mục lịch sử. Trả 404 nếu không tồn tại hoặc không thuộc tài khoản hiện tại.
-
----
-
-## 5. Yêu thích tài khoản (STT6 P1)
-
-### POST /api/v1/account/favorites?productId={id}
-Thêm sản phẩm vào yêu thích. Idempotent: nếu đã yêu thích, trả cùng id.
-
-**Quyền hạn:** `CUSTOMER`, `STAFF`, `ADMIN` (yêu cầu đăng nhập)
-
-**Response:** HTTP 201 với `FavoriteRes` (id, productId, productName, price, createdAt).
-
-**Lỗi:** 404 nếu sản phẩm không tồn tại hoặc không khả dụng (đã xóa/inactive).
-
-### DELETE /api/v1/account/favorites/{productId}
-Xóa mềm yêu thích. Trả 404 nếu không tồn tại.
-
-### GET /api/v1/account/favorites?page=0&size=20
-Lấy danh sách yêu thích của tài khoản hiện tại (phân trang, mới nhất trước).
-
----
-
-## 6. Đổi mật khẩu (STT6 P1)
-
-### POST /api/v1/auth/change-password
-**Quyền hạn:** `CUSTOMER`, `STAFF`, `ADMIN` (yêu cầu đăng nhập)
-
-**Request Body (JSON):**
+### Response Thành công (HTTP 201 Created)
 ```json
 {
-  "oldPassword": "mat_khau_cu",
-  "newPassword": "mat_khau_moi_min_6"
+  "success": true,
+  "code": 201,
+  "message": "Ghi nhận lịch sử tìm kiếm thành công",
+  "result": {
+    "id": 31,
+    "mode": "TEXT",
+    "query": "áo sơ mi trắng",
+    "resultCount": 5,
+    "resultRefs": "[\"id1\",\"id2\"]",
+    "status": "SUCCESS",
+    "occurredAt": "2026-11-05T09:00:00"
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
-**Response:** HTTP 200 với message "Đổi mật khẩu thành công".
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Thiếu `mode` / `status`, `resultRefs` không phải mảng JSON hợp lệ hoặc chứa nội dung không an toàn.
+- **HTTP 401 Unauthorized:** Chưa đăng nhập.
 
-**Lỗi:** 401 nếu mật khẩu cũ sai; 400 nếu mật khẩu mới trùng mật khẩu cũ hoặc validation thất bại.
+---
 
-**Hành vi sau đổi:** Token hiện tại vẫn hợp lệ (stateless JWT). Client nên đăng nhập lại với mật khẩu mới để lấy token mới.
+## 6. Xem lịch sử tìm kiếm
+
+- **Endpoint:** `GET /api/v1/account/search-history`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ lịch sử của chính mình)
+- **Mô tả:** Lịch sử tìm kiếm của tài khoản hiện tại, mới nhất trước.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `page` | Integer | Không | Số trang (mặc định: `0`) |
+| `size` | Integer | Không | Số bản ghi/trang, tối đa `100` (mặc định: `20`) |
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy lịch sử tìm kiếm thành công",
+  "result": {
+    "content": [
+      {
+        "id": 31,
+        "mode": "TEXT",
+        "query": "áo sơ mi trắng",
+        "resultCount": 5,
+        "resultRefs": "[\"id1\",\"id2\"]",
+        "status": "SUCCESS",
+        "occurredAt": "2026-11-05T09:00:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+
+---
+
+## 7. Xóa một mục lịch sử tìm kiếm
+
+- **Endpoint:** `DELETE /api/v1/account/search-history/{id}`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ mục của chính mình)
+- **Mô tả:** Xóa mềm một mục lịch sử.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Xóa lịch sử tìm kiếm thành công",
+  "result": null,
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 404 Not Found:** Mục không tồn tại hoặc không thuộc tài khoản hiện tại.
+
+---
+
+## 8. Thêm sản phẩm yêu thích
+
+- **Endpoint:** `POST /api/v1/account/favorites`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (tài khoản đang đăng nhập)
+- **Mô tả:** Thêm sản phẩm vào danh sách yêu thích; đã yêu thích thì trả lại mục cũ.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `productId` | Long | Có | ID sản phẩm |
+
+### Response Thành công (HTTP 201 Created)
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Thêm yêu thích thành công",
+  "result": {
+    "id": 7,
+    "productId": 1,
+    "productName": "Áo sơ mi Oxford kẻ sọc",
+    "price": 350000.00,
+    "createdAt": "2026-11-05T09:00:00"
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Thiếu `productId`.
+- **HTTP 404 Not Found:** Sản phẩm không tồn tại hoặc không khả dụng (`PRODUCT_NOT_FOUND`).
+
+---
+
+## 9. Xóa sản phẩm yêu thích
+
+- **Endpoint:** `DELETE /api/v1/account/favorites/{productId}`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ mục của chính mình)
+- **Mô tả:** Xóa mềm sản phẩm khỏi danh sách yêu thích.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Xóa yêu thích thành công",
+  "result": null,
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 404 Not Found:** Sản phẩm chưa có trong danh sách yêu thích.
+
+---
+
+## 10. Xem danh sách sản phẩm yêu thích
+
+- **Endpoint:** `GET /api/v1/account/favorites`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ danh sách của chính mình)
+- **Mô tả:** Danh sách yêu thích của tài khoản hiện tại, mới nhất trước.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `page` | Integer | Không | Số trang (mặc định: `0`) |
+| `size` | Integer | Không | Số bản ghi/trang, tối đa `100` (mặc định: `20`) |
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách yêu thích thành công",
+  "result": {
+    "content": [
+      {
+        "id": 7,
+        "productId": 1,
+        "productName": "Áo sơ mi Oxford kẻ sọc",
+        "price": 350000.00,
+        "createdAt": "2026-11-05T09:00:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true
+  },
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+
+---
+
+## 11. Quy chuẩn URL hiển thị ảnh tĩnh (Static Full Image URL)
+
+URL hiển thị ảnh sản phẩm được Spring Boot tự động chuẩn hóa dựa trên `base-url` của AI Service:
+$$\text{FullImageUrl} = \text{base-url} + \text{image\_path}$$
+
+- Khi `imagePath = "/dataset/test/shirt1.jpg"`:
+  👉 `fullImageUrl = "http://localhost:8000/dataset/test/shirt1.jpg"`
+- Frontend có thể bind trực tiếp thuộc tính `fullImageUrl` vào thẻ `<img>` mà không cần xử lý thêm chuỗi URL.

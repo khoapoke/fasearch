@@ -1,11 +1,16 @@
-# TÀI LIỆU API: THƯƠNG HIỆU (BRAND)
+# TÀI LIỆU API: MODULE BRAND (THƯƠNG HIỆU)
 
-## 1. Danh sách thương hiệu công khai
+Module `brand` cung cấp danh sách thương hiệu công khai và logo thương hiệu để hiển thị trên cửa hàng. Thông tin thương hiệu của sản phẩm (`brandId`, `brandName`, `brandSlug`, `brandLogoUrl`, `modelCode`) và bộ lọc `brand` / `brandId` nằm trong [api-product.md](./api-product.md).
+
+---
+
+## 1. Xem danh sách thương hiệu công khai
 
 - **Endpoint:** `GET /api/v1/brands`
-- **Quyền hạn:** `PUBLIC`
-- **Mô tả:** Danh sách thương hiệu chưa xóa, sắp xếp theo tên. Không trả dữ liệu admin/import.
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Mô tả:** Danh sách thương hiệu chưa xóa, sắp xếp theo tên; không trả dữ liệu quản trị.
 
+### Response Thành công (HTTP 200 OK)
 ```json
 {
   "success": true,
@@ -20,39 +25,22 @@
       "logoUrl": "/api/v1/brands/nike/logo",
       "officialUrl": "https://www.nike.com/"
     }
-  ]
+  ],
+  "errors": null,
+  "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
-## 2. Logo thương hiệu
+---
+
+## 2. Xem logo thương hiệu
 
 - **Endpoint:** `GET /api/v1/brands/{slug}/logo`
-- **Quyền hạn:** `PUBLIC`
-- Chỉ phục vụ file logo đã import vào namespace candidate; kiểm tra tên file an toàn, không nhận path/URL tùy ý. Trả `image/svg+xml` cho logo `.svg` đã xác thực (từ chối script/active content, kiểm tra root `<svg>` và magic bytes cho PNG/JPEG/WEBP), kèm `X-Content-Type-Options: nosniff`, CSP sandbox và `Cache-Control: private, max-age=3600`.
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Mô tả:** Trả file logo của thương hiệu (`image/svg+xml`, PNG, JPEG hoặc WEBP; `Cache-Control: private, max-age=3600`), không bọc `ApiResponse`. Chỉ phục vụ logo đã được import, không nhận đường dẫn hoặc URL tùy ý.
 
-## 3. Trường brand trên sản phẩm
+### Response Thành công (HTTP 200 OK)
+Nội dung nhị phân logo.
 
-`ProductRes` / `ProductDetailRes` bổ sung:
-
-```json
-{
-  "brandId": 1,
-  "brandName": "Nike",
-  "brandSlug": "nike",
-  "brandLogoUrl": "/api/v1/brands/nike/logo",
-  "modelCode": "official-model-id"
-}
-```
-
-`GET /api/v1/products` hỗ trợ thêm `brand=<slug>` và `brandId=<id>`. Đây là lọc metadata/lexical chính xác, không phải nhận diện logo bằng CLIP.
-
-## 4. Import hợp đồng
-
-Script: `scripts/import_brand_catalog.py`.
-
-- `--plan`: validate manifest, hash media, in mapping; không ghi DB.
-- `--apply`: chỉ ghi DB candidate `fasearch_brand_catalog_payments_20261102` và media namespace mới; chạy một transaction SQL, rollback khi lỗi.
-- Idempotent theo brand slug, product `(brand, model)`, variant barcode, stock SKU.
-- Mặc định stock là **seed-only**: không reset `so_luong_vat_ly/tam_giu/kha_dung` khi chạy lại. `--update-stock` là explicit; từ chối nếu SKU còn `so_luong_tam_giu > 0`.
-- Manifest yêu cầu source URL + SHA-256 cho logo/media; từ chối path traversal, hash sai, model trùng, brand không tồn tại.
-- Giá là `demoPriceVnd` rõ ràng, không phải giá chính thức/live.
+### Response Lỗi thường gặp
+- **HTTP 404 Not Found:** Không tìm thấy thương hiệu hoặc logo.
