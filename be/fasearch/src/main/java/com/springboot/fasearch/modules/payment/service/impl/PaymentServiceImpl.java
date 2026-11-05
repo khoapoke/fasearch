@@ -26,7 +26,7 @@ import com.springboot.fasearch.modules.inventory.entity.Inventory;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
 import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService.Application;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.entity.OrderDetail;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;

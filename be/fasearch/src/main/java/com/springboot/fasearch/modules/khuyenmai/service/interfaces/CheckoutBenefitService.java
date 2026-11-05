@@ -10,7 +10,7 @@ import com.springboot.fasearch.modules.khuyenmai.entity.MaGiamGia;
 import com.springboot.fasearch.modules.order.entity.CartItem;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.entity.OrderDetail;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 
 public interface CheckoutBenefitService {
     record Application(MaGiamGia voucher, KhuyenMai campaign, Map<Long, BigDecimal> discountBySku,

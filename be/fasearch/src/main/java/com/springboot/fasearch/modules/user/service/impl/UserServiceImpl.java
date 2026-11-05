@@ -21,7 +21,7 @@ import com.springboot.fasearch.modules.user.entity.MembershipTier;
 import com.springboot.fasearch.modules.user.mapper.UserMapper;
 import com.springboot.fasearch.modules.user.repository.MembershipTierRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.modules.payment.entity.Invoice;
 import com.springboot.fasearch.common.enums.PaymentStatus;
 import com.springboot.fasearch.modules.user.service.interfaces.UserService;

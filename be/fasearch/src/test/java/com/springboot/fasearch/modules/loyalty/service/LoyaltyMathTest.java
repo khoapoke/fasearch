@@ -1,5 +1,6 @@
 package com.springboot.fasearch.modules.loyalty.service;
 
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

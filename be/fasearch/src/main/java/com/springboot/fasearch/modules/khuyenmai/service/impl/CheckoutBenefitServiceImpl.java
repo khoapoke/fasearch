@@ -32,7 +32,7 @@ import com.springboot.fasearch.modules.khuyenmai.repository.VoucherUsageReposito
 import com.springboot.fasearch.modules.khuyenmai.service.VoucherMath;
 import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
 import com.springboot.fasearch.modules.loyalty.service.LoyaltyMath;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.modules.order.entity.CartItem;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.entity.OrderDetail;

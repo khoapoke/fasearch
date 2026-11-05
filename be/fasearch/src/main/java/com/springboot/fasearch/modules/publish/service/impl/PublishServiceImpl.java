@@ -1,5 +1,6 @@
 package com.springboot.fasearch.modules.publish.service.impl;
 
+import com.springboot.fasearch.modules.publish.client.FashionAiPublishClient;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.springboot.fasearch.modules.loyalty.dto.LegacyOpeningRequest;
-import com.springboot.fasearch.modules.loyalty.dto.LegacyOpeningResponse;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.dto.request.LegacyOpeningRequest;
+import com.springboot.fasearch.modules.loyalty.dto.response.LegacyOpeningResponse;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.shared.ApiResponse;
 
 import jakarta.validation.Valid;

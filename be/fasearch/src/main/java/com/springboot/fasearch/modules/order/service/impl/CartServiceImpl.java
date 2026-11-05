@@ -17,7 +17,7 @@ import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.khuyenmai.dto.request.CartQuoteRequest;
 import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
 import com.springboot.fasearch.modules.khuyenmai.service.interfaces.CheckoutBenefitService;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.modules.order.dto.request.CartItemReq;
 import com.springboot.fasearch.modules.order.dto.request.CartItemUpdateReq;
 import com.springboot.fasearch.modules.order.dto.response.CartItemRes;

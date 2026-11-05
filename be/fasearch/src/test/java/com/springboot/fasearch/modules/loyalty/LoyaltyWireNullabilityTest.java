@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
-import com.springboot.fasearch.modules.loyalty.dto.LoyaltyBalanceResponse;
+import com.springboot.fasearch.modules.loyalty.dto.response.LoyaltyBalanceResponse;
 import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
 
 class LoyaltyWireNullabilityTest {

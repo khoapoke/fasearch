@@ -17,15 +17,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.springboot.fasearch.modules.loyalty.dto.CustomerLoyaltyPolicyRes;
-import com.springboot.fasearch.modules.loyalty.dto.LedgerItemResponse;
-import com.springboot.fasearch.modules.loyalty.dto.LoyaltyBalanceResponse;
-import com.springboot.fasearch.modules.loyalty.dto.LoyaltyPolicyCreateRequest;
-import com.springboot.fasearch.modules.loyalty.dto.LoyaltyPolicyResponse;
-import com.springboot.fasearch.modules.loyalty.dto.LoyaltyPolicyUpdateRequest;
-import com.springboot.fasearch.modules.loyalty.dto.SalesTierResponse;
-import com.springboot.fasearch.modules.loyalty.dto.SalesTierUpdateRequest;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.dto.response.CustomerLoyaltyPolicyRes;
+import com.springboot.fasearch.modules.loyalty.dto.response.LedgerItemResponse;
+import com.springboot.fasearch.modules.loyalty.dto.response.LoyaltyBalanceResponse;
+import com.springboot.fasearch.modules.loyalty.dto.request.LoyaltyPolicyCreateRequest;
+import com.springboot.fasearch.modules.loyalty.dto.response.LoyaltyPolicyResponse;
+import com.springboot.fasearch.modules.loyalty.dto.request.LoyaltyPolicyUpdateRequest;
+import com.springboot.fasearch.modules.loyalty.dto.response.SalesTierResponse;
+import com.springboot.fasearch.modules.loyalty.dto.request.SalesTierUpdateRequest;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.shared.ApiResponse;
 import com.springboot.fasearch.shared.PageResponse;
 

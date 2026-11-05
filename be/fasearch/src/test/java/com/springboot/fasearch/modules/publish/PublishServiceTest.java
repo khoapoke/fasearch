@@ -36,7 +36,7 @@ import com.springboot.fasearch.modules.publish.entity.PublicationStatus;
 import com.springboot.fasearch.modules.publish.repository.ProductAiSyncRepository;
 import com.springboot.fasearch.modules.publish.repository.ProductDraftRepository;
 import com.springboot.fasearch.modules.publish.repository.ProductDraftVariantRepository;
-import com.springboot.fasearch.modules.publish.service.impl.FashionAiPublishClient;
+import com.springboot.fasearch.modules.publish.client.FashionAiPublishClient;
 import com.springboot.fasearch.modules.publish.service.impl.PublishServiceImpl;
 import com.springboot.fasearch.modules.brand.repository.BrandRepository;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;

@@ -29,7 +29,7 @@ import com.springboot.fasearch.modules.khuyenmai.controller.AdminCampaignControl
 import com.springboot.fasearch.modules.khuyenmai.service.interfaces.KhuyenMaiService;
 import com.springboot.fasearch.modules.loyalty.controller.AdminLoyaltyController;
 import com.springboot.fasearch.modules.loyalty.controller.LoyaltyController;
-import com.springboot.fasearch.modules.loyalty.service.LoyaltyService;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
 import com.springboot.fasearch.modules.product.controller.CategoryController;
 import com.springboot.fasearch.modules.product.controller.ProductController;
 import com.springboot.fasearch.modules.product.controller.ProductImageController;
