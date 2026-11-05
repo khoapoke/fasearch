@@ -2039,3 +2039,16 @@
 
 /* Line-item fields need stacked labels inside the narrow receipt grid tracks. */
 .admB .catalog-form .import-line .catalog-field{grid-template-columns:minmax(0,1fr);align-items:start;min-width:0;}
+
+/* Searchable SKU picker (import / export / stocktake lines): text input + server result list. */
+.admB .sku-picker{position:relative;min-width:0;}
+.admB .sku-picker-input-wrap{position:relative;}
+.admB .sku-picker-input-wrap .catalog-input{width:100%;padding-right:32px;}
+.admB .sku-picker-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;padding:4px 8px;cursor:pointer;border-radius:4px;}
+.admB .sku-picker-clear:hover,.admB .sku-picker-clear:focus-visible{color:var(--ink);background:var(--accent-bg);}
+.admB .sku-picker-list{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);margin:0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line-strong);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.14);max-height:280px;overflow:auto;min-width:280px;}
+.admB .sku-picker-option{padding:7px 9px;border-radius:3px;cursor:pointer;font-size:var(--meta-size);color:var(--ink);overflow-wrap:anywhere;}
+.admB .sku-picker-option.highlighted{background:var(--accent-bg);}
+.admB .sku-picker-option.disabled{opacity:.6;cursor:not-allowed;}
+.admB .sku-picker-stock{display:block;color:var(--muted);font-size:var(--small-size, 12px);}
+.admB .sku-picker-empty{padding:8px 10px;color:var(--muted);font-size:var(--meta-size);}

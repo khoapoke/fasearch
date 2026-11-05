@@ -1,32 +1,28 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
 import { useAdminRole, canManage } from "@/components/admin-b/use-admin-role";
-import { getStockPage, type Stock } from "@/lib/admin-stock-client";
+import { SkuPicker } from "@/components/admin-b/sku-picker";
+import type { Stock } from "@/lib/admin-stock-client";
 import { createStocktake, signed, StocktakeError } from "@/lib/admin-stocktake-client";
 type Line = { key: number; skuId: string; actualCount: string };
 const MAX_COUNT = 1_000_000;
 export default function NewStocktakePage() {
   const role = useAdminRole(); const router = useRouter();
-  const [stock, setStock] = useState<Stock[]>([]);
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Line[]>([{ key: 1, skuId: "", actualCount: "0" }]);
+  const [picked, setPicked] = useState<Record<number, Stock | null>>({});
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false); const nextKey = useRef(2);
-  useEffect(() => {
-    if (!canManage(role)) return;
-    const c = new AbortController();
-    getStockPage("page=0&size=50", c.signal).then((p) => setStock(p.content)).catch((e) => setError(e instanceof Error ? e.message : "Không tải được SKU."));
-    return () => c.abort();
-  }, [role]);
   function update(key: number, field: keyof Line, value: string) { setLines((ls) => ls.map((l) => l.key === key ? { ...l, [field]: value } : l)); }
-  function add() { setLines((ls) => [...ls, { key: nextKey.current++, skuId: "", actualCount: "0" }]); }
-  function remove(key: number) { setLines((ls) => ls.length === 1 ? ls : ls.filter((l) => l.key !== key)); }
-  const selectedStock = (id: string) => stock.find((s) => String(s.skuId) === id);
+  function pick(key: number, skuId: string, stock: Stock | null) { update(key, "skuId", skuId); setPicked((m) => ({ ...m, [key]: stock })); }
+  function add() { const key = nextKey.current++; setLines((ls) => [...ls, { key, skuId: "", actualCount: "0" }]); }
+  function remove(key: number) { setLines((ls) => ls.length === 1 ? ls : ls.filter((l) => l.key !== key)); setPicked((m) => { const n = { ...m }; delete n[key]; return n; }); }
+  const selectedStock = (key: number) => picked[key] ?? null;
   function focus(id: string) { window.requestAnimationFrame(() => document.getElementById(id)?.focus()); }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); if (busyRef.current) return;
@@ -57,15 +53,15 @@ export default function NewStocktakePage() {
     {role && !canWrite ? <div className="order-empty"><strong>Chỉ Quản trị viên hoặc Quản lý được tạo phiếu kiểm kê</strong><p>Tài khoản hiện tại không có quyền ghi nhận.</p><Link className="text-link" href="/quan-tri/kiem-ke">Về danh sách</Link></div> : !role ? <p className="meta" role="status">Đang kiểm tra quyền…</p> : (
       <form className="catalog-form stocktake-form" onSubmit={submit} aria-busy={busy}>
         <div className="catalog-field"><label htmlFor="st-note">Ghi chú (≤1000)</label><textarea id="st-note" className="catalog-input stocktake-note-input" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} rows={3} /></div>
-        <div className="import-lines">{lines.map((l, index) => { const s = selectedStock(l.skuId); const actual = /^\d+$/.test(l.actualCount) ? Number(l.actualCount) : null; const system = s?.physicalStock ?? null; const diff = actual !== null && system !== null ? actual - system : null; return <div className="import-line stocktake-line" key={l.key}>
-          <div className="catalog-field"><label htmlFor={`st-sku-${l.key}`}>SKU dòng {index + 1} *</label><select id={`st-sku-${l.key}`} className="catalog-input" value={l.skuId} onChange={(e) => update(l.key, "skuId", e.target.value)}><option value="">— Chọn SKU —</option>{stock.map((x) => <option key={x.skuId} value={x.skuId}>{x.skuId} · {x.productName} · {[x.color, x.size].filter(Boolean).join("/")} · hệ thống {x.physicalStock ?? "?"}</option>)}</select>{s ? <small className="meta">Hệ thống {s.physicalStock ?? "không có dữ liệu"} · tạm giữ {s.reservedStock ?? "?"} · khả dụng {s.availableStock ?? "?"} (chỉ tham khảo)</small> : null}</div>
+        <div className="import-lines">{lines.map((l, index) => { const s = selectedStock(l.key); const actual = /^\d+$/.test(l.actualCount) ? Number(l.actualCount) : null; const system = s?.physicalStock ?? null; const diff = actual !== null && system !== null ? actual - system : null; return <div className="import-line stocktake-line" key={l.key}>
+          <div className="catalog-field"><label htmlFor={`st-sku-${l.key}`}>SKU dòng {index + 1} *</label><SkuPicker id={`st-sku-${l.key}`} value={l.skuId} mode="any" onChange={(skuId, stock) => pick(l.key, skuId, stock)} />{s ? <small className="meta">Hệ thống {s.physicalStock ?? "không có dữ liệu"} · tạm giữ {s.reservedStock ?? "?"} · khả dụng {s.availableStock ?? "?"} (chỉ tham khảo)</small> : <small className="meta">Kiểm kê chọn được cả SKU tồn 0; gõ để tìm trong toàn catalog.</small>}</div>
           <div className="catalog-field"><label htmlFor={`st-actual-${l.key}`}>Đếm thực tế *</label><input id={`st-actual-${l.key}`} className="catalog-input" inputMode="numeric" maxLength={7} value={l.actualCount} onChange={(e) => update(l.key, "actualCount", e.target.value)} /><small className="meta">0 là hợp lệ</small></div>
           <div className="catalog-field"><span className="meta">Lệch tạm tính</span><strong className={`stocktake-diff ${diff !== null && diff > 0 ? "pos" : diff !== null && diff < 0 ? "neg" : ""}`}>{diff === null ? "—" : signed(diff)}</strong><small className="meta">Server chốt snapshot</small></div>
           <button className="text-link" type="button" disabled={lines.length === 1} onClick={() => remove(l.key)}>Xóa dòng</button>
         </div>})}</div>
         <div className="catalog-actions"><button className="text-link" type="button" onClick={add}>+ Thêm dòng</button><span className="meta">Mỗi SKU một lần · một POST · không tự retry.</span></div>
         {error ? <p className="catalog-error" role="alert">{error}</p> : null}{uncertain ? <p className="catalog-error" role="alert">Không tự retry. <Link className="text-link" href="/quan-tri/kiem-ke">Mở danh sách kiểm kê để đối soát →</Link></p> : null}
-        <div className="catalog-actions"><button className="primary" type="submit" disabled={busy || !stock.length}>{busy ? "Đang ghi nhận…" : "Ghi nhận phiếu kiểm kê"}</button><Link className="text-link" href="/quan-tri/kiem-ke">Hủy</Link></div>
+        <div className="catalog-actions"><button className="primary" type="submit" disabled={busy}>{busy ? "Đang ghi nhận…" : "Ghi nhận phiếu kiểm kê"}</button><Link className="text-link" href="/quan-tri/kiem-ke">Hủy</Link></div>
         <p className="meta">Không có duyệt/áp dụng/warehouse/version-409 trong candidate. Tồn physical/reserved/available sẽ giữ nguyên sau khi ghi nhận.</p>
       </form>)}
   </AdminShellB>;

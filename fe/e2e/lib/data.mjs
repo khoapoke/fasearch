@@ -29,7 +29,7 @@ export async function discoverSkus(admin, need = 2, minAvailable = 3) {
   return picked;
 }
 
-/** SKUs the receipt/stocktake forms can actually select: those forms load only the first 50 stock rows (page=0&size=50). */
+/** Legacy helper (kept for compatibility): first rows of the stock list. The receipt/stocktake forms now use a searchable picker over the whole catalog, so prefer discoverSkus. */
 export async function discoverUiSkus(admin, need = 2) {
   if (cfg.skuIds.length >= need) return cfg.skuIds.slice(0, need);
   const r = await admin.req("GET", "/api/admin/stock?page=0&size=50");

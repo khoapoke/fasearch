@@ -12,7 +12,7 @@ import { suite } from "../lib/suite.mjs";
 import { launch, loginContext } from "../lib/browser.mjs";
 import { Client } from "../lib/http.mjs";
 import { requireCreds } from "../lib/fixtures.mjs";
-import { discoverSkus, discoverProduct, discoverUiSkus } from "../lib/data.mjs";
+import { discoverSkus, discoverProduct } from "../lib/data.mjs";
 import { checkout } from "../lib/commerce.mjs";
 import { step, res } from "../lib/steps.mjs";
 import { saveState } from "../lib/state.mjs";
@@ -24,7 +24,7 @@ suite("admin", "ADMIN write flows (clone DB)", () => {
     browser = await launch(); admin = await loginContext(browser, "ADMIN");
     p = await admin.c.newPage(); p.setDefaultTimeout(10000); p.on("dialog", (d) => d.accept());
     const g = new Client(); pid = await discoverProduct(g);
-    const a = new Client(); const f = requireCreds("ADMIN"); await a.login(f.username, f.password); skus = (await discoverUiSkus(a, 2)).map(String); orderSku = (await discoverSkus(a, 1))[0]; // skus: selectable in the receipt forms (first 50 rows); orderSku: has stock for the order flow
+    const a = new Client(); const f = requireCreds("ADMIN"); await a.login(f.username, f.password); skus = (await discoverSkus(a, 2)).map(String); orderSku = (await discoverSkus(a, 1))[0]; // skus: stocked SKUs picked through the searchable picker (any catalog page); orderSku: has stock for the order flow
   });
   after(async () => { saveState({ adminRoutes: Object.entries({ "san-pham/nhap": ids.draft, "kiem-ke": ids.stocktake, "phieu-nhap": ids.import, "phieu-xuat": ids.export, "khach-hang": ids.customer, "nhan-vien": ids.employee }).filter(([, v]) => v).map(([k, v]) => `${k}/${v}`) }); await admin?.c.close(); await browser?.close(); });
 
@@ -36,6 +36,7 @@ suite("admin", "ADMIN write flows (clone DB)", () => {
     await p.waitForTimeout(400); return j?.result;
   }
   async function typeInto(sel, text) { const e = p.locator(sel); await e.click(); await p.keyboard.press("ControlOrMeta+A"); await p.keyboard.type(text); assert.equal(await e.inputValue(), text, "input did not receive keyboard text " + sel); }
+  async function pickSku(inputId, skuId) { const input = p.locator("#" + inputId); await input.click(); await input.fill(String(skuId)); const opt = p.locator(`[data-sku-option="${skuId}"]`); await opt.waitFor({ state: "visible" }); await opt.click(); assert.equal(await input.getAttribute("data-selected-sku"), String(skuId), "picker did not select SKU " + skuId); }
 
   test("people, accounts, categories, products", { timeout: 600000 }, async (t) => {
     await step(t, "customer create", async () => { await go("/quan-tri/khach-hang/moi"); await p.fill("#cust-first", "Kiểm thử"); await p.fill("#cust-last", label); await p.fill("#cust-phone", "09" + stamp.padStart(8, "0")); const x = await writeClick(p.getByRole("button", { name: "Tạo khách hàng", exact: true }), "/api/admin/customers"); ids.customer = x.id; await p.waitForURL("**/khach-hang/" + x.id); });
@@ -57,15 +58,15 @@ suite("admin", "ADMIN write flows (clone DB)", () => {
   });
 
   test("inventory: import, export, stocktake", { timeout: 300000 }, async (t) => {
-    await step(t, "multi-line import adds stock", async () => { await go("/quan-tri/phieu-nhap/moi"); await p.fill("#imp-supplier", label); await p.selectOption("#imp-sku-1", skus[0]); await p.fill("#imp-qty-1", "3"); await p.fill("#imp-price-1", "120000"); await p.getByRole("button", { name: "+ Thêm dòng", exact: true }).click(); await p.selectOption("#imp-sku-2", skus[1]); await p.fill("#imp-qty-2", "2"); await p.fill("#imp-price-2", "130000"); const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và cộng kho", exact: true }), "/api/admin/imports"); ids.import = x.receiptId; await p.waitForURL("**/phieu-nhap/" + x.receiptId); assert.equal(x.items.length, 2, "not multiline"); });
-    await step(t, "export subtracts stock", async () => { await go("/quan-tri/phieu-xuat/moi"); await p.selectOption("#exp-sku-1", skus[0]); await p.fill("#exp-qty-1", "1"); await p.fill("#exp-reason-1", label); const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và trừ kho", exact: true }), "/api/admin/exports"); ids.export = x.receiptId; await p.waitForURL("**/phieu-xuat/" + x.receiptId); });
-    await step(t, "stocktake recorded", async () => { await go("/quan-tri/kiem-ke/moi"); await p.fill("#st-note", label); await p.selectOption("#st-sku-1", skus[0]); await p.fill("#st-actual-1", "5"); const x = await writeClick(p.getByRole("button", { name: /Ghi nhận|Tạo phiếu/ }).last(), "/api/admin/stocktakes"); ids.stocktake = x.stocktakeId; await p.waitForURL("**/kiem-ke/" + x.stocktakeId); });
+    await step(t, "multi-line import adds stock", async () => { await go("/quan-tri/phieu-nhap/moi"); await p.fill("#imp-supplier", label); await pickSku("imp-sku-1", skus[0]); await p.fill("#imp-qty-1", "3"); await p.fill("#imp-price-1", "120000"); await p.getByRole("button", { name: "+ Thêm dòng", exact: true }).click(); await pickSku("imp-sku-2", skus[1]); await p.fill("#imp-qty-2", "2"); await p.fill("#imp-price-2", "130000"); const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và cộng kho", exact: true }), "/api/admin/imports"); ids.import = x.receiptId; await p.waitForURL("**/phieu-nhap/" + x.receiptId); assert.equal(x.items.length, 2, "not multiline"); });
+    await step(t, "export subtracts stock", async () => { await go("/quan-tri/phieu-xuat/moi"); await pickSku("exp-sku-1", skus[0]); await p.fill("#exp-qty-1", "1"); await p.fill("#exp-reason-1", label); const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và trừ kho", exact: true }), "/api/admin/exports"); ids.export = x.receiptId; await p.waitForURL("**/phieu-xuat/" + x.receiptId); });
+    await step(t, "stocktake recorded", async () => { await go("/quan-tri/kiem-ke/moi"); await p.fill("#st-note", label); await pickSku("st-sku-1", skus[0]); await p.fill("#st-actual-1", "5"); const x = await writeClick(p.getByRole("button", { name: /Ghi nhận|Tạo phiếu/ }).last(), "/api/admin/stocktakes"); ids.stocktake = x.stocktakeId; await p.waitForURL("**/kiem-ke/" + x.stocktakeId); });
     await step(t, "receipt controls take real pointer + keyboard input (import 2 lines: totals 5 / 560000)", async () => {
-      await go("/quan-tri/phieu-nhap/moi"); await p.fill("#imp-supplier", label + " pointer"); await p.selectOption("#imp-sku-1", skus[0]); await typeInto("#imp-qty-1", "2"); await typeInto("#imp-price-1", "100000"); await p.getByRole("button", { name: "+ Thêm dòng", exact: true }).click(); await p.selectOption("#imp-sku-2", skus[1]); await typeInto("#imp-qty-2", "3"); await typeInto("#imp-price-2", "120000");
+      await go("/quan-tri/phieu-nhap/moi"); await p.fill("#imp-supplier", label + " pointer"); await pickSku("imp-sku-1", skus[0]); await typeInto("#imp-qty-1", "2"); await typeInto("#imp-price-1", "100000"); await p.getByRole("button", { name: "+ Thêm dòng", exact: true }).click(); await pickSku("imp-sku-2", skus[1]); await typeInto("#imp-qty-2", "3"); await typeInto("#imp-price-2", "120000");
       const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và cộng kho", exact: true }), "/api/admin/imports");
       assert.ok(x.items.length === 2 && x.totalQuantity === 5 && x.totalAmount === 560000, `values ${x.totalQuantity}/${x.totalAmount}`);
     });
-    await step(t, "receipt controls take real pointer + keyboard input (export)", async () => { await go("/quan-tri/phieu-xuat/moi"); await p.selectOption("#exp-sku-1", skus[0]); await typeInto("#exp-qty-1", "1"); await typeInto("#exp-reason-1", label + " pointer"); const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và trừ kho", exact: true }), "/api/admin/exports"); assert.equal(x.totalQuantity, 1); });
+    await step(t, "receipt controls take real pointer + keyboard input (export)", async () => { await go("/quan-tri/phieu-xuat/moi"); await pickSku("exp-sku-1", skus[0]); await typeInto("#exp-qty-1", "1"); await typeInto("#exp-reason-1", label + " pointer"); const x = await writeClick(p.getByRole("button", { name: "Tạo phiếu và trừ kho", exact: true }), "/api/admin/exports"); assert.equal(x.totalQuantity, 1); });
   });
 
   test("promotions, loyalty, orders", { timeout: 600000 }, async (t) => {
