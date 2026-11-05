@@ -2,13 +2,15 @@
 
 import { useId, useState } from "react";
 import { formatMoney } from "@/lib/customer-commerce";
+import { isPlaceholder } from "@/lib/variant-select";
 import { offerDiscountLabel, offerValidityLabel, type PublicOffer } from "@/lib/offers";
 
-const NOISE = /^(không xác định|khong xac dinh|default( title)?|n\/a|none|null|-|—)$/i;
+// Placeholder list is shared with the PDP/cart (lib/variant-select); NOISE only adds checkout-line extras.
+const NOISE = /^(none|null|-|—)$/i;
 
 /** Variant text only when it tells the customer something: drops empty/placeholder axis values. */
 export function variantLabel(color: string | null, size: string | null): string {
-  return [color, size].map((value) => value?.trim() ?? "").filter((value) => value && !NOISE.test(value)).join(" · ");
+  return [color, size].map((value) => value?.trim() ?? "").filter((value) => value && !isPlaceholder(value) && !NOISE.test(value)).join(" · ");
 }
 
 /** "1-2 ngày" stays as is; a bare number gets its unit. */
