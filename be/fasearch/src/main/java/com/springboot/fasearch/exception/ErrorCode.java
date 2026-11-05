@@ -85,6 +85,13 @@ public enum ErrorCode {
     AI_SERVICE_UNAVAILABLE(503, "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
     INVALID_IMAGE_FILE(400, "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp", HttpStatus.BAD_REQUEST),
 
+    // Email (Brevo) errors
+    EMAIL_SEND_FAILED(502, "Không gửi được email lúc này. Vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
+    EMAIL_TOKEN_INVALID(400, "Liên kết không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    EMAIL_NOT_VERIFIED(403, "Tài khoản chưa xác thực email", HttpStatus.FORBIDDEN),
+    EMAIL_ADDRESS_MISSING(400, "Tài khoản chưa có địa chỉ email", HttpStatus.BAD_REQUEST),
+    TOO_MANY_REQUESTS(429, "Bạn thao tác quá nhiều lần. Vui lòng thử lại sau", HttpStatus.TOO_MANY_REQUESTS),
+
     // Auth & Security errors
     INVALID_CREDENTIALS(401, "Invalid username or password", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED(403, "Account is locked", HttpStatus.FORBIDDEN),

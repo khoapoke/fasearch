@@ -25,5 +25,6 @@ public class AccountInfoRes {
     private String email;
     private RoleType role;
     private AccountStatus status;
+    private Boolean emailVerified;
     private LocalDateTime createdAt;
 }

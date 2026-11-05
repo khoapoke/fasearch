@@ -53,6 +53,9 @@ public class Account {
     @Builder.Default
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    @Column(name = "ngay_xac_thuc_email")
+    private LocalDateTime emailVerifiedAt;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ma_vai_tro")
     private Role role;

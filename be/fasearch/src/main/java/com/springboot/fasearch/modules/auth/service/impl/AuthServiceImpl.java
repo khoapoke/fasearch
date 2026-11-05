@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import com.springboot.fasearch.modules.auth.mapper.AccountMapper;
 import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 import com.springboot.fasearch.modules.auth.repository.RoleRepository;
 import com.springboot.fasearch.modules.auth.service.interfaces.AuthService;
+import com.springboot.fasearch.modules.auth.service.interfaces.EmailTokenService;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 import com.springboot.fasearch.security.JwtProvider;
@@ -49,6 +51,10 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProvider jwtProvider;
     private final JwtConfig jwtConfig;
     private final AccountMapper accountMapper;
+    private final EmailTokenService emailTokenService;
+
+    @Value("${email.verification-required:false}")
+    private boolean verificationRequired;
 
     @Override
     public AuthRes login(LoginReq req) {
@@ -67,6 +73,12 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.ACCOUNT_INACTIVE);
         }
 
+        // Round nay login KHONG chan tai khoan chua xac thuc (FE hien banner).
+        // Bat chan dang nhap bang EMAIL_VERIFICATION_REQUIRED=true.
+        if (verificationRequired && account.getEmailVerifiedAt() == null) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
         String roleName = account.getRole() != null ? account.getRole().getName().name() : RoleType.CUSTOMER.name();
         String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId(), account.getTokenVersion());
 
@@ -76,6 +88,7 @@ public class AuthServiceImpl implements AuthService {
                 .expiresIn(jwtConfig.getExpirationMs() / 1000)
                 .username(account.getUsername())
                 .role(roleName)
+                .emailVerified(account.getEmailVerifiedAt() != null)
                 .build();
     }
 
@@ -126,12 +139,20 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Khách hàng mới đã đăng ký thành công: username={}", account.getUsername());
 
+        try {
+            emailTokenService.requestVerificationEmail(account.getId());
+        } catch (Exception e) {
+            // Dang ky van thanh cong du email xac thuc gui that bai; FE hien banner + gui lai.
+            log.warn("Khong gui duoc email xac thuc sau dang ky (username={}): {}", account.getUsername(), e.getMessage());
+        }
+
         return AuthRes.builder()
                 .accessToken(token)
                 .tokenType("Bearer")
                 .expiresIn(jwtConfig.getExpirationMs() / 1000)
                 .username(account.getUsername())
                 .role(roleName)
+                .emailVerified(false)
                 .build();
     }
 
@@ -153,6 +174,12 @@ public class AuthServiceImpl implements AuthService {
         account.setTokenVersion(account.getTokenVersion() == null ? 1L : account.getTokenVersion() + 1);
         accountRepository.save(account);
         log.info("Password changed successfully for account [{}]", username);
+        try {
+            emailTokenService.sendPasswordChangedNotice(account.getId());
+        } catch (Exception e) {
+            // Doi mat khau van thanh cong du thong bao email gui that bai.
+            log.warn("Khong gui duoc thong bao doi mat khau (username={}): {}", username, e.getMessage());
+        }
     }
 
     @Override
@@ -161,6 +188,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         AccountInfoRes res = accountMapper.toAccountInfoResponse(account);
+        res.setEmailVerified(account.getEmailVerifiedAt() != null);
         // Bổ sung id hồ sơ khách hàng để client tự tra cứu chính mình mà không phải
         // đoán/hay dùng id tài khoản (hai id khác nhau).
         res.setCustomerId(userRepository.findByAccount_Username(username)
@@ -226,7 +254,9 @@ public class AuthServiceImpl implements AuthService {
         Account saved = accountRepository.save(account);
         log.info("Internal account created successfully with ID [{}] and role [{}]", saved.getId(), targetRoleType);
 
-        return accountMapper.toAccountInfoResponse(saved);
+        AccountInfoRes created = accountMapper.toAccountInfoResponse(saved);
+        created.setEmailVerified(saved.getEmailVerifiedAt() != null);
+        return created;
     }
 
     @Override
@@ -259,7 +289,9 @@ public class AuthServiceImpl implements AuthService {
         Account updated = accountRepository.save(account);
         log.info("Updated account ID [{}] successfully", id);
 
-        return accountMapper.toAccountInfoResponse(updated);
+        AccountInfoRes updatedRes = accountMapper.toAccountInfoResponse(updated);
+        updatedRes.setEmailVerified(updated.getEmailVerifiedAt() != null);
+        return updatedRes;
     }
 
     @Override

@@ -310,3 +310,72 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 - **Body:** `{ "oldPassword": "...", "newPassword": "..." }`.
 - **Hành vi:** sai mật khẩu cũ → `401`, không đổi dữ liệu; đúng → `200`, cập nhật BCrypt hash và tăng `tai_khoan.token_version`. JWT mang claim `tokenVersion`; filter so khớp với DB nên mọi token cũ bị từ chối (`401`) ngay sau khi đổi. Token của tài khoản khác không bị ảnh hưởng. Client phải đăng nhập lại.
 - **Migration:** `V13__account_token_version.sql` (candidate-only additive).
+- **Thông báo email:** đổi mật khẩu thành công gửi thêm email "Mật khẩu vừa được thay đổi" (best-effort: gửi lỗi không làm thất bại request). Chế độ gửi theo `brevo|log` (mục 13).
+
+---
+
+## 9. Trường `emailVerified` (FR-05..07 mở rộng)
+
+- `POST /api/v1/auth/login`, `POST /api/v1/auth/register` và `GET /api/v1/auth/my-info` trả thêm `result.emailVerified: boolean` (true khi `tai_khoan.ngay_xac_thuc_email` đã set).
+- **Quy tắc backfill (V21):** mọi tài khoản tồn tại trước V21 được coi như ĐÃ xác thực (`ngay_xac_thuc_email = ngay_tao`) để không khóa ai ra khỏi hệ thống. Chỉ tài khoản tạo MỚI sau V21 có `NULL` (chưa xác thực) cho đến khi xác nhận qua email.
+- **Round này login KHÔNG chặn tài khoản chưa xác thực** (FE hiện banner + nút gửi lại). Bật chặn đăng nhập bằng `EMAIL_VERIFICATION_REQUIRED=true` → login trả `403 EMAIL_NOT_VERIFIED`.
+
+---
+
+## 10. Quên mật khẩu — yêu cầu liên kết đặt lại
+
+- **Endpoint:** `POST /api/v1/auth/password/forgot`
+- **Quyền hạn:** `PUBLIC` (không đăng nhập). Rate-limit: tối đa 5 lượt/giờ cho mỗi email, 20 lượt/giờ cho mỗi IP (vượt quá → `429 TOO_MANY_REQUESTS`).
+- **Body:** `{ "email": "customer01@fasearch.com" }`.
+- **Hành vi:** LUÔN trả `200` với cùng một message dù email có tồn tại hay không (không lộ tài khoản). Nếu tài khoản `ACTIVE` tồn tại: vô hiệu token reset cũ, tạo token mới (SHA-256 hash trong DB, hiệu lực 30 phút, dùng một lần) và gửi email chứa liên kết `{APP_FRONTEND_URL}/dat-lai-mat-khau?token=...`.
+
+### Response (cả hai trường hợp, HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Nếu email đã đăng ký, liên kết đặt lại mật khẩu đã được gửi. Kiểm tra hộp thư (kể cả thư rác).",
+  "result": null,
+  "errors": null,
+  "timestamp": "2026-11-05T15:30:00"
+}
+```
+
+---
+
+## 11. Đặt lại mật khẩu bằng token
+
+- **Endpoint:** `POST /api/v1/auth/password/reset`
+- **Quyền hạn:** `PUBLIC`. Rate-limit 20 lượt/giờ cho mỗi IP.
+- **Body:** `{ "token": "...", "newPassword": "..." }` (quy tắc mật khẩu mới = quy tắc đổi mật khẩu: 6–100 ký tự).
+- **Hành vi:** token sai/đã dùng/hết hạn → `400 EMAIL_TOKEN_INVALID`. Đúng → `200`: cập nhật BCrypt hash, **tăng `token_version` (mọi phiên cũ chết ngay, kể cả thiết bị này)**, đánh dấu token đã dùng, gửi thông báo email "Mật khẩu vừa được thay đổi". Client đăng nhập lại bằng mật khẩu mới.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Đặt lại mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới.",
+  "result": null,
+  "errors": null,
+  "timestamp": "2026-11-05T15:30:00"
+}
+```
+
+---
+
+## 12. Xác thực email
+
+- **Yêu cầu gửi lại email:** `POST /api/v1/auth/email/verification-request` — Bearer (own account). Tài khoản chưa có email → `400 EMAIL_ADDRESS_MISSING`; đã xác thực rồi → vẫn `200` (không gửi lại). Rate-limit 5 lượt/giờ cho mỗi tài khoản, 20 lượt/giờ cho mỗi IP. Token hiệu lực 24 giờ, dùng một lần; liên kết `{APP_FRONTEND_URL}/xac-thuc-email?token=...`.
+- **Xác nhận token:** `POST /api/v1/auth/email/verify` — `PUBLIC`, body `{ "token": "..." }`. Đúng → `200 "Xác thực email thành công"` (set `ngay_xac_thuc_email`, vô hiệu token verify còn lại); sai/hết hạn/đã dùng → `400 EMAIL_TOKEN_INVALID`. Rate-limit 20 lượt/giờ cho mỗi IP.
+- **Đăng ký** (`POST /api/v1/auth/register`) tự gửi email xác thực sau khi tạo tài khoản (best-effort: gửi lỗi không làm thất bại đăng ký; FE hiện banner + nút gửi lại).
+
+---
+
+## 13. Chế độ gửi email `brevo|log`
+
+- Có `BREVO_API_KEY` (non-blank) → chế độ `brevo`: gọi thật Brevo API v3 (`POST {BREVO_API_URL}/v3/smtp/email`), timeout `BREVO_TIMEOUT_SECONDS` (mặc định 10s), lỗi mạng/timeout tự thử lại đúng một lần rồi mới báo `502 EMAIL_SEND_FAILED`. Không bao giờ in API key ra log.
+- Chưa có key → chế độ `log`: render đầy đủ email (to/subject/text+html) rồi ghi log `[mail:log]`, không gửi thật.
+- Cấu hình (`application.yaml` + env): `BREVO_API_URL`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `EMAIL_VERIFICATION_REQUIRED` (mặc định `false`), `EMAIL_VERIFY_TOKEN_HOURS` (24), `EMAIL_RESET_TOKEN_MINUTES` (30), `APP_FRONTEND_URL`.
+- Mẫu email tiếng Việt tối giản (HTML + text): xác thực email, đặt lại mật khẩu, mật khẩu vừa thay đổi (`client/EmailTemplates`).
+- Giới hạn: rate-limit nằm trong bộ nhớ của từng instance (chạy nhiều replica cần thay bằng Redis/DB).
