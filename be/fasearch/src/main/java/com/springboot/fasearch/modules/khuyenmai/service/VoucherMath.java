@@ -17,7 +17,7 @@ public final class VoucherMath {
     public record Result(Map<Long, BigDecimal> discountBySku, BigDecimal discount, BigDecimal eligibleSubtotal) {}
 
     public static Result calculate(List<Line> lines, Set<Long> productScope, String type, BigDecimal value) {
-        if (value == null || value.signum() <= 0 || !("PHAN_TRAM".equals(type) || "SO_TIEN".equals(type))) {
+        if (value == null || value.signum() <= 0 || !("PHAN_TRAM".equals(type) || "SO_TIEN".equals(type) || "FREE_SHIP".equals(type))) {
             throw new IllegalArgumentException("Invalid voucher discount");
         }
         if ("PHAN_TRAM".equals(type) && value.compareTo(BigDecimal.valueOf(100)) > 0) {
@@ -39,7 +39,7 @@ public final class VoucherMath {
         if (eligible.isEmpty() || eligibleSubtotal.signum() == 0) {
             throw new IllegalArgumentException("Voucher has no eligible merchandise");
         }
-        BigDecimal discount = "PHAN_TRAM".equals(type)
+        BigDecimal discount = "FREE_SHIP".equals(type) ? BigDecimal.ZERO.setScale(2) : "PHAN_TRAM".equals(type)
                 ? eligibleSubtotal.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                 : value.min(eligibleSubtotal).setScale(2, RoundingMode.HALF_UP);
         Map<Long, BigDecimal> bySku = new LinkedHashMap<>();

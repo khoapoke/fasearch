@@ -44,4 +44,11 @@ public class CheckoutReq {
     private BigDecimal shippingFee;
 
     private String note;
+    @jakarta.validation.constraints.DecimalMin("-90")
+    @jakarta.validation.constraints.DecimalMax("90")
+    private Double deliveryLatitude;
+    @jakarta.validation.constraints.DecimalMin("-180")
+    @jakarta.validation.constraints.DecimalMax("180")
+    private Double deliveryLongitude;
+
 }

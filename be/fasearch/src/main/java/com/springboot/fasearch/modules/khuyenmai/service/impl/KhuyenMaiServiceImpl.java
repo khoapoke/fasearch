@@ -192,7 +192,7 @@ public class KhuyenMaiServiceImpl implements KhuyenMaiService {
 
     private static String normalizeType(String type) {
         String normalized = type == null ? "" : type.strip().toUpperCase(Locale.ROOT);
-        if (!Set.of("PHAN_TRAM", "SO_TIEN").contains(normalized)) throw new AppException(ErrorCode.INVALID_REQUEST, "Unsupported discount type");
+        if (!Set.of("PHAN_TRAM", "SO_TIEN", "FREE_SHIP").contains(normalized)) throw new AppException(ErrorCode.INVALID_REQUEST, "Unsupported discount type");
         return normalized;
     }
 

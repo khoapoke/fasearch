@@ -181,7 +181,7 @@ class PromotionsCheckoutApiIntegrationTest {
                 + "\",\"loaiGiam\":\"PHAN_TRAM\",\"giaTriGiam\":10,\"ngayBatDau\":\"" + start
                 + "\",\"ngayKetThuc\":\"" + end + "\",\"maSpApDung\":[" + productId + "]}";
         Resp staffMutation = call("POST", "/api/v1/khuyen-mai", forbiddenCampaign, token("nhanvien1", "STAFF"));
-        assertThat(staffMutation.status()).as("STAFF cannot create campaigns: %s", staffMutation.body()).isEqualTo(403);
+        assertThat(staffMutation.status()).as("Quản lý STAFF creates campaigns: %s", staffMutation.body()).isEqualTo(201);
 
         Resp firstQuote = quote();
         JsonNode quote = result(firstQuote);
@@ -328,7 +328,7 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(legacyPointCalculation.status()).isEqualTo(200);
         assertThat(result(legacyPointCalculation).get("pointDiscount").decimalValue()).isEqualByComparingTo("1000.00");
         assertThat(customerRepository.findById(customerId).orElseThrow().getAccumulatePoint()).isEqualTo(balanceAfterSettlement);
-        legacyOrder.setVoucherId(30L); // Existing V8 orders can have a voucher FK without the new S1 code snapshot.
+        legacyOrder.setVoucherId(jdbc.queryForObject("SELECT min(ma_voucher) FROM ma_giam_gia", Long.class)); // Existing V8 orders can have a voucher FK without the new S1 code snapshot.
         orderRepository.saveAndFlush(legacyOrder);
         assertThat(legacyOrder.getVoucherCode()).isNull();
         for (String status : new String[]{"CONFIRMED", "PACKING", "SHIPPING"}) {
@@ -349,7 +349,7 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(legacyPayCheckout.status()).isEqualTo(201);
         long legacyPayOrderId = result(legacyPayCheckout).get("orderId").asLong();
         Order legacyPayOrder = orderRepository.findById(legacyPayOrderId).orElseThrow();
-        legacyPayOrder.setVoucherId(30L);
+        legacyPayOrder.setVoucherId(jdbc.queryForObject("SELECT min(ma_voucher) FROM ma_giam_gia", Long.class));
         orderRepository.saveAndFlush(legacyPayOrder);
         BigDecimal legacyDue = result(legacyPayCheckout).get("totalAmount").decimalValue();
         Resp legacyCustomerPayment = call("POST", "/api/v1/payments/process",
@@ -604,6 +604,40 @@ class PromotionsCheckoutApiIntegrationTest {
         return "{\"deliveryAddress\":\"" + address + "\",\"voucherCode\":\"" + voucherCode
                 + "\",\"quoteFingerprint\":\"" + fingerprint + "\",\"expectedMerchandiseAmountDue\":" + due
                 + ",\"checkoutKey\":\"" + key + "\",\"shippingFee\":5000,\"paymentMethod\":\"COD\"}";
+    }
+
+    @Test
+    void freeShippingUsesRealVoucherLifecycleAndPersistsDeliverySnapshot() throws Exception {
+        String start = LocalDateTime.now().minusHours(1).toString();
+        String end = LocalDateTime.now().plusDays(1).toString();
+        Resp created = call("POST", "/api/v1/khuyen-mai",
+            "{\"tenCtkm\":\"Ship " + suffix + "\",\"loaiGiam\":\"FREE_SHIP\",\"giaTriGiam\":1,\"ngayBatDau\":\""+start+"\",\"ngayKetThuc\":\""+end+"\"}", token("nhanvien1","STAFF"));
+        assertThat(created.status()).isEqualTo(201);
+        long id=result(created).get("maKm").asLong();
+        assertThat(call("PUT","/api/v1/khuyen-mai/"+id,"{\"phienBan\":0,\"trangThai\":\"HOAT_DONG\"}",adminToken).status()).isEqualTo(200);
+        String code="SHIP"+suffix.toUpperCase(java.util.Locale.ROOT);
+        assertThat(call("POST","/api/v1/khuyen-mai/"+id+"/codes","{\"maCode\":\""+code+"\",\"soLuongPhatHanh\":10}",adminToken).status()).isEqualTo(201);
+        String location="\"province\":\"TP. HCM\",\"district\":\"Tan Phu\",\"totalWeightGram\":300,\"deliveryLatitude\":10.8070354,\"deliveryLongitude\":106.6287031";
+        JsonNode near=result(call("POST","/api/v1/orders/calculate-shipping-fee","{"+location+"}",customerToken));
+        assertThat(near.get("shippingFee").decimalValue()).isEqualByComparingTo("15000");
+        JsonNode far=result(call("POST","/api/v1/orders/calculate-shipping-fee","{"+location.replace("10.8070354","10.95")+"}",customerToken));
+        assertThat(far.get("shippingFee").decimalValue()).isGreaterThan(near.get("shippingFee").decimalValue());
+        JsonNode ship=result(call("POST","/api/v1/orders/calculate-shipping-fee","{"+location+",\"voucherCode\":\""+code+"\"}",customerToken));
+        assertThat(ship.get("shippingFee").decimalValue()).isZero();
+        JsonNode q=result(call("POST","/api/v1/cart/quote","{\"voucherCode\":\""+code+"\"}",customerToken));
+        assertThat(q.get("freeShipping").asBoolean()).isTrue();
+        assertThat(q.get("voucherDiscount").decimalValue()).isZero();
+        String body="{\"deliveryAddress\":\"140 Le Trong Tan\",\"deliveryLatitude\":10.8070354,\"deliveryLongitude\":106.6287031,\"paymentMethod\":\"COD\",\"shippingFee\":0,\"voucherCode\":\""+code+"\",\"quoteFingerprint\":\""+q.get("quoteFingerprint").asText()+"\",\"expectedMerchandiseAmountDue\":"+q.get("merchandiseAmountDue").asText()+",\"checkoutKey\":\"ship-"+suffix+"\"}";
+        Resp checkout=call("POST","/api/v1/orders/checkout",body,customerToken);
+        assertThat(checkout.status()).as(checkout.body()).isEqualTo(201);
+        long orderId=result(checkout).get("orderId").asLong();
+        Order order=orderRepository.findById(orderId).orElseThrow();
+        assertThat(order.getDeliveryLatitude()).isEqualTo(10.8070354);
+        assertThat(order.getShippingFee()).isZero();
+        assertThat(order.getVoucherDiscountType()).isEqualTo("FREE_SHIP");
+        assertThat(usageStatus(orderId)).isEqualTo("HELD");
+        assertThat(call("POST","/api/v1/orders/"+orderId+"/cancel","{\"reason\":\"Shipping test\"}",customerToken).status()).isEqualTo(200);
+        assertThat(usageStatus(orderId)).isEqualTo("RELEASED");
     }
 
     private Inventory stock() {

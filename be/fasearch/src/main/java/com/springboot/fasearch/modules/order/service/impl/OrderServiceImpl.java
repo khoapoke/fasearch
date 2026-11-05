@@ -81,6 +81,7 @@ public class OrderServiceImpl implements OrderService {
     private final InventoryRepository inventoryRepository;
     private final ProductVariantRepository productVariantRepository;
     private final CheckoutBenefitService checkoutBenefitService;
+    private final com.springboot.fasearch.modules.order.service.interfaces.ShippingService shippingService;
     private final LoyaltyService loyaltyService;
     private final CheckoutIdempotencyRepository checkoutIdempotencyRepository;
 
@@ -173,6 +174,8 @@ public class OrderServiceImpl implements OrderService {
                 .status(order.getStatus())
                 .customer(customerRes)
                 .deliveryAddress(order.getDeliveryAddress())
+                .deliveryLatitude(order.getDeliveryLatitude()).deliveryLongitude(order.getDeliveryLongitude())
+                .distanceKm(order.getDistanceKm()).shippingMethod(order.getShippingMethod())
                 .note(order.getNote())
                 .items(items)
                 .subTotal(calculatedSubTotal)
@@ -286,7 +289,14 @@ public class OrderServiceImpl implements OrderService {
             inventory.setReservedStock(inventory.getReservedStock() + item.getQuantity());
             inventoryRepository.save(inventory);
         }
-        BigDecimal shippingFee = req.getShippingFee() != null ? req.getShippingFee() : BigDecimal.ZERO;
+        com.springboot.fasearch.modules.order.service.impl.ShippingServiceImpl.validateCoordinates(req.getDeliveryLatitude(), req.getDeliveryLongitude());
+        ShippingFeeRes deliveryQuote = req.getDeliveryLatitude() == null ? null
+                : shippingService.quote(req.getDeliveryLatitude(), req.getDeliveryLongitude());
+        BigDecimal shippingFee = deliveryQuote == null
+                ? (req.getShippingFee() != null ? req.getShippingFee() : BigDecimal.ZERO) : deliveryQuote.getShippingFee();
+        if (benefit.campaign() != null && "FREE_SHIP".equals(benefit.campaign().getDiscountType())) shippingFee = BigDecimal.ZERO;
+        if (deliveryQuote != null && req.getShippingFee() != null && req.getShippingFee().compareTo(shippingFee) != 0)
+            throw new AppException(ErrorCode.QUOTE_CHANGED, "Shipping fee changed; request a fresh quote");
         BigDecimal discountAmount = benefit.discount();
         BigDecimal totalAmount = subTotal.subtract(discountAmount).subtract(benefit.loyaltyQuote().pointsDiscount())
                 .add(shippingFee).setScale(2, java.math.RoundingMode.HALF_UP);
@@ -304,6 +314,10 @@ public class OrderServiceImpl implements OrderService {
                 .totalAmount(totalAmount)
                 .note(finalNote)
                 .build();
+        order.setDeliveryLatitude(req.getDeliveryLatitude());
+        order.setDeliveryLongitude(req.getDeliveryLongitude());
+        order.setDistanceKm(deliveryQuote == null ? null : deliveryQuote.getDistanceKm());
+        order.setShippingMethod(deliveryQuote == null ? "flat" : deliveryQuote.getMethod());
         checkoutBenefitService.applySnapshot(order, benefit);
 
         for (OrderDetail detail : orderDetails) {
@@ -333,6 +347,8 @@ public class OrderServiceImpl implements OrderService {
                 .customerName(getCustomerFullName(customer))
                 .customerPhone(customer.getPhoneNumber())
                 .deliveryAddress(savedOrder.getDeliveryAddress())
+                .deliveryLatitude(savedOrder.getDeliveryLatitude()).deliveryLongitude(savedOrder.getDeliveryLongitude())
+                .distanceKm(savedOrder.getDistanceKm()).shippingMethod(savedOrder.getShippingMethod())
                 .subTotal(subTotal)
                 .discountAmount(savedOrder.getDiscountAmount())
                 .redeemedPoints(savedOrder.getRedeemedPoints())
@@ -359,6 +375,8 @@ public class OrderServiceImpl implements OrderService {
                 .customerName(getCustomerFullName(order.getCustomer()))
                 .customerPhone(order.getCustomer() == null ? null : order.getCustomer().getPhoneNumber())
                 .deliveryAddress(order.getDeliveryAddress())
+                .deliveryLatitude(order.getDeliveryLatitude()).deliveryLongitude(order.getDeliveryLongitude())
+                .distanceKm(order.getDistanceKm()).shippingMethod(order.getShippingMethod())
                 .subTotal(order.getTotalAmount().subtract(shipping).add(discount).add(
                         order.getPointsDiscount() == null ? BigDecimal.ZERO : order.getPointsDiscount()))
                 .discountAmount(discount).redeemedPoints(order.getRedeemedPoints())
@@ -377,7 +395,8 @@ public class OrderServiceImpl implements OrderService {
                 request.getVoucherCode() == null ? "" : request.getVoucherCode().strip().toUpperCase(Locale.ROOT),
                 clean(request.getQuoteFingerprint()), moneyText(request.getExpectedMerchandiseAmountDue()),
                 moneyText(request.getRedeemedPoints()), clean(request.getPaymentMethod()),
-                moneyText(request.getShippingFee()), clean(request.getNote())
+                moneyText(request.getShippingFee()), clean(request.getNote()),
+                String.valueOf(request.getDeliveryLatitude()), String.valueOf(request.getDeliveryLongitude())
         };
         StringBuilder canonical = new StringBuilder("checkout-v1|");
         for (String field : fields) canonical.append(field.length()).append(':').append(field);
@@ -464,6 +483,8 @@ public class OrderServiceImpl implements OrderService {
                     .customerName(getCustomerFullName(order.getCustomer()))
                     .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhoneNumber() : null)
                     .deliveryAddress(order.getDeliveryAddress())
+                .deliveryLatitude(order.getDeliveryLatitude()).deliveryLongitude(order.getDeliveryLongitude())
+                .distanceKm(order.getDistanceKm()).shippingMethod(order.getShippingMethod())
                     .subTotal(subTotal)
                     .discountAmount(order.getDiscountAmount())
                     .redeemedPoints(order.getRedeemedPoints())
@@ -815,6 +836,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public ShippingFeeRes calculateShippingFee(ShippingFeeCalcReq req) {
+        com.springboot.fasearch.modules.order.service.impl.ShippingServiceImpl.validateCoordinates(req.getDeliveryLatitude(), req.getDeliveryLongitude());
+        if (req.getDeliveryLatitude() != null) return shippingService.quote(req.getDeliveryLatitude(), req.getDeliveryLongitude());
         String province = req.getProvince() != null ? req.getProvince().trim().toLowerCase() : "";
         int weight = req.getTotalWeightGram() != null ? req.getTotalWeightGram() : 0;
 
@@ -847,6 +870,7 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal totalShippingFee = BigDecimal.valueOf(baseFee + extraFee).setScale(2);
 
         return ShippingFeeRes.builder()
+                .method("flat").baseFee(totalShippingFee).shippingDiscount(BigDecimal.ZERO)
                 .shippingFee(totalShippingFee)
                 .estimatedDays(estimatedDays)
                 .build();

@@ -37,4 +37,7 @@ public class CustomerRes {
     private String salesTierName;
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private String salesTierStatus;
+    private Double deliveryLatitude;
+    private Double deliveryLongitude;
+
 }

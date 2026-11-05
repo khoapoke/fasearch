@@ -47,3 +47,19 @@ email:
 app:
   frontend-base-url: ${APP_FRONTEND_URL:http://127.0.0.1:3202}
 
+shipping:
+  warehouse:
+    address: ${SHIPPING_WAREHOUSE_ADDRESS:140 Lê Trọng Tấn, Tân Phú, TP.HCM}
+    # OSM/Nominatim one-off 2026-11-05: way/523650595 (HUIT, house number 140).
+    latitude: ${SHIPPING_WAREHOUSE_LATITUDE:10.8070354}
+    longitude: ${SHIPPING_WAREHOUSE_LONGITUDE:106.6287031}
+  road-factor: ${SHIPPING_ROAD_FACTOR:1.3}
+  tiers:
+    near-km: 3
+    middle-km: 7
+    outer-km: 15
+    near-fee: 15000
+    middle-fee: 25000
+    outer-fee: 35000
+    extra-per-km: 3000
+    cap: 150000

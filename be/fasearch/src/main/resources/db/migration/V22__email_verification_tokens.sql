@@ -1,8 +1,8 @@
--- V21: one-time email tokens (password reset + email verification) + verified flag.
+-- V22: one-time email tokens (password reset + email verification) + verified flag.
 --
--- QUY TAC (state the rule): moi tai khoan da ton tai truoc V21 duoc coi nhu DA
+-- QUY TAC (state the rule): moi tai khoan da ton tai truoc V22 duoc coi nhu DA
 -- XAC THUC email (backfill ngay_xac_thuc_email = ngay_tao) de khong khoa bat ky
--- ai ra khoi he thong. Chi tai khoan tao MOI sau V21 co ngay_xac_thuc_email NULL
+-- ai ra khoi he thong. Chi tai khoan tao MOI sau V22 co ngay_xac_thuc_email NULL
 -- (chua xac thuc) cho den khi hoan tat xac thuc qua email.
 -- Login KHONG chan tai khoan chua xac thuc (round nay chi hien banner), co the
 -- bat chan bang cau hinh EMAIL_VERIFICATION_REQUIRED=true.

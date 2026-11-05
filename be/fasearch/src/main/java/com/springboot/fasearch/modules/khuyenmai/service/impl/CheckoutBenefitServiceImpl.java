@@ -79,6 +79,7 @@ public class CheckoutBenefitServiceImpl implements CheckoutBenefitService {
                         .build()).toList();
         return CartQuoteResponse.builder().orderId(orderId).items(responseLines).subTotal(money(subtotal))
                 .voucherCode(plan.voucher() == null ? null : plan.voucher().getCode())
+                .freeShipping(plan.campaign() != null && "FREE_SHIP".equals(plan.campaign().getDiscountType()))
                 .voucherDiscount(plan.discount()).remainingMerchandiseAmount(remaining)
                 .redeemedPoints(points.redeemedPoints()).pointsDiscount(points.pointsDiscount())
                 .allowedRedeemedPoints(points.allowedRedeemedPoints()).availablePoints(points.availablePoints())

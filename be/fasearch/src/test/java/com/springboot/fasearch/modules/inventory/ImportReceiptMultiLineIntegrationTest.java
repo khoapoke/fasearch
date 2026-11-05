@@ -247,22 +247,20 @@ class ImportReceiptMultiLineIntegrationTest {
     }
 
     @Test
-    @DisplayName("Không token bị chặn; STAFF không được POST và không tạo được phiếu")
+    @DisplayName("Không token bị chặn; Quản lý STAFF được tạo phiếu")
     void phanQuyen() {
         Resp anonymous = call("POST", "/api/v1/inventory/import-receipts", "{}", null);
         assertThat(anonymous.is2xx()).as("không token thì không được tạo").isFalse();
 
-        // STAFF: bị chặn bởi @PreAuthorize(ADMIN). Hiện tầng xử lý lỗi chung của teammate
-        // map AccessDeniedException thành 500 (hành vi có sẵn, ngoài phạm vi fix này);
-        // điều kiện an toàn là: không tạo được phiếu nào.
+        // STAFF is the approved manager role on the role-manager base.
         String staffSupplier = "NCC Staff " + uniq;
         String staffToken = jwtProvider.generateToken("nhanvien1", "STAFF", 2L);
         Resp staffPost = call("POST", "/api/v1/inventory/import-receipts", """
                 {"supplierName":"%s","items":[{"skuId":%d,"quantity":1,"importPrice":1000}]}
                 """.formatted(staffSupplier, skuB), staffToken);
-        assertThat(staffPost.is2xx()).as("STAFF không được tạo phiếu nhập").isFalse();
+        assertThat(staffPost.is2xx()).as("Quản lý được tạo phiếu nhập").isTrue();
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM phieu_nhap_kho WHERE nha_cung_cap = ?", Integer.class,
-                staffSupplier)).as("STAFF không được tạo phiếu nào trong DB").isZero();
+                staffSupplier)).as("Quản lý tạo đúng một phiếu trong DB").isEqualTo(1);
     }
 }

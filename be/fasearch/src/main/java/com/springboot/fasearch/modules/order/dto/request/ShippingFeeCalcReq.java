@@ -18,6 +18,8 @@ public class ShippingFeeCalcReq {
 
     @NotBlank(message = "Tỉnh/Thành phố không được để trống")
     private String province;
+    @jakarta.validation.constraints.Size(max = 50)
+    private String voucherCode;
 
     @NotBlank(message = "Quận/Huyện không được để trống")
     private String district;
@@ -25,4 +27,11 @@ public class ShippingFeeCalcReq {
     @NotNull(message = "Tổng trọng lượng không được để trống")
     @Min(value = 1, message = "Tổng trọng lượng phải lớn hơn 0 gram")
     private Integer totalWeightGram;
+    @jakarta.validation.constraints.DecimalMin("-90")
+    @jakarta.validation.constraints.DecimalMax("90")
+    private Double deliveryLatitude;
+    @jakarta.validation.constraints.DecimalMin("-180")
+    @jakarta.validation.constraints.DecimalMax("180")
+    private Double deliveryLongitude;
+
 }

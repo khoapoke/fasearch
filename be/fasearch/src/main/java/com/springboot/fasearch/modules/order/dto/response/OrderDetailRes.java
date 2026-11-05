@@ -41,4 +41,9 @@ public class OrderDetailRes {
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
+    private Double deliveryLatitude;
+    private Double deliveryLongitude;
+    private Double distanceKm;
+    private String shippingMethod;
+
 }

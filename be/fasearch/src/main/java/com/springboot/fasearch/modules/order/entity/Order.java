@@ -132,4 +132,13 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderDetail> details = new ArrayList<>();
+    @Column(name = "delivery_latitude")
+    private Double deliveryLatitude;
+    @Column(name = "delivery_longitude")
+    private Double deliveryLongitude;
+    @Column(name = "distance_km")
+    private Double distanceKm;
+    @Column(name = "shipping_method")
+    private String shippingMethod;
+
 }

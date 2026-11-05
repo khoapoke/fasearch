@@ -48,6 +48,7 @@ import lombok.RequiredArgsConstructor;
 public class OrderController {
 
     private final OrderService orderService;
+    private final com.springboot.fasearch.modules.order.service.interfaces.CartService cartService;
 
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -97,8 +98,17 @@ public class OrderController {
 
     @PostMapping("/calculate-shipping-fee")
     @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<ShippingFeeRes> calculateShippingFee(@Valid @RequestBody ShippingFeeCalcReq req) {
         ShippingFeeRes result = orderService.calculateShippingFee(req);
+        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
+            CartQuoteRequest voucher = new CartQuoteRequest();
+            voucher.setVoucherCode(req.getVoucherCode());
+            if (Boolean.TRUE.equals(cartService.quote(voucher).getFreeShipping())) {
+                result.setShippingDiscount(result.getShippingFee());
+                result.setShippingFee(java.math.BigDecimal.ZERO);
+            }
+        }
         return ApiResponse.success(200, "Tính phí vận chuyển thành công", result);
     }
 

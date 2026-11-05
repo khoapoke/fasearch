@@ -146,6 +146,14 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        com.springboot.fasearch.modules.order.service.impl.ShippingServiceImpl.validateCoordinates(
+                req.getDeliveryLatitude(), req.getDeliveryLongitude());
+        // An edited address without a new pin must not retain a stale location.
+        if (req.getAddress() != null && !java.util.Objects.equals(req.getAddress(), customer.getAddress())
+                && req.getDeliveryLatitude() == null) {
+            customer.setDeliveryLatitude(null);
+            customer.setDeliveryLongitude(null);
+        }
         // Partial update: ignore null fields
         userMapper.updateCustomerFromReq(req, customer);
 

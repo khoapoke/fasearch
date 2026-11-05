@@ -134,7 +134,7 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
-        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
+        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         byte[] png = makePng();
         String boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -152,7 +152,7 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
-        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
+        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         byte[] corrupt = new byte[]{(byte)0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x00};
         String boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -170,7 +170,7 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
-        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
+        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         byte[] png = makePng();
         String boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -214,7 +214,7 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
-        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
+        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         byte[] png = makePng();
         String boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -237,7 +237,7 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
-        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
+        Product prod = productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         byte[] png = makePng();
         String boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -259,7 +259,7 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
-        productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
+        productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         int status = httpStatus("DELETE", "/api/v1/categories/" + cat.getId(), token, null);
         assertThat(status).isEqualTo(400);

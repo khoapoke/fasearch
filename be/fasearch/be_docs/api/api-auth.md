@@ -317,7 +317,7 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 ## 9. Trường `emailVerified` (FR-05..07 mở rộng)
 
 - `POST /api/v1/auth/login`, `POST /api/v1/auth/register` và `GET /api/v1/auth/my-info` trả thêm `result.emailVerified: boolean` (true khi `tai_khoan.ngay_xac_thuc_email` đã set).
-- **Quy tắc backfill (V21):** mọi tài khoản tồn tại trước V21 được coi như ĐÃ xác thực (`ngay_xac_thuc_email = ngay_tao`) để không khóa ai ra khỏi hệ thống. Chỉ tài khoản tạo MỚI sau V21 có `NULL` (chưa xác thực) cho đến khi xác nhận qua email.
+- **Quy tắc backfill (V22):** mọi tài khoản tồn tại trước V22 được coi như ĐÃ xác thực (`ngay_xac_thuc_email = ngay_tao`) để không khóa ai ra khỏi hệ thống. Chỉ tài khoản tạo MỚI sau V22 có `NULL` (chưa xác thực) cho đến khi xác nhận qua email.
 - **Round này login KHÔNG chặn tài khoản chưa xác thực** (FE hiện banner + nút gửi lại). Bật chặn đăng nhập bằng `EMAIL_VERIFICATION_REQUIRED=true` → login trả `403 EMAIL_NOT_VERIFIED`.
 
 ---

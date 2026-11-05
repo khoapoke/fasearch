@@ -81,6 +81,10 @@ public enum ErrorCode {
     PAYMENT_PROVIDER_UNAVAILABLE(503, "Payment provider is unavailable", HttpStatus.SERVICE_UNAVAILABLE),
     PAYMENT_PROVIDER_NOT_CONFIGURED(503, "Payment provider is not configured", HttpStatus.SERVICE_UNAVAILABLE),
 
+    MAPS_NOT_CONFIGURED(4301, "Chưa bật tìm địa chỉ; hãy chọn ghim trên bản đồ", HttpStatus.SERVICE_UNAVAILABLE),
+    MAPS_UNAVAILABLE(4302, "Tìm địa chỉ đang bận; hãy chọn ghim trên bản đồ", HttpStatus.SERVICE_UNAVAILABLE),
+    MAPS_RATE_LIMITED(4303, "Vui lòng chờ trước khi tìm địa chỉ tiếp", HttpStatus.TOO_MANY_REQUESTS),
+
     // AI Search errors
     AI_SERVICE_UNAVAILABLE(503, "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
     INVALID_IMAGE_FILE(400, "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp", HttpStatus.BAD_REQUEST),

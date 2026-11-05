@@ -15,6 +15,7 @@ public class CartQuoteResponse {
     private List<CartQuoteLineResponse> items;
     private BigDecimal subTotal;
     private String voucherCode;
+    private Boolean freeShipping;
     private BigDecimal voucherDiscount;
     private BigDecimal remainingMerchandiseAmount;
     private Integer redeemedPoints;
