@@ -6,6 +6,7 @@ import { authMe, AuthApiError, isAuthAbort, type AuthIdentity } from "@/lib/cust
 import { fetchCustomerOrders } from "@/lib/customer-commerce-client";
 import { formatMoney, orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
 import "./auth.css";
+import { EmailVerificationBanner } from "./email-verification-banner";
 import { ProfileEditor } from "./profile-editor";
 
 type State =
@@ -37,6 +38,7 @@ export function AccountHub({
 }) {
   return (
     <>
+      {identity.emailVerified === false ? <EmailVerificationBanner email={identity.email} /> : null}
       <section className="sfSideCard" aria-labelledby="account-profile-title">
         <div className="acct-section-head">
           <h2 id="account-profile-title">Hồ sơ</h2>

@@ -225,6 +225,9 @@
 .acctPage .auth-status { margin: 16px 0 0; padding: 12px 14px; border-radius: 7px; font-size: 14px; }
 .acctPage .auth-status.is-error { color: var(--st-err-text); background: var(--st-err-bg); }
 .acctPage .auth-status.is-info { color: var(--st-info-text, #3348a3); background: var(--st-info-bg, #ecedf9); }
+.acctPage .auth-verify-banner { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--st-line-strong, var(--st-line)); border-radius: 8px; background: var(--st-surface); }
+.acctPage .auth-verify-title { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.acctPage .auth-verify-text { margin: 0 0 12px; color: var(--st-ink-soft); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 
 @media (max-width: 1100px) {
   .acctPage .acct-layout { grid-template-columns: 196px minmax(0, 1fr); gap: 32px; }

@@ -8,6 +8,8 @@ export type AuthIdentity = {
   role: string;
   status: string;
   createdAt: string;
+  /** true khi tai khoan da xac thuc email (BE tra tu V21). */
+  emailVerified?: boolean;
 };
 
 export class AuthApiError extends Error {
@@ -207,4 +209,50 @@ export function formatAuthDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+// Quen mat khau / xac thuc email: khong co identity, chi can success/message.
+// Token dang nhap khong bao gio xuat hien o browser; BFF giu HttpOnly cookie.
+
+type ActionEnvelope = { success?: boolean; message?: string; code?: string; errors?: Array<{ field?: string; reason?: string }> };
+
+async function authAction(path: string, body: unknown, signal?: AbortSignal): Promise<string> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  let payload: ActionEnvelope | null = null;
+  try { payload = (await response.json()) as ActionEnvelope; } catch { /* non-json */ }
+  if (!response.ok || payload?.success !== true) {
+    throw new AuthApiError(
+      payload?.message || "Không thể thực hiện lúc này. Thử lại sau ít phút.",
+      response.status || 502,
+      payload?.code || "AUTH_ERROR",
+      payload?.errors,
+    );
+  }
+  return payload.message || "Đã ghi nhận yêu cầu.";
+}
+
+/** Gui lien ket dat lai mat khau (tra loi giong nhau du email co ton tai hay khong). */
+export function requestPasswordReset(email: string, signal?: AbortSignal): Promise<string> {
+  return authAction("/api/customer-auth/password/forgot", { email }, signal);
+}
+
+/** Dat mat khau moi bang token tu email. */
+export function resetPassword(token: string, newPassword: string, signal?: AbortSignal): Promise<string> {
+  return authAction("/api/customer-auth/password/reset", { token, newPassword }, signal);
+}
+
+/** Gui lai email xac thuc cho tai khoan dang dang nhap. */
+export function requestVerificationEmail(signal?: AbortSignal): Promise<string> {
+  ensureAuthAttempt();
+  return authAction("/api/customer-auth/email/verification-request", {}, signal);
+}
+
+/** Xac nhan token verify email tu lien ket trong email. */
+export function verifyEmail(token: string, signal?: AbortSignal): Promise<string> {
+  return authAction("/api/customer-auth/email/verify", { token }, signal);
 }

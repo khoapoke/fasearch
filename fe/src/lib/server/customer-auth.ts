@@ -23,6 +23,8 @@ export type SafeIdentity = {
   role: string;
   status: string;
   createdAt: string;
+  /** true khi tai khoan da xac thuc email (BE V21+). Vang mat -> false (huong an toan: hien banner). */
+  emailVerified: boolean;
 };
 
 type Envelope<T> = { success?: boolean; code?: number; message?: string; result?: T; errors?: Array<{ field?: string; reason?: string }> };
@@ -161,10 +163,11 @@ export function validateIdentity(payload: Envelope<Record<string, unknown>> | nu
   const role = typeof result.role === "string" ? result.role : "";
   const status = typeof result.status === "string" ? result.status : "";
   const createdAt = typeof result.createdAt === "string" ? result.createdAt : "";
+  const emailVerified = typeof result.emailVerified === "boolean" ? result.emailVerified : false;
   if (!Number.isInteger(id) || id <= 0 || !username || !email || !role || !status || !createdAt) {
     throw new Error("IDENTITY_INVALID_RESPONSE");
   }
-  return { id, username, email, role, status, createdAt };
+  return { id, username, email, role, status, createdAt, emailVerified };
 }
 
 export function mapUpstreamError(status: number, payload: Envelope<unknown> | null): { message: string; code: string; errors?: Array<{ field?: string; reason?: string }> } {
@@ -173,6 +176,7 @@ export function mapUpstreamError(status: number, payload: Envelope<unknown> | nu
   if (status === 403) {
     if (/locked/i.test(upstream)) return { message: "Tài khoản đang bị khóa. Liên hệ hỗ trợ để được giúp.", code: "ACCOUNT_LOCKED" };
     if (/inactive|not active/i.test(upstream)) return { message: "Tài khoản chưa hoạt động hoặc đã bị vô hiệu hóa.", code: "ACCOUNT_INACTIVE" };
+    if (/xac thuc email|not verified/i.test(upstream)) return { message: "Tài khoản chưa xác thực email. Kiểm tra hộp thư để xác thực rồi đăng nhập lại.", code: "EMAIL_NOT_VERIFIED" };
     return { message: "Tài khoản không thể đăng nhập lúc này.", code: "ACCOUNT_FORBIDDEN" };
   }
   if (status === 400) {

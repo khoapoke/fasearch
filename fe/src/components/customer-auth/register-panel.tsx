@@ -126,7 +126,7 @@ export function RegisterPanel() {
               <div className="auth-field">
                 <label htmlFor="register-email">Email</label>
                 <input {...field("email")} type="email" value={values.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" required />
-                {fieldErrors.email ? <p className="auth-note" id="register-email-error" role="alert">{fieldErrors.email}</p> : null}
+                {fieldErrors.email ? <p className="auth-note" id="register-email-error" role="alert">{fieldErrors.email}</p> : <p className="auth-note">Email xác thực sẽ được gửi tới địa chỉ này sau khi tạo tài khoản.</p>}
               </div>
               <div className="auth-name-grid">
                 <div className="auth-field">

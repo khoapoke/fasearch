@@ -154,6 +154,10 @@ export function LoginPanel({ next }: { next: string }) {
                 <span className="auth-secondary">Chưa có tài khoản?</span>
                 <Link className="auth-link" href="/dang-ky">Tạo tài khoản</Link>
               </div>
+              <div className="auth-links">
+                <span className="auth-secondary">Quên mật khẩu?</span>
+                <Link className="auth-link" href="/quen-mat-khau">Đặt lại qua email</Link>
+              </div>
               <p className="auth-note">Chỉ dùng tài khoản của bạn trên thiết bị này.</p>
             </form>
           </div>
