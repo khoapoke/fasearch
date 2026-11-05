@@ -33,7 +33,9 @@ export async function updateSelfProfile(request: NextRequest): Promise<Response>
   if (gender !== undefined && gender !== "" && !GENDERS.has(gender)) return authError("Giới tính chưa hợp lệ.", 400, "INVALID_GENDER");
   if (dob !== undefined && dob !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return authError("Ngày sinh phải có dạng YYYY-MM-DD.", 400, "INVALID_DOB");
   if (address !== undefined && address.length > 255) return authError("Địa chỉ tối đa 255 ký tự.", 400, "INVALID_ADDRESS");
-  const body: Record<string, unknown> = {};
+  const lat = b.deliveryLatitude, lng = b.deliveryLongitude;
+  if ((lat !== undefined || lng !== undefined) && (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) return authError("Tọa độ chưa hợp lệ.", 400, "INVALID_COORDINATES");
+  const body: Record<string, unknown> = lat !== undefined ? { deliveryLatitude: lat, deliveryLongitude: lng } : {};
   if (firstName !== undefined) body.firstName = firstName; if (lastName !== undefined) body.lastName = lastName; if (phoneNumber !== undefined) body.phoneNumber = phoneNumber; if (gender !== undefined && gender !== "") body.gender = gender; if (dob !== undefined && dob !== "") body.dob = dob; if (address !== undefined) body.address = address;
   try { return out(await fetch(`${authBackendUrl()}/api/v1/users/customers/${who.customerId}`, { method: "PATCH", headers: { accept: "application/json", authorization: `Bearer ${who.token}`, "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) })); }
   catch { return authError("Không kết nối được máy chủ hồ sơ.", 503, "PROFILE_UNAVAILABLE"); }

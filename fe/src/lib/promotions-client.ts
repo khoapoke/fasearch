@@ -1,5 +1,5 @@
 export type PromotionCode = { maVoucher: number; maKm: number; maCode: string; soLuongPhatHanh: number | null; daSuDung: number; soLuongGiuCho: number; trangThai: "ACTIVE" };
-export type Campaign = { maKm: number; tenCtkm: string; loaiGiam: "PHAN_TRAM" | "SO_TIEN"; giaTriGiam: number; ngayBatDau: string; ngayKetThuc: string; dieuKienApDung: string | null; trangThai: "HOAT_DONG" | "TAM_DUNG"; phienBan: number; maSpApDung: number[]; codes: PromotionCode[] };
+export type Campaign = { maKm: number; tenCtkm: string; loaiGiam: "PHAN_TRAM" | "SO_TIEN" | "FREE_SHIP"; giaTriGiam: number; ngayBatDau: string; ngayKetThuc: string; dieuKienApDung: string | null; trangThai: "HOAT_DONG" | "TAM_DUNG"; phienBan: number; maSpApDung: number[]; codes: PromotionCode[] };
 export type CampaignPage = { data: Campaign[]; page: number; size: number; totalElements: number; totalPages: number; isLast: boolean };
 export type CampaignUpdate = { phienBan: number; tenCtkm?: string; loaiGiam?: Campaign["loaiGiam"]; giaTriGiam?: number; ngayBatDau?: string; ngayKetThuc?: string; dieuKienApDung?: string; maSpApDung?: number[]; trangThai?: Campaign["trangThai"] };
 
@@ -26,7 +26,7 @@ function normalizeCode(raw: unknown): PromotionCode {
 }
 export function normalizeCampaign(raw: unknown): Campaign {
   const value = object(raw);
-  if (typeof value.tenCtkm !== "string" || (value.loaiGiam !== "PHAN_TRAM" && value.loaiGiam !== "SO_TIEN") || (value.trangThai !== "HOAT_DONG" && value.trangThai !== "TAM_DUNG") || typeof value.ngayBatDau !== "string" || typeof value.ngayKetThuc !== "string" || (value.dieuKienApDung !== null && typeof value.dieuKienApDung !== "string") || !Array.isArray(value.maSpApDung) || !value.maSpApDung.every((id) => Number.isSafeInteger(id) && (id as number) > 0) || !Array.isArray(value.codes)) throw invalidResponse();
+  if (typeof value.tenCtkm !== "string" || (value.loaiGiam !== "PHAN_TRAM" && value.loaiGiam !== "SO_TIEN" && value.loaiGiam !== "FREE_SHIP") || (value.trangThai !== "HOAT_DONG" && value.trangThai !== "TAM_DUNG") || typeof value.ngayBatDau !== "string" || typeof value.ngayKetThuc !== "string" || (value.dieuKienApDung !== null && typeof value.dieuKienApDung !== "string") || !Array.isArray(value.maSpApDung) || !value.maSpApDung.every((id) => Number.isSafeInteger(id) && (id as number) > 0) || !Array.isArray(value.codes)) throw invalidResponse();
   const giaTriGiam = value.giaTriGiam;
   if (typeof giaTriGiam !== "number" || !Number.isFinite(giaTriGiam) || giaTriGiam <= 0 || (value.loaiGiam === "PHAN_TRAM" && giaTriGiam > 100)) throw invalidResponse();
   return { maKm: integer(value.maKm, 1), tenCtkm: value.tenCtkm, loaiGiam: value.loaiGiam, giaTriGiam, ngayBatDau: value.ngayBatDau, ngayKetThuc: value.ngayKetThuc, dieuKienApDung: value.dieuKienApDung, trangThai: value.trangThai, phienBan: integer(value.phienBan), maSpApDung: value.maSpApDung as number[], codes: value.codes.map(normalizeCode) };

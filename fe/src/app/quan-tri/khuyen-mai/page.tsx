@@ -89,7 +89,7 @@ export default function CampaignsPage() {
       setFormIssue("Nhập tên chương trình.");
       return;
     }
-    const giaTriGiam = Number(form.giaTriGiam);
+    const giaTriGiam = form.loaiGiam === "FREE_SHIP" ? 1 : Number(form.giaTriGiam);
     if (!Number.isFinite(giaTriGiam) || giaTriGiam <= 0) {
       setFormIssue("Giá trị giảm phải là số dương.");
       return;
@@ -186,9 +186,9 @@ export default function CampaignsPage() {
             <input value={form.tenCtkm} onChange={(e) => setForm({ ...form, tenCtkm: e.target.value })} placeholder="Tên chương trình *" aria-label="Tên" style={{ minWidth: 220 }} />
             <select value={form.loaiGiam} onChange={(e) => setForm({ ...form, loaiGiam: e.target.value })} aria-label="Loại giảm">
               <option value="PHAN_TRAM">% theo đơn</option>
-              <option value="SO_TIEN">Tiền cố định</option>
+              <option value="SO_TIEN">Tiền cố định</option><option value="FREE_SHIP">Miễn phí giao hàng</option>
             </select>
-            <input value={form.giaTriGiam} onChange={(e) => setForm({ ...form, giaTriGiam: e.target.value })} placeholder="Giá trị *" aria-label="Giá trị" inputMode="decimal" style={{ width: 130 }} />
+            <input disabled={form.loaiGiam === "FREE_SHIP"} value={form.loaiGiam === "FREE_SHIP" ? "Miễn phí giao hàng" : form.giaTriGiam} onChange={(e) => setForm({ ...form, giaTriGiam: e.target.value })} placeholder="Giá trị *" aria-label="Giá trị" inputMode="decimal" style={{ width: 130 }} />
             <input type="datetime-local" step="any" value={form.ngayBatDau} onChange={(e) => setForm({ ...form, ngayBatDau: e.target.value })} aria-label="Bắt đầu" />
             <input type="datetime-local" step="any" value={form.ngayKetThuc} onChange={(e) => setForm({ ...form, ngayKetThuc: e.target.value })} aria-label="Kết thúc" />
             <input value={form.dieuKienApDung} onChange={(e) => setForm({ ...form, dieuKienApDung: e.target.value })} placeholder="Điều kiện (tùy chọn)" aria-label="Điều kiện" style={{ minWidth: 220 }} />
@@ -205,7 +205,7 @@ export default function CampaignsPage() {
           <select value={loai} onChange={(e) => { setLoai(e.target.value); setPage(0); }} aria-label="Loại">
             <option value="">Mọi loại</option>
             <option value="PHAN_TRAM">% theo đơn</option>
-            <option value="SO_TIEN">Tiền cố định</option>
+            <option value="SO_TIEN">Tiền cố định</option><option value="FREE_SHIP">Miễn phí giao hàng</option>
           </select>
           <select value={trangThai} onChange={(e) => { setTrangThai(e.target.value); setPage(0); }} aria-label="Trạng thái">
             <option value="">Mọi trạng thái</option>
@@ -233,7 +233,7 @@ export default function CampaignsPage() {
                     <tr key={c.maKm} data-selected={openId === c.maKm}>
                       <td className="adMono">#{c.maKm}</td>
                       <td><b>{c.tenCtkm}</b></td>
-                      <td>{c.loaiGiam === "PHAN_TRAM" ? `${c.giaTriGiam}%` : `${Number(c.giaTriGiam).toLocaleString("vi-VN")}₫`}</td>
+                      <td>{c.loaiGiam === "FREE_SHIP" ? "Miễn phí giao hàng" : c.loaiGiam === "PHAN_TRAM" ? `${c.giaTriGiam}%` : `${Number(c.giaTriGiam).toLocaleString("vi-VN")}₫`}</td>
                       <td className="adMono">{fmtDateTime(c.ngayBatDau)} → {fmtDateTime(c.ngayKetThuc)}</td>
                       <td>{stateLabel(c.trangThai)}</td>
                       <td><span className="adRowBtns"><button className="adBtn" type="button" onClick={() => open(c.maKm)}>Chi tiết</button></span></td>
@@ -261,7 +261,7 @@ export default function CampaignsPage() {
           {!detail ? <p className="adState" role="status">Đang tải chi tiết…</p> : (
             <>
               <p className="adNote">Phiên bản {detail.phienBan} · {stateLabel(detail.trangThai)} · Sửa/tạm dừng tạo phiên bản mới, đơn đã chốt giữ nguyên.</p>
-              <p><b>{detail.tenCtkm}</b> — {detail.loaiGiam === "PHAN_TRAM" ? `${detail.giaTriGiam}%` : `${Number(detail.giaTriGiam).toLocaleString("vi-VN")}₫`}</p>
+              <p><b>{detail.tenCtkm}</b> — {detail.loaiGiam === "FREE_SHIP" ? "Miễn phí giao hàng" : detail.loaiGiam === "PHAN_TRAM" ? `${detail.giaTriGiam}%` : `${Number(detail.giaTriGiam).toLocaleString("vi-VN")}₫`}</p>
               <p className="adNote">{fmtDateTime(detail.ngayBatDau)} → {fmtDateTime(detail.ngayKetThuc)}
                 {detail.maSpApDung?.length ? ` · SP: ${detail.maSpApDung.join(", ")}` : " · Mọi sản phẩm"}</p>
               {createdCode ? <p className="adMono">Đã phát hành: {createdCode}</p> : null}
@@ -296,7 +296,7 @@ function EditCampaignForm({ campaign, onSaved }: { campaign: Campaign; onSaved: 
   const [busy, setBusy] = useState(false);
   async function save() {
     const tenCtkm = form.tenCtkm.trim();
-    const giaTriGiam = Number(form.giaTriGiam);
+    const giaTriGiam = form.loaiGiam === "FREE_SHIP" ? 1 : Number(form.giaTriGiam);
     const maSpApDung = parseSpIds(form.maSpApDung);
     if (!tenCtkm || !Number.isFinite(giaTriGiam) || giaTriGiam <= 0 || (form.loaiGiam === "PHAN_TRAM" && giaTriGiam > 100) || !form.ngayBatDau || !form.ngayKetThuc || !Number.isFinite(hcmTime(form.ngayBatDau)) || !Number.isFinite(hcmTime(form.ngayKetThuc)) || hcmTime(form.ngayBatDau) >= hcmTime(form.ngayKetThuc) || maSpApDung === undefined) {
       setIssue("Kiểm tra tên, mức giảm, khoảng thời gian và danh sách sản phẩm.");
@@ -314,8 +314,8 @@ function EditCampaignForm({ campaign, onSaved }: { campaign: Campaign; onSaved: 
     <h3 style={{ fontSize: 13.5, fontWeight: 800 }}>Sửa chiến dịch · lưu thành phiên bản mới</h3>
     <div className="adFilters" style={{ marginTop: 6 }}>
       <input value={form.tenCtkm} onChange={(e) => setForm({ ...form, tenCtkm: e.target.value })} aria-label="Tên mới" />
-      <select value={form.loaiGiam} onChange={(e) => setForm({ ...form, loaiGiam: e.target.value as Campaign["loaiGiam"] })} aria-label="Loại giảm mới"><option value="PHAN_TRAM">% theo đơn</option><option value="SO_TIEN">Tiền cố định</option></select>
-      <input value={form.giaTriGiam} onChange={(e) => setForm({ ...form, giaTriGiam: e.target.value })} aria-label="Giá trị mới" inputMode="decimal" style={{ width: 130 }} />
+      <select value={form.loaiGiam} onChange={(e) => setForm({ ...form, loaiGiam: e.target.value as Campaign["loaiGiam"] })} aria-label="Loại giảm mới"><option value="PHAN_TRAM">% theo đơn</option><option value="SO_TIEN">Tiền cố định</option><option value="FREE_SHIP">Miễn phí giao hàng</option></select>
+      <input disabled={form.loaiGiam === "FREE_SHIP"} value={form.loaiGiam === "FREE_SHIP" ? "Miễn phí giao hàng" : form.giaTriGiam} onChange={(e) => setForm({ ...form, giaTriGiam: e.target.value })} aria-label="Giá trị mới" inputMode="decimal" style={{ width: 130 }} />
       <input type="datetime-local" step="any" value={form.ngayBatDau} onChange={(e) => setForm({ ...form, ngayBatDau: e.target.value })} aria-label="Bắt đầu mới" />
       <input type="datetime-local" step="any" value={form.ngayKetThuc} onChange={(e) => setForm({ ...form, ngayKetThuc: e.target.value })} aria-label="Kết thúc mới" />
       <input value={form.dieuKienApDung} onChange={(e) => setForm({ ...form, dieuKienApDung: e.target.value })} aria-label="Điều kiện mới" placeholder="Điều kiện hiển thị" />

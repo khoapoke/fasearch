@@ -51,6 +51,7 @@ export function normalizeOffers(raw: unknown): OffersResult {
 
 /** Nhãn giảm giá chỉ dựa trên discountType BE trả về. */
 export function offerDiscountLabel(offer: PublicOffer): string {
+  if (offer.discountType === "FREE_SHIP") return "Miễn phí giao hàng";
   if (offer.discountType === "PHAN_TRAM") return `Giảm ${offer.discountValue}%`;
   if (offer.discountType === "SO_TIEN") return `Giảm ${offer.discountValue.toLocaleString("vi-VN")} ₫`;
   return "Ưu đãi đang mở";

@@ -44,10 +44,13 @@ export function checkoutBody(body: Record<string, unknown>): CheckoutBodyResult 
     && body.expectedMerchandiseAmountDue === 0 && shippingFee === 0) {
     return invalid("Đơn 0đ chỉ thanh toán khi nhận hàng (COD).", "ZERO_DUE_ONLINE_UNSUPPORTED");
   }
+  const lat = body.deliveryLatitude, lng = body.deliveryLongitude;
+  if ((lat !== undefined || lng !== undefined) && (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) return invalid("Tọa độ chưa hợp lệ.", "INVALID_COORDINATES");
   return {
     ok: true,
     body: {
       deliveryAddress, receiverName, receiverPhone, paymentMethod, shippingFee,
+      ...(lat !== undefined ? { deliveryLatitude: lat, deliveryLongitude: lng } : {}),
       ...(note ? { note } : {}),
       ...(voucherCode ? { voucherCode } : rawCode !== undefined ? { voucherCode: null } : {}),
       ...(redeemedPoints !== undefined ? { redeemedPoints } : {}),

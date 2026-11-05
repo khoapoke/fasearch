@@ -15,5 +15,9 @@ export async function POST(request: NextRequest) {
   const totalWeightGram = parsed.body.totalWeightGram;
   if (!province || province.length > 100 || !district || district.length > 100) return authError("Tỉnh/quận chưa hợp lệ.", 400, "INVALID_SHIPPING_ADDRESS");
   if (typeof totalWeightGram !== "number" || !Number.isInteger(totalWeightGram) || totalWeightGram < 1 || totalWeightGram > 100000) return authError("Tổng trọng lượng chưa hợp lệ.", 400, "INVALID_WEIGHT");
-  return commerceUpstream(request, "/api/v1/orders/calculate-shipping-fee", { method: "POST", body: { province, district, totalWeightGram }, safeErrors: true });
+  const lat = parsed.body.deliveryLatitude, lng = parsed.body.deliveryLongitude;
+  if ((lat !== undefined || lng !== undefined) && (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) return authError("Tọa độ chưa hợp lệ.", 400, "INVALID_COORDINATES");
+  const voucherCode = parsed.body.voucherCode;
+  if (voucherCode !== undefined && (typeof voucherCode !== "string" || voucherCode.length > 50)) return authError("Mã voucher chưa hợp lệ.", 400, "INVALID_VOUCHER");
+  return commerceUpstream(request, "/api/v1/orders/calculate-shipping-fee", { method: "POST", body: { province, district, totalWeightGram, ...(lat !== undefined ? { deliveryLatitude: lat, deliveryLongitude: lng } : {}), ...(voucherCode ? { voucherCode } : {}) }, safeErrors: true });
 }

@@ -44,10 +44,10 @@ export async function clearCustomerCart(signal?: AbortSignal): Promise<void> {
   throw new CommerceError(body?.message || "Không xóa được giỏ hàng.", response.status || 502);
 }
 
-export const fetchShippingQuote = (province: string, district: string, totalWeightGram: number, signal?: AbortSignal): Promise<ShippingQuote> =>
-  call("/api/customer-commerce/shipping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ province, district, totalWeightGram }), signal }, normalizeShipping);
+export const fetchShippingQuote = (province: string, district: string, totalWeightGram: number, signal?: AbortSignal, location?: { deliveryLatitude: number; deliveryLongitude: number } | null, voucherCode?: string): Promise<ShippingQuote> =>
+  call("/api/customer-commerce/shipping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ province, district, totalWeightGram, ...location, ...(voucherCode ? { voucherCode } : {}) }), signal }, normalizeShipping);
 
-export type CheckoutInput = { deliveryAddress: string; receiverName: string; receiverPhone: string; paymentMethod: string; shippingFee: number; note?: string; voucherCode?: string; redeemedPoints?: number; quoteFingerprint: string; expectedMerchandiseAmountDue: number; checkoutKey: string };
+export type CheckoutInput = { deliveryLatitude?: number; deliveryLongitude?: number; deliveryAddress: string; receiverName: string; receiverPhone: string; paymentMethod: string; shippingFee: number; note?: string; voucherCode?: string; redeemedPoints?: number; quoteFingerprint: string; expectedMerchandiseAmountDue: number; checkoutKey: string };
 export const createCustomerOrder = (input: CheckoutInput, signal?: AbortSignal): Promise<CustomerOrder> =>
   call("/api/customer-commerce/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal }, (raw) => normalizeCheckoutOrder(raw, input.voucherCode));
 

@@ -11,7 +11,7 @@ export function campaignBody(body: Record<string, unknown>, create: boolean): Re
     result.tenCtkm = body.tenCtkm.trim();
   }
   if (create || "loaiGiam" in body) {
-    if (body.loaiGiam !== "PHAN_TRAM" && body.loaiGiam !== "SO_TIEN") return null;
+    if (body.loaiGiam !== "PHAN_TRAM" && body.loaiGiam !== "SO_TIEN" && body.loaiGiam !== "FREE_SHIP") return null;
     result.loaiGiam = body.loaiGiam;
   }
   if (create || "giaTriGiam" in body) {

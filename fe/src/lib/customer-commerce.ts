@@ -60,7 +60,7 @@ export type CustomerOrderItem = {
 
 export type CartQuoteLine = { skuId: number; productName: string; quantity: number; unitPrice: number; totalPrice: number; discountAmount: number; pointsDiscountAmount: number };
 export type CustomerCartQuote = {
-  items: CartQuoteLine[]; subTotal: number; voucherCode: string | null; voucherDiscount: number;
+  freeShipping?: boolean; items: CartQuoteLine[]; subTotal: number; voucherCode: string | null; voucherDiscount: number;
   remainingMerchandiseAmount: number; redeemedPoints: number; pointsDiscount: number; allowedRedeemedPoints: number;
   availablePoints: number | null; policyStatus: "UNCONFIGURED" | "DISABLED" | "ENABLED";
   loyaltyPolicyId: number | null; loyaltyPolicyVersion: number | null; redeemCurrencyPerPoint: number | null;
@@ -82,7 +82,7 @@ export type CustomerOrderPage = {
   isLast: boolean;
 };
 
-export type ShippingQuote = { shippingFee: number; estimatedDays: string };
+export type ShippingQuote = { shippingFee: number; estimatedDays: string; distanceKm?: number | null; method?: string; baseFee?: number; shippingDiscount?: number };
 
 export const DEFAULT_WEIGHT_PER_ITEM_GRAM = 300;
 
@@ -291,7 +291,7 @@ export function normalizeCartQuote(raw: unknown): CustomerCartQuote {
       const item = record(rawItem);
       return { skuId: integer(item.skuId, 1), productName: typeof item.productName === "string" ? item.productName : "", quantity: integer(item.quantity, 1), unitPrice: finite(item.unitPrice), totalPrice: finite(item.totalPrice), discountAmount: finite(item.discountAmount), pointsDiscountAmount: finite(item.pointsDiscountAmount) };
     }),
-    subTotal: finite(v.subTotal), voucherCode: text(v.voucherCode), voucherDiscount: finite(v.voucherDiscount),
+    freeShipping: v.freeShipping === true, subTotal: finite(v.subTotal), voucherCode: text(v.voucherCode), voucherDiscount: finite(v.voucherDiscount),
     remainingMerchandiseAmount: finite(v.remainingMerchandiseAmount), redeemedPoints: integer(v.redeemedPoints),
     pointsDiscount: finite(v.pointsDiscount), allowedRedeemedPoints: integer(v.allowedRedeemedPoints),
     availablePoints: v.availablePoints === null ? null : integer(v.availablePoints),
@@ -335,7 +335,7 @@ export function normalizeOrderPage(raw: unknown): CustomerOrderPage {
 
 export function normalizeShipping(raw: unknown): ShippingQuote {
   const v = record(raw);
-  return { shippingFee: finite(v.shippingFee), estimatedDays: typeof v.estimatedDays === "string" ? v.estimatedDays : "" };
+  return { shippingFee: finite(v.shippingFee), estimatedDays: typeof v.estimatedDays === "string" ? v.estimatedDays : "", distanceKm: v.distanceKm == null ? null : finite(v.distanceKm), method: typeof v.method === "string" ? v.method : "flat", baseFee: v.baseFee == null ? finite(v.shippingFee) : finite(v.baseFee), shippingDiscount: finite(v.shippingDiscount ?? 0) };
 }
 
 /** BE trả path ảnh dạng /api/v1/products/images/<file>; FE chỉ phục vụ qua BFF catalog. */
