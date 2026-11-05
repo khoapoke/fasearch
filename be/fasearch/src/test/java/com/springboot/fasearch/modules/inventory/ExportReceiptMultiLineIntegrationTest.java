@@ -262,7 +262,7 @@ class ExportReceiptMultiLineIntegrationTest {
     }
 
     @Test
-    @DisplayName("Không token bị chặn; Quản lý STAFF tạo và đọc được phiếu")
+    @DisplayName("Không token bị chặn; STAFF (Quản lý) tạo và đọc được phiếu xuất; STAFF không được tạo tài khoản")
     void phanQuyen() {
         Resp anonymous = call("POST", "/api/v1/inventory/export-receipts", twoLineBody("anon"), null);
         assertThat(anonymous.is2xx()).as("không token thì không được tạo").isFalse();
@@ -273,12 +273,16 @@ class ExportReceiptMultiLineIntegrationTest {
                 {"exportType":"DAMAGED","note":"%s",
                  "items":[{"skuId":%d,"quantity":1,"reason":"staff"}]}
                 """.formatted(staffNote, skuB), staffToken);
-        assertThat(staffPost.is2xx()).as("Quản lý được tạo phiếu xuất").isTrue();
+        assertThat(staffPost.status()).as("STAFF được tạo phiếu xuất, body=%s", staffPost.body()).isEqualTo(201);
         assertThat(count("SELECT count(*) FROM phieu_xuat_kho WHERE ghi_chu = ?", staffNote))
-                .as("Quản lý tạo đúng một phiếu trong DB").isEqualTo(1);
+                .as("phiếu của STAFF được lưu").isEqualTo(1);
+        assertThat(stock(skuB)).as("xuất hủy 1: 10-1=9").isEqualTo("9/0/9");
 
         Resp staffRead = call("GET", "/api/v1/inventory/export-receipts?page=0&size=5", null, staffToken);
         assertThat(staffRead.status()).as("STAFF được đọc danh sách").isEqualTo(200);
+
+        Resp staffAccount = call("POST", "/api/v1/auth/accounts", "{}", staffToken);
+        assertThat(staffAccount.status()).as("STAFF không được tạo tài khoản đăng nhập").isEqualTo(403);
     }
 
     @Test

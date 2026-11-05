@@ -247,20 +247,23 @@ class ImportReceiptMultiLineIntegrationTest {
     }
 
     @Test
-    @DisplayName("Không token bị chặn; Quản lý STAFF được tạo phiếu")
+    @DisplayName("Không token bị chặn; STAFF (Quản lý) tạo được phiếu nhập; STAFF không được tạo tài khoản")
     void phanQuyen() {
         Resp anonymous = call("POST", "/api/v1/inventory/import-receipts", "{}", null);
         assertThat(anonymous.is2xx()).as("không token thì không được tạo").isFalse();
 
-        // STAFF is the approved manager role on the role-manager base.
+        // STAFF = Quản lý: được tạo phiếu nhập (role-manager-20261105); chỉ ADMIN quản lý tài khoản/vai trò.
         String staffSupplier = "NCC Staff " + uniq;
         String staffToken = jwtProvider.generateToken("nhanvien1", "STAFF", 2L);
         Resp staffPost = call("POST", "/api/v1/inventory/import-receipts", """
                 {"supplierName":"%s","items":[{"skuId":%d,"quantity":1,"importPrice":1000}]}
                 """.formatted(staffSupplier, skuB), staffToken);
-        assertThat(staffPost.is2xx()).as("Quản lý được tạo phiếu nhập").isTrue();
+        assertThat(staffPost.status()).as("STAFF được tạo phiếu nhập, body=%s", staffPost.body()).isEqualTo(201);
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM phieu_nhap_kho WHERE nha_cung_cap = ?", Integer.class,
-                staffSupplier)).as("Quản lý tạo đúng một phiếu trong DB").isEqualTo(1);
+                staffSupplier)).as("phiếu của STAFF được lưu").isEqualTo(1);
+
+        Resp staffAccount = call("POST", "/api/v1/auth/accounts", "{}", staffToken);
+        assertThat(staffAccount.status()).as("STAFF không được tạo tài khoản đăng nhập").isEqualTo(403);
     }
 }

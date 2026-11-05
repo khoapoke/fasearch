@@ -26,6 +26,7 @@ import com.springboot.fasearch.modules.auth.entity.Role;
 import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 import com.springboot.fasearch.modules.auth.repository.RoleRepository;
 import com.springboot.fasearch.modules.product.entity.Category;
+import com.springboot.fasearch.modules.publish.entity.PublicationStatus;
 import com.springboot.fasearch.modules.product.entity.Product;
 import com.springboot.fasearch.modules.product.repository.CategoryRepository;
 import com.springboot.fasearch.modules.product.repository.ProductRepository;
@@ -128,6 +129,10 @@ class Stt6ProductSearchP2ApiIntegrationTest {
         for (byte[] a : arrays) { System.arraycopy(a, 0, result, pos, a.length); pos += a.length; }
         return result;
     }
+
+    // Published products change only through the staged draft/publish flow (ProductServiceImpl#requireStaged),
+    // so image tests that go through the direct product endpoints use a DRAFT (staged) product.
+    private static final PublicationStatus STAGED = PublicationStatus.DRAFT;
 
     @Test
     void uploadValidImage_returns200() throws Exception {

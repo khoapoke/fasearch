@@ -177,11 +177,17 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(page.get("last").isBoolean()).isTrue();
         assertThat(page.has("isLast")).isFalse();
         assertThat(page.get("content").get(0).get("codes").isEmpty()).isTrue();
-        String forbiddenCampaign = "{\"tenCtkm\":\"Forbidden " + suffix
+        // STAFF = Quản lý: được tạo chương trình khuyến mãi; CUSTOMER và tài khoản đăng nhập vẫn bị chặn.
+        String managerCampaign = "{\"tenCtkm\":\"Manager " + suffix
                 + "\",\"loaiGiam\":\"PHAN_TRAM\",\"giaTriGiam\":10,\"ngayBatDau\":\"" + start
                 + "\",\"ngayKetThuc\":\"" + end + "\",\"maSpApDung\":[" + productId + "]}";
-        Resp staffMutation = call("POST", "/api/v1/khuyen-mai", forbiddenCampaign, token("nhanvien1", "STAFF"));
-        assertThat(staffMutation.status()).as("Quản lý STAFF creates campaigns: %s", staffMutation.body()).isEqualTo(201);
+        Resp staffMutation = call("POST", "/api/v1/khuyen-mai", managerCampaign, token("nhanvien1", "STAFF"));
+        assertThat(staffMutation.status()).as("STAFF can create campaigns: %s", staffMutation.body()).isEqualTo(201);
+        assertThat(result(staffMutation).get("trangThai").asText()).isEqualTo("TAM_DUNG");
+        Resp customerMutation = call("POST", "/api/v1/khuyen-mai", managerCampaign, customerToken);
+        assertThat(customerMutation.status()).as("CUSTOMER cannot create campaigns").isEqualTo(403);
+        assertThat(call("POST", "/api/v1/auth/accounts", "{}", token("nhanvien1", "STAFF")).status())
+                .as("STAFF cannot create login accounts").isEqualTo(403);
 
         Resp firstQuote = quote();
         JsonNode quote = result(firstQuote);
@@ -328,7 +334,7 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(legacyPointCalculation.status()).isEqualTo(200);
         assertThat(result(legacyPointCalculation).get("pointDiscount").decimalValue()).isEqualByComparingTo("1000.00");
         assertThat(customerRepository.findById(customerId).orElseThrow().getAccumulatePoint()).isEqualTo(balanceAfterSettlement);
-        legacyOrder.setVoucherId(jdbc.queryForObject("SELECT min(ma_voucher) FROM ma_giam_gia", Long.class)); // Existing V8 orders can have a voucher FK without the new S1 code snapshot.
+        legacyOrder.setVoucherId(voucherId); // Legacy orders can keep a voucher FK without the S1 code snapshot; use the voucher created above (no hard-coded seed id).
         orderRepository.saveAndFlush(legacyOrder);
         assertThat(legacyOrder.getVoucherCode()).isNull();
         for (String status : new String[]{"CONFIRMED", "PACKING", "SHIPPING"}) {
@@ -349,7 +355,7 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(legacyPayCheckout.status()).isEqualTo(201);
         long legacyPayOrderId = result(legacyPayCheckout).get("orderId").asLong();
         Order legacyPayOrder = orderRepository.findById(legacyPayOrderId).orElseThrow();
-        legacyPayOrder.setVoucherId(jdbc.queryForObject("SELECT min(ma_voucher) FROM ma_giam_gia", Long.class));
+        legacyPayOrder.setVoucherId(voucherId); // valid voucher created above (was hard-coded seed id 30)
         orderRepository.saveAndFlush(legacyPayOrder);
         BigDecimal legacyDue = result(legacyPayCheckout).get("totalAmount").decimalValue();
         Resp legacyCustomerPayment = call("POST", "/api/v1/payments/process",
