@@ -105,7 +105,7 @@ Toàn bộ API trả về cấu trúc thống nhất qua schema `ApiResponse[T]`
   - `Exception` chung (500): Ghi log chi tiết ra server, trả về thông báo lỗi thân thiện cho client mà không lộ thông tin nhạy cảm.
 
 ### 2.4. Tránh lỗi Encode Terminal Windows
-- Hạn chế dùng `print()` in tiếng Việt có dấu trực tiếp ra console Windows để tránh `UnicodeEncodeError` (lỗi charmap cp1252).
+- Hạn chế dùng `print()` in tiếng Việt có dấu trực tiếp ra console Windows để tránh `UnicodeEncodeError` (lỗi charmap cp1252). 
 - Sử dụng module `logging` chuẩn (`logger.info(...)`) để ghi log an toàn.
 
 ---
