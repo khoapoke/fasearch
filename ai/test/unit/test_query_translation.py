@@ -5,8 +5,6 @@ Không cần Docker/GPU/tải model: MarianMT không có sẵn trong môi trư�
 -> phải fallback glossary/gốc, không bao giờ 500.
 """
 
-import os
-
 import pytest
 
 import src.services.query_translation as qt
@@ -229,8 +227,6 @@ def test_multimodal_response_has_translation_fields(client, seeded):
 
 def test_vietnamese_search_service_uses_english_for_clip(client, seeded, fake_processor):
     """Service phải encode bản dịch (FakeProcessor hash text -> seed khác)."""
-    import torch
-    from conftest import FakeModel
     from src.services.search_service import search_service
 
     search_service.search_by_text("áo thun đen", limit=3)

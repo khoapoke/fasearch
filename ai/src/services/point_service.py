@@ -14,7 +14,7 @@ from src.core.exceptions import InvalidInputError
 from src.db.enums import CatalogCategory, PointStatus
 from src.db.models import ImagePointPayload
 from src.repositories import ImageRepository, get_image_repository
-from src.utils import normalize_slash, to_system_path, to_web_path
+from src.utils import to_system_path, to_web_path
 from src.utils.point_id import PointId, normalize_point_id
 
 logger = logging.getLogger(__name__)

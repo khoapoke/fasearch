@@ -27,7 +27,6 @@ import logging
 import os
 import re
 import threading
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from functools import lru_cache
@@ -44,13 +43,13 @@ DEFAULT_CACHE_SIZE = 512
 
 # Token Việt không dấu thường gặp -> fallback phát hiện khi query không có dấu.
 VI_ASCII_TOKENS = frozenset({
-    "ao", "quan", "giay", "dep", "vay", "dam", "dam", "tui", "balo", "vi",
+    "ao", "quan", "giay", "dep", "vay", "dam", "tui", "balo", "vi",
     "mu", "non", "khan", "mau", "den", "trang", "do", "xanh", "hong", "vang",
-    "tim", "xam", "nau", "kem", "mua", "ban", "dep", "xinh", "re", "moi",
-    "nam", "nu", "tre", "em", "be", "trai", "gai", "cong", "so", "dep",
-    "thoi", "trang", "kieu", "dang", "co", "tay", "chan", "du", "tiec",
+    "tim", "xam", "nau", "kem", "mua", "ban", "xinh", "re", "moi",
+    "nam", "nu", "tre", "em", "be", "trai", "gai", "cong", "so",
+    "thoi", "kieu", "dang", "co", "tay", "chan", "du", "tiec",
     "the", "thao", "bien", "pho", "hoa", "soc", "caro", "tron", "dai",
-    "ngan", "rong", "om", "lung", "thung", "tron", "cao", "thap", "dep",
+    "ngan", "rong", "om", "lung", "thung", "cao", "thap",
     "da",  # "túi da"/"giày da" còn sót sau glossary vẫn là tiếng Việt
 })
 
@@ -247,7 +246,7 @@ def _load_marianmt() -> bool:
             _mt_model = MarianMTModel.from_pretrained(model_id, **kwargs)
             _mt_model.eval()
             try:
-                import torch
+                import torch  # noqa: F401  (giữ nguyên hành vi: thiếu torch -> bỏ qua .to)
 
                 _mt_model.to("cpu")
             except Exception:
