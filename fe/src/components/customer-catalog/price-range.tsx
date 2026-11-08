@@ -121,7 +121,7 @@ export function PriceRange({
     const a = parseExactPrice(loText);
     const b = parseExactPrice(hiText);
     if (a.kind === "invalid" || b.kind === "invalid") {
-      setError("Chỉ nhập số tiền hợp lệ (đơn vị ₫), ví dụ 500000.");
+      setError("Chỉ nhập số tiền hợp lệ (đơn vị đ), ví dụ 500000.");
       return;
     }
     const nlo = a.kind === "value" ? a.value : null;

@@ -265,7 +265,6 @@ function SlideOpts({ label, activeKey, children }: { label: string; activeKey: s
     }) : null;
     if (ro) ro.observe(box);
     return () => ro?.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, fingerprint, motionOK]);
   return (
     <div

@@ -36,6 +36,7 @@ export default function CtaStudyPage() {
 
   useEffect(() => {
     document.title = "Nghiên cứu CTA | FaSearch";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     try { setMotionOff(localStorage.getItem("fa-motion") === "off"); } catch { /* ignore */ }
   }, []);
 

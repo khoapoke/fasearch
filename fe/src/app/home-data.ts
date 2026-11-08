@@ -6,7 +6,7 @@
 //   - trạng thái loading/empty/error/partial/ready phân biệt được (A2);
 //   - ánh xạ trạng thái là hàm thuần, test được bằng node:test (không thêm framework).
 //
-// Fixture ở đây là MINH HỌA: một áo bomber 549.000 ₫ trong bản thiết kế đã được
+// Fixture ở đây là MINH HỌA: một áo bomber 549.000đ trong bản thiết kế đã được
 // duyệt (nguồn 6fdbcee), không phải mã sản phẩm thật và không phải giá bán.
 
 /** Ảnh dùng ở Home — giữ nguyên ảnh/credit của bản thiết kế đã duyệt. */
@@ -64,7 +64,7 @@ export const HOME_DEMO = {
     subtitle: "Dáng bomber · Khóa kéo",
     overline: "Áo khoác",
     /** Chuỗi đã định dạng sẵn — Home không tự tính hay làm tròn tiền. */
-    priceLabel: "549.000 ₫",
+    priceLabel: "549.000đ",
     photo: HOME_PHOTOS.bomber,
   },
   disclosure:

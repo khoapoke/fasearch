@@ -26,7 +26,9 @@ describe("sitewide motion", () => {
     assert.match(css, /prefers-reduced-motion: reduce/);
   });
   it("quantity steppers stop at limits and animate only transform/opacity", () => {
-    assert.match(read("app/san-pham/[id]/detail-view.tsx"), /disabled=\{quantity <= 1\}/);
+    // PDP clamps the stepper to the stock still addable (available - inCart).
+    assert.match(read("app/san-pham/[id]/detail-view.tsx"), /disabled=\{cappedQty <= 1\}/);
+    assert.match(read("app/san-pham/[id]/detail-view.tsx"), /Math\.max\(remaining, 0\)/);
     assert.match(read("app/gio-hang/page.tsx"), /line\.quantity >= 999/);
     const keyframes = read("components/ui/motion.css").match(/@keyframes qty-tick \{[^}]*\}/)?.[0] ?? "";
     assert.match(keyframes, /opacity/);

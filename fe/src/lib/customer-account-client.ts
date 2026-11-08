@@ -21,6 +21,8 @@ export type FavoriteEntry = {
 
 export type Paged<T> = { data: T[]; page: number; size: number; totalElements: number; totalPages: number };
 
+type PagedPayload = { content?: unknown[]; pageNumber?: number; pageSize?: number; totalElements?: number; totalPages?: number };
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { cache: "no-store", ...init });
   const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string; code?: string; result?: T } | null;
@@ -42,8 +44,8 @@ export async function authChangePassword(oldPassword: string, newPassword: strin
 
 export async function fetchSearchHistory(page = 0, size = 20, signal?: AbortSignal): Promise<Paged<SearchHistoryEntry>> {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
-  const result = await call<any>(`/api/customer-account/search-history?${params}`, { signal });
-  const content = Array.isArray(result?.content) ? result.content : Array.isArray(result) ? result : [];
+  const result = await call<PagedPayload>(`/api/customer-account/search-history?${params}`, { signal });
+  const content = Array.isArray(result) ? result : Array.isArray(result?.content) ? result.content : [];
   return {
     data: content as SearchHistoryEntry[],
     page: result?.pageNumber ?? page,
@@ -74,8 +76,8 @@ export async function deleteSearchHistory(id: number, signal?: AbortSignal): Pro
 
 export async function fetchFavorites(page = 0, size = 20, signal?: AbortSignal): Promise<Paged<FavoriteEntry>> {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
-  const result = await call<any>(`/api/customer-account/favorites?${params}`, { signal });
-  const content = Array.isArray(result?.content) ? result.content : Array.isArray(result) ? result : [];
+  const result = await call<PagedPayload>(`/api/customer-account/favorites?${params}`, { signal });
+  const content = Array.isArray(result) ? result : Array.isArray(result?.content) ? result.content : [];
   return {
     data: content as FavoriteEntry[],
     page: result?.pageNumber ?? page,

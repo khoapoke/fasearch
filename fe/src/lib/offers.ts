@@ -53,7 +53,7 @@ export function normalizeOffers(raw: unknown): OffersResult {
 export function offerDiscountLabel(offer: PublicOffer): string {
   if (offer.discountType === "FREE_SHIP") return "Miễn phí giao hàng";
   if (offer.discountType === "PHAN_TRAM") return `Giảm ${offer.discountValue}%`;
-  if (offer.discountType === "SO_TIEN") return `Giảm ${offer.discountValue.toLocaleString("vi-VN")} ₫`;
+  if (offer.discountType === "SO_TIEN") return `Giảm ${offer.discountValue.toLocaleString("vi-VN")}đ`;
   return "Ưu đãi đang mở";
 }
 
@@ -61,5 +61,5 @@ export function offerDiscountLabel(offer: PublicOffer): string {
 export function offerValidityLabel(offer: PublicOffer): string | null {
   const end = offer.endAt ? new Date(offer.endAt) : null;
   if (!end || Number.isNaN(end.getTime())) return null;
-  return `Đến ${end.toLocaleDateString("vi-VN")}`;
+  return `Đến ${end.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })}`;
 }

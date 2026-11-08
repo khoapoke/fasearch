@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
-import { fetchCatalogProduct, formatVnd } from "@/lib/customer-catalog";
+import ac from "@/components/account/account-cards.module.css";
+import { PriceTag } from "@/components/storefront/price-tag";
+import { fetchCatalogProduct } from "@/lib/customer-catalog";
 import { fetchFavorites, removeFavorite } from "@/lib/customer-account-client";
-import "@/components/storefront/storefront.css";
 
 type SavedProduct = {
   id: number;
@@ -61,6 +62,7 @@ export default function FavoritesPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     void load();
   }, [load]);
 
@@ -81,130 +83,141 @@ export default function FavoritesPage() {
 
   return (
     <AccountCenterShell active="/yeu-thich" title="Sản phẩm yêu thích">
-      {loading ? (
-        <section className="sfSideCard" aria-label="Trạng thái tải">
-          <p className="sfIdentitySub" role="status">Đang tải danh sách sản phẩm yêu thích…</p>
-        </section>
-      ) : null}
+      <div className={ac.pageWide}>
+        {loading ? (
+          <section className={ac.card} aria-label="Trạng thái tải">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Yêu thích</p>
+              <h2 className={ac.title}>Đang tải danh sách</h2>
+            </div>
+            <div className={ac.group} role="status">
+              <div className={ac.skeleton} />
+              <p className={ac.meta}>Đang tải danh sách sản phẩm yêu thích…</p>
+            </div>
+          </section>
+        ) : null}
 
-      {error ? (
-        <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert" style={{ borderLeft: "3px solid #b42318" }}>
-          <b>Lỗi tải dữ liệu</b>
-          <p className="sfIdentitySub" style={{ color: "#b42318", marginTop: 4 }}>{error}</p>
-          <button className="auth-button" type="button" onClick={load} style={{ marginTop: 10 }}>
-            Thử lại
-          </button>
-        </div>
-      ) : null}
-
-      {!loading && !error && visible.length === 0 ? (
-        <section className="sfSideCard" aria-label="Danh sách trống">
-          <b>Chưa có sản phẩm yêu thích</b>
-          <p className="sfIdentitySub" style={{ marginTop: 6, marginBottom: 16 }}>
-            Lưu lại những món đồ bạn quan tâm khi duyệt danh mục để xem lại và mua sắm sau.
-          </p>
-          <Link className="auth-button is-primary" href="/nam" style={{ display: "inline-block" }}>
-            Khám phá sản phẩm →
-          </Link>
-        </section>
-      ) : null}
-
-      {!loading && visible.length > 0 ? (
-        <section className="sfSideCard" aria-label="Danh sách sản phẩm yêu thích">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <b>{visible.length} sản phẩm đã lưu</b>
-            <span className="sfIdentitySub">Đồng bộ theo tài khoản của bạn</span>
+        {error ? (
+          <div ref={errorRef} tabIndex={-1} className={ac.card} role="alert">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Yêu thích</p>
+              <h2 className={ac.title}>Không tải được danh sách</h2>
+            </div>
+            <p className={ac.alert}>{error}</p>
+            <div className={ac.actions}>
+              <button className={ac.secondary} type="button" onClick={load}>
+                Thử lại
+              </button>
+            </div>
           </div>
+        ) : null}
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {visible.map((v) => (
-              <div
-                key={v.id}
-                style={{
-                  border: "1px solid var(--st-line, #e5e5e5)",
-                  borderRadius: 8,
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                  backgroundColor: "var(--st-card, #ffffff)",
-                }}
-              >
-                <Link
-                  href={`/san-pham/${v.id}`}
-                  style={{ textDecoration: "none", color: "inherit", display: "block" }}
+        {!loading && !error && visible.length === 0 ? (
+          <section className={`${ac.card} ${ac.empty}`} aria-label="Danh sách trống">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Yêu thích</p>
+              <h2 className={ac.title}>Chưa có gì ở đây</h2>
+            </div>
+            <p className={ac.meta}>Chưa có sản phẩm yêu thích.</p>
+            <div className={ac.actions}>
+              <Link className={ac.primary} href="/nam">
+                Khám phá sản phẩm
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        {!loading && visible.length > 0 ? (
+          <section className={ac.card} aria-label="Danh sách sản phẩm yêu thích">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Yêu thích</p>
+              <h2 className={ac.title}>Sản phẩm đã lưu</h2>
+              <p className={ac.lead}>{visible.length} sản phẩm · Đồng bộ theo tài khoản của bạn</p>
+            </div>
+
+            <div className={ac.productGrid}>
+              {visible.map((v) => (
+                <div
+                  key={v.id}
+                  style={{
+                    border: "1px solid var(--st-line, #e5e5e5)",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                    backgroundColor: "var(--st-surface, #ffffff)",
+                  }}
                 >
-                  <div style={{ width: "100%", height: 180, backgroundColor: "#f3f3f3", overflow: "hidden" }}>
-                    {v.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={v.image}
-                        alt={v.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
+                  <Link
+                    href={`/san-pham/${v.id}`}
+                    style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                  >
+                    <div style={{ width: "100%", height: 180, backgroundColor: "var(--st-select)", overflow: "hidden" }}>
+                      {v.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={v.image}
+                          alt={v.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "var(--st-ink-soft)",
+                            fontSize: 13,
+                          }}
+                        >
+                          Không có ảnh
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: 14 }}>
+                      {v.categoryName ? (
+                        <span className={ac.chip}>{v.categoryName}</span>
+                      ) : null}
                       <div
                         style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#888",
-                          fontSize: 13,
+                          fontWeight: 600,
+                          fontSize: 14,
+                          marginTop: 8,
+                          lineHeight: 1.4,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "var(--st-ink)",
                         }}
+                        title={v.name}
                       >
-                        Không có ảnh
+                        {v.name}
                       </div>
-                    )}
-                  </div>
-                  <div style={{ padding: 12 }}>
-                    {v.categoryName ? (
-                      <span className="sfIdentitySub" style={{ fontSize: 12 }}>
-                        {v.categoryName}
-                      </span>
-                    ) : null}
-                    <div
-                      style={{
-                        fontWeight: 600,
-                        fontSize: 14,
-                        marginTop: 4,
-                        lineHeight: 1.3,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={v.name}
+                      <div style={{ marginTop: 8 }}>
+                        <PriceTag value={v.price} />
+                      </div>
+                    </div>
+                  </Link>
+                  <div style={{ padding: "0 14px 14px", marginTop: "auto" }}>
+                    <button
+                      type="button"
+                      className={ac.secondary}
+                      disabled={removing === v.id}
+                      onClick={() => removeOne(v.id)}
+                      style={{ width: "100%" }}
                     >
-                      {v.name}
-                    </div>
-                    <div style={{ marginTop: 6, fontWeight: 700, fontSize: 14 }}>
-                      {formatVnd(v.price)}
-                    </div>
+                      {removing === v.id ? "Đang xóa…" : "Bỏ lưu"}
+                    </button>
                   </div>
-                </Link>
-                <div style={{ padding: "0 12px 12px", marginTop: "auto" }}>
-                  <button
-                    type="button"
-                    className="auth-button"
-                    disabled={removing === v.id}
-                    onClick={() => removeOne(v.id)}
-                    style={{ width: "100%" }}
-                  >
-                    {removing === v.id ? "Đang xóa…" : "Bỏ lưu"}
-                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
     </AccountCenterShell>
   );
 }

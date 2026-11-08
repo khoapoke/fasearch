@@ -1,23 +1,44 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
-import { useAdminRole, canManage } from "@/components/admin-b/use-admin-role";
-import { getExportPage, type ExportSummary, type Page } from "@/lib/admin-export-client";
-const TYPE: Record<string, string> = { DAMAGED: "Hàng hỏng", OTHER: "Khác", TRANSFER: "Chuyển kho (không hỗ trợ)" };
-const STATUS: Record<string, string> = { COMPLETED: "Hoàn tất", DRAFT: "Nháp", CANCELLED: "Đã hủy" };
+import { PageHeader } from "@/components/admin-b/page-header";
+import { Pager } from "@/components/admin-b/pagination";
+import { RowLink } from "@/components/admin-b/row-link";
+import { TableSkeleton } from "@/components/admin-b/skeleton";
+import { Num, StatusBadge } from "@/components/admin-b/status-badge";
+import { useFilteredPage } from "@/components/admin-b/use-filtered-page";
+import { useAdminCan } from "@/components/admin-b/use-admin-role";
+import { getExportPage, type ExportSummary } from "@/lib/admin-export-client";
+import { formatDateTime } from "@/lib/admin-format";
+const TYPE: Record<string, string> = { DAMAGED: "Hàng hỏng", OTHER: "Xuất khác", TRANSFER: "Chuyển kho" };
+const STATUS: Record<string, string> = { COMPLETED: "Hoàn tất", DRAFT: "Draft", CANCELLED: "Đã hủy" };
 export default function ExportListPage() {
-  const role = useAdminRole(); const [data, setData] = useState<Page<ExportSummary> | null>(null); const [page, setPage] = useState(0); const [code, setCode] = useState(""); const [type, setType] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  async function load(next = page, clear = false) { setLoading(true); setError(""); const q = new URLSearchParams({ page: String(next), size: "10" }); if (!clear && code.trim()) q.set("receiptCode", code.trim()); if (!clear && type) q.set("exportType", type); try { setData(await getExportPage(q.toString())); } catch (e) { setError(e instanceof Error ? e.message : "Không tải được phiếu xuất."); } finally { setLoading(false); } }
-  // Initial load only; filters apply on submit.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void Promise.resolve().then(() => load(0)); }, []);
-  return <AdminShellB active="exports" title="Phiếu xuất" eyebrow="Vận hành · phiếu xuất hoàn tất trừ kho ngay"><div className="page-heading"><div><h1>Phiếu xuất</h1><p className="meta">Chỉ hỗ trợ DAMAGED/OTHER · không có TRANSFER/kho đích · {canManage(role) ? "Quản trị viên và Quản lý có thể tạo" : "Tài khoản hiện tại chỉ đọc"}</p></div>{canManage(role) ? <Link className="primary" href="/quan-tri/phieu-xuat/moi">Tạo phiếu xuất</Link> : null}</div>
-    <form className="stock-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0); }}><div className="catalog-field"><label htmlFor="ex-code">Mã phiếu</label><input id="ex-code" className="catalog-input" value={code} onChange={(e) => setCode(e.target.value)} /></div><div className="catalog-field"><label htmlFor="ex-type">Loại xuất</label><select id="ex-type" className="catalog-input" value={type} onChange={(e) => setType(e.target.value)}><option value="">Tất cả</option><option value="DAMAGED">Hàng hỏng</option><option value="OTHER">Khác</option></select></div><button className="primary" type="submit">Lọc</button><button className="text-link" type="button" onClick={() => { setCode(""); setType(""); setPage(0); void load(0, true); }}>Đặt lại</button></form>
-    {loading ? <p className="meta" role="status">Đang tải phiếu xuất…</p> : null}{error ? <div className="order-empty" role="alert"><strong>Không tải được phiếu xuất</strong><p>{error}</p><button className="text-link" type="button" onClick={() => load(page)}>Thử lại (giữ lọc)</button></div> : null}
-    {!loading && !error && data?.content.length === 0 ? <div className="order-empty"><strong>Chưa có phiếu xuất</strong><p>{canManage(role) ? "Tạo phiếu đầu tiên để trừ tồn kho." : "Chưa có phiếu trong candidate."}</p></div> : null}
-    {data && data.content.length > 0 ? <div className="table-scroll review-table-scroll" tabIndex={0} aria-label="Danh sách phiếu xuất"><table className="review-orders-table"><caption>{data.totalElements} phiếu · trang {data.pageNumber + 1}/{Math.max(1, data.totalPages)} · dữ liệu BE candidate; không có cột tiền/kho</caption><thead><tr><th>Mã phiếu</th><th>Loại xuất</th><th>Ngày tạo</th><th>Trạng thái</th><th className="num">Mặt hàng</th><th className="num">SL</th></tr></thead><tbody>{data.content.map((r) => <tr key={r.receiptId}><td><Link className="text-link" href={`/quan-tri/phieu-xuat/${r.receiptId}`}>{r.receiptCode}</Link></td><td>{TYPE[r.exportType] ?? r.exportType}</td><td>{new Date(r.createdAt).toLocaleString("vi-VN")}</td><td>{STATUS[r.status] ?? r.status}</td><td className="num">{r.totalItems}</td><td className="num">{r.totalQuantity}</td></tr>)}</tbody></table></div> : null}
-    {data && data.totalPages > 1 ? <div className="review-summary"><button className="text-link" disabled={page === 0} onClick={() => { setPage(page - 1); void load(page - 1); }}>← Trước</button><span>Trang {page + 1} · {data.totalElements}</span><button className="text-link" disabled={data.last} onClick={() => { setPage(page + 1); void load(page + 1); }}>Sau →</button></div> : null}
-    <p className="meta" style={{ marginTop: 16 }}>Không có sửa/xóa/duyệt/TRANSFER. Phiếu COMPLETED trừ physical/available ngay; reserved giữ nguyên.</p>
+  const can = useAdminCan();
+  const [code, setCode] = useState("");
+  const [type, setType] = useState("");
+  const list = useFilteredPage<ExportSummary>((q) => getExportPage(q), { receiptCode: code, exportType: type }, "Không tải được phiếu xuất.");
+  const rows = list.data?.content ?? [];
+  const filtered = Boolean(code.trim() || type);
+  return <AdminShellB active="exports" title="Phiếu xuất">
+    <PageHeader title="Phiếu xuất" hint={`Chỉ tạo phiếu hàng hỏng hoặc xuất khác. Phiếu hoàn tất trừ tồn kho ngay, không cần duyệt. Một số phiếu cũ chưa có danh sách dòng hàng.${can("INVENTORY_RECEIPT_CREATE") ? "" : " Tài khoản hiện tại chỉ đọc."}`}
+      actions={can("INVENTORY_RECEIPT_CREATE") ? <Link className="primary" href="/quan-tri/phieu-xuat/moi">Tạo phiếu xuất</Link> : null} />
+    <form className="orders-filters l3-filters" role="search" onSubmit={(e) => e.preventDefault()}>
+      <div className="catalog-field"><label className="sr-only" htmlFor="ex-code">Mã phiếu</label><input id="ex-code" className="catalog-input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Tìm mã phiếu" /></div>
+      <div className="catalog-field l3-select"><label htmlFor="ex-type">Loại xuất</label><select id="ex-type" className="catalog-input" value={type} onChange={(e) => setType(e.target.value)}><option value="">Mọi loại xuất</option><option value="DAMAGED">Hàng hỏng</option><option value="OTHER">Xuất khác</option></select></div>
+      {filtered ? <button className="secondary" type="button" onClick={() => { setCode(""); setType(""); }}>Đặt lại</button> : null}
+    </form>
+    {list.error ? <div className="order-empty" role="alert"><strong>Không tải được phiếu xuất</strong><p>{list.error}</p><button className="secondary" type="button" onClick={list.reload}>Thử lại</button></div> : null}
+    {list.loading && !list.data ? <TableSkeleton rows={10} columns={6} /> : null}
+    {!list.loading && !list.error && list.data && rows.length === 0 ? <div className="order-empty"><strong>{filtered ? "Không có phiếu khớp" : "Chưa có phiếu xuất"}</strong><p>{filtered ? "Thử bỏ bớt bộ lọc." : can("INVENTORY_RECEIPT_CREATE") ? "Tạo phiếu đầu tiên để trừ tồn kho." : "Chưa có phiếu nào."}</p></div> : null}
+    {rows.length > 0 ? <div className="table-scroll sticky-head review-table-scroll table-cards" tabIndex={0} aria-label="Danh sách phiếu xuất" aria-busy={list.loading}><table className="review-orders-table l3-table"><caption className="sr-only">Phiếu xuất kho</caption><thead><tr><th>Mã phiếu</th><th>Loại xuất</th><th>Ngày tạo</th><th>Trạng thái</th><th className="num">Mặt hàng</th><th className="num">Số lượng</th></tr></thead><tbody>{rows.map((r) => <RowLink key={r.receiptId} href={`/quan-tri/phieu-xuat/${r.receiptId}`}>
+      <td data-label="Mã phiếu" className="cell-title"><Link className="text-link" href={`/quan-tri/phieu-xuat/${r.receiptId}`}>{r.receiptCode}</Link></td>
+      <td data-label="Loại xuất">{TYPE[r.exportType] ?? r.exportType}</td>
+      <td data-label="Ngày tạo" className="tabnum">{formatDateTime(r.createdAt)}</td>
+      <td data-label="Trạng thái"><StatusBadge status={r.status} label={STATUS[r.status] ?? r.status} /></td>
+      <td data-label="Mặt hàng" className="num"><Num tone="blue" value={r.totalItems} /></td>
+      <td data-label="Số lượng" className="num"><Num tone="orange" bold value={r.totalQuantity} /></td>
+    </RowLink>)}</tbody></table></div> : null}
+    {list.data && rows.length > 0 ? <Pager page={list.page} totalPages={list.data.totalPages} total={list.data.totalElements} unit="phiếu" busy={list.loading} onPage={list.setPage} /> : null}
   </AdminShellB>;
 }

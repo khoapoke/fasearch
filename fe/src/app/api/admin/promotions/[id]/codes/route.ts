@@ -14,6 +14,6 @@ export async function POST(request: NextRequest, { params }: Context) {
   const parsed = await readBoundedJsonObject(request, 4 * 1024);
   if (!parsed.ok) return bad(parsed.reason === "TOO_LARGE" ? "Dữ liệu gửi lên vượt quá giới hạn." : "Dữ liệu gửi lên chưa hợp lệ.", parsed.reason === "TOO_LARGE" ? 413 : 400, parsed.reason === "TOO_LARGE" ? "BODY_TOO_LARGE" : "INVALID_REQUEST");
   const body = codeBody(parsed.body);
-  if (!body) return bad("Thông tin phát hành mã chưa hợp lệ.", 400, "INVALID_REQUEST");
+  if (!body) return bad("Thông tin phát hành Voucher chưa hợp lệ.", 400, "INVALID_REQUEST");
   return promotionsUpstream(request, `/api/v1/khuyen-mai/${id}/codes`, "POST", body);
 }

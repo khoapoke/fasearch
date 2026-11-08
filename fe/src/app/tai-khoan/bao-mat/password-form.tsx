@@ -1,13 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { validateNewPasswordInput } from "@/lib/account-contract";
 import { authChangePassword } from "@/lib/customer-account-client";
 import { authMe } from "@/lib/customer-auth-client";
 
-import styles from "@/components/account/account.module.css";
+import ac from "@/components/account/account-cards.module.css";
 
 export function PasswordForm() {
   const router = useRouter();
@@ -91,20 +90,21 @@ export function PasswordForm() {
 
   if (!ready && !error) {
     return (
-      <div aria-label="Đang kiểm tra phiên">
-        <div className={styles.skeleton} style={{ height: 40 }} />
-        <div className={styles.skeleton} style={{ height: 40, marginTop: 12 }} />
+      <div className={ac.group} aria-label="Đang kiểm tra phiên">
+        <div className={ac.skeleton} />
+        <div className={ac.skeleton} />
       </div>
     );
   }
 
   return (
-    <form className={styles.form} onSubmit={submit} noValidate method="post">
-      <div className={styles.field}>
-        <label htmlFor="pw-current">Mật khẩu hiện tại</label>
-        <div className={styles.inputRow}>
+    <form className={ac.form} onSubmit={submit} noValidate method="post">
+      <div className={ac.field}>
+        <label className={ac.label} htmlFor="pw-current">Mật khẩu hiện tại</label>
+        <div className={ac.inputWrap}>
           <input
             id="pw-current"
+            className={ac.input}
             type={showCurrent ? "text" : "password"}
             autoComplete="current-password"
             required
@@ -114,7 +114,7 @@ export function PasswordForm() {
           />
           <button
             type="button"
-            className={styles.reveal}
+            className={ac.reveal}
             aria-pressed={showCurrent}
             aria-label={showCurrent ? "Ẩn mật khẩu hiện tại" : "Hiện mật khẩu hiện tại"}
             onClick={() => setShowCurrent(!showCurrent)}
@@ -122,60 +122,67 @@ export function PasswordForm() {
             {showCurrent ? "Ẩn" : "Hiện"}
           </button>
         </div>
-        {currentIssue && <p className={styles.fieldError} role="alert">{currentIssue}</p>}
+        {currentIssue && <p className={ac.error} role="alert">{currentIssue}</p>}
       </div>
-      <div className={styles.field}>
-        <label htmlFor="pw-next">Mật khẩu mới</label>
-        <div className={styles.inputRow}>
+
+      <hr className={ac.divider} />
+
+      <div className={ac.group}>
+        <div className={ac.field}>
+          <label className={ac.label} htmlFor="pw-next">Mật khẩu mới</label>
+          <div className={ac.inputWrap}>
+            <input
+              id="pw-next"
+              className={ac.input}
+              type={showNext ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              aria-invalid={nextIssue ? true : undefined}
+              aria-describedby="pw-next-hint"
+              value={next}
+              onChange={(event) => setNext(event.target.value)}
+            />
+            <button
+              type="button"
+              className={ac.reveal}
+              aria-pressed={showNext}
+              aria-label={showNext ? "Ẩn mật khẩu mới" : "Hiện mật khẩu mới"}
+              onClick={() => setShowNext(!showNext)}
+            >
+              {showNext ? "Ẩn" : "Hiện"}
+            </button>
+          </div>
+          <p className={ac.hint} id="pw-next-hint">Từ 15 đến 64 ký tự. Một câu ngắn dễ nhớ cũng là mật khẩu tốt.</p>
+          {nextIssue && <p className={ac.error} role="alert">{nextIssue}</p>}
+        </div>
+        <div className={ac.field}>
+          <label className={ac.label} htmlFor="pw-confirm">Nhập lại mật khẩu mới</label>
           <input
-            id="pw-next"
-            type={showNext ? "text" : "password"}
+            id="pw-confirm"
+            className={ac.input}
+            type="password"
             autoComplete="new-password"
             required
-            aria-invalid={nextIssue ? true : undefined}
-            value={next}
-            onChange={(event) => setNext(event.target.value)}
+            aria-invalid={confirmIssue ? true : undefined}
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
           />
-          <button
-            type="button"
-            className={styles.reveal}
-            aria-pressed={showNext}
-            aria-label={showNext ? "Ẩn mật khẩu mới" : "Hiện mật khẩu mới"}
-            onClick={() => setShowNext(!showNext)}
-          >
-            {showNext ? "Ẩn" : "Hiện"}
-          </button>
+          {confirmIssue && <p className={ac.error} role="alert">{confirmIssue}</p>}
         </div>
-        <p className={styles.hint}>15–64 ký tự, tối đa 72 byte UTF-8. Không có thang điểm mạnh yếu.</p>
-        {nextIssue && <p className={styles.fieldError} role="alert">{nextIssue}</p>}
       </div>
-      <div className={styles.field}>
-        <label htmlFor="pw-confirm">Nhập lại mật khẩu mới</label>
-        <input
-          id="pw-confirm"
-          type="password"
-          autoComplete="new-password"
-          required
-          aria-invalid={confirmIssue ? true : undefined}
-          value={confirm}
-          onChange={(event) => setConfirm(event.target.value)}
-        />
-        {confirmIssue && <p className={styles.fieldError} role="alert">{confirmIssue}</p>}
-      </div>
+
       {error && (
-        <p ref={errorRef} tabIndex={-1} className={styles.alert} role="alert">
+        <p ref={errorRef} tabIndex={-1} className={ac.alert} role="alert">
           {error}
         </p>
       )}
-      <div className={styles.actions}>
-        <button className={styles.primary} type="submit" disabled={busy}>
+
+      <div className={ac.actions}>
+        <button className={ac.primary} type="submit" disabled={busy}>
           {busy ? "Đang đổi mật khẩu…" : "Đổi mật khẩu"}
         </button>
+        <p className={ac.footnote}>Đổi xong, mọi thiết bị (kể cả máy này) sẽ được đăng xuất để bạn đăng nhập lại bằng mật khẩu mới.</p>
       </div>
-      <p className={styles.muted}>
-        Đổi xong, mọi phiên đăng nhập (kể cả thiết bị này) hết hiệu lực.{" "}
-        <Link href="/tai-khoan">Về trung tâm tài khoản</Link>
-      </p>
     </form>
   );
 }

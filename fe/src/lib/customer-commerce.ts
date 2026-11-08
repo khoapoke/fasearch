@@ -71,6 +71,8 @@ export type CustomerOrderDetail = CustomerOrder & {
   note: string | null;
   customer: { customerId: number; fullName: string | null; phoneNumber: string | null } | null;
   items: CustomerOrderItem[];
+  paymentStatus: string | null;
+  paymentMethod: string | null;
 };
 
 export type CustomerOrderPage = {
@@ -151,7 +153,6 @@ export function formatCommerceUpstreamError(
     4107: "Giá hoặc ưu đãi đã thay đổi. Hãy báo giá lại trước khi đặt hàng.",
     4108: "Yêu cầu đặt hàng đã thay đổi. Hãy tải lại giỏ hàng.",
     4109: "Chiến dịch đã được cập nhật. Hãy tải lại trước khi sửa tiếp.",
-    4201: "Số dư điểm cũ chưa được ghi nhận mở đầu.",
     4202: "Chưa có chính sách điểm để đổi.",
     4203: "Chính sách điểm đang tắt; số dư vẫn được giữ.",
     4204: "Điểm vượt quá số dư hoặc mức giảm tối đa hiện tại.",
@@ -169,7 +170,7 @@ export function formatCommerceUpstreamError(
       message = "Giỏ hàng hiện đang trống.";
     } else if (/access denied|forbidden|không có quyền|permission/i.test(upstreamMessage)) {
       message = "Tài khoản không có quyền thực hiện thao tác này.";
-    } else if (/unauthenticated|unauthorized|hết phiên/i.test(upstreamMessage)) {
+    } else if (/unauthenticated|unauthorized|hết phiên|chưa đăng nhập/i.test(upstreamMessage)) {
       message = "Vui lòng đăng nhập lại để tiếp tục.";
     } else if (/not found|không tìm thấy/i.test(upstreamMessage)) {
       message = "Không tìm thấy dữ liệu yêu cầu.";
@@ -331,9 +332,13 @@ export function normalizeOrderDetail(raw: unknown): CustomerOrderDetail {
   const v = record(raw);
   if (!Array.isArray(v.items)) throw new CommerceError(INVALID, 502);
   const c = v.customer === null || v.customer === undefined ? null : record(v.customer);
+  const paymentStatus = typeof v.paymentStatus === "string" ? v.paymentStatus : null;
+  const paymentMethod = typeof v.paymentMethod === "string" ? v.paymentMethod : null;
   return {
     ...base,
     note: text(v.note),
+    paymentStatus,
+    paymentMethod,
     customer: c ? { customerId: integer(c.customerId, 1), fullName: text(c.fullName), phoneNumber: text(c.phoneNumber) } : null,
     items: v.items.map((x) => {
       const i = record(x);
@@ -363,8 +368,9 @@ function sameOriginProductImage(raw: string | null): string | null {
   return m ? `/api/catalog/product-images/${m[1]}` : raw;
 }
 
+/** Tiền cho khách: một kiểu duy nhất "1.450.000đ" (không dấu cách). */
 export function formatMoney(value: number): string {
-  return Number.isFinite(value) ? `${value.toLocaleString("vi-VN")}₫` : "—";
+  return Number.isFinite(value) ? `${value.toLocaleString("vi-VN")}đ` : "—";
 }
 
 export function orderStatusText(status: string): string {

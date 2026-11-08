@@ -137,7 +137,8 @@ export function PointsToggle({ loaded, policyEnabled, available, allowed, perPoi
     <div className="co-block">
       <h3 className="co-h3">Điểm thưởng</h3>
       <div className={`co-points${canUse || on ? "" : " is-empty"}`}>
-        <div className="co-points-text">
+        {/* Bấm vào chữ cũng bật/tắt như bấm công tắc; bàn phím vẫn dùng chính nút công tắc. */}
+        <div className={`co-points-text${canUse || on ? " is-clickable" : ""}`} onClick={canUse || on ? () => onToggle(!on) : undefined}>
           <span id={`${id}-label`} className="co-points-title">
             {canUse || on ? <>Dùng <b>{usable.toLocaleString("vi-VN")}</b> điểm <span className="co-points-save">(−{formatMoney(estimate)})</span></> : "Chưa có điểm để dùng cho đơn này"}
           </span>
@@ -159,8 +160,8 @@ type Method = "COD" | "STRIPE" | "VNPAY";
 export function PaymentCards({ method, onChange, zeroDue }: { method: Method; onChange: (next: Method) => void; zeroDue: boolean }) {
   const options: Array<{ value: Method; title: string; text: string; badge?: string; test?: boolean }> = [
     { value: "COD", title: "Thanh toán khi nhận hàng", text: "Trả tiền mặt cho người giao hàng.", badge: "Mặc định" },
-    { value: "STRIPE", title: "Thẻ quốc tế (Stripe)", text: "Chế độ thử nghiệm, dùng thẻ test 4242. Thanh toán chỉ được ghi nhận khi cổng xác nhận.", badge: "Thử nghiệm", test: true },
-    { value: "VNPAY", title: "VNPay", text: "Môi trường sandbox. Kết quả cuối hiển thị sau khi đối soát, đơn không tự đánh dấu đã trả.", badge: "Thử nghiệm", test: true },
+    { value: "STRIPE", title: "Thẻ quốc tế (Stripe)", text: "Chế độ thử nghiệm, dùng thẻ thử nghiệm 4242. Thanh toán chỉ được ghi nhận khi cổng xác nhận.", badge: "Thử nghiệm", test: true },
+    { value: "VNPAY", title: "VNPay", text: "Môi trường thử nghiệm. Kết quả cuối hiển thị sau khi đối soát, đơn không tự đánh dấu đã trả.", badge: "Thử nghiệm", test: true },
   ];
   return (
     <div className="co-block">

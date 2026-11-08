@@ -111,7 +111,11 @@ export default function CartPage() {
             <Link href="/">Trang chủ</Link><span aria-hidden="true">›</span><span aria-current="page">Giỏ hàng</span>
           </nav>
           <h1 className="commerce-title">Giỏ hàng</h1>
-          <p className="commerce-sub">Giá và tổng tiền được xác nhận khi bạn đăng nhập, theo số lượng còn bán hiện tại.</p>
+          <p className="commerce-sub">
+            {authState === "guest"
+              ? "Giỏ tạm lưu trên thiết bị này. Đăng nhập để xác nhận giá và tổng tiền theo số lượng còn bán."
+              : "Giá và tổng tiền theo số lượng còn bán hiện tại; phí giao hàng tính ở bước thanh toán."}
+          </p>
 
           {notice ? <p className="commerce-status" role="status">{notice}</p> : null}
           {actionError ? <p className="commerce-status is-error" role="alert">{actionError}</p> : null}
@@ -191,7 +195,6 @@ export default function CartPage() {
                         <div>
                           <p className="commerce-line-name">{line.productName}</p>
                           <p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · Đơn giá {formatMoney(line.unitPrice)}</p>
-                          <p className="commerce-line-price">{[line.color, line.size].filter(Boolean).join(" · ") ? "Đã chọn màu/cỡ" : "Một lựa chọn"}</p>
                         </div>
                         <div className="commerce-line-side">
                           <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
@@ -214,7 +217,7 @@ export default function CartPage() {
                 <div className="commerce-summary-row"><span>Số món</span><strong>{cart.totalItems}</strong></div>
                 <div className="commerce-summary-total"><span>Tổng hàng</span><strong>{formatMoney(subtotal)}</strong></div>
                 <Link className="commerce-primary" href="/thanh-toan" aria-disabled={lines.length === 0}>Tiến hành thanh toán →</Link>
-                <p className="commerce-note">Phí giao hàng được tính ở bước thanh toán bằng API vận chuyển; chưa cộng vào giỏ này.</p>
+                <p className="commerce-note">Phí giao hàng được tính ở bước thanh toán; chưa cộng vào giỏ này.</p>
               </aside>
             </div>
           ) : null}

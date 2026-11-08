@@ -3,17 +3,19 @@
 // ApiResponse { success, code, message, result, errors }.
 
 export type AiHit = {
+  /** Mã điểm vector (khóa ổn định cho UI, không hiển thị). */
   sourceId: string;
+  /** Độ tương đồng thô; không hiển thị cho khách. */
   score: number;
-  fileName: string;
-  catalog: string | null;
-  /** Same-origin proxy path `/api/be/v1/ai/images/{id}`, null khi vắng/không hợp lệ. */
+  /** Sản phẩm thật đang bán trong danh mục. */
+  productId: number;
+  name: string;
+  brandName: string | null;
+  price: number;
+  /** Ảnh chính theo catalog (`/api/catalog/product-images/...`) hoặc null. */
   imageUrl: string | null;
-  tenHienThi: string | null;
-  thuocTinh: unknown;
-  nguonDuLieu: string | null;
-  phienBanDuLieu: string | null;
-  maSpLienKet: string | number | null;
+  /** Tên các màu còn hàng. */
+  colors: string[];
 };
 
 /** strip rồi kiểm tra độ dài 1..200. Trả chuỗi đã strip, ném lỗi VI nếu sai. */
@@ -24,51 +26,40 @@ export function validateQuery(raw: string): string {
   return query;
 }
 
-/** int 1..5, default 5. Nhận string từ input. */
+/** int 1..24, default 12. Nhận string từ input. */
 export function validateLimit(raw: string): number {
-  if (!raw.trim()) return 5;
+  if (!raw.trim()) return 12;
   const n = Number(raw);
-  if (!Number.isInteger(n) || n < 1 || n > 5) {
-    throw new Error("Số kết quả phải là số nguyên 1–5.");
+  if (!Number.isInteger(n) || n < 1 || n > 24) {
+    throw new Error("Số kết quả phải là số nguyên 1–24.");
   }
   return n;
 }
 
 type RawHit = {
   sourceId?: unknown;
-  id?: unknown;
   score?: unknown;
-  fileName?: unknown;
-  file_name?: unknown;
-  catalog?: unknown;
+  productId?: unknown;
+  name?: unknown;
+  brandName?: unknown;
+  price?: unknown;
   imageUrl?: unknown;
-  tenHienThi?: unknown;
-  thuocTinh?: unknown;
-  nguonDuLieu?: unknown;
-  phienBanDuLieu?: unknown;
-  maSpLienKet?: unknown;
+  colors?: unknown;
 };
 
-
-/** Accept only the dedicated same-origin image BFF URL and its exact safe filename path. */
-export function toProxyImageUrl(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== "string" || !raw.startsWith("/api/ai/image?path=")) return null;
-  const encoded = raw.slice("/api/ai/image?path=".length);
-  if (!encoded || encoded.length > 512) return null;
-  let path: string;
-  try { path = decodeURIComponent(encoded); } catch { return null; }
-  const prefix = "/api/v1/search/images/";
-  if (!path.startsWith(prefix)) return null;
-  const fileName = path.slice(prefix.length);
-  if (!fileName || fileName.includes("..") || !/^[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(fileName)) return null;
-  return raw;
+/** Chỉ nhận ảnh sản phẩm catalog qua BFF cùng origin, tên file an toàn. */
+export function toCatalogImageUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const prefix = "/api/catalog/product-images/";
+  if (!raw.startsWith(prefix) || raw.length > 512) return null;
+  const rest = raw.slice(prefix.length);
+  if (!rest || rest.includes("..") || rest.includes("\\") || rest.includes("?") || rest.includes("#")) return null;
+  return /^[A-Za-z0-9._\-/%]+$/.test(rest) ? raw : null;
 }
 
 /**
- * Bóc data.results từ envelope BE. Giữ đúng thứ tự upstream; score phải finite
- * (điểm tương đồng, không phải %/accuracy); catalog null khi vắng/không phải
- * string. Alias id/file_name theo schema teammate phòng BE giữ nguyên tên.
+ * Bóc result.results từ envelope BFF. Giữ đúng thứ tự upstream; mỗi kết quả là sản phẩm thật
+ * (productId nguyên dương, tên, giá hữu hạn); điểm chỉ để xếp hạng nội bộ.
  */
 export function parseAiResults(payload: unknown): AiHit[] {
   const envelope = payload as { result?: { results?: unknown } };
@@ -78,28 +69,26 @@ export function parseAiResults(payload: unknown): AiHit[] {
   }
   return results.map((item) => {
     const raw = item as RawHit;
-    const sourceId = raw.sourceId ?? raw.id;
-    const fileName = raw.fileName ?? raw.file_name;
-    if (typeof sourceId !== "string" || !sourceId) {
+    if (typeof raw.sourceId !== "string" || !raw.sourceId) {
       throw new Error("Máy chủ trả về không đúng định dạng. Thử lại.");
     }
     if (typeof raw.score !== "number" || !Number.isFinite(raw.score)) {
       throw new Error("Máy chủ trả về điểm số không hợp lệ. Thử lại.");
     }
+    if (typeof raw.productId !== "number" || !Number.isInteger(raw.productId) || raw.productId < 1
+      || typeof raw.name !== "string" || !raw.name.trim()
+      || typeof raw.price !== "number" || !Number.isFinite(raw.price)) {
+      throw new Error("Máy chủ trả về không đúng định dạng. Thử lại.");
+    }
     return {
-      sourceId,
+      sourceId: raw.sourceId,
       score: raw.score,
-      fileName: typeof fileName === "string" ? fileName : "—",
-      catalog: typeof raw.catalog === "string" && raw.catalog ? raw.catalog : null,
-      imageUrl: toProxyImageUrl(raw.imageUrl),
-      tenHienThi: typeof raw.tenHienThi === "string" && raw.tenHienThi ? raw.tenHienThi : null,
-      thuocTinh: raw.thuocTinh ?? null,
-      nguonDuLieu: typeof raw.nguonDuLieu === "string" && raw.nguonDuLieu ? raw.nguonDuLieu : null,
-      phienBanDuLieu: typeof raw.phienBanDuLieu === "string" && raw.phienBanDuLieu ? raw.phienBanDuLieu : null,
-      maSpLienKet:
-        typeof raw.maSpLienKet === "string" || typeof raw.maSpLienKet === "number"
-          ? raw.maSpLienKet
-          : null,
+      productId: raw.productId,
+      name: raw.name.trim(),
+      brandName: typeof raw.brandName === "string" && raw.brandName ? raw.brandName : null,
+      price: raw.price,
+      imageUrl: toCatalogImageUrl(raw.imageUrl),
+      colors: Array.isArray(raw.colors) ? raw.colors.filter((c): c is string => typeof c === "string" && c.length > 0) : [],
     };
   });
 }

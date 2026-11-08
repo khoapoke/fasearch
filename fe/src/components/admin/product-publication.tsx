@@ -13,6 +13,11 @@ import {
   type AiSyncState,
   type Product,
 } from "@/lib/admin-catalog-client";
+import { ConfirmDialog } from "@/components/admin-b/confirm-dialog";
+import { InfoHint } from "@/components/admin-b/info-hint";
+import { Icon } from "@/components/admin-b/icons";
+import { formatDateTime } from "@/lib/admin-format";
+import "@/components/admin-b/h2.css";
 
 /**
  * Publication lifecycle + AI sync state for one product — real contract flow.
@@ -26,12 +31,20 @@ import {
  *   Trước khi hợp đồng BE tồn tại, panel báo `unavailable` trung thực.
  */
 
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Nháp",
-  ACTIVE: "Đang bán",
-  OUT_OF_STOCK: "Tạm hết hàng",
-  DISCONTINUED: "Ngừng kinh doanh",
+const AI_STATUS_LABEL: Record<string, string> = {
+  NEVER_QUEUED: "Chưa đưa vào hàng đợi",
+  PENDING: "Đang chờ đồng bộ",
+  RUNNING: "Đang đồng bộ",
+  READY: "Sẵn sàng",
+  FAILED: "Đồng bộ thất bại",
 };
+function aiStatusLabel(v: string): string {
+  return AI_STATUS_LABEL[v] ?? "Chưa rõ trạng thái";
+}
+// Healthy for a published product: READY, or NEVER_QUEUED (seed products were bulk-indexed without a sync row).
+function aiHealthy(v: string): boolean {
+  return v === "READY" || v === "NEVER_QUEUED";
+}
 
 type AiSync =
   | { kind: "checking" }
@@ -44,54 +57,64 @@ async function call<T>(run: () => Promise<T>, signal?: AbortSignal): Promise<T> 
   return run();
 }
 
-export function ProductPublication({ product, onChanged }: { product: Product; onChanged: (next: Product) => void }) {
+export function ProductPublication(props: { product: Product; onChanged: (next: Product) => void }) {
+  // Keyed by product: another product starts from the loading state instead of an effect-driven reset.
+  return <ProductPublicationBody key={props.product.id} {...props} />;
+}
+
+function ProductPublicationBody({ product, onChanged }: { product: Product; onChanged: (next: Product) => void }) {
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [issue, setIssue] = useState("");
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState<AdminDraft | null>(null);
   const [draftLoading, setDraftLoading] = useState(true);
   const [ai, setAi] = useState<AiSync>({ kind: "checking" });
 
-  const loadDraft = useCallback(
-    async (signal?: AbortSignal) => {
-      setDraftLoading(true);
-      try {
-        const drafts = await call(() => listDrafts("page=0&size=50", signal), signal);
-        const mine = drafts.find((d) => d.productId === product.id) ?? null;
-        setDraft(mine);
-      } catch {
-        setDraft(null);
-      } finally {
-        setDraftLoading(false);
-      }
-    },
-    [product.id],
-  );
+  // Pure fetchers: they return the next state and never set it, so an effect can use them directly.
+  const fetchMine = useCallback(async (signal?: AbortSignal): Promise<AdminDraft | null> => {
+    try {
+      const drafts = await call(() => listDrafts("page=0&size=50", signal), signal);
+      return drafts.find((d) => d.productId === product.id) ?? null;
+    } catch {
+      return null;
+    }
+  }, [product.id]);
 
-  const probeAi = useCallback(
-    async (signal?: AbortSignal) => {
-      setAi({ kind: "checking" });
-      try {
-        const state = await call(() => getAiSync(product.id, signal), signal);
-        setAi({ kind: "ready", state });
-      } catch (failure) {
-        if (signal?.aborted) return;
-        if (failure instanceof CatalogAdminError && failure.status === 404) {
-          setAi({ kind: "unavailable", message: "Trạng thái đồng bộ AI chưa có — chờ hợp đồng BE (API-CONTRACT)." });
-          return;
-        }
-        setAi({ kind: "error", message: failure instanceof Error ? failure.message : "Không đọc được trạng thái AI." });
+  const fetchAi = useCallback(async (signal?: AbortSignal): Promise<AiSync> => {
+    try {
+      return { kind: "ready", state: await call(() => getAiSync(product.id, signal), signal) };
+    } catch (failure) {
+      if (failure instanceof CatalogAdminError && failure.status === 404) {
+        return { kind: "unavailable", message: "Chưa có trạng thái đồng bộ AI." };
       }
-    },
-    [product.id],
-  );
+      return { kind: "error", message: failure instanceof Error ? failure.message : "Không đọc được trạng thái AI." };
+    }
+  }, [product.id]);
+
+  // Used by handlers: show the loading state, refetch, then apply.
+  const loadDraft = useCallback(async () => {
+    setDraftLoading(true);
+    setDraft(await fetchMine());
+    setDraftLoading(false);
+  }, [fetchMine]);
+  const probeAi = useCallback(async () => {
+    setAi({ kind: "checking" });
+    setAi(await fetchAi());
+  }, [fetchAi]);
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadDraft(controller.signal);
-    void probeAi(controller.signal);
+    void fetchMine(controller.signal).then((mine) => {
+      if (controller.signal.aborted) return;
+      setDraft(mine);
+      setDraftLoading(false);
+    });
+    void fetchAi(controller.signal).then((next) => {
+      if (!controller.signal.aborted) setAi(next);
+    });
     return () => controller.abort();
-  }, [loadDraft, probeAi]);
+  }, [fetchMine, fetchAi]);
 
   async function publish() {
     if (busy || !draft) return;
@@ -100,17 +123,17 @@ export function ProductPublication({ product, onChanged }: { product: Product; o
     setNotice("");
     try {
       const result = await publishDraft(draft.draftId, draft.version);
-      setNotice(`Đã xuất bản phiên bản ${result.version}. AI: ${typeof result === "object" && result !== null && "aiSync" in result ? String((result as { aiSync: unknown }).aiSync) : "PENDING"}.`);
-      onChanged({ ...product, status: "ACTIVE" });
+      setNotice(`Đã Publish phiên bản ${result.version}. AI: ${aiStatusLabel(typeof result === "object" && result !== null && "aiSync" in result ? String((result as { aiSync: unknown }).aiSync) : "PENDING")}.`);
+      onChanged({ ...product, status: "ACTIVE", publicationStatus: "PUBLISHED" });
       await loadDraft();
       await probeAi();
     } catch (failure) {
       if (failure instanceof CatalogAdminError && failure.status === 409) {
-        setIssue("Bản nháp đã có phiên bản mới hơn (409). Đã tải lại — kiểm tra rồi xuất bản lại, không ghi đè.");
+        setIssue("Draft đã có phiên bản mới hơn. Đã tải lại; kiểm tra rồi Publish lại.");
         await loadDraft();
         return;
       }
-      setIssue(failure instanceof Error ? failure.message : "Không xuất bản được.");
+      setIssue(failure instanceof Error ? failure.message : "Không Publish được.");
     } finally {
       setBusy(false);
     }
@@ -118,19 +141,19 @@ export function ProductPublication({ product, onChanged }: { product: Product; o
 
   async function unpublish() {
     if (busy) return;
-    if (!window.confirm("Gỡ sản phẩm khỏi catalog công khai? Điểm AI sẽ bị đánh dấu xóa.")) return;
     setBusy(true);
     setIssue("");
     setNotice("");
     try {
       await unpublishProduct(product.id);
-      setNotice("Đã gỡ xuất bản. Nội dung công khai và điểm AI sẽ biến mất sau khi BE xử lý.");
-      onChanged({ ...product, status: "DRAFT" });
+      setNotice("Đã Unpublish. Nội dung công khai sẽ ẩn sau khi xử lý.");
+      onChanged({ ...product, status: "DRAFT", publicationStatus: "UNPUBLISHED" });
       await probeAi();
     } catch (failure) {
-      setIssue(failure instanceof Error ? failure.message : "Không gỡ xuất bản được.");
+      setIssue(failure instanceof Error ? failure.message : "Không Unpublish được.");
     } finally {
       setBusy(false);
+      setConfirmOpen(false);
     }
   }
 
@@ -145,87 +168,91 @@ export function ProductPublication({ product, onChanged }: { product: Product; o
     }
   }
 
-  const published = product.status === "ACTIVE";
+  const pubState = product.publicationStatus ?? null;
+  const published = pubState === "PUBLISHED";
+  const pubLabel = published ? "Đã Publish" : pubState === "UNPUBLISHED" ? "Đã Unpublish" : "Chưa Publish";
+  const pubTone = published ? "green" : pubState === "UNPUBLISHED" ? "orange" : "gray";
   return (
-    <section className="workbench" aria-label="Xuất bản và đồng bộ AI" style={{ marginBottom: 18 }}>
-      <div className="section-head">
-        <div>
-          <h2>Xuất bản</h2>
-          <p className="meta">
-            Trạng thái hiện tại: <strong>{STATUS_LABEL[product.status] ?? product.status}</strong>
-            {published ? " · đang hiển thị công khai" : " · chưa hiển thị công khai"}
-            {draftLoading ? " · đang tìm bản nháp…" : draft ? ` · bản nháp v${draft.version}` : " · chưa có bản nháp"}
-          </p>
-        </div>
-        <div className="catalog-inline">
-          <Link className="text-link" href={`/quan-tri/san-pham/${product.id}/xem-truoc`} aria-label={`Xem trước bản nháp ${product.productName} với bố cục khách hàng`}>
-            Xem trước bản nháp
+    <section className="pp-card" aria-label="Publish và đồng bộ AI">
+      <div className="pp-head">
+        <h2>Publish</h2>
+        <span className={`badge t-${pubTone}`}>{pubLabel}</span>
+        <InfoHint align="end">
+          Nội dung sửa được lưu vào Draft và chỉ hiển thị với khách hàng sau khi Publish. Chưa có Draft thì tạo ở trang sửa sản phẩm. Unpublish sẽ ẩn sản phẩm khỏi cửa hàng.
+        </InfoHint>
+      </div>
+      <p className="pp-line">
+        {draftLoading ? "Đang tìm Draft…" : draft ? <>Draft <strong>v{draft.version}</strong> đang chờ</> : "Chưa có Draft"}
+      </p>
+      <div className="pp-actions">
+        {draft ? (
+          <button className="primary btn-sm" type="button" disabled={busy} aria-disabled={busy} onClick={() => void publish()}>
+            {busy ? "Đang Publish…" : `Publish v${draft.version}`}
+          </button>
+        ) : null}
+        {draft ? (
+          <Link className="secondary btn-sm" href={`/quan-tri/san-pham/${product.id}/xem-truoc`}>
+            Xem trước Draft
           </Link>
-          {published ? (
-            <Link className="text-link" href={`/san-pham/${product.id}`}>
-              Xem bản đang bán
-            </Link>
+        ) : null}
+        {published ? (
+          <Link className="secondary btn-sm" href={`/san-pham/${product.id}`}>
+            Xem trên cửa hàng
+          </Link>
+        ) : null}
+        {published ? (
+          <button className="danger btn-sm" type="button" disabled={busy} aria-disabled={busy} onClick={() => setConfirmOpen(true)}>
+            {busy ? "Đang gỡ…" : "Unpublish"}
+          </button>
+        ) : null}
+      </div>
+      {issue ? <p className="catalog-error" role="alert">{issue}</p> : null}
+      {notice ? <p className="meta" role="status">{notice}</p> : null}
+      {published ? (
+        <div className="pp-ai" aria-label="Trạng thái đồng bộ AI">
+          {ai.kind === "checking" ? <span className="meta" role="status">Đang kiểm tra…</span> : null}
+          {ai.kind === "unavailable" ? <span className="meta">{ai.message}</span> : null}
+          {ai.kind === "error" ? (
+            <span role="alert" className="pp-ai-row">
+              <span className="catalog-error">{ai.message}</span>
+              <button className="secondary btn-sm" type="button" onClick={() => void probeAi()}>Thử lại</button>
+            </span>
           ) : null}
-          {/* Sản phẩm đang bán vẫn có thể có bản nháp sửa: hiện CẢ hai hành động. */}
-          {draft ? (
-            <button className="primary" type="button" disabled={busy} aria-disabled={busy} onClick={() => void publish()}>
-              {busy ? "Đang xuất bản…" : `Xuất bản bản nháp v${draft.version}`}
-            </button>
-          ) : published ? null : (
-            <span className="meta">Chưa có bản nháp — tạo ở trang sửa metadata</span>
-          )}
-          {published ? (
-            <button className="text-link" type="button" disabled={busy} aria-disabled={busy} onClick={() => void unpublish()}>
-              {busy ? "Đang gỡ…" : "Gỡ xuất bản"}
-            </button>
+          {ai.kind === "ready" && aiHealthy(ai.state.status) ? (
+            <span className="pp-ai-ok" role="status">
+              <Icon name="check" size={14} />
+              Đã có trong AI search
+            </span>
+          ) : null}
+          {ai.kind === "ready" && ai.state.status === "FAILED" ? (
+            <span className="pp-ai-row" role="status">
+              <span className="badge t-red pp-ai-warn">
+                <Icon name="circle-alert" size={13} />
+                Lỗi đồng bộ AI search
+              </span>
+              {ai.state.updatedAt ? <span className="meta">{formatDateTime(ai.state.updatedAt)}</span> : null}
+              {ai.state.lastError ? <InfoHint align="end" label="Chi tiết lỗi đồng bộ">{ai.state.lastError}</InfoHint> : null}
+              <button className="secondary btn-sm" type="button" onClick={() => void retry()}>Thử lại đồng bộ</button>
+            </span>
+          ) : null}
+          {ai.kind === "ready" && !aiHealthy(ai.state.status) && ai.state.status !== "FAILED" ? (
+            <span className="pp-ai-row" role="status">
+              <span className="meta">Đang đồng bộ AI search…</span>
+              <button className="secondary btn-sm" type="button" onClick={() => void probeAi()}>Tải lại</button>
+            </span>
           ) : null}
         </div>
-      </div>
-      {issue ? (
-        <p className="catalog-error" role="alert">
-          {issue}
-        </p>
       ) : null}
-      {notice ? (
-        <p className="meta" role="status">
-          {notice}
-        </p>
-      ) : null}
-      <div aria-label="Trạng thái đồng bộ AI" style={{ marginTop: 12 }}>
-        <p className="meta" style={{ marginBottom: 6 }}>
-          <strong>Đồng bộ AI</strong>
-        </p>
-        {ai.kind === "checking" ? (
-          <p className="meta" role="status">
-            Đang kiểm tra trạng thái đồng bộ AI…
-          </p>
-        ) : null}
-        {ai.kind === "unavailable" ? <p className="meta">{ai.message}</p> : null}
-        {ai.kind === "error" ? (
-          <div role="alert">
-            <p className="catalog-error">{ai.message}</p>
-            <button className="text-link" type="button" onClick={() => void probeAi()}>
-              Thử lại
-            </button>
-          </div>
-        ) : null}
-        {ai.kind === "ready" ? (
-          <p className="meta" role="status">
-            Trạng thái: <strong>{ai.state.status}</strong> · phiên bản {ai.state.version} · lần thử {ai.state.attempts}
-            {ai.state.updatedAt ? ` · cập nhật ${ai.state.updatedAt}` : ""}
-            {ai.state.lastError ? ` · lỗi: ${ai.state.lastError}` : ""}
-            {ai.state.status === "FAILED" ? (
-              <button className="text-link" type="button" onClick={() => void retry()} style={{ marginLeft: 8 }}>
-                Thử lại đồng bộ
-              </button>
-            ) : (
-              <button className="text-link" type="button" onClick={() => void probeAi()} style={{ marginLeft: 8 }}>
-                Tải lại
-              </button>
-            )}
-          </p>
-        ) : null}
-      </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Unpublish sản phẩm?"
+        message="Gỡ sản phẩm khỏi cửa hàng? Điểm AI sẽ bị đánh dấu xóa."
+        confirmLabel="Unpublish"
+        tone="danger"
+        busy={busy}
+        onConfirm={() => void unpublish()}
+        onClose={() => setConfirmOpen(false)}
+      />
     </section>
   );
 }

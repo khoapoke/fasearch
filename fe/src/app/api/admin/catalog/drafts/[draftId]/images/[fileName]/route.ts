@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ draftId: string; fileName: string }> }) {
   const { draftId, fileName } = await params;
   const n = idOf(draftId);
-  if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
+  if (!n) return authError("Mã Draft chưa hợp lệ.", 400);
   if (!fileName || fileName.length > 255 || /[\\/\0]/.test(fileName) || fileName.includes("..")) {
     return authError("Tên file chưa hợp lệ.", 400);
   }

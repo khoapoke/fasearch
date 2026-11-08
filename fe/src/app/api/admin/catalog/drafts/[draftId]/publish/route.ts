@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (guard) return guard;
   const { draftId } = await params;
   const n = idOf(draftId);
-  if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
+  if (!n) return authError("Mã Draft chưa hợp lệ.", 400);
   const parsed = await readJsonObject(request);
   if (!parsed.ok) return parsed.response;
   const { expectedVersion } = parsed.body;

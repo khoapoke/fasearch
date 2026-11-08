@@ -27,7 +27,7 @@ export function UrlAssist() {
       setUrl("");
     } catch (failure) {
       if (failure instanceof CatalogAdminError && failure.status === 422) {
-        setError("URL không ánh xạ được thành sản phẩm (thiếu ảnh/biến thể). Form thủ công bên dưới giữ nguyên.");
+        setError("Không đọc được sản phẩm từ liên kết này (thiếu ảnh hoặc biến thể). Biểu mẫu bên dưới giữ nguyên.");
         return;
       }
       setError(failure instanceof Error ? failure.message : "Không nhập được URL.");
@@ -41,11 +41,11 @@ export function UrlAssist() {
       <div className="section-head">
         <div>
           <h2>Nhập từ URL</h2>
-          <p className="meta">Chỉ nguồn trong allowlist (feed VN đã kiểm chứng, Wikimedia, tên miền hãng đã duyệt). Không proxy tùy ý.</p>
+          <p className="meta">Chỉ nhận liên kết từ nguồn được duyệt.</p>
         </div>
       </div>
-      <form onSubmit={submit}>
-        <div className="catalog-field">
+      <form className="catalog-form form-grid" onSubmit={submit}>
+        <div className="catalog-field full">
           <label htmlFor="url-assist">URL sản phẩm</label>
           <input
             id="url-assist"
@@ -58,8 +58,8 @@ export function UrlAssist() {
           />
         </div>
         <div className="catalog-actions">
-          <button className="primary" type="submit" disabled={busy || !url.trim()} aria-disabled={busy || !url.trim()}>
-            {busy ? "Đang nhập…" : "Nhập thành bản nháp"}
+          <button className="secondary" type="submit" disabled={busy || !url.trim()} aria-disabled={busy || !url.trim()}>
+            {busy ? "Đang nhập…" : "Nhập thành Draft"}
           </button>
         </div>
       </form>
@@ -70,7 +70,7 @@ export function UrlAssist() {
       ) : null}
       {done ? (
         <p className="meta" role="status" style={{ marginTop: 10 }}>
-          Đã tạo bản nháp <strong>#{done.draftId}</strong> ở máy chủ. Form thủ công bên dưới không bị thay đổi.
+          Đã tạo Draft <strong>#{done.draftId}</strong>. Biểu mẫu bên dưới giữ nguyên.
         </p>
       ) : null}
     </section>

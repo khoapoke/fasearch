@@ -13,7 +13,6 @@ const voucherMessages: Record<number, string> = {
   4107: "Giá hoặc ưu đãi đã thay đổi. Hãy báo giá lại trước khi đặt hàng.",
   4108: "Yêu cầu đặt hàng đã thay đổi. Hãy tải lại giỏ hàng.",
   4109: "Chiến dịch đã được cập nhật. Hãy tải lại trước khi sửa tiếp.",
-  4201: "Số dư điểm cũ chưa được ghi nhận mở đầu.",
   4202: "Chưa có chính sách điểm để đổi.",
   4203: "Chính sách điểm đang tắt; số dư vẫn được giữ.",
   4204: "Điểm vượt quá số dư hoặc mức giảm tối đa hiện tại.",

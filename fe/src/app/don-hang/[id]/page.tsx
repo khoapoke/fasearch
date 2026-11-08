@@ -4,23 +4,26 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import "@/components/customer-auth/auth.css";
+import ac from "@/components/account/account-cards.module.css";
+import { PriceTag } from "@/components/storefront/price-tag";
 import { cancelCustomerOrder, fetchCustomerOrder } from "@/lib/customer-commerce-client";
 import { createStripeCheckout, createVnpayCheckout, fetchPaymentAttempt } from "@/lib/customer-payments-client";
 import {
   CommerceError,
-  formatMoney,
   orderStatusText,
   paymentAttemptStatusText,
   type CustomerOrderDetail,
   type PaymentAttempt,
 } from "@/lib/customer-commerce";
-import "@/components/customer-commerce/commerce.css";
+import { paymentMethodLabel } from "@/lib/commerce";
+import { parseOrderNote } from "@/lib/order-recipient";
 
 function dateText(value: string): string {
   const d = new Date(value);
-  return Number.isNaN(d.getTime())
-    ? value
-    : new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(d);
+  if (Number.isNaN(d.getTime())) return "Chưa cập nhật";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function clientImageUrl(url?: string | null): string | null {
@@ -31,21 +34,22 @@ function clientImageUrl(url?: string | null): string | null {
   return trimmed;
 }
 
-function statusClass(status: string): string {
-  switch (status) {
-    case "PENDING":
-      return "pending";
-    case "CONFIRMED":
-      return "confirmed";
-    case "SHIPPING":
-      return "shipping";
-    case "COMPLETED":
-      return "completed";
-    case "CANCELLED":
-      return "cancelled";
-    default:
-      return "default";
+function paidMethodName(method: string): string {
+  if (method === "STRIPE") return "Stripe";
+  if (method === "VNPAY" || method === "VNPAY_QR") return "VNPay";
+  if (method === "MOMO") return "MoMo";
+  if (method === "BANK_TRANSFER") return "Chuyển khoản";
+  if (method === "E_WALLET") return "Ví điện tử";
+  if (method === "CASH") return "Tiền mặt";
+  try {
+    return paymentMethodLabel(method);
+  } catch {
+    return method;
   }
+}
+
+function isPaidOrder(order: CustomerOrderDetail | null): boolean {
+  return order?.paymentStatus === "PAID";
 }
 
 export default function OrderDetailPage() {
@@ -56,6 +60,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [errorStatus, setErrorStatus] = useState(0);
+  const [cancelError, setCancelError] = useState("");
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -73,6 +78,7 @@ export default function OrderDetailPage() {
     }
     setLoading(true);
     setError("");
+    setCancelError("");
     try {
       setOrder(await fetchCustomerOrder(id));
     } catch (failure) {
@@ -93,31 +99,30 @@ export default function OrderDetailPage() {
   }, [load]);
 
   useEffect(() => {
-    if (error && errorRef.current) {
-      errorRef.current.focus();
-    }
+    if (error) errorRef.current?.focus();
   }, [error]);
 
   async function cancel() {
     if (!order || busy.current) return;
     if (!confirming) {
       setConfirming(true);
+      setCancelError("");
       return;
     }
     if (!reason.trim()) {
-      setError("Vui lòng nhập lý do hủy đơn hàng.");
+      setCancelError("Vui lòng nhập lý do hủy đơn hàng.");
       return;
     }
     busy.current = true;
     setCancelling(true);
-    setError("");
+    setCancelError("");
     try {
       const updated = await cancelCustomerOrder(String(order.orderId), reason.trim());
       setOrder(updated);
       setConfirming(false);
       setReason("");
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Không hủy được đơn hàng.");
+      setCancelError(failure instanceof Error ? failure.message : "Không hủy được đơn hàng.");
     } finally {
       busy.current = false;
       setCancelling(false);
@@ -160,14 +165,16 @@ export default function OrderDetailPage() {
     }
   }
 
-  const cancellable = order && (order.status === "PENDING" || order.status === "CONFIRMED");
+  const paid = isPaidOrder(order);
+  const recipientNote = parseOrderNote(order?.note);
+  const cancellable = order && (order.status === "PENDING" || order.status === "CONFIRMED") && !paid;
   const orderDisplayCode = order ? (order.orderCode || `Đơn hàng #${order.orderId}`) : `#${id}`;
 
   return (
     <StorefrontShell active="/tai-khoan" themed palette="customer" header="customer" footer="none">
-      <div className="commercePage">
-        <div className="commerce-content">
-          <nav className="commerce-crumbs" aria-label="Đường dẫn">
+      <div className="acctPage">
+        <div className="acct-content">
+          <nav className="sfCrumbs" aria-label="Đường dẫn">
             <Link href="/">Trang chủ</Link>
             <span aria-hidden="true">›</span>
             <Link href="/tai-khoan">Tài khoản</Link>
@@ -176,240 +183,241 @@ export default function OrderDetailPage() {
             <span aria-hidden="true">›</span>
             <span aria-current="page">{orderDisplayCode}</span>
           </nav>
-
-          <Link className="commerce-back-link" href="/don-hang">
+          <div className="acct-head">
+            <h1>Chi tiết đơn hàng</h1>
+          </div>
+          <Link className={ac.link} href="/don-hang">
             ← Quay lại danh sách đơn hàng
           </Link>
 
-          <h1 className="commerce-title">Chi tiết đơn hàng</h1>
-          <p className="commerce-sub">Theo dõi thông tin và tiến độ giao hàng của đơn.</p>
-
-          {loading ? (
-            <p className="commerce-status" role="status">Đang tải thông tin đơn hàng…</p>
-          ) : null}
-
-          {error ? (
-            <div ref={errorRef} tabIndex={-1} className="commerce-empty" role="alert">
-              <h2>{errorStatus === 403 ? "Không có quyền truy cập đơn hàng này" : "Không tải được đơn hàng"}</h2>
-              <p>{errorStatus === 403
-                ? "Đơn hàng này thuộc về khách hàng khác hoặc vai trò tài khoản hiện tại không được phép truy cập."
-                : error}</p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
-                {errorStatus === 403 ? (
-                  <>
-                    <Link className="commerce-primary" href="/don-hang">Về danh sách đơn của bạn</Link>
-                    <Link className="commerce-ghost" href="/quan-tri/don-hang">Mở quản trị đơn hàng</Link>
-                  </>
-                ) : (
-                  <button className="commerce-primary" type="button" onClick={load} style={{ width: "auto" }}>
-                    Thử lại
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          {order ? (
-            <div className="commerce-layout">
-              <section className="commerce-panel" aria-label={`Đơn ${orderDisplayCode}`}>
-                <div className="commerce-card">
-                  <div className="commerce-toolbar" style={{ marginBottom: 0 }}>
-                    <div>
-                      <strong style={{ fontSize: 18 }}>{orderDisplayCode}</strong>
-                      <p className="commerce-note" style={{ marginTop: 4 }}>
-                        Đặt lúc: {dateText(order.createdAt)}
-                      </p>
-                    </div>
-                    <div>
-                      <span className={`commerce-badge ${statusClass(order.status)}`}>
-                        {orderStatusText(order.status)}
-                      </span>
-                    </div>
-                  </div>
+          <div className={ac.pageWide} style={{ marginTop: 16 }}>
+            {loading ? (
+              <section className={ac.card} aria-labelledby="order-loading">
+                <div className={ac.head}>
+                  <p className={ac.eyebrow}>Đơn hàng</p>
+                  <h2 id="order-loading" className={ac.title}>Đang tải đơn hàng</h2>
                 </div>
+                <div className={ac.group} role="status">
+                  <div className={ac.skeleton} />
+                  <div className={ac.skeleton} />
+                  <p className={ac.meta}>Đang tải thông tin đơn hàng…</p>
+                </div>
+              </section>
+            ) : null}
 
-                <div className="commerce-card" style={{ marginTop: 20 }}>
-                  <h2>Danh sách sản phẩm</h2>
-                  <ul className="commerce-lines">
+            {error ? (
+              <div ref={errorRef} tabIndex={-1} className={ac.card} role="alert">
+                <div className={ac.head}>
+                  <p className={ac.eyebrow}>Đơn hàng</p>
+                  <h2 className={ac.title}>{errorStatus === 403 ? "Không có quyền xem đơn này" : "Không tải được đơn hàng"}</h2>
+                  <p className={ac.lead}>{errorStatus === 403
+                    ? "Đơn hàng này thuộc về khách hàng khác hoặc vai trò tài khoản hiện tại không được phép truy cập."
+                    : error}</p>
+                </div>
+                <div className={ac.actions}>
+                  {errorStatus === 403 ? (
+                    <>
+                      <Link className={ac.primary} href="/don-hang">Về danh sách đơn của bạn</Link>
+                      <Link className={ac.secondary} href="/quan-tri/don-hang">Mở quản trị đơn hàng</Link>
+                    </>
+                  ) : (
+                    <button className={ac.secondary} type="button" onClick={load}>
+                      Thử lại
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {order ? (
+              <>
+                <section className={ac.card} aria-label={`Đơn ${orderDisplayCode}`}>
+                  <div className={ac.head}>
+                    <p className={ac.eyebrow}>01 · Tổng quan</p>
+                    <h2 className={ac.title}>{orderDisplayCode}</h2>
+                    <p className={ac.lead}>Đặt lúc: {dateText(order.createdAt)} · <span className={ac.chip}>{orderStatusText(order.status)}</span></p>
+                  </div>
+                </section>
+
+                <section className={ac.card} aria-labelledby="order-items">
+                  <div className={ac.head}>
+                    <p className={ac.eyebrow}>02 · Sản phẩm</p>
+                    <h2 id="order-items" className={ac.title}>Danh sách sản phẩm</h2>
+                  </div>
+                  <ul className={ac.list}>
                     {order.items.map((line) => {
                       const img = clientImageUrl(line.imageUrl);
                       return (
-                        <li className="commerce-line" key={line.skuId}>
-                          {img ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              className="commerce-line-image"
-                              src={img}
-                              alt={line.productName || "Sản phẩm"}
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <span className="commerce-line-image" aria-hidden="true" />
-                          )}
-                          <div>
-                            <p className="commerce-line-name">{line.productName || "Sản phẩm"}</p>
-                            <p className="commerce-line-meta">
-                              {[line.color, line.size].filter(Boolean).join(" · ") || "Phân loại tiêu chuẩn"}
-                              {" · "}Số lượng: {line.quantity}
-                              {" · "}Đơn giá: {formatMoney(line.unitPrice)}
-                              {order.voucherCode && line.discountAmount > 0
-                                ? ` · Giảm voucher: ${formatMoney(line.discountAmount)}`
-                                : ""}
-                              {(line.pointsDiscountAmount ?? 0) > 0
-                                ? ` · Giảm điểm: ${formatMoney(line.pointsDiscountAmount ?? 0)}`
-                                : ""}
-                            </p>
-                          </div>
-                          <strong className="commerce-line-total">{formatMoney(line.totalPrice)}</strong>
+                        <li key={line.skuId} className={ac.itemRow}>
+                          <span style={{ display: "flex", gap: 12, minWidth: 0 }}>
+                            {img ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={img}
+                                alt={line.productName || "Sản phẩm"}
+                                referrerPolicy="no-referrer"
+                                style={{ width: 56, height: 72, objectFit: "cover", borderRadius: 4, flex: "none" }}
+                              />
+                            ) : (
+                              <span aria-hidden="true" style={{ width: 56, height: 72, borderRadius: 4, background: "var(--st-select)", flex: "none" }} />
+                            )}
+                            <span style={{ minWidth: 0 }}>
+                              <strong style={{ display: "block", fontSize: 14 }}>{line.productName || "Sản phẩm"}</strong>
+                              <span className={ac.meta} style={{ display: "block", marginTop: 4 }}>
+                                {[line.color, line.size].filter(Boolean).join(" · ") || "Phân loại tiêu chuẩn"}
+                                {" · "}Số lượng: {line.quantity}
+                                {" · "}Đơn giá: {line.unitPrice.toLocaleString("vi-VN")}đ
+                                {order.voucherCode && line.discountAmount > 0
+                                  ? ` · Giảm voucher: ${line.discountAmount.toLocaleString("vi-VN")}đ`
+                                  : ""}
+                                {(line.pointsDiscountAmount ?? 0) > 0
+                                  ? ` · Giảm điểm: ${(line.pointsDiscountAmount ?? 0).toLocaleString("vi-VN")}đ`
+                                  : ""}
+                              </span>
+                            </span>
+                          </span>
+                          <PriceTag value={line.totalPrice} />
                         </li>
                       );
                     })}
                   </ul>
-                </div>
+                </section>
 
-                <div className="commerce-card" style={{ marginTop: 20 }}>
-                  <h2>Thông tin giao nhận</h2>
-                  <div style={{ display: "grid", gap: 14 }}>
-                    <div>
-                      <p className="commerce-label">Người nhận</p>
-                      <p className="commerce-value">
-                        <strong>{order.customer?.fullName || "—"}</strong>
-                        {order.customer?.phoneNumber ? ` · ${order.customer.phoneNumber}` : ""}
-                      </p>
+                <section className={ac.card} aria-labelledby="order-shipping">
+                  <div className={ac.head}>
+                    <p className={ac.eyebrow}>03 · Giao nhận</p>
+                    <h2 id="order-shipping" className={ac.title}>Thông tin giao nhận</h2>
+                  </div>
+                  <dl className={ac.kv}>
+                    <div className={ac.kvRow}>
+                      <dt>Người nhận</dt>
+                      <dd>
+                        <strong>{recipientNote.recipient?.name || order.customer?.fullName || "—"}</strong>
+                        {(recipientNote.recipient?.phone || order.customer?.phoneNumber) ? ` · ${recipientNote.recipient?.phone || order.customer?.phoneNumber}` : ""}
+                      </dd>
                     </div>
-                    <div>
-                      <p className="commerce-label">Địa chỉ nhận hàng</p>
-                      <p className="commerce-value commerce-prose">{order.deliveryAddress || "—"}</p>
+                    <div className={ac.kvRow}>
+                      <dt>Địa chỉ nhận hàng</dt>
+                      <dd className={ac.prose}>{order.deliveryAddress || "Chưa cập nhật"}</dd>
                     </div>
-                    {order.note ? (
-                      <div>
-                        <p className="commerce-label">Ghi chú đơn hàng</p>
-                        <p className="commerce-value commerce-prose">{order.note}</p>
+                    {recipientNote.text ? (
+                      <div className={ac.kvRow}>
+                        <dt>Ghi chú đơn hàng</dt>
+                        <dd className={ac.prose}>{recipientNote.text}</dd>
                       </div>
                     ) : null}
+                  </dl>
+                </section>
+
+                <section className={ac.card} aria-labelledby="order-summary">
+                  <div className={ac.head}>
+                    <p className={ac.eyebrow}>04 · Thanh toán</p>
+                    <h2 id="order-summary" className={ac.title}>Tóm tắt đơn hàng</h2>
                   </div>
-                </div>
+                  <ul className={ac.list}>
+                    <li><span>Tạm tính</span><PriceTag value={order.subTotal} /></li>
+                    {order.voucherCode || (order.discountAmount ?? 0) > 0 ? (
+                      <li>
+                        <span>Voucher {order.voucherCode ?? ""}{order.voucherCampaignName ? ` (${order.voucherCampaignName})` : ""}</span>
+                        <span>−{order.discountAmount.toLocaleString("vi-VN")}đ</span>
+                      </li>
+                    ) : null}
+                    {(order.redeemedPoints ?? 0) > 0 || (order.pointsDiscount ?? 0) > 0 ? (
+                      <li>
+                        <span>Đổi {order.redeemedPoints ?? 0} điểm</span>
+                        <span>−{order.pointsDiscount === null ? "—" : `${order.pointsDiscount.toLocaleString("vi-VN")}đ`}</span>
+                      </li>
+                    ) : null}
+                    <li><span>Phí giao hàng</span><PriceTag value={order.shippingFee} /></li>
+                    <li><span><strong>Tổng cộng</strong></span><PriceTag value={order.totalAmount} /></li>
+                  </ul>
+                  {paid ? (
+                    <p className={ac.meta}>Đã thanh toán{order.paymentMethod ? ` · ${paidMethodName(order.paymentMethod)}` : ""}</p>
+                  ) : (
+                    <p className={ac.meta}>Phương thức thanh toán: Thanh toán khi nhận hàng (COD)</p>
+                  )}
+                  {order.status === "PENDING" && !paid && order.totalAmount > 0 ? (
+                    <div>
+                      <p className={ac.label}>Thanh toán trực tuyến (thử nghiệm)</p>
+                      {storedAttempt ? (
+                        <p className={ac.meta}>
+                          Kênh {storedAttempt.provider}: {paymentAttemptStatusText(storedAttempt.status)}
+                        </p>
+                      ) : null}
+                      {payError ? <p className={ac.alert} role="alert">{payError}</p> : null}
+                      <div className={ac.actions}>
+                        <button className={ac.secondary} type="button" disabled={paying !== ""} onClick={() => payOnline("STRIPE")}>
+                          {paying === "STRIPE" ? "Đang mở Stripe…" : "Trả bằng Stripe"}
+                        </button>
+                        <button className={ac.secondary} type="button" disabled={paying !== ""} onClick={() => payOnline("VNPAY")}>
+                          {paying === "VNPAY" ? "Đang mở VNPAY…" : "Trả bằng VNPAY"}
+                        </button>
+                      </div>
+                      <p className={ac.meta}>Đơn chỉ được ghi nhận đã thanh toán khi cổng thanh toán xác nhận. Tải lại trang không trừ thêm tiền.</p>
+                    </div>
+                  ) : null}
+                </section>
 
                 {cancellable ? (
-                  <div className="commerce-card" style={{ marginTop: 20 }}>
-                    <h2>Hủy đơn hàng</h2>
-                    <p className="commerce-note" style={{ marginTop: 0, marginBottom: 14 }}>
-                      Bạn có thể hủy đơn khi đơn hàng đang ở trạng thái Chờ xác nhận hoặc Đã xác nhận.
-                    </p>
+                  <section className={ac.card} aria-labelledby="order-cancel">
+                    <div className={ac.head}>
+                      <p className={ac.eyebrow}>05 · Hủy đơn</p>
+                      <h2 id="order-cancel" className={ac.title}>Hủy đơn hàng</h2>
+                      <p className={ac.lead}>Bạn có thể hủy khi đơn đang ở trạng thái Chờ xác nhận hoặc Đã xác nhận.</p>
+                    </div>
                     {!confirming ? (
-                      <button className="commerce-ghost" type="button" onClick={() => setConfirming(true)}>
-                        Yêu cầu hủy đơn hàng này
-                      </button>
+                      <div className={ac.actions}>
+                        <button className={ac.secondary} type="button" onClick={() => { setConfirming(true); setCancelError(""); }}>
+                          Yêu cầu hủy đơn hàng này
+                        </button>
+                      </div>
                     ) : (
-                      <div style={{ display: "grid", gap: 12 }}>
-                        <div className="checkout-field">
-                          <label htmlFor="cancel-reason">Lý do hủy đơn</label>
+                      <div className={ac.group}>
+                        <div className={ac.field}>
+                          <label className={ac.label} htmlFor="cancel-reason">Lý do hủy đơn</label>
                           <input
                             id="cancel-reason"
-                            className="checkout-input"
+                            className={ac.input}
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             maxLength={500}
                             placeholder="Nhập lý do hủy đơn của bạn…"
                           />
                         </div>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <div className={ac.actions}>
                           <button
-                            className="commerce-primary"
+                            className={ac.primary}
                             type="button"
                             disabled={cancelling}
                             onClick={cancel}
-                            style={{ width: "auto", marginTop: 0 }}
                           >
                             {cancelling ? "Đang hủy đơn…" : "Xác nhận hủy đơn"}
                           </button>
                           <button
-                            className="commerce-ghost"
+                            className={ac.secondary}
                             type="button"
                             disabled={cancelling}
                             onClick={() => {
                               setConfirming(false);
                               setReason("");
+                              setCancelError("");
                             }}
                           >
                             Không hủy
                           </button>
                         </div>
+                        {cancelError ? <p className={ac.alert} role="alert">{cancelError}</p> : null}
                       </div>
                     )}
-                  </div>
+                  </section>
                 ) : (
-                  <p className="commerce-note" style={{ marginTop: 16 }}>
+                  <p className={ac.meta}>
                     Đơn hàng ở trạng thái này không thể tự hủy.
                   </p>
                 )}
-              </section>
-
-              <aside className="commerce-summary" aria-label="Tóm tắt đơn hàng">
-                <h2>Tóm tắt đơn hàng</h2>
-                <div className="commerce-summary-row">
-                  <span>Tạm tính</span>
-                  <strong>{formatMoney(order.subTotal)}</strong>
-                </div>
-
-                {order.voucherCode || (order.discountAmount ?? 0) > 0 ? (
-                  <div className="commerce-summary-row">
-                    <span>
-                      Voucher {order.voucherCode ?? ""}
-                      {order.voucherCampaignName ? ` (${order.voucherCampaignName})` : ""}
-                    </span>
-                    <strong>−{formatMoney(order.discountAmount)}</strong>
-                  </div>
-                ) : null}
-
-                {(order.redeemedPoints ?? 0) > 0 || (order.pointsDiscount ?? 0) > 0 ? (
-                  <div className="commerce-summary-row">
-                    <span>Đổi {order.redeemedPoints ?? 0} điểm</span>
-                    <strong>
-                      −{order.pointsDiscount === null ? "—" : formatMoney(order.pointsDiscount)}
-                    </strong>
-                  </div>
-                ) : null}
-
-                <div className="commerce-summary-row">
-                  <span>Phí giao hàng</span>
-                  <strong>{formatMoney(order.shippingFee)}</strong>
-                </div>
-
-                <div className="commerce-summary-total">
-                  <span>Tổng cộng</span>
-                  <strong>{formatMoney(order.totalAmount)}</strong>
-                </div>
-
-                <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--st-line)" }}>
-                  <p className="commerce-label">Phương thức thanh toán</p>
-                  <p className="commerce-value" style={{ fontWeight: 500 }}>
-                    Thanh toán khi nhận hàng (COD)
-                  </p>
-                </div>
-                {order.status === "PENDING" && order.totalAmount > 0 ? (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--st-line)" }}>
-                    <p className="commerce-label">Thanh toán trực tuyến (sandbox)</p>
-                    {storedAttempt ? (
-                      <p className="commerce-note" style={{ margin: "4px 0 8px" }}>
-                        Kênh {storedAttempt.provider}: {paymentAttemptStatusText(storedAttempt.status)}
-                      </p>
-                    ) : null}
-                    {payError ? <p className="commerce-status is-error" role="alert">{payError}</p> : null}
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button className="commerce-ghost" type="button" disabled={paying !== ""} onClick={() => payOnline("STRIPE")}>
-                        {paying === "STRIPE" ? "Đang mở Stripe…" : "Trả bằng Stripe"}
-                      </button>
-                      <button className="commerce-ghost" type="button" disabled={paying !== ""} onClick={() => payOnline("VNPAY")}>
-                        {paying === "VNPAY" ? "Đang mở VNPAY…" : "Trả bằng VNPAY"}
-                      </button>
-                    </div>
-                    <p className="commerce-note">Chỉ webhook/IPN đã ký mới ghi nhận thanh toán; làm mới không trừ tiền thêm.</p>
-                  </div>
-                ) : null}
-              </aside>
-            </div>
-          ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
     </StorefrontShell>

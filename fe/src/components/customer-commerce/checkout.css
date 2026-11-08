@@ -1,8 +1,12 @@
 /* Checkout redesign — FaSearch Customer A/B2 tokens only (--st-*, Be Vietnam Pro inherited).
    Colour is used for meaning: indigo = chosen/primary, lime (citron) = free shipping, green = money saved. */
 
-.commercePage .co-grid { grid-template-columns: minmax(0, 620px) minmax(320px, 400px); }
-.commercePage .co-form { max-width: 620px; display: grid; gap: 0; }
+/* Keep co-* scope inside white account cards without painting the canvas band.
+   Plain .commercePage (checkout) keeps its background; only .diaChiFlat is flattened. */
+.commercePage.diaChiFlat { background: transparent; color: inherit; }
+
+.commercePage .co-grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); justify-content: start; }
+.commercePage .co-form { max-width: none; display: grid; gap: 0; }
 .commercePage .co-section { padding: 28px 0; border-top: 1px solid var(--st-line); }
 .commercePage .co-section:first-child { padding-top: 4px; border-top: 0; }
 .commercePage .co-section > h2 { margin: 0 0 16px; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
@@ -52,6 +56,7 @@
 .commercePage .co-points { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--st-line); border-radius: 10px; background: var(--st-surface); }
 .commercePage .co-points.is-empty { background: var(--st-select); }
 .commercePage .co-points-text { display: grid; gap: 3px; min-width: 0; }
+.commercePage .co-points-text.is-clickable { cursor: pointer; flex: 1; }
 .commercePage .co-points-title { font-size: 14px; line-height: 1.4; font-variant-numeric: tabular-nums; }
 .commercePage .co-points-title b { font-weight: 600; }
 .commercePage .co-points-save { color: var(--st-ok-text); font-weight: 500; }
@@ -85,7 +90,7 @@
 .commercePage .co-count { color: var(--st-ink-soft); font-size: 13px; font-weight: 400; }
 .commercePage .co-lines { margin: 0; padding: 0; list-style: none; }
 .commercePage .co-line { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--st-line); }
-.commercePage .co-line-img { display: block; width: 56px; height: 72px; object-fit: contain; border-radius: 6px; background: var(--st-select); outline: 1px solid color-mix(in srgb, var(--st-ink) 8%, transparent); outline-offset: -1px; }
+.commercePage .co-line-img { display: block; width: 56px; height: 72px; object-fit: contain; border-radius: 6px; background: #fff; outline: 1px solid color-mix(in srgb, var(--st-ink) 8%, transparent); outline-offset: -1px; }
 .commercePage .co-line-body { display: grid; gap: 2px; min-width: 0; }
 .commercePage .co-line-name { font-size: 14px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
 .commercePage .co-line-variant, .commercePage .co-line-qty { color: var(--st-ink-soft); font-size: 12.5px; }
@@ -134,3 +139,55 @@ html[data-motion="off"] .commercePage .co-switch-knob, html[data-motion="off"] .
 html[data-motion="off"] .commercePage .co-offer-mark, html[data-motion="off"] .commercePage .co-method-mark { transition: none; }
 html[data-motion="off"] .commercePage .co-offer:active, html[data-motion="off"] .commercePage .co-submit:active { transform: none; }
 html[data-motion="off"] .commercePage .co-switch[aria-checked="true"] .co-switch-knob { transform: translateX(20px); }
+
+/* ===== Checkout polish 2026-11-06: thẻ có đánh số + góc ngoặc, một ô địa chỉ, thẻ "giao tới" thu gọn ===== */
+.commercePage .co-form { gap: 20px; }
+.commercePage .co-section,
+.commercePage .co-section:first-child { position: relative; padding: 26px 28px 28px; border: 1px solid var(--st-line); border-radius: 4px; background: var(--st-surface); }
+.commercePage .co-section::before { content: ""; position: absolute; top: -1px; left: -1px; width: 16px; height: 16px; border-top: 2px solid var(--st-brand-text); border-left: 2px solid var(--st-brand-text); border-top-left-radius: 4px; pointer-events: none; }
+.commercePage .co-head { display: grid; gap: 4px; margin: 0 0 18px; }
+.commercePage .co-eyebrow { margin: 0; color: var(--st-brand-text); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.commercePage .co-head h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+
+.commercePage .co-shipto { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 0 0 14px; padding: 16px 18px; border: 1px solid var(--st-line); border-radius: 4px; background: color-mix(in srgb, var(--st-brand) 4%, var(--st-surface)); }
+.commercePage .co-shipto-body { display: grid; gap: 4px; min-width: 0; }
+.commercePage .co-shipto-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 0; font-size: 15px; }
+.commercePage .co-shipto-who b { font-weight: 600; }
+.commercePage .co-shipto-who span { color: var(--st-ink-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+.commercePage .co-shipto-addr { margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.commercePage .co-shipto-hint { margin: 6px 0 0; color: var(--st-ink-soft); font-size: 12.5px; line-height: 1.5; }
+.commercePage .co-edit, .commercePage .co-done { flex: none; min-height: 38px; padding: 0 16px; border: 1px solid var(--st-control-border); border-radius: 4px; color: var(--st-brand-text); background: var(--st-surface); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out); }
+.commercePage .co-done { justify-self: start; margin: 2px 0 16px; }
+@media (hover: hover) { .commercePage .co-edit:hover, .commercePage .co-done:hover { border-color: var(--st-brand-text); background: color-mix(in srgb, var(--st-brand) 6%, var(--st-surface)); } }
+.commercePage .co-edit:focus-visible, .commercePage .co-done:focus-visible, .commercePage .co-linkbtn:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+
+.commercePage .co-editform { display: grid; }
+.commercePage .co-linkbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0; border: 0; color: var(--st-brand-text); background: transparent; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+@media (hover: hover) { .commercePage .co-linkbtn:hover { text-decoration: underline; text-underline-offset: 3px; } }
+
+.commercePage .co-addr { position: relative; display: grid; gap: 6px; }
+.commercePage .co-addr-box { position: relative; }
+.commercePage .co-addr-input { padding-right: 42px; }
+.commercePage .co-addr-spin { position: absolute; top: 50%; right: 14px; width: 16px; height: 16px; margin-top: -8px; border: 2px solid var(--st-line); border-top-color: var(--st-brand-text); border-radius: 50%; animation: co-spin .7s linear infinite; }
+@keyframes co-spin { to { transform: rotate(360deg); } }
+.commercePage .co-addr-list { position: absolute; z-index: 30; top: 52px; left: 0; right: 0; max-height: 300px; margin: 0; padding: 6px; overflow: auto; list-style: none; border: 1px solid var(--st-line); border-radius: 4px; background: var(--st-surface); box-shadow: 0 18px 40px rgba(0, 0, 0, .14); }
+.commercePage .co-addr-list li { padding: 10px 12px; border-radius: 3px; font-size: 14px; line-height: 1.4; cursor: pointer; }
+.commercePage .co-addr-list li.is-active { background: color-mix(in srgb, var(--st-brand) 10%, var(--st-surface)); }
+@media (hover: hover) { .commercePage .co-addr-list li:hover { background: color-mix(in srgb, var(--st-brand) 10%, var(--st-surface)); } }
+.commercePage .co-addr-tools { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.commercePage .co-pinned { margin: -4px 0 12px; color: var(--st-ok-text); font-size: 13px; }
+.commercePage .co-area { display: grid; gap: 10px; margin: -4px 0 4px; }
+.commercePage .co-map { margin: 0 0 14px; }
+.commercePage .co-map > summary { display: inline-flex; align-items: center; min-height: 32px; color: var(--st-brand-text); font-size: 13px; font-weight: 500; cursor: pointer; }
+.commercePage .co-map .delivery-picker { margin: 8px 0 0; }
+.commercePage .co-map .delivery-map { height: 240px; border-radius: 4px; }
+.commercePage .co-ship { border-radius: 4px; }
+.commercePage .co-note { margin: 4px 0 0; }
+.commercePage .co-note-add { margin-top: 2px; }
+
+@media (max-width: 760px) {
+  .commercePage .co-section, .commercePage .co-section:first-child { padding: 22px 18px 24px; }
+  .commercePage .co-shipto { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .commercePage .co-addr-spin { animation-duration: 2s; } .commercePage .co-edit, .commercePage .co-done { transition: none; } }
+html[data-motion="off"] .commercePage .co-addr-spin { animation-duration: 2s; }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LocationPicker, type DeliveryLocation } from "@/components/customer-commerce/location-picker";
+import { AddressAutocomplete } from "@/components/customer-commerce/address-autocomplete";
 import { PaymentCards, PointsToggle, VoucherPicker, etaLabel, variantLabel } from "@/components/customer-commerce/checkout-parts";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -9,7 +10,7 @@ import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
 import { createStripeCheckout, createVnpayCheckout } from "@/lib/customer-payments-client";
-import { getSelfProfile } from "@/lib/customer-profile-client";
+import { getSelfProfile, customerFullName } from "@/lib/customer-profile-client";
 import { fetchPublicOffers } from "@/lib/offers-client";
 import type { PublicOffer } from "@/lib/offers";
 import { CommerceError, formatMoney, calculateCartWeightGram, type CustomerCartQuote } from "@/lib/customer-commerce";
@@ -39,6 +40,11 @@ function CheckoutPageContent() {
   const [province, setProvince] = useState(DEFAULT_PROVINCE);
   const [district, setDistrict] = useState(DEFAULT_DISTRICT);
   const [note, setNote] = useState("");
+  // Có đủ thông tin từ hồ sơ thì thu gọn thành thẻ tóm tắt; khách chỉ bấm "Sửa" khi cần.
+  const [editing, setEditing] = useState(true);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const touched = useRef(false);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [quoteError, setQuoteError] = useState("");
@@ -131,7 +137,7 @@ function CheckoutPageContent() {
     getSelfProfile(c.signal)
       .then((p) => {
         if (c.signal.aborted || !p) return;
-        const fullName = [p.lastName, p.firstName].filter(Boolean).join(" ").trim();
+        const fullName = customerFullName(p);
         if (fullName) setName((prev) => (prev ? prev : fullName));
         if (p.phoneNumber) setPhone((prev) => (prev ? prev : p.phoneNumber));
         if (p.deliveryLatitude != null && p.deliveryLongitude != null) setLocation((prev) => prev ?? { deliveryLatitude: p.deliveryLatitude!, deliveryLongitude: p.deliveryLongitude! });
@@ -139,6 +145,7 @@ function CheckoutPageContent() {
           const addr = p.address;
           setAddress((prev) => (prev ? prev : addr));
         }
+        if (!touched.current && fullName && p.phoneNumber && p.address && p.address.trim().length >= 5) setEditing(false);
       })
       .catch(() => {
         /* Best-effort prefill; never blocks checkout */
@@ -190,12 +197,13 @@ function CheckoutPageContent() {
       : null;
     if (firstInvalid) {
       fieldFocus.current = true;
+      setEditing(true);
       setError(
         firstInvalid === "checkout-name" ? "Vui lòng nhập tên người nhận."
         : firstInvalid === "checkout-phone" ? "Số điện thoại phải có 9–11 chữ số."
         : "Vui lòng nhập địa chỉ giao hàng (ít nhất 5 ký tự).",
       );
-      document.getElementById(firstInvalid)?.focus();
+      window.requestAnimationFrame(() => document.getElementById(firstInvalid)?.focus());
       return;
     }
     if (!currentCartQuote) { setError("Giá đang được cập nhật. Thử lại sau giây lát."); return; }
@@ -296,24 +304,61 @@ function CheckoutPageContent() {
           {authState === "authenticated" && cart && cart.items.length > 0 ? (
             <div className="checkout-grid co-grid">
               <form id="checkout-form" className="checkout-form-panel co-form" onSubmit={submit} noValidate>
-                <section className="co-section" aria-labelledby="co-recipient">
-                  <h2 id="co-recipient">Người nhận</h2>
-                  <div className="checkout-grid-2">
-                    <div className="checkout-field"><label htmlFor="checkout-name">Họ và tên</label><input id="checkout-name" className="checkout-input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div>
-                    <div className="checkout-field"><label htmlFor="checkout-phone">Số điện thoại</label><input id="checkout-phone" className="checkout-input" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" /></div>
-                  </div>
-                </section>
-
                 <section className="co-section" aria-labelledby="co-delivery">
-                  <h2 id="co-delivery">Giao đến</h2>
-                  <div className="checkout-field"><label htmlFor="checkout-address">Địa chỉ</label><input id="checkout-address" className="checkout-input" value={address} onChange={(e) => { setAddress(e.target.value); setLocation(null); }} autoComplete="street-address" /></div>
-                  <LocationPicker value={location} onChange={setLocation} onAddress={setAddress} />
-                  {!location ? (
-                    <div className="checkout-grid-2 co-area">
-                      <div className="checkout-field"><label htmlFor="checkout-province">Tỉnh/Thành phố</label><input id="checkout-province" className="checkout-input" value={province} onChange={(e) => setProvince(e.target.value)} /></div>
-                      <div className="checkout-field"><label htmlFor="checkout-district">Quận/Huyện</label><input id="checkout-district" className="checkout-input" value={district} onChange={(e) => setDistrict(e.target.value)} /></div>
+                  <div className="co-head">
+                    <p className="co-eyebrow">01 · Giao tới</p>
+                    <h2 id="co-delivery">Thông tin nhận hàng</h2>
+                  </div>
+                  {!editing ? (
+                    <div className="co-shipto">
+                      <div className="co-shipto-body">
+                        <p className="co-shipto-who"><b>{name}</b><span>{phone}</span></p>
+                        <p className="co-shipto-addr">{address}</p>
+                        {!location ? (
+                          <p className="co-shipto-hint">
+                            Phí giao đang tính theo {district}, {province}.{" "}
+                            <button type="button" className="co-linkbtn" onClick={() => { touched.current = true; setEditing(true); }}>Ghim địa chỉ để tính chính xác</button>
+                          </p>
+                        ) : null}
+                      </div>
+                      <button type="button" className="co-edit" aria-label="Sửa thông tin nhận hàng" onClick={() => { touched.current = true; setEditing(true); }}>Sửa</button>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="co-editform">
+                      <div className="checkout-grid-2">
+                        <div className="checkout-field"><label htmlFor="checkout-name">Họ và tên</label><input id="checkout-name" className="checkout-input" value={name} onChange={(e) => { touched.current = true; setName(e.target.value); }} autoComplete="name" /></div>
+                        <div className="checkout-field"><label htmlFor="checkout-phone">Số điện thoại</label><input id="checkout-phone" className="checkout-input" value={phone} onChange={(e) => { touched.current = true; setPhone(e.target.value); }} inputMode="tel" autoComplete="tel" /></div>
+                      </div>
+                      <div className="checkout-field">
+                        <label htmlFor="checkout-address">Địa chỉ nhận hàng</label>
+                        <AddressAutocomplete
+                          id="checkout-address"
+                          value={address}
+                          onText={(text) => { touched.current = true; setAddress(text); setLocation(null); }}
+                          onPick={(picked, at) => { touched.current = true; setAddress(picked); setLocation(at); }}
+                          onLocate={(at) => { touched.current = true; setLocation(at); }}
+                        />
+                      </div>
+                      {location ? (
+                        <p className="co-pinned"><span aria-hidden="true">✓</span> Đã ghim vị trí, phí giao tính theo quãng đường thực tế.</p>
+                      ) : (
+                        <div className="co-area">
+                          <p className="co-muted">Chưa ghim vị trí: chọn một gợi ý địa chỉ ở trên, hoặc điền tỉnh/quận để ước tính phí.</p>
+                          <div className="checkout-grid-2">
+                            <div className="checkout-field"><label htmlFor="checkout-province">Tỉnh/Thành phố</label><input id="checkout-province" className="checkout-input" value={province} onChange={(e) => setProvince(e.target.value)} /></div>
+                            <div className="checkout-field"><label htmlFor="checkout-district">Quận/Huyện</label><input id="checkout-district" className="checkout-input" value={district} onChange={(e) => setDistrict(e.target.value)} /></div>
+                          </div>
+                        </div>
+                      )}
+                      <details className="co-map" open={mapOpen} onToggle={(e) => setMapOpen(e.currentTarget.open)}>
+                        <summary>{location ? "Chỉnh ghim trên bản đồ" : "Ghim trên bản đồ"}</summary>
+                        {mapOpen ? <LocationPicker mapOnly value={location} onChange={(at) => { touched.current = true; setLocation(at); }} /> : null}
+                      </details>
+                      {name.trim() && phone.trim() && address.trim().length >= 5 ? (
+                        <button type="button" className="co-done" onClick={() => setEditing(false)}>Xong</button>
+                      ) : null}
+                    </div>
+                  )}
                   <div className={`co-ship${quote && shippingFresh ? "" : " is-updating"}`} aria-live="polite">
                     {quote ? (
                       <>
@@ -326,13 +371,20 @@ function CheckoutPageContent() {
                           {quote.estimatedDays ? <li>Giao trong <b>{etaLabel(quote.estimatedDays)}</b></li> : null}
                         </ul>
                       </>
-                    ) : quoteError ? <span className="co-ship-error">{quoteError}</span> : <span className="co-muted">{quoteBusy ? "Đang tính phí giao hàng…" : "Chọn vị trí để xem phí giao hàng."}</span>}
+                    ) : quoteError ? <span className="co-ship-error">{quoteError}</span> : <span className="co-muted">{quoteBusy ? "Đang tính phí giao hàng…" : "Nhập địa chỉ để xem phí giao hàng."}</span>}
                   </div>
-                  <div className="checkout-field"><label htmlFor="checkout-note">Ghi chú cho người giao (không bắt buộc)</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} /></div>
+                  {noteOpen || note ? (
+                    <div className="checkout-field co-note"><label htmlFor="checkout-note">Ghi chú cho người giao</label><input id="checkout-note" className="checkout-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="Ví dụ: gọi trước khi giao, gửi bảo vệ…" /></div>
+                  ) : (
+                    <button type="button" className="co-linkbtn co-note-add" onClick={() => setNoteOpen(true)}>+ Thêm ghi chú cho người giao</button>
+                  )}
                 </section>
 
                 <section className="co-section" aria-labelledby="co-offers">
-                  <h2 id="co-offers">Ưu đãi và điểm</h2>
+                  <div className="co-head">
+                    <p className="co-eyebrow">02 · Ưu đãi</p>
+                    <h2 id="co-offers">Ưu đãi và điểm</h2>
+                  </div>
                   <VoucherPicker offers={offers} offersState={offersState} appliedCode={appliedCode} busy={voucherBusy} error={voucherError} errorRef={voucherErrorRef} onApply={chooseVoucher} onClear={() => chooseVoucher("")} />
                   <PointsToggle
                     loaded={displayQuote !== null}
@@ -348,7 +400,10 @@ function CheckoutPageContent() {
                 </section>
 
                 <section className="co-section" aria-labelledby="co-pay">
-                  <h2 id="co-pay" className="co-sr">Phương thức thanh toán</h2>
+                  <div className="co-head">
+                    <p className="co-eyebrow">03 · Thanh toán</p>
+                    <h2 id="co-pay">Phương thức thanh toán</h2>
+                  </div>
                   <PaymentCards method={method} onChange={setMethod} zeroDue={zeroDue} />
                 </section>
               </form>

@@ -34,11 +34,15 @@ export type CatalogVariant = {
   /** Cờ BE (additive, có thể vắng): true = placeholder, không bao giờ thành pill. */
   colorIsSentinel: boolean | null;
   sizeIsSentinel: boolean | null;
+  /** Tồn khả dụng theo SKU từ BE (public detail). null = chưa rõ, không hiện số. */
+  availableStock: number | null;
 };
 
 export type CatalogProductDetail = CatalogProduct & {
   description: string | null;
   variants: CatalogVariant[];
+  /** Gallery sẵn sàng: BE sau này có thể trả mảng ảnh phụ. Hiện tại chỉ có imageUrl đơn. */
+  images?: string[] | null;
 };
 
 export type CatalogPage = {
@@ -152,6 +156,7 @@ function normalizeVariant(raw: unknown): CatalogVariant {
     additionalPrice: v.additionalPrice === null || v.additionalPrice === undefined ? 0 : requireFinite(v.additionalPrice),
     colorIsSentinel: flag("colorIsSentinel"),
     sizeIsSentinel: flag("sizeIsSentinel"),
+    availableStock: v.availableStock === null || v.availableStock === undefined ? null : requireInteger(v.availableStock as number, 0),
   };
 }
 
@@ -233,15 +238,25 @@ export async function fetchCatalogProduct(id: string, signal?: AbortSignal): Pro
     throw new CatalogError(INVALID_DATA, 502);
   }
   const variants = Array.isArray(result.variants) ? result.variants.map(normalizeVariant) : [];
+  const rawImages = (result as Record<string, unknown>).images;
+  const images = Array.isArray(rawImages)
+    ? rawImages
+        .filter((u): u is string => typeof u === "string" && u.length > 0)
+        .map((u) => {
+          const m = u.match(/^\/api\/v1\/products\/images\/(.+)$/);
+          return m ? `/api/catalog/product-images/${m[1]}` : u;
+        })
+    : null;
   return {
     ...base,
     description: typeof result.description === "string" ? result.description : null,
     variants,
+    images,
   };
 }
 
 export function formatVnd(value: number): string {
-  return Number.isFinite(value) ? `${value.toLocaleString("vi-VN")} ₫` : "—";
+  return Number.isFinite(value) ? `${value.toLocaleString("vi-VN")}đ` : "—";
 }
 
 

@@ -1,48 +1,252 @@
 "use client";
 
+import "./f5.css";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminShellB } from "./admin-shell";
-import { Icon } from "./icons";
+import { notifyOrdersChanged } from "./admin-frame";
+import { ConfirmDialog } from "./confirm-dialog";
+import { CsvExportButton } from "./csv-export-button";
+import { LiveSearchField } from "./live-search-field";
+import { PageHeader } from "./page-header";
+import { Pager } from "./pagination";
+import { RowLink } from "./row-link";
+import { statusToneColor, StatusBadge, Num } from "./status-badge";
+import { TableSkeleton } from "./skeleton";
+import { useToast } from "./toast";
+import { useAdminCan } from "./use-admin-role";
+import { useLiveSearch } from "./use-live-search";
+import { formatDateTime, formatNumber } from "@/lib/admin-format";
+import { orderCsvQuery } from "@/lib/admin-csv";
+import { searchUrl } from "@/lib/live-search";
+import { updateOrderStatus, OrderError } from "@/lib/admin-order-client";
 
-type Order = { orderId: number; orderCode: string; status: string; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; subTotal: number; discountAmount: number; shippingFee: number; totalAmount: number; createdAt: string };
+type Order = { orderId: number; orderCode: string; status: string; customerName: string | null; customerPhone: string | null; deliveryAddress: string | null; subTotal: number; discountAmount: number; shippingFee: number; totalAmount: number; createdAt: string; paymentStatus: string | null; paymentMethod: string | null };
 type Page = { content: Order[]; pageNumber: number; pageSize: number; totalElements: number; totalPages: number; last: boolean };
 const STATUS: Record<string, string> = { PENDING: "Mới tạo", CONFIRMED: "Đã xác nhận", PACKING: "Đang đóng gói", SHIPPING: "Đang giao", COMPLETED: "Hoàn thành", CANCELLED: "Đã hủy", RETURNED: "Đã trả lại" };
 const FILTERS = [{ v: "", l: "Tất cả" }, ...Object.entries(STATUS).map(([v, l]) => ({ v, l }))];
-function date(v: string) { const d = new Date(v); return Number.isNaN(d.getTime()) ? v : new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(d); }
-function money(v: number) { return <span className="money">{v.toLocaleString("vi-VN")}<span className="unit">VND</span></span>; }
+const date = formatDateTime;
+function paidMethodName(method: string | null): string {
+  if (method === "STRIPE") return "Stripe";
+  if (method === "VNPAY_QR" || method === "VNPAY") return "VNPay";
+  if (method === "MOMO") return "MoMo";
+  if (method === "BANK_TRANSFER") return "Chuyển khoản";
+  if (method === "E_WALLET") return "Ví điện tử";
+  if (method === "CASH") return "Tiền mặt";
+  return method ?? "";
+}
+/** Next step per status. Same chain and wording as the order detail page. */
+const NEXT_STEP: Record<string, { target: string; label: string; title: string }> = {
+  PENDING: { target: "CONFIRMED", label: "Xác nhận", title: "Xác nhận đơn hàng" },
+  CONFIRMED: { target: "PACKING", label: "Đóng gói", title: "Chuyển sang đóng gói" },
+  PACKING: { target: "SHIPPING", label: "Giao hàng", title: "Chuyển sang đang giao" },
+  SHIPPING: { target: "COMPLETED", label: "Hoàn tất", title: "Hoàn tất đơn hàng" },
+};
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+function dayLabel(value: string): string { const [y, m, d] = value.split("-"); return `${d}/${m}/${y}`; }
+function rangeLabel(from: string, to: string): string {
+  if (from && to) return from === to ? dayLabel(from) : `${dayLabel(from)} – ${dayLabel(to)}`;
+  return from ? `Từ ${dayLabel(from)}` : `Đến ${dayLabel(to)}`;
+}
+async function fetchCount(status: string, from: string, to: string): Promise<number | null> {
+  try {
+    const params = new URLSearchParams({ page: "0", size: "1" });
+    if (status) params.set("status", status);
+    if (from) params.set("startDate", from);
+    if (to) params.set("endDate", to);
+    const r = await fetch(`/api/admin/orders?${params}`, { cache: "no-store" });
+    const j = await r.json();
+    return r.ok && j.success ? Number(j.result?.totalElements ?? 0) : null;
+  } catch { return null; }
+}
 
-export function OrdersClient() {
-  const [status, setStatus] = useState(""); const [orderCode, setOrderCode] = useState(""); const [phone, setPhone] = useState("");
-  const [page, setPage] = useState(0); const [data, setData] = useState<Page | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const pending = useRef(false);
-  useEffect(() => { const s = new URLSearchParams(window.location.search); void Promise.resolve().then(() => { setStatus(s.get("status") ?? ""); setOrderCode(s.get("orderCode") ?? ""); setPhone(s.get("customerPhone") ?? ""); }); }, []);
-  const load = async (nextPage = page, nextStatus = status, clear = false) => {
-    if (pending.current) return; pending.current = true; setLoading(true); setError("");
-    const q = new URLSearchParams({ page: String(nextPage), size: "10", sort: "orderDate,desc" });
-    if (!clear && nextStatus) q.set("status", nextStatus); if (!clear && orderCode.trim()) q.set("orderCode", orderCode.trim()); if (!clear && phone.trim()) q.set("customerPhone", phone.trim());
-    try { const r = await fetch(`/api/admin/orders?${q}`, { cache: "no-store" }); const j = await r.json(); if (!r.ok || !j.success) throw new Error(j.message || "Không tải được đơn."); setData(j.result as Page); }
-    catch (e) { setError(e instanceof Error ? e.message : "Không tải được đơn."); }
-    finally { pending.current = false; setLoading(false); }
-  };
-  // Load follows the status filter; the other fields apply on explicit submit.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void Promise.resolve().then(() => load(0, status)); }, [status]);
-  useEffect(() => { sessionStorage.setItem("admin-orders-return", `/quan-tri/don-hang${window.location.search}`); }, [status, orderCode, phone, page]);
-  return <AdminShellB active="orders" title="Đơn hàng" eyebrow="Vận hành · dữ liệu thật từ BE">
-    <div className="page-heading"><div><h1>Đơn hàng</h1><p className="meta">Đọc đơn · lọc theo trạng thái/mã/SĐT · không có thao tác ghi</p></div></div>
-    <form className="review-filters" onSubmit={(e) => { e.preventDefault(); setPage(0); void load(0, status); }} aria-label="Bộ lọc đơn hàng">
-      <div className="review-filter"><label htmlFor="admin-order-code">Mã đơn</label><input id="admin-order-code" className="control" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="DH-…" /></div>
-      <div className="review-filter"><label htmlFor="admin-order-phone">Số điện thoại</label><input id="admin-order-phone" className="control" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" /></div>
-      <button className="primary" type="submit" style={{ alignSelf: "end" }}>Lọc</button>
-      <button className="text-link" type="button" onClick={() => { setOrderCode(""); setPhone(""); setStatus(""); setPage(0); void load(0, "", true); }}>Đặt lại</button>
+export function OrdersClient({
+  initialQuery = "",
+  initialStatus = "",
+  initialFrom = "",
+  initialTo = "",
+  initialPage = 0,
+}: {
+  initialQuery?: string;
+  initialStatus?: string;
+  initialFrom?: string;
+  initialTo?: string;
+  initialPage?: number;
+} = {}) {
+  const toast = useToast(); const can = useAdminCan();
+  const [status, setStatus] = useState(initialStatus);
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
+  const [counts, setCounts] = useState<Record<string, number | null>>({});
+  const [target, setTarget] = useState<Order | null>(null);
+  const [note, setNote] = useState("");
+  const [stepOpen, setStepOpen] = useState(false);
+  const [acting, setActing] = useState(false);
+  const [actError, setActError] = useState("");
+  const actingRef = useRef(false);
+  const live = useLiveSearch<Page>({
+    initialQuery,
+    initialPage,
+    unit: "đơn",
+    filtersKey: `${status}|${from}|${to}`,
+    request: (query, page, signal) => {
+      const params = new URLSearchParams({ page: String(page), size: "10", sort: "orderDate,desc" });
+      if (query) params.set("keyword", query);
+      if (status) params.set("status", status);
+      if (from) params.set("startDate", from);
+      if (to) params.set("endDate", to);
+      return fetch(`/api/admin/orders?${params}`, { cache: "no-store", signal })
+        .then(async (response) => {
+          const payload = await response.json();
+          if (!response.ok || !payload.success) throw new Error(payload.message || "Không tải được đơn.");
+          return payload.result as Page;
+        });
+    },
+    buildUrl: (query, page) => searchUrl("/quan-tri/don-hang", {
+      keyword: query,
+      status,
+      from,
+      to,
+      page: page > 0 ? page : null,
+    }),
+  });
+
+  // The address bar also wins if a cached Back payload carries an older status prop.
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      const params = new URLSearchParams(window.location.search);
+      const nextStatus = params.get("status") ?? "";
+      setStatus((current) => (current === nextStatus ? current : nextStatus));
+      const nextFrom = params.get("from") ?? ""; const nextTo = params.get("to") ?? "";
+      setFrom((current) => { const next = DAY.test(nextFrom) ? nextFrom : ""; return current === next ? current : next; });
+      setTo((current) => { const next = DAY.test(nextTo) ? nextTo : ""; return current === next ? current : next; });
+    });
+  }, []);
+
+  // Same-route navigation passes fresh server props without remounting this component.
+  const previousStatus = useRef(initialStatus);
+  useEffect(() => {
+    if (previousStatus.current === initialStatus) return;
+    previousStatus.current = initialStatus;
+    void Promise.resolve().then(() => setStatus(initialStatus));
+  }, [initialStatus]);
+  const previousRange = useRef(`${initialFrom}|${initialTo}`);
+  useEffect(() => {
+    const key = `${initialFrom}|${initialTo}`;
+    if (previousRange.current === key) return;
+    previousRange.current = key;
+    void Promise.resolve().then(() => { setFrom(initialFrom); setTo(initialTo); });
+  }, [initialFrom, initialTo]);
+
+  // Back/Forward restores the status chip; the hook restores the text and page.
+  useEffect(() => {
+    function onPopState() {
+      const params = new URLSearchParams(window.location.search);
+      setStatus(params.get("status") ?? "");
+      const nextFrom = params.get("from") ?? ""; const nextTo = params.get("to") ?? "";
+      setFrom(DAY.test(nextFrom) ? nextFrom : ""); setTo(DAY.test(nextTo) ? nextTo : "");
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Returning from an order detail restores the same query, chip and page.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("admin-orders-return", searchUrl("/quan-tri/don-hang", {
+        keyword: live.term,
+        status,
+        from,
+        to,
+        page: live.page > 0 ? live.page : null,
+      }));
+    } catch { /* SSR/no-storage */ }
+  }, [live.term, live.page, status, from, to]);
+
+  function reset() {
+    setStatus("");
+    setFrom(""); setTo("");
+    live.clear();
+  }
+
+  const refreshCounts = useCallback(() => {
+    void Promise.all(FILTERS.map((f) => fetchCount(f.v, from, to).then((n) => [f.v, n] as const))).then((rows) => setCounts(Object.fromEntries(rows)));
+  }, [from, to]);
+  useEffect(() => { refreshCounts(); }, [refreshCounts]);
+
+  function openStep(order: Order) { setTarget(order); setStepOpen(true); setNote(""); setActError(""); }
+  function closeStep() { if (!actingRef.current) setStepOpen(false); }
+  async function confirmStep() {
+    const step = target ? NEXT_STEP[target.status] : undefined;
+    if (!target || !step || actingRef.current) return;
+    if (note.length > 1000) { setActError("Ghi chú tối đa 1000 ký tự."); return; }
+    actingRef.current = true; setActing(true); setActError("");
+    try {
+      await updateOrderStatus(String(target.orderId), step.target, note);
+      toast.success(`Đơn ${target.orderCode} đã chuyển sang ${STATUS[step.target]}.`);
+      setStepOpen(false);
+    } catch (failure) {
+      if (failure instanceof OrderError) setActError(failure.message);
+      else { setStepOpen(false); toast.error("Chưa xác định được trạng thái đơn đã đổi hay chưa. Đã tải lại danh sách để đối soát."); }
+    } finally {
+      actingRef.current = false; setActing(false);
+      notifyOrdersChanged(); refreshCounts(); live.reload();
+    }
+  }
+  const step = target ? NEXT_STEP[target.status] : undefined;
+
+  return <AdminShellB active="orders" title="Đơn hàng">
+    <PageHeader title="Đơn hàng" actions={<CsvExportButton dataset="orders" query={orderCsvQuery({ keyword: live.term, status, from, to })} confirm />} />
+    <form className="orders-filters" onSubmit={(e) => { e.preventDefault(); live.searchNow(); }} aria-label="Bộ lọc đơn hàng">
+      <LiveSearchField
+        id="admin-order-search"
+        label="Tìm đơn"
+        placeholder="Mã đơn, SĐT, khách"
+        input={live.inputProps}
+        onClear={live.clear}
+        showClear={live.typed.length > 0}
+      />
+      <div className="status-pills" role="group" aria-label="Lọc trạng thái">{FILTERS.map((f) => {
+        const tone = f.v ? statusToneColor(f.v) : null;
+        const count = counts[f.v];
+        return <button key={f.v || "all"} className={`status-pill${status === f.v ? " active" : ""}`} type="button" aria-pressed={status === f.v} onClick={() => { setStatus(f.v); live.searchNow(); }}>
+          <span className={`pill-dot${tone ? ` t-${tone}` : ""}`} aria-hidden="true" />{f.l}{count !== undefined && count !== null ? <span className="pill-count">{formatNumber(count)}</span> : null}
+        </button>;
+      })}</div>
+      {from || to ? <span className="status-pill active range-chip" role="group" aria-label={`Khoảng ngày tạo ${rangeLabel(from, to)}`}>Ngày tạo: {rangeLabel(from, to)}<button type="button" className="range-chip-x" aria-label="Bỏ lọc ngày" onClick={() => { setFrom(""); setTo(""); live.searchNow(); }}>×</button></span> : null}
+      {status || from || to || live.typed ? <button className="secondary btn-sm" type="button" onClick={reset}>Đặt lại</button> : null}
     </form>
-    <nav className="review-filters" aria-label="Lọc trạng thái">{FILTERS.map((f) => <button key={f.v || "all"} className={`text-link${status === f.v ? " active" : ""}`} type="button" aria-pressed={status === f.v} onClick={() => { setStatus(f.v); setPage(0); }}>{f.l}</button>)}</nav>
-    {loading ? <p className="meta" role="status">Đang tải đơn…</p> : null}
-    {error ? <div className="order-empty" role="alert"><strong>Không tải được đơn</strong><p>{error}</p><button className="text-link" type="button" onClick={() => load(page, status)}>Thử lại (giữ lọc)</button></div> : null}
-    {!loading && !error && (data?.content?.length ?? 0) === 0 ? <div className="order-empty"><strong>Không có đơn khớp</strong><p>Thử bỏ lọc hoặc chọn trạng thái khác.</p></div> : null}
-    {!loading && !error && data && (data?.content?.length ?? 0) > 0 ? <div className="table-scroll review-table-scroll" tabIndex={0} aria-label="Danh sách đơn hàng"><table className="review-orders-table"><caption>{data.totalElements} đơn · trang {data.pageNumber + 1}/{Math.max(1, data.totalPages)} · dữ liệu BE candidate, không có kênh/thanh toán trong DTO</caption><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày tạo</th><th>Trạng thái</th><th>Địa chỉ</th><th className="num">Tổng</th></tr></thead><tbody>{data.content.map((o) => <tr key={o.orderId}><td><Link className="text-link" href={`/quan-tri/don-hang/${o.orderId}`}>{o.orderCode}</Link></td><td>{o.customerName ?? "—"}<small>{o.customerPhone ?? ""}</small></td><td>{date(o.createdAt)}</td><td>{STATUS[o.status] ?? o.status}</td><td>{o.deliveryAddress ?? "—"}</td><td className="num">{money(o.totalAmount)}</td></tr>)}</tbody></table></div> : null}
-    {data && data.totalPages > 1 ? <div className="review-summary"><button className="text-link" disabled={page === 0} onClick={() => { setPage(page - 1); void load(page - 1, status); }}>← Trước</button><span>Trang {page + 1} · {data.totalElements} đơn</span><button className="text-link" disabled={data.last} onClick={() => { setPage(page + 1); void load(page + 1, status); }}>Sau →</button></div> : null}
-    <p className="meta" style={{ marginTop: 16 }}><Icon name="shopping-bag" /> Chỉ Quản trị viên/Quản lý nhận được dữ liệu này. Không có nút đổi trạng thái, hủy, POS hay thanh toán.</p>
+    <p className="sr-only" role="status" aria-live="polite">{live.statusText}</p>
+    {live.error ? <div className="order-empty" role="alert"><strong>Không tải được đơn</strong><p>{live.error}</p><button className="secondary" type="button" onClick={live.reload}>Thử lại</button></div> : null}
+    {live.loading && !live.data ? <TableSkeleton rows={10} columns={7} rowHeight={44} /> : null}
+    {!live.loading && !live.error && live.data?.content.length === 0 ? <div className="order-empty"><strong>Không có đơn khớp</strong><p>{live.term ? `Không tìm thấy đơn cho “${live.term}”. Thử từ khóa khác.` : "Thử bỏ lọc hoặc chọn trạng thái hoặc khoảng ngày khác."}</p></div> : null}
+    {live.data && live.data.content.length > 0 ? <div className="table-scroll sticky-head review-table-scroll table-cards" tabIndex={0} aria-label="Danh sách đơn hàng" aria-busy={live.loading}><table className="review-orders-table fit-table"><thead><tr><th>Mã đơn</th><th>Khách</th><th>Ngày tạo</th><th>Trạng thái</th><th>Thanh toán</th><th className="num">Tổng</th><th className="num">Thao tác</th></tr></thead><tbody>{live.data.content.map((o) => {
+      const paid = o.paymentStatus === "PAID";
+      const next = NEXT_STEP[o.status];
+      const needsCash = o.status === "SHIPPING" && !paid;
+      const method = paidMethodName(o.paymentMethod);
+      return <RowLink key={o.orderId} href={`/quan-tri/don-hang/${o.orderId}`}>
+        <td data-label="Mã đơn"><Link className="order-code" href={`/quan-tri/don-hang/${o.orderId}`}>{o.orderCode}</Link></td>
+        <td data-label="Khách"><span className="cell-main">{o.customerName ?? <span className="empty-value">Chưa có tên</span>}</span>{o.customerPhone ? <small className="cell-sub">{o.customerPhone}</small> : null}</td>
+        <td data-label="Ngày tạo" className="cell-date">{date(o.createdAt)}</td>
+        <td data-label="Trạng thái"><StatusBadge status={o.status} label={STATUS[o.status] ?? o.status} /></td>
+        <td data-label="Thanh toán">{paid ? <><StatusBadge status="PAID" label="Đã thanh toán" />{method ? <small className="cell-sub">{method}</small> : null}</> : <StatusBadge status="UNPAID" tone={o.status === "CANCELLED" || o.status === "RETURNED" ? "gray" : undefined} label="Chưa thanh toán" />}</td>
+        <td data-label="Tổng" className="num"><Num value={o.totalAmount} money tone={paid ? "green" : "ink"} bold={paid} dimZero={false} /></td>
+        <td data-label="Thao tác" className="num row-actions-cell">{next && !needsCash && can("ORDER_UPDATE_STATUS") ? <button className="secondary btn-sm" type="button" onClick={() => openStep(o)}>{next.label}</button> : needsCash && can("ORDER_COLLECT_CASH") ? <Link className="secondary btn-sm" href={`/quan-tri/don-hang/${o.orderId}`}>Thu tiền</Link> : null}</td>
+      </RowLink>;
+    })}</tbody></table></div> : null}
+    {live.data && live.data.content.length > 0 ? <Pager page={live.page} totalPages={live.data.totalPages} total={live.data.totalElements} unit="đơn" busy={live.loading} onPage={live.goToPage} /> : null}
+    <ConfirmDialog
+      open={stepOpen && !!step}
+      title={step ? `${step.title}?` : ""}
+      message={target && step ? <>Đơn <strong>{target.orderCode}</strong>: {STATUS[target.status]} → <strong>{STATUS[step.target]}</strong>. {step.target === "COMPLETED" ? "Hoàn tất sẽ trừ tồn vật lý và tạm giữ." : "Bước này không thay đổi tồn kho."}</> : null}
+      confirmLabel={step?.title ?? "Xác nhận"}
+      busy={acting}
+      error={actError}
+      onConfirm={() => void confirmStep()}
+      onClose={closeStep}
+    >
+      <div className="catalog-field"><label htmlFor="order-step-note">Ghi chú (không bắt buộc)</label><textarea id="order-step-note" className="catalog-input" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} disabled={acting} /></div>
+    </ConfirmDialog>
   </AdminShellB>;
 }

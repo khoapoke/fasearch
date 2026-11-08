@@ -14,6 +14,8 @@ type Props = {
   /** "any": every SKU selectable (import/stocktake). "inStock": zero-stock options are visibly disabled (export). */
   mode?: SkuPickerMode;
   placeholder?: string;
+  /** Accessible name when the field has no visible <label>. */
+  ariaLabel?: string;
 };
 
 const PAGE_SIZE = 20;
@@ -30,7 +32,20 @@ function stockHint(s: Stock): string {
   return `khả dụng ${avail} · vật lý ${phys}`;
 }
 
-const isDisabled = (mode: SkuPickerMode, s: Stock): boolean =>
+const DISCONTINUED_LABEL = "Ngừng kinh doanh";
+
+const isDiscontinued = (s: Stock): boolean => s.productStatus === "DISCONTINUED";
+
+function optionAccessibleName(s: Stock, disabled: boolean): string {
+  const base = skuLabel(s);
+  const hint = stockHint(s);
+  const barcode = s.barcode ? ` · ${s.barcode}` : "";
+  const disc = isDiscontinued(s) ? ` · ${DISCONTINUED_LABEL}` : "";
+  const stock = disabled ? " · Hết hàng" : "";
+  return `${base}${disc} · ${hint}${barcode}${stock}`;
+}
+
+export const isDisabled = (mode: SkuPickerMode, s: Stock): boolean =>
   mode === "inStock" && (s.availableStock ?? 0) <= 0;
 
 /**
@@ -39,7 +54,7 @@ const isDisabled = (mode: SkuPickerMode, s: Stock): boolean =>
  * name / colour / size / barcode text (server `keyword` param), debounced.
  * Native-input keyboard support: ArrowUp/Down moves, Enter selects, Escape closes.
  */
-export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Props) {
+export function SkuPicker({ id, value, onChange, mode = "any", placeholder, ariaLabel }: Props) {
   const listId = useId();
   const wrap = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | null>(null);
@@ -117,10 +132,16 @@ export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Pr
           const params = new URLSearchParams({ page: "0", size: String(PAGE_SIZE) });
           if (/^\d+$/.test(q)) params.set("sku", q);
           else if (q) params.set("keyword", q);
-          const page = await getStockPage(params.toString(), c.signal);
+          const numeric = /^\d+$/.test(q);
+          // An exact SKU id must come first: the list search also matches barcodes that merely contain the digits.
+          const [page, exact] = await Promise.all([
+            getStockPage(params.toString(), c.signal),
+            numeric ? getStock(q, c.signal).catch(() => null) : Promise.resolve(null),
+          ]);
           if (version.current !== v) return;
-          setOptions(page.content);
-          setTotal(page.totalElements);
+          const rest = exact ? page.content.filter((o) => o.skuId !== exact.skuId) : page.content;
+          setOptions(exact ? [exact, ...rest] : page.content);
+          setTotal(exact && rest.length === page.content.length ? page.totalElements + 1 : page.totalElements);
           setHighlight(null);
         } catch (e) {
           if (e instanceof DOMException && e.name === "AbortError") return;
@@ -181,6 +202,7 @@ export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Pr
       <div className="sku-picker-input-wrap">
         <input
           id={id}
+          aria-label={ariaLabel}
           className="catalog-input"
           type="text"
           role="combobox"
@@ -190,7 +212,7 @@ export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Pr
           aria-autocomplete="list"
           autoComplete="off"
           spellCheck={false}
-          placeholder={placeholder ?? "Gõ mã SKU, tên sản phẩm hoặc barcode…"}
+          placeholder={placeholder ?? "Gõ SKU, tên sản phẩm hoặc Barcode…"}
           value={query}
           data-selected-sku={selected ? String(selected.skuId) : ""}
           onChange={(e) => {
@@ -226,14 +248,14 @@ export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Pr
           </button>
         ) : null}
       </div>
-      {selected ? <small className="meta" data-sku-selected-hint={selected.skuId}>{stockHint(selected)}</small> : null}
+      {selected ? <small className="meta" data-sku-selected-hint={selected.skuId}>{stockHint(selected)}{isDiscontinued(selected) ? ` · ${DISCONTINUED_LABEL}` : ""}</small> : null}
       {open ? (
         <ul id={listId} className="sku-picker-list" role="listbox" aria-label="Kết quả tìm SKU" data-sku-options={id}>
           {loading && !options.length ? <li className="sku-picker-empty" role="presentation">Đang tìm…</li> : null}
           {failed ? <li className="sku-picker-empty" role="presentation">Không tải được danh sách SKU.</li> : null}
           {!loading && !failed && !options.length ? (
             <li className="sku-picker-empty" role="presentation">
-              {emptyQuery ? "Gõ để tìm SKU trong toàn catalog." : "Không tìm thấy SKU phù hợp. Thử mã SKU, tên sản phẩm hoặc barcode khác."}
+              {emptyQuery ? "Gõ để tìm SKU trong toàn bộ sản phẩm." : "Không tìm thấy SKU phù hợp. Thử SKU, tên sản phẩm hoặc Barcode khác."}
             </li>
           ) : null}
           {options.map((s) => {
@@ -246,8 +268,10 @@ export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Pr
                 role="option"
                 aria-selected={selected?.skuId === s.skuId}
                 aria-disabled={disabled || undefined}
+                aria-label={optionAccessibleName(s, disabled)}
                 data-sku-option={s.skuId}
                 data-sku-disabled={disabled ? "1" : undefined}
+                data-sku-discontinued={isDiscontinued(s) ? "1" : undefined}
                 className={`sku-picker-option${active ? " highlighted" : ""}${disabled ? " disabled" : ""}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => choose(s)}
@@ -255,7 +279,7 @@ export function SkuPicker({ id, value, onChange, mode = "any", placeholder }: Pr
                   if (!disabled) setHighlight(options.findIndex((o) => o.skuId === s.skuId));
                 }}
               >
-                <span>{skuLabel(s)}</span>
+                <span>{skuLabel(s)}{isDiscontinued(s) ? ` · ${DISCONTINUED_LABEL}` : ""}</span>
                 <span className="sku-picker-stock">
                   {stockHint(s)}
                   {s.barcode ? ` · ${s.barcode}` : ""}

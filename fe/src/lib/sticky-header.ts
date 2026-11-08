@@ -47,6 +47,7 @@ export function useStickyHeader(options: { frozen: boolean; enabled: boolean }) 
   useEffect(() => {
     if (!enabled) {
       state.current = { compact: false, upTravel: 0, lastY: window.scrollY };
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
       setCompact(false);
       return;
     }

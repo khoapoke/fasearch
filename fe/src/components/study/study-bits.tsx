@@ -71,6 +71,7 @@ export function PriceRange({
   useEffect(() => {
     if (extent) {
       const d: [number, number] = [value.lo ?? extent.min, value.hi ?? extent.max];
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
       setDraft(d);
       draftRef.current = d;
       setLoText(value.lo === null ? "" : String(value.lo));
@@ -417,6 +418,7 @@ function PresetRow({
 export function StudyJump({ totalPages, page, onGoto, id }: { totalPages: number; page: number; onGoto: (p0: number) => void; id: string }) {
   const [jump, setJump] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
   useEffect(() => { setErr(null); }, [totalPages]);
   return (
     <form

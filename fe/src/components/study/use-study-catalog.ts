@@ -7,7 +7,6 @@ import {
   fetchCatalogBrands,
   fetchCatalogCategories,
   fetchCatalogProducts,
-  formatVnd,
   type CatalogBrand,
   type CatalogCategory,
   type CatalogPage,
@@ -76,8 +75,10 @@ export function useStudyCatalog(direction: "a" | "b") {
   const error = settled.key === queryKey ? settled.error ?? "" : "";
   // R7: refs tươi cho debounce (không stale closure khi filter khác đổi giữa chừng).
   const filtersRef = useRef(filters);
+  // eslint-disable-next-line react-hooks/refs -- intentional latest-ref pattern read by debounced callbacks
   filtersRef.current = filters;
   const draftRef = useRef(draft);
+  // eslint-disable-next-line react-hooks/refs -- intentional latest-ref pattern read by debounced callbacks
   draftRef.current = draft;
   const pendingKey = useRef<number | null>(null);
   const composingRef = useRef(false);
@@ -173,6 +174,7 @@ export function useStudyCatalog(direction: "a" | "b") {
     const from = filtersFromParams(params);
     const fromPage = Number(params.get("page") ?? "0") || 0;
     if (JSON.stringify({ ...from, page: fromPage }) !== JSON.stringify({ ...filters, page })) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
       setFilters(from);
       setDraft({ keyword: from.keyword });
       setPage(fromPage);
@@ -183,6 +185,7 @@ export function useStudyCatalog(direction: "a" | "b") {
   // Auto-repair late page bằng replace (không kẹt Back — bài học P2 pagination).
   useEffect(() => {
     if (!loading && data && data.items.length === 0 && page > 0 && data.totalPages > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
       commit(filters, 0, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,12 +194,14 @@ export function useStudyCatalog(direction: "a" | "b") {
   // R7: giữ kết quả cũ trong lúc refetch (không chớp lưới, giữ chiều cao);
   // skeleton chỉ khi chưa hề có dữ liệu VÀ pending quá ~200ms.
   const [lastData, setLastData] = useState<CatalogPage | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
   useEffect(() => { if (data) setLastData(data); }, [data]);
   const display = data ?? lastData;
   const refetching = loading && lastData !== null;
   const [slowLoad, setSlowLoad] = useState(false);
   useEffect(() => {
     if (!(loading && !display)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
       setSlowLoad(false);
       return;
     }

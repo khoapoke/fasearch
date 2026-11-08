@@ -32,3 +32,8 @@ test("path ids reject zero, leading-zero, unsafe, and nonnumeric values", () => 
   assert.equal(positiveId("42"), 42);
   for (const value of ["0", "01", "-1", "1.5", "9007199254740992", "admin"]) assert.equal(positiveId(value), null);
 });
+
+test("tier writes accept version 0 for unconfigured tiers (regression: version 0 must not be rejected)", () => {
+  assert.deepEqual(tierBody({ version: 0, minimumCumulativePaidSales: 0 }), { version: 0, minimumCumulativePaidSales: 0 });
+  assert.deepEqual(tierBody({ version: 0, minimumCumulativePaidSales: 2000000 }), { version: 0, minimumCumulativePaidSales: 2000000 });
+});

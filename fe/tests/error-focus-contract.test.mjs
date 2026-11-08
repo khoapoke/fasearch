@@ -29,7 +29,9 @@ const SCREENS = [
 ];
 
 // Effect focus đúng hình dạng đã dùng trong repo: `useEffect(() => { if (…) ref.focus(); }, [dep])`.
-const EFFECT_FOCUS = /useEffect\(\(\) => \{\s*if \([^)]+\) errorRef\.current\?\.focus\(\);\s*\}, \[(error|state)\]\)/g;
+// /thanh-toan có biến thể có cổng: ô nhập sai tự focus ô đó (fieldFocus), effect chỉ
+// focus khối lỗi khi lỗi không gắn với ô cụ thể — vẫn một effect theo `error`.
+const EFFECT_FOCUS = /useEffect\(\(\) => \{\s*(?:if \([^)]+\) errorRef\.current\?\.focus\(\);|if \(!error\) return;\s*if \(fieldFocus\.current\) \{ fieldFocus\.current = false; return; \}\s*errorRef\.current\?\.focus\(\);)\s*\}, \[(error|state)\]\)/g;
 
 describe("focus thông báo lỗi (A11Y-1)", () => {
   for (const file of SCREENS) {

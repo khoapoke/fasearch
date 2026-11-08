@@ -155,11 +155,12 @@ export async function fetchMovement(query: string): Promise<MovementResult> {
   };
 }
 
-/** Neutralize spreadsheet formula injection; quoted when needed. Exported for unit proof. */
+/** Neutralize spreadsheet formula injection in text; numbers stay numbers. Exported for unit proof. */
 export function csvCell(value: string | number | null | undefined): string {
-  const text = value === null || value === undefined ? "" : String(value);
-  const safe = /^[=+\-@\t\r\n]/.test(text) ? `'${text}` : text;
-  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return String(value);
+  const safe = /^[=+\-@\t\r\n]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 export function downloadCsv(filename: string, header: string[], rows: Array<Array<string | number | null | undefined>>): string {

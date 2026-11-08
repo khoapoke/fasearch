@@ -29,17 +29,17 @@ describe("Chapter 5 account shell header/footer consistency", () => {
     assert.doesNotMatch(tag, /header="customer-focused"/, "account pages are not login screens");
   });
 
-  it("keeps AccountCenterShell aligned with the accepted /tai-khoan hub", () => {
-    const hub = shellTagOf(join(ROOT, "app/tai-khoan/page.tsx"));
+  it("keeps AccountCenterShell aligned with the persistent /tai-khoan frame (hub shell lives in AccountCenterFrame)", () => {
+    const hub = shellTagOf(join(ROOT, "components/storefront/account-center-frame.tsx"));
     const center = shellTagOf(join(ROOT, "components/storefront/account-center-shell.tsx"));
     for (const prop of ['active="/tai-khoan"', 'palette="customer"', 'header="customer"', 'footer="none"']) {
-      assert.ok(hub.includes(prop), `/tai-khoan hub is expected to keep ${prop}`);
-      assert.ok(center.includes(prop), `AccountCenterShell must match the hub prop ${prop}`);
+      assert.ok(hub.includes(prop), `/tai-khoan frame is expected to keep ${prop}`);
+      assert.ok(center.includes(prop), `AccountCenterShell must match the frame prop ${prop}`);
     }
   });
 
   it("never renders a bare StorefrontShell on published account routes", () => {
-    const accountRouteRoots = ["app/tai-khoan", "app/yeu-thich", "app/lich-su-ai", "app/voucher", "app/don-hang", "components/storefront/account-center-shell.tsx"];
+    const accountRouteRoots = ["app/tai-khoan", "app/yeu-thich", "app/lich-su-ai", "app/voucher", "app/don-hang", "components/storefront/account-center-shell.tsx", "components/storefront/account-center-frame.tsx"];
     const offenders = accountRouteRoots
       .flatMap((entry) => {
         const path = join(ROOT, entry);

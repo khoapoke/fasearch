@@ -107,8 +107,9 @@ export async function runCatalogChecks({ browser, base, check, SHOT }) {
     await page.locator("#listing-jump").fill("77"); await page.keyboard.press("Escape"); await page.waitForTimeout(100);
     check("D2 Esc reverts typed page number", (await page.locator("#listing-jump").inputValue()) === "4");
     check("D2 big number is the input (label)", (await page.locator("#listing-jump").getAttribute("aria-label")) === "Trang hiện tại, nhập số trang" && (await page.locator(".cat-page-cur .cat-corner").count()) === 1 && (await page.locator(".cat-page-pos").count()) === 1);
-    // sort + filter preserved when paging
-    await page.selectOption("#listing-sort", "price,asc"); await page.waitForTimeout(800);
+    // sort + filter preserved when paging (custom dropdown: trigger + listbox option)
+    await page.locator("#listing-sort").click(); await page.waitForTimeout(300);
+    await page.locator('[id="listing-sort-opt-price,asc"]').click(); await page.waitForTimeout(800);
     await page.locator('button[aria-label="Trang sau"]').click(); await page.waitForTimeout(900);
     check("D2 paging preserves sort", q(page.url()).get("sort") === "price,asc" && q(page.url()).get("page") === "1", page.url());
     await page.screenshot({ path: SHOT("desktop-pager.png"), clip: { x: 300, y: 0, width: 800, height: 1000 }, fullPage: true });

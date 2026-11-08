@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountCenterShell } from "@/components/storefront/account-center-shell";
+import ac from "@/components/account/account-cards.module.css";
 import { fetchSearchHistory, deleteSearchHistory, type SearchHistoryEntry } from "@/lib/customer-account-client";
-import "@/components/storefront/storefront.css";
 
 const MODE_LABEL: Record<SearchHistoryEntry["mode"], string> = {
   TEXT: "Tìm bằng văn bản",
@@ -41,6 +41,7 @@ export default function AiHistoryPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     void load();
   }, [load]);
 
@@ -59,95 +60,90 @@ export default function AiHistoryPage() {
 
   return (
     <AccountCenterShell active="/lich-su-ai" title="Lịch sử tìm kiếm AI">
-      {loading ? (
-        <section className="sfSideCard" aria-label="Trạng thái tải">
-          <p className="sfIdentitySub" role="status">Đang tải lịch sử tìm kiếm AI…</p>
-        </section>
-      ) : null}
+      <div className={ac.pageWide}>
+        {loading ? (
+          <section className={ac.card} aria-label="Trạng thái tải">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Lịch sử AI</p>
+              <h2 className={ac.title}>Đang tải lịch sử</h2>
+            </div>
+            <div className={ac.group} role="status">
+              <div className={ac.skeleton} />
+              <p className={ac.meta}>Đang tải lịch sử tìm kiếm AI…</p>
+            </div>
+          </section>
+        ) : null}
 
-      {error ? (
-        <div ref={errorRef} tabIndex={-1} className="sfSideCard" role="alert" style={{ borderLeft: "3px solid #b42318" }}>
-          <b>Lỗi tải dữ liệu</b>
-          <p className="sfIdentitySub" style={{ color: "#b42318", marginTop: 4 }}>{error}</p>
-          <button className="auth-button" type="button" onClick={load} style={{ marginTop: 10 }}>
-            Thử lại
-          </button>
-        </div>
-      ) : null}
-
-      {!loading && !error && entries.length === 0 ? (
-        <section className="sfSideCard" aria-label="Lịch sử trống">
-          <b>Chưa có lịch sử tìm kiếm</b>
-          <p className="sfIdentitySub" style={{ marginTop: 6, marginBottom: 16 }}>
-            Các lượt tìm kiếm bằng văn bản, hình ảnh hoặc kết hợp sẽ được lưu tại đây để bạn xem lại.
-          </p>
-          <Link className="auth-button is-primary" href="/tim-kiem-ai" style={{ display: "inline-block" }}>
-            Trải nghiệm tìm kiếm AI →
-          </Link>
-        </section>
-      ) : null}
-
-      {!loading && entries.length > 0 ? (
-        <section className="sfSideCard" aria-label="Danh sách lịch sử tìm kiếm">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <b>{entries.length} lượt tìm kiếm gần nhất</b>
-            <span className="sfIdentitySub">Lưu trên tài khoản</span>
+        {error ? (
+          <div ref={errorRef} tabIndex={-1} className={ac.card} role="alert">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Lịch sử AI</p>
+              <h2 className={ac.title}>Không tải được lịch sử</h2>
+            </div>
+            <p className={ac.alert}>{error}</p>
+            <div className={ac.actions}>
+              <button className={ac.secondary} type="button" onClick={load}>
+                Thử lại
+              </button>
+            </div>
           </div>
+        ) : null}
 
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
-            {entries.map((e) => (
-              <li
-                key={e.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 14px",
-                  borderRadius: 8,
-                  border: "1px solid var(--st-line, #eee)",
-                  backgroundColor: "var(--st-card, #ffffff)",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        backgroundColor: "var(--st-citron, #d6ef72)",
-                        color: "#20211f",
-                      }}
-                    >
-                      {MODE_LABEL[e.mode] ?? e.mode}
+        {!loading && !error && entries.length === 0 ? (
+          <section className={`${ac.card} ${ac.empty}`} aria-label="Lịch sử trống">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Lịch sử AI</p>
+              <h2 className={ac.title}>Chưa có gì ở đây</h2>
+            </div>
+            <p className={ac.meta}>Bạn chưa tìm kiếm bằng AI lần nào.</p>
+            <div className={ac.actions}>
+              <Link className={ac.primary} href="/tim-kiem-ai">
+                Trải nghiệm tìm kiếm AI
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        {!loading && entries.length > 0 ? (
+          <section className={ac.card} aria-label="Danh sách lịch sử tìm kiếm">
+            <div className={ac.head}>
+              <p className={ac.eyebrow}>01 · Lịch sử AI</p>
+              <h2 className={ac.title}>Lượt tìm kiếm gần nhất</h2>
+              <p className={ac.lead}>{entries.length} lượt · Lưu trên tài khoản</p>
+            </div>
+
+            <ul className={ac.list}>
+              {entries.map((e) => (
+                <li key={e.id}>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span className={ac.chip}>{MODE_LABEL[e.mode] ?? e.mode}</span>
+                      {e.query ? (
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>“{e.query}”</span>
+                      ) : (
+                        <span className={ac.meta}>(Tìm bằng tệp ảnh)</span>
+                      )}
                     </span>
-                    {e.query ? (
-                      <span style={{ fontWeight: 600, fontSize: 14 }}>“{e.query}”</span>
-                    ) : (
-                      <span className="sfIdentitySub" style={{ fontSize: 13 }}>(Tìm bằng tệp ảnh)</span>
-                    )}
-                  </div>
-                  <div className="sfIdentitySub" style={{ marginTop: 4, fontSize: 12 }}>
-                    {e.resultCount} kết quả · {formatOccurredAt(e.occurredAt)}
-                  </div>
-                </div>
+                    <span className={ac.meta} style={{ display: "block", marginTop: 4 }}>
+                      {e.resultCount} kết quả · {formatOccurredAt(e.occurredAt)}
+                    </span>
+                  </span>
 
-                <button
-                  type="button"
-                  className="auth-button"
-                  disabled={removing === e.id}
-                  onClick={() => remove(e.id)}
-                  style={{ flexShrink: 0 }}
-                  aria-label={`Xóa mục lịch sử ${e.query || e.mode}`}
-                >
-                  {removing === e.id ? "Đang xóa…" : "Xóa"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+                  <button
+                    type="button"
+                    className={ac.secondary}
+                    disabled={removing === e.id}
+                    onClick={() => remove(e.id)}
+                    aria-label={`Xóa mục lịch sử ${e.query || e.mode}`}
+                  >
+                    {removing === e.id ? "Đang xóa…" : "Xóa"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </AccountCenterShell>
   );
 }

@@ -165,7 +165,7 @@ function PaymentResultContent() {
             <div className="commerce-empty" role={verdict === "success" || verdict === "unpaid" ? "status" : "alert"}>
               <h2>{headline[verdict]}</h2>
               {verdict === "success" ? <p>Đơn hàng của bạn đã được ghi nhận thanh toán qua kênh an toàn. Hóa đơn và điểm thưởng (nếu có) được chốt bởi máy chủ.</p> : null}
-              {verdict === "pending" ? <p>Giao dịch đang chờ webhook/IPN đã ký từ cổng thanh toán. Trang tự kiểm tra lại trong khoảng 1 phút; làm mới không tạo đơn mới và không trừ tiền thêm.</p> : null}
+              {verdict === "pending" ? <p>Giao dịch đang chờ cổng thanh toán xác nhận. Trang tự kiểm tra lại trong khoảng 1 phút; làm mới không tạo đơn mới và không trừ tiền thêm.</p> : null}
               {verdict === "unpaid" ? <p>Đơn hàng đã được ghi nhận nhưng chưa có thanh toán trực tuyến nào được xác nhận. Nếu bạn chọn thanh toán khi nhận hàng (COD), bạn trả tiền khi nhận.{canRepay ? " Nếu muốn trả online, hãy thanh toán từ trang đơn hàng." : ""}</p> : null}
               {verdict === "failed" ? <p>Giao dịch báo thất bại. Đơn hàng vẫn giữ nguyên, bạn có thể thử lại từ trang đơn hàng.</p> : null}
               {verdict === "expired" ? <p>Phiên thanh toán đã hết hạn. Đơn hàng vẫn giữ nguyên, bạn có thể tạo phiên mới từ trang đơn hàng.</p> : null}
@@ -177,7 +177,7 @@ function PaymentResultContent() {
               {(attempt || order) ? (
                 <dl style={{ display: "grid", gap: 6, margin: "12px 0", fontSize: 14 }}>
                   {order ? <div style={{ display: "flex", gap: 8, justifyContent: "center" }}><dt>Mã đơn:</dt><dd style={{ margin: 0 }}><strong>{order.orderCode || `#${order.orderId}`}</strong> · {orderStatusText(order.status)} · {formatMoney(order.totalAmount)}</dd></div> : null}
-                  {attempt ? <div style={{ display: "flex", gap: 8, justifyContent: "center" }}><dt>Kênh {attempt.provider}:</dt><dd style={{ margin: 0 }}>{paymentAttemptStatusText(attempt.status)} · {formatMoney(attempt.amount)} {attempt.currency}</dd></div> : null}
+                  {attempt ? <div style={{ display: "flex", gap: 8, justifyContent: "center" }}><dt>Thanh toán qua {({ STRIPE: "Stripe", VNPAY: "VNPay" } as Record<string, string>)[String(attempt.provider).toUpperCase()] ?? attempt.provider}:</dt><dd style={{ margin: 0 }}>{paymentAttemptStatusText(attempt.status)} · {formatMoney(attempt.amount)}</dd></div> : null}
                 </dl>
               ) : null}
 

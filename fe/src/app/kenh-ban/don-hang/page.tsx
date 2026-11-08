@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { MerchantShell } from "@/components/merchant/merchant-shell";
 import {
   fetchStaffOrder, fetchStaffOrders, staffCancel, staffCompleteCod, staffTransition,
@@ -184,8 +185,8 @@ export default function MerchantOrders() {
             <option value="ONLINE">Online</option>
             <option value="POS">POS</option>
           </select>
-          <input type="date" value={filters.tuNgay} onChange={(e) => setF("tuNgay", e.target.value)} aria-label="Từ ngày" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }} />
-          <input type="date" value={filters.denNgay} onChange={(e) => setF("denNgay", e.target.value)} aria-label="Đến ngày" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }} />
+          <DateInput value={filters.tuNgay} onChange={(v) => setF("tuNgay", v)} aria-label="Từ ngày" />
+          <DateInput value={filters.denNgay} onChange={(v) => setF("denNgay", v)} aria-label="Đến ngày" />
           <button className="mpTopBtn" type="submit">Lọc (giữ điều kiện)</button>
         </form>
       </div>

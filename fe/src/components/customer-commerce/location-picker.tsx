@@ -7,10 +7,10 @@ import "./location-picker.css";
 
 export type DeliveryLocation = { deliveryLatitude: number; deliveryLongitude: number };
 const WAREHOUSE: [number, number] = [10.8070354, 106.6287031];
-type Props = { value: DeliveryLocation | null; onChange: (value: DeliveryLocation) => void; onAddress?: (address: string) => void };
+type Props = { value: DeliveryLocation | null; onChange: (value: DeliveryLocation) => void; onAddress?: (address: string) => void; mapOnly?: boolean };
 type Suggestion = { placeId: string; label: string };
 
-export function LocationPicker({ value, onChange, onAddress }: Props) {
+export function LocationPicker({ value, onChange, onAddress, mapOnly = false }: Props) {
   const id = useId();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<Leaflet.Map | null>(null);
@@ -18,7 +18,7 @@ export function LocationPicker({ value, onChange, onAddress }: Props) {
   const latest = useRef({ value, onChange });
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [message, setMessage] = useState("Tìm địa chỉ, chạm bản đồ hoặc kéo ghim để chọn điểm giao hàng.");
+  const [message, setMessage] = useState(mapOnly ? "Chạm bản đồ hoặc kéo ghim tới đúng chỗ nhận hàng." : "Tìm địa chỉ, chạm bản đồ hoặc kéo ghim để chọn điểm giao hàng.");
   const [busy, setBusy] = useState(false);
   const searchVersion = useRef(0);
   useEffect(() => { latest.current = { value, onChange }; }, [value, onChange]);
@@ -79,12 +79,16 @@ export function LocationPicker({ value, onChange, onAddress }: Props) {
       setMessage("Đã lấy vị trí hiện tại. Hãy kiểm tra lại ghim trước khi lưu.");
     }, () => setMessage("Không lấy được vị trí. Hãy cho phép định vị hoặc tự đặt ghim."), { timeout: 10000 });
   }
+  if (mapOnly) return <section className="delivery-picker" aria-label="Bản đồ giao hàng">
+    <div ref={container} className="delivery-map" aria-label="Bản đồ giao hàng; chạm hoặc kéo ghim để chọn vị trí" />
+    <p role="status">{message}</p>
+  </section>;
   return <section className="delivery-picker" aria-label="Chọn vị trí giao hàng">
     <label htmlFor={`${id}-search`}>Tìm vị trí giao hàng</label>
     <div className="delivery-picker-actions"><input id={`${id}-search`} value={query} onChange={(e) => { searchVersion.current++; setQuery(e.target.value); setSuggestions([]); setBusy(false); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (query.trim().length >= 3) void search(); } }} placeholder="Nhập địa chỉ để tìm" maxLength={200} /><button type="button" disabled={busy || query.trim().length < 3} onClick={() => void search()}>Tìm địa chỉ</button></div>
     {suggestions.length ? <ul aria-label="Địa chỉ gợi ý">{suggestions.map((s) => <li key={s.placeId}><button type="button" disabled={busy} onClick={() => void select(s)}>{s.label}</button></li>)}</ul> : null}
     <div ref={container} className="delivery-map" aria-label="Bản đồ giao hàng; chạm hoặc kéo ghim để chọn vị trí" />
-    <div className="delivery-picker-actions"><button type="button" onClick={locate}>Dùng vị trí hiện tại</button><button type="button" onClick={() => onChange({ deliveryLatitude: WAREHOUSE[0], deliveryLongitude: WAREHOUSE[1] })}>Chọn vị trí kho</button></div>
+    <div className="delivery-picker-actions"><button type="button" onClick={locate}>Dùng vị trí hiện tại</button></div>
     <p role="status">{message}</p>
     {!value ? <p>Chưa ghim vị trí: phí giao hàng tính theo tỉnh/quận và trọng lượng.</p> : null}
   </section>;

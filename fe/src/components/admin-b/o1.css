@@ -1,0 +1,51 @@
+/* O1: Vai trò & quyền editor and the "Không có quyền" panel. Tokens from admin-b.css (both themes). */
+.admB .o1-perm{display:flex;flex-direction:column;gap:var(--s-3);}
+.admB .o1-lead{margin:0;max-width:72ch;}
+.admB .o1-table-wrap{border:1px solid var(--line);border-radius:8px;background:var(--surface);}
+.admB .o1-table{width:100%;border-collapse:collapse;font-size:14px;}
+.admB .o1-table thead th{position:sticky;top:0;z-index:1;background:var(--surface);text-align:left;font-weight:600;color:var(--muted);font-size:12px;text-transform:none;padding:10px 14px;border-bottom:1px solid var(--line);}
+.admB .o1-table th,.admB .o1-table td{padding:7px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+.admB .o1-table tbody tr:last-child th,.admB .o1-table tbody tr:last-child td{border-bottom:1px solid var(--line);}
+.admB .o1-table tbody:last-child tr:last-child th,.admB .o1-table tbody:last-child tr:last-child td{border-bottom:0;}
+.admB .o1-table th[scope="row"]{font-weight:400;text-align:left;}
+.admB .o1-col{width:150px;text-align:center !important;}
+.admB .o1-group-row th,.admB .o1-group-row td{background:var(--t-gray-bg);font-weight:600;color:var(--ink);}
+.admB .o1-group-row th{text-align:left;}
+.admB .o1-count{margin-left:8px;font-weight:500;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.admB .o1-full{color:var(--t-green);font-weight:600;font-size:13px;}
+.admB .o1-fixed{color:var(--muted);font-size:12px;font-weight:500;}
+.admB .o1-no{color:var(--muted);}
+.admB .o1-fixed-row th{color:var(--muted);}
+.admB .o1-label{cursor:pointer;}
+.admB .o1-check{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;font-size:13px;}
+.admB .o1-check input{width:18px;height:18px;margin:0;accent-color:var(--accent);cursor:pointer;}
+.admB .o1-check input:disabled{cursor:not-allowed;}
+.admB .o1-changed th,.admB .o1-changed td{background:var(--accent-bg);}
+.admB .o1-pill{margin-left:8px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;color:var(--accent);border:1px solid var(--accent-border);white-space:nowrap;}
+.admB .o1-warn{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;color:var(--t-amber);background:var(--t-amber-bg);}
+.admB .o1-table th[scope="row"] .info-hint,.admB .o1-table th[scope="row"] > button{margin-left:4px;vertical-align:middle;}
+.admB .o1-bar{justify-content:flex-end;}
+.admB .o1-dirty{margin-right:auto;color:var(--muted);font-size:13px;}
+.admB .o1-dirty.on{color:var(--accent);font-weight:600;}
+.admB .o1-audit h2{margin:0 0 var(--s-2);font-size:15px;}
+.admB .o1-audit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.admB .o1-audit-list li{padding:10px 0;border-top:1px solid var(--line);}
+.admB .o1-audit-list li:first-child{border-top:0;padding-top:0;}
+.admB .o1-audit-list p{margin:4px 0 0;font-size:13px;line-height:1.5;}
+.admB .o1-audit-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;}
+.admB .o1-audit-head time{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;}
+.admB .o1-tag{display:inline-block;margin-right:6px;padding:0 7px;border-radius:4px;font-size:11px;font-weight:700;}
+.admB .o1-tag.on{color:var(--t-green);background:var(--t-green-bg);}
+.admB .o1-tag.off{color:var(--t-red);background:var(--t-red-bg);}
+.admB .o1-diff{display:flex;flex-direction:column;gap:var(--s-2);}
+.admB .o1-diff-title{margin:0 0 4px;font-weight:600;}
+.admB .o1-diff ul{margin:0;padding-left:20px;font-size:14px;line-height:1.6;}
+.admB .o1-denied h1{font-size:20px;margin:0 0 6px;}
+@media (max-width: 700px){
+  .admB .o1-col{width:84px;padding-left:6px !important;padding-right:6px !important;}
+  .admB .o1-table th,.admB .o1-table td{padding:8px 8px;}
+  .admB .o1-group-toggle span{display:none;}
+  .admB .o1-warn,.admB .o1-pill{display:block;margin:4px 0 0;width:max-content;max-width:100%;white-space:normal;}
+  .admB .o1-full{font-size:12px;}
+}
+.admB .o1-fieldset{border:0;margin:0;padding:0;min-width:0;}

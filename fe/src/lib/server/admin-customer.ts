@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authCookie, authError, readJsonObject, requireJsonPost } from "@/lib/server/customer-auth";
 import { adminIdentity, BE } from "@/lib/server/admin-bff";
+import { deleteWithReason } from "@/lib/server/admin-delete";
 
 const GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
 const PHONE = /^(0|\+84)[0-9]{9}$/;
@@ -61,3 +62,12 @@ export async function customerWrite(request: NextRequest, path: string, method: 
   }
 }
 export function idOf(raw: string): number | null { if (!/^[1-9]\d*$/.test(raw)) return null; const n = Number(raw); return Number.isSafeInteger(n) ? n : null; }
+
+/** Xóa mềm hồ sơ khách hàng kèm lý do; hồ sơ có tài khoản đăng nhập liên kết chỉ ADMIN xóa được (BE quyết định). */
+export async function customerDelete(request: NextRequest, id: number): Promise<Response> {
+  return deleteWithReason(request, `/api/v1/users/customers/${id}`, {
+    noun: "khách hàng",
+    adminOnly: false,
+    unavailable: "Không kết nối được máy chủ khách hàng.",
+  });
+}

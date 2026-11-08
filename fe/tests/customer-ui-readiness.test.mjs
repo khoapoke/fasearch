@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test, { describe, it } from "node:test";
+import { describe, it } from "node:test";
 import { safeCustomerAuthReturn } from "../src/lib/customer-auth-return.ts";
 import { formatMoney, orderStatusText } from "../src/lib/customer-commerce.ts";
 import { resolveHeaderAccountNav } from "../src/lib/customer-header-nav.ts";

@@ -15,13 +15,15 @@ export async function GET(request: NextRequest) {
     return bad("Bộ lọc trang chưa hợp lệ.", 400, "INVALID_REQUEST");
   }
   const status = source.get("trangThai") ?? "";
+  const effective = source.get("hieuLuc") ?? "";
   const type = source.get("loai") ?? "";
   const query = (source.get("q") ?? "").trim();
-  if ((status && !["HOAT_DONG", "TAM_DUNG"].includes(status)) || (type && !["PHAN_TRAM", "SO_TIEN"].includes(type)) || query.length > 100) {
+  if ((status && !["HOAT_DONG", "TAM_DUNG"].includes(status)) || (effective && !["DANG_CHAY", "TAM_DUNG", "DA_KET_THUC", "CHUA_BAT_DAU"].includes(effective)) || (type && !["PHAN_TRAM", "SO_TIEN"].includes(type)) || query.length > 100) {
     return bad("Bộ lọc chưa hợp lệ.", 400, "INVALID_REQUEST");
   }
   const qs = new URLSearchParams({ page, size });
   if (status) qs.set("trangThai", status);
+  if (effective) qs.set("hieuLuc", effective);
   if (type) qs.set("loai", type);
   if (query) qs.set("q", query);
   return promotionsUpstream(request, `/api/v1/khuyen-mai?${qs}`, "GET");

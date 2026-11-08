@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { PriceTag } from "@/components/storefront/price-tag";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
-import { loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
-import { BackIcon, ChevronDownIcon, ForwardIcon, HeartIcon } from "@/components/customer-catalog/catalog-icons";
+import { FavoriteHeart } from "@/components/storefront/favorite-heart";
+import { BackIcon, ChevronDownIcon, ForwardIcon } from "@/components/customer-catalog/catalog-icons";
+import { useHomeMotion } from "@/lib/home-motion";
 import { parseJumpInput, visibleRange } from "@/lib/pagination";
 import { optionFingerprint } from "@/lib/study-helpers";
 import { KEYWORD_DEBOUNCE_MS, SLOW_LOAD_MS, shouldDebounceKeyword, visibleWithActive } from "@/lib/catalog-live";
@@ -80,34 +82,6 @@ function CatalogImage({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
-function FavoriteButton({ id, name }: { id: number; name: string }) {
-  const [loved, setLoved] = useState<boolean | null>(null);
-  useEffect(() => {
-    let active = true;
-    loadFavoriteIds().then((ids) => { if (active) setLoved(ids.has(id)); }).catch(() => { if (active) setLoved(false); });
-    return () => { active = false; };
-  }, [id]);
-  const isLoved = loved ?? false;
-  return (
-    <button
-      className="cat-favorite"
-      type="button"
-      aria-pressed={isLoved}
-      aria-label={`${isLoved ? "Bỏ yêu thích" : "Yêu thích"} ${name}`}
-      onClick={async () => {
-        try {
-          const next = await toggleFavoriteServer(id);
-          setLoved(next);
-        } catch {
-          window.location.href = "/dang-nhap?next=" + encodeURIComponent(window.location.pathname);
-        }
-      }}
-    >
-      <HeartIcon filled={isLoved} />
-    </button>
-  );
-}
-
 function ProductCard({ product }: { product: CatalogProduct }) {
   return (
     <article className="cat-product-card">
@@ -115,7 +89,7 @@ function ProductCard({ product }: { product: CatalogProduct }) {
         <Link className="cat-product-photo" href={`/san-pham/${product.id}`} aria-label={`Xem ${product.name}`}>
           <CatalogImage src={product.imageUrl} alt={product.name} />
         </Link>
-        <FavoriteButton id={product.id} name={product.name} />
+        <FavoriteHeart productId={product.id} productName={product.name} className="cat-favorite" size={18} />
       </div>
       <div className="cat-product-info">
         {product.brandName ? <span className="cat-product-brand">{product.brandName}</span> : null}
@@ -124,7 +98,7 @@ function ProductCard({ product }: { product: CatalogProduct }) {
             {product.name}
           </Link>
         </h3>
-        <span className="cat-product-price">{formatVnd(product.price)}</span>
+        <span className="cat-product-price"><PriceTag value={product.price} /></span>
         <p className="cat-product-meta">
           {[product.categoryName, product.material, product.style].filter(Boolean).join(" · ") || "Thông tin danh mục"}
         </p>
@@ -423,6 +397,105 @@ function PageJump({ page, totalPages, loading, onGoto }: { page: number; totalPa
   );
 }
 
+const SORT_OPTIONS = [
+  { v: "id,desc", label: "Mặc định" },
+  { v: "price,asc", label: "Giá thấp đến cao" },
+  { v: "price,desc", label: "Giá cao đến thấp" },
+  { v: "productName,asc", label: "Tên A–Z" },
+  { v: "productName,desc", label: "Tên Z–A" },
+];
+
+/**
+ * Sắp xếp: custom dropdown cùng ngôn ngữ thị giác với danh mục
+ * (khung góc bracket cho mục active, chữ sans). Không còn select native
+ * nên không còn ring box indigo dày. Button + listbox, phím mũi tên,
+ * Enter/Escape, click ngoài đóng, focus-visible mảnh chỉ cho bàn phím.
+ */
+function SortDropdown({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const optRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const { enabled: motionOK } = useHomeMotion();
+  const activeIdx = Math.max(0, SORT_OPTIONS.findIndex((o) => o.v === value));
+  const active = SORT_OPTIONS[activeIdx];
+
+  function pick(next: string) {
+    setOpen(false);
+    if (next !== value) onChange(next);
+    else btnRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    optRefs.current[activeIdx]?.focus();
+    const onDoc = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, activeIdx]);
+
+  function onTriggerKey(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setOpen(true);
+    }
+  }
+
+  function onOptKey(e: React.KeyboardEvent, idx: number) {
+    if (e.key === "ArrowDown") { e.preventDefault(); optRefs.current[(idx + 1) % SORT_OPTIONS.length]?.focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); optRefs.current[(idx - 1 + SORT_OPTIONS.length) % SORT_OPTIONS.length]?.focus(); }
+    else if (e.key === "Home") { e.preventDefault(); optRefs.current[0]?.focus(); }
+    else if (e.key === "End") { e.preventDefault(); optRefs.current[SORT_OPTIONS.length - 1]?.focus(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(SORT_OPTIONS[idx].v); btnRef.current?.focus(); }
+    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); btnRef.current?.focus(); }
+    else if (e.key === "Tab") { setOpen(false); }
+  }
+
+  return (
+    <div className="cat-sort" ref={rootRef} data-motion={motionOK ? "on" : "off"}>
+      <button
+        ref={btnRef}
+        id="listing-sort"
+        type="button"
+        className="cat-sort-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Sắp xếp sản phẩm, hiện tại: ${active.label}`}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={onTriggerKey}
+      >
+        <span className="cat-sort-label">Sắp xếp: {active.label}</span>
+        <span className="cat-sort-chevron" aria-hidden="true" data-open={open}>
+          <ChevronDownIcon />
+        </span>
+      </button>
+      {open ? (
+        <ul className="cat-sort-menu" role="listbox" aria-label="Sắp xếp sản phẩm">
+          {SORT_OPTIONS.map((o, i) => (
+            <li
+              key={o.v}
+              id={`listing-sort-opt-${o.v}`}
+              ref={(el) => { optRefs.current[i] = el; }}
+              role="option"
+              tabIndex={-1}
+              aria-selected={o.v === value}
+              data-active={o.v === value}
+              className="cat-sort-opt"
+              onClick={() => { pick(o.v); btnRef.current?.focus(); }}
+              onKeyDown={(e) => onOptKey(e, i)}
+            >
+              {o.v === value ? <span className="cat-corner" aria-hidden="true" /> : null}
+              <span>{o.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export type ListingVariant = {
   /** Đường dẫn nav được đánh dấu active. */
   shell: string;
@@ -682,6 +755,7 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     const want = JSON.stringify({ ...from, page: fromPage });
     const cur = JSON.stringify({ ...filters, page });
     if (want !== cur) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- đồng bộ params điều hướng ngoài (Back/link) vào state bộ lọc
       setFilters(from);
       setKeywordDraft(from.keyword);
       typingSession.current = false;
@@ -735,11 +809,11 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
     <StorefrontShell active={variant.shell} themed palette="customer" header="customer" footer="none">
       <div className="catPage">
         <div className="cat-content cat-catalog-content">
-          <div className="cat-head cat-head-compact">
+          <div className={`cat-head cat-head-compact${variant.note || variant.links?.length || variant.brandLinks ? " cat-head-stacked" : ""}`}>
             <h1>{variant.title}</h1>
-            {variant.note ? <p className="cat-product-meta" style={{ marginTop: 6 }}>{variant.note}</p> : null}
+            {variant.note ? <p className="cat-head-note">{variant.note}</p> : null}
             {variant.links?.length || variant.brandLinks ? (
-              <p className="cat-product-meta" style={{ marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <p className="cat-head-links">
                 {variant.links?.map((l) => <Link key={l.href} href={l.href} className="cat-text-button">{l.label}</Link>)}
                 {variant.brandLinks ? brands.slice(0, 10).map((br) => <Link key={br.slug} href={`${pathname}?brand=${br.slug}`} className="cat-text-button">{brandLabel(br.slug, br.name)}</Link>) : null}
               </p>
@@ -770,26 +844,9 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
                     ? "Đang tải sản phẩm…"
                     : `${range ? `${range.from}–${range.to} trên ${display.totalElements} sản phẩm` : `${display.totalElements} sản phẩm`}${loading ? " · Đang cập nhật…" : ""}`}
                 </span>
-                <label className="cat-sort-control" htmlFor="listing-sort">
-                  Sắp xếp
-                  <span className="cat-sort-select-wrap">
-                    <select
-                      id="listing-sort"
-                      className="cat-select"
-                      value={filters.sort}
-                      onChange={(e) => commit({ ...filters, sort: e.target.value })}
-                    >
-                      <option value="id,desc">Mặc định</option>
-                      <option value="price,asc">Giá thấp đến cao</option>
-                      <option value="price,desc">Giá cao đến thấp</option>
-                      <option value="productName,asc">Tên A–Z</option>
-                      <option value="productName,desc">Tên Z–A</option>
-                    </select>
-                    <span className="cat-sort-chevron" aria-hidden="true">
-                      <ChevronDownIcon />
-                    </span>
-                  </span>
-                </label>
+                <div className="cat-sort-control">
+                  <SortDropdown value={filters.sort} onChange={(sort) => commit({ ...filters, sort })} />
+                </div>
               </div>
               {appliedChips.length ? (
                 <div className="cat-applied-row">
@@ -831,10 +888,6 @@ export function CatalogListing({ variant = DEFAULT_VARIANT }: { variant?: Listin
                   <div className="cat-product-grid">
                     {display.items.map((product) => <ProductCard product={product} key={product.id} />)}
                   </div>
-                  <details className="cat-source">
-                    <summary>Nguồn ảnh</summary>
-                    <div>Ảnh sản phẩm lấy từ trường imageUrl của API công khai; pilot chưa có metadata tác giả.</div>
-                  </details>
                   {display.totalPages > 1 ? (
                     <Pagination page={displayPage} totalPages={display.totalPages} loading={loading} onGoto={gotoPage} />
                   ) : null}

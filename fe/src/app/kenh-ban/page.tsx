@@ -29,7 +29,7 @@ function todayRange(): string {
 }
 
 // Dashboard chỉ dùng số liệu thật từ API: catalog, đơn hàng, báo cáo doanh thu
-// (ADMIN) và trạng thái tìm kiếm AI. Không vẽ biểu đồ/số liệu minh họa.
+// (cần quyền xem báo cáo) và trạng thái tìm kiếm AI. Không vẽ biểu đồ/số liệu minh họa.
 export default function MerchantDashboard() {
   const [me, setMe] = useState<AccountIdentity | null>(null);
   const [counts, setCounts] = useState<Counts>({ cats: null, prods: null, error: "" });
@@ -38,6 +38,7 @@ export default function MerchantDashboard() {
   const [ordersError, setOrdersError] = useState("");
   const [revenueToday, setRevenueToday] = useState<number | null>(null);
   const [revenueNote, setRevenueNote] = useState("");
+  const [revenueDenied, setRevenueDenied] = useState(false);
   const [ai, setAi] = useState<AiStatus | null>(null);
 
   useEffect(() => {
@@ -87,7 +88,8 @@ export default function MerchantDashboard() {
       .catch((e) => {
         if (!live) return;
         const status = (e as { status?: number })?.status ?? 0;
-        if (status !== 403) setRevenueNote("Không tải được báo cáo doanh thu.");
+        if (status === 403) setRevenueDenied(true);
+        else setRevenueNote("Không tải được báo cáo doanh thu.");
       });
     return () => {
       live = false;
@@ -100,7 +102,7 @@ export default function MerchantDashboard() {
   return (
     <MerchantShell
       active="dashboard"
-      previewNote="Số liệu dưới đây lấy thẳng từ máy chủ: catalog, đơn hàng, báo cáo doanh thu (ADMIN) và trạng thái tìm kiếm AI."
+      previewNote="Số liệu dưới đây lấy thẳng từ máy chủ: catalog, đơn hàng, báo cáo doanh thu (cần quyền xem báo cáo) và trạng thái tìm kiếm AI."
     >
       <h1 style={{ fontSize: 22, fontWeight: 800 }}>{greeting}</h1>
       <p className="mpMuted">
@@ -133,14 +135,14 @@ export default function MerchantDashboard() {
         </div>
         <div className="mpStat">
           <p>Doanh thu hôm nay</p>
-          <b>{revenueToday === null ? (me?.role === "ADMIN" ? "…" : "—") : formatVnd(revenueToday)}</b>
-          <small>{me?.role === "ADMIN" ? "GET /bao-cao/doanh-thu" : "Cần quyền ADMIN"}</small>
+          <b>{revenueToday === null ? (revenueDenied ? "—" : "…") : formatVnd(revenueToday)}</b>
+          <small>{revenueDenied ? "Cần quyền xem báo cáo" : "GET /bao-cao/doanh-thu"}</small>
         </div>
       </div>
       {counts.error ? (
         <p className="mpPreviewBar" role="alert">Không tải được số liệu danh mục/sản phẩm: {counts.error}</p>
       ) : null}
-      {me?.role === "ADMIN" && revenueNote ? (
+      {!revenueDenied && revenueNote ? (
         <p className="mpPreviewBar" role="note">{revenueNote}</p>
       ) : null}
 

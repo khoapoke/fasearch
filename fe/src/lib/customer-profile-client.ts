@@ -5,3 +5,9 @@ async function parse<T>(r: Response): Promise<T> { let j: Envelope<T> | null = n
 export const getSelfProfile = async (signal?: AbortSignal) => parse<CustomerProfile>(await fetch("/api/customer-profile", { cache: "no-store", signal }));
 export const updateSelfProfile = async (body: Record<string, unknown>) => parse<CustomerProfile>(await fetch("/api/customer-profile", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
 export const profileGenderLabel = (v: string | null) => v === "MALE" ? "Nam" : v === "FEMALE" ? "Nữ" : v === "OTHER" ? "Khác" : "—";
+
+/** Họ (firstName, cột ho_kh) + Tên (lastName, cột ten_kh). Dùng chung cho mọi mặt khách hàng. */
+export function customerFullName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
+  if (!p) return "";
+  return [p.firstName, p.lastName].filter(Boolean).join(" ").trim();
+}

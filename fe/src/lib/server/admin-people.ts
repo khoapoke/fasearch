@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { authCookie, authError, readJsonObject, requireJsonPost } from "@/lib/server/customer-auth";
 import { adminIdentity, BE } from "@/lib/server/admin-bff";
+import { deleteWithReason } from "@/lib/server/admin-delete";
 const ROLES = new Set(["STAFF", "ADMIN"]);
 const STATUSES = new Set(["ACTIVE", "INACTIVE", "LOCKED"]);
 const GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
@@ -78,3 +79,21 @@ export async function employeeGet(request: NextRequest, id: number): Promise<Res
 export async function employeeCreate(request: NextRequest): Promise<Response> { const guard = requireJsonPost(request); if (guard) return guard; const parsed = await readJsonObject(request); if (!parsed.ok) return parsed.response; const checked = employeeFields(parsed.body, true); if (!checked.ok) return checked.response; const current = await ctx(request, false); if ("response" in current) return current.response; if (current.role !== "ADMIN" && checked.body.accountId !== undefined) return authError("Chỉ Quản trị viên hệ thống được liên kết tài khoản nội bộ.", 403, "ADMIN_REQUIRED"); if (checked.body.accountId !== undefined && !(await eligibleInternalAccount(current.token, checked.body.accountId as number, request.signal))) return authError("Chỉ được liên kết tài khoản Quản lý/Quản trị viên đang tồn tại.", 400, "INVALID_ACCOUNT"); return forward(request, "/api/v1/users/employees", "POST", checked.body, false); }
 export async function employeeUpdate(request: NextRequest, id: number): Promise<Response> { const guard = requireJsonPost(request); if (guard) return guard; const parsed = await readJsonObject(request); if (!parsed.ok) return parsed.response; const checked = employeeFields(parsed.body, false); if (!checked.ok) return checked.response; const current = await ctx(request, false); if ("response" in current) return current.response; if (current.role !== "ADMIN" && checked.body.accountId !== undefined) return authError("Chỉ Quản trị viên hệ thống được liên kết tài khoản nội bộ.", 403, "ADMIN_REQUIRED"); if (checked.body.accountId !== undefined && !(await eligibleInternalAccount(current.token, checked.body.accountId as number, request.signal))) return authError("Chỉ được liên kết tài khoản Quản lý/Quản trị viên đang tồn tại.", 400, "INVALID_ACCOUNT"); return forward(request, `/api/v1/users/employees/${id}`, "PATCH", checked.body, false); }
 export function idOf(raw: string): number | null { if (!/^[1-9]\d*$/.test(raw)) return null; const n = Number(raw); return Number.isSafeInteger(n) ? n : null; }
+
+/** Xóa mềm hồ sơ nhân sự kèm lý do; hồ sơ có tài khoản liên kết chỉ ADMIN xóa được (BE quyết định). */
+export async function employeeDelete(request: NextRequest, id: number): Promise<Response> {
+  return deleteWithReason(request, `/api/v1/users/employees/${id}`, {
+    noun: "hồ sơ nhân sự",
+    adminOnly: false,
+    unavailable: "Không kết nối được máy chủ nhân sự.",
+  });
+}
+
+/** Xóa mềm tài khoản đăng nhập kèm lý do; chỉ ADMIN. */
+export async function accountDelete(request: NextRequest, id: number): Promise<Response> {
+  return deleteWithReason(request, `/api/v1/auth/accounts/${id}`, {
+    noun: "tài khoản đăng nhập",
+    adminOnly: true,
+    unavailable: "Không kết nối được máy chủ nhân sự.",
+  });
+}

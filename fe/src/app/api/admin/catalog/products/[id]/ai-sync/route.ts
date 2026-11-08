@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { authError } from "@/lib/server/customer-auth";
-import { catalogRead, catalogWrite, idOf } from "@/lib/server/admin-catalog";
+import { catalogRead, idOf } from "@/lib/server/admin-catalog";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

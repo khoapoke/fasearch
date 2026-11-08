@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
   const gender = typeof body.gender === "string" ? body.gender : "";
   if (!username || !password || !email || !lastName || !phoneNumber) {
-    return authError("Điền đủ tên đăng nhập, mật khẩu, email, họ và số điện thoại.", 400, "INVALID_REQUEST");
+    return authError("Điền đủ tên đăng nhập, mật khẩu, email, tên và số điện thoại.", 400, "INVALID_REQUEST");
   }
   if (username.length < 4 || username.length > 50) return authError("Tên đăng nhập phải từ 4 đến 50 ký tự.", 400, "INVALID_REQUEST");
   if (password.length < 6 || password.length > 100) return authError("Mật khẩu phải từ 6 đến 100 ký tự.", 400, "INVALID_REQUEST");

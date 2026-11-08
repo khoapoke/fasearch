@@ -146,6 +146,19 @@ describe("benefits adapters hit contract paths with envelope", () => {
     assert.equal(tiers[1].tierId, 2);
   });
 
+
+  it("tier discovery accepts version 0 for unconfigured tiers (regression: version 0 must not be rejected)", async () => {
+    const { fetchTierList } = await import("../src/lib/benefits-client.ts");
+    fixtures.set("GET /api/admin/loyalty/tiers", jsonResponse(200, envelope([
+      { tierId: 3, name: "Vang", minimumCumulativePaidSales: null, version: 0 },
+      { tierId: 4, name: "Kim Cuong", minimumCumulativePaidSales: null, version: 0 },
+    ])));
+    const tiers = await fetchTierList();
+    assert.equal(tiers.length, 2);
+    assert.equal(tiers[0].version, 0);
+    assert.equal(tiers[1].version, 0);
+  });
+
   it("opening writes the exact customerId field", async () => {
     const { openLegacyBalance } = await import("../src/lib/benefits-client.ts");
     fixtures.set("POST /api/admin/loyalty/opening", jsonResponse(200, envelope({ customerId: 5, openingRecorded: true, openingPoints: 120, entryId: 9, occurredAt: "2026-10-18T00:00:00" })));

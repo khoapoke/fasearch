@@ -30,7 +30,7 @@ export type LoyaltyBalance = {
 
 export type LoyaltyHistoryEntry = {
   entryId: number;
-  type: "OPENING" | "HOLD" | "RELEASE" | "REDEEM" | "EARN";
+  type: "OPENING" | "HOLD" | "RELEASE" | "REDEEM" | "EARN" | "ADJUST";
   points: number;
   orderId: number | null;
   occurredAt: string;
@@ -115,6 +115,7 @@ export function loyaltyActionLabel(type: string): string {
     case "RELEASE": return "Nhả giữ";
     case "REDEEM": return "Dùng điểm";
     case "EARN": return "Tích điểm";
+    case "ADJUST": return "Điều chỉnh bởi cửa hàng";
     default: return type;
   }
 }
@@ -137,6 +138,8 @@ export function formatVnDateTime(value: string): string {
 /** Chuỗi số điểm có dấu cho lịch sử: OPENING là số dư nền (+N, trung tính). */
 export function loyaltyHistoryAmount(type: string, points: number): { text: string; direction: "up" | "down" | "flat" } {
   if (type === "OPENING") return { text: `+${points} điểm`, direction: "flat" };
+  // ADJUST is the only signed ledger type: the sign comes from the stored value.
+  if (type === "ADJUST") return points < 0 ? { text: `−${Math.abs(points)} điểm`, direction: "down" } : { text: `+${points} điểm`, direction: "up" };
   const signed = loyaltySignedPoints(type, points);
   if (signed > 0) return { text: `+${points} điểm`, direction: "up" };
   if (signed < 0) return { text: `−${points} điểm`, direction: "down" };
@@ -146,20 +149,22 @@ export function loyaltyHistoryAmount(type: string, points: number): { text: stri
 /** OPENING is a baseline, while HOLD/RELEASE only move the available balance. */
 export function loyaltySignedPoints(type: string, points: number): number {
   if (type === "OPENING") return 0;
+  if (type === "ADJUST") return points;
   return type === "HOLD" || type === "REDEEM" ? -Math.abs(points) : Math.abs(points);
 }
 
 /** Lỗi benefit → câu VI trung thực, giữ input ở caller. */
 export function benefitErrorMessage(status: number, code: string | null, fallback: string): string {
   const c = (code ?? "").toUpperCase();
-  if (c === "4201" || c.includes("LEGACY_OPENING_REQUIRED")) return "Số dư điểm cũ chưa được ghi nhận mở đầu; quản trị viên cần thực hiện bước này trước khi đổi điểm.";
   if (c === "4202" || c.includes("LOYALTY_POLICY_UNAVAILABLE")) return "Chưa có chính sách điểm để đổi.";
   if (c === "4203" || c.includes("LOYALTY_POLICY_DISABLED")) return "Chính sách điểm đang tắt; điểm vẫn được giữ nguyên.";
   if (c === "4204" || c.includes("INSUFFICIENT")) return "Điểm vượt quá số dư hoặc mức giảm tối đa hiện tại.";
-  if (c === "4205" || c.includes("OPENING_ALREADY_RECORDED")) return "Số dư khách đã được ghi nhận mở đầu trước đó.";
+  if (c === "4205" || c.includes("OPENING_ALREADY_RECORDED")) return "Khách này đã được ghi nhận số dư mở đầu.";
   if (c === "4206" || c.includes("LOYALTY_POLICY_VERSION_CHANGED")) return "Chính sách đã đổi. Tải lại rồi thử lại.";
   if (c === "4207" || c.includes("LOYALTY_TIER_VERSION_CHANGED")) return "Ngưỡng hạng đã đổi. Tải lại rồi thử lại.";
   if (c === "4208" || c.includes("LOYALTY_STATE_CONFLICT")) return "Trạng thái điểm đã thay đổi đồng thời. Tải lại báo giá.";
+  const f = (fallback ?? "").toLowerCase();
+  if (f.includes("configured thresholds must increase")) return "Ngưỡng phải tăng dần theo thứ tự hạng.";
   if (c.includes("EXPIRED") || c.includes("HET_HAN")) return "Voucher đã hết hạn.";
   if (c.includes("DISABLE") || c.includes("TAT") || c.includes("PAUSE")) return "Ưu đãi đang tắt/tạm dừng.";
   if (c.includes("MISMATCH") || c.includes("KHONG_AP_DUNG")) return "Voucher không áp dụng cho đơn này.";

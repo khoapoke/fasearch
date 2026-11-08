@@ -1,22 +1,34 @@
 export type Category = { id: number; categoryName: string };
 export type Variant = { skuId: number; productId: number; color: string | null; size: string | null; barcode: string | null; additionalPrice: number };
-export type Product = { id: number; productName: string; categoryId: number | null; categoryName: string | null; material: string | null; style: string | null; description?: string | null; price: number; imageUrl: string | null; status: string; variants?: Variant[] };
+export type Product = { id: number; productName: string; categoryId: number | null; categoryName: string | null; material: string | null; style: string | null; description?: string | null; price: number; imageUrl: string | null; status: string; publicationStatus?: string | null; variants?: Variant[] };
 export type ProductPage = { content: Product[]; pageNumber: number; pageSize: number; totalElements: number; totalPages: number; last: boolean };
 export class CatalogAdminError extends Error { status: number; code: string; errors?: Array<{ field?: string; reason?: string }>; constructor(message: string, status: number, code = "CATALOG_ERROR", errors?: Array<{ field?: string; reason?: string }>) { super(message); this.name = "CatalogAdminError"; this.status = status; this.code = code; this.errors = errors; } }
 type Envelope<T> = { success?: boolean; message?: string; code?: string; result?: T; errors?: Array<{ field?: string; reason?: string }> };
 async function parse<T>(r: Response): Promise<T> { let j: Envelope<T> | null = null; try { j = await r.json(); } catch {} if (!r.ok || j?.success !== true || j.result === undefined) throw new CatalogAdminError(j?.message || "Yêu cầu catalog thất bại.", r.status || 502, j?.code, j?.errors); return j.result; }
 export async function getCategories(signal?: AbortSignal): Promise<Category[]> { return parse<Category[]>(await fetch("/api/admin/catalog/categories", { cache: "no-store", signal })); }
 export async function getProductPage(q: string, signal?: AbortSignal): Promise<ProductPage> { return parse<ProductPage>(await fetch(`/api/admin/catalog/products?${q}`, { cache: "no-store", signal })); }
-export async function getProduct(id: string, signal?: AbortSignal): Promise<Product> { return parse<Product>(await fetch(`/api/admin/catalog/products/${id}`, { cache: "no-store", signal })); }
+export async function getProduct(id: string, signal?: AbortSignal): Promise<Product> {
+  try {
+    return await parse<Product>(await fetch(`/api/admin/catalog/products/${id}`, { cache: "no-store", signal }));
+  } catch (e) {
+    const st = (e as { status?: number })?.status;
+    const msg = e instanceof Error ? e.message : "";
+    if (st === 404 || /Product not found|Không tìm thấy sản phẩm/i.test(msg)) {
+      throw new CatalogAdminError("Không tìm thấy sản phẩm. Sản phẩm có thể đã bị Unpublish, ngừng kinh doanh hoặc không tồn tại.", 404, (e as { code?: string })?.code ?? "PRODUCT_NOT_FOUND");
+    }
+    throw e;
+  }
+}
 export async function createProduct(body: Record<string, unknown>): Promise<Product> { return parse<Product>(await fetch("/api/admin/catalog/products", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
 export async function updateProduct(id: string, body: Record<string, unknown>): Promise<Product> { return parse<Product>(await fetch(`/api/admin/catalog/products/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
-export async function deleteProduct(id: string): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/products/${id}`, { method: "DELETE" })); }
+export async function deleteProduct(id: string, reason?: string): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/products/${id}`, { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}) })); }
+export async function deleteVariant(skuId: number, reason?: string): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/variants/${skuId}`, { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}) })); }
 export async function createVariant(productId: string, body: Record<string, unknown>): Promise<Variant> { return parse<Variant>(await fetch(`/api/admin/catalog/products/${productId}/variants`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
 export async function updateVariant(skuId: number, body: Record<string, unknown>): Promise<Variant> { return parse<Variant>(await fetch(`/api/admin/catalog/variants/${skuId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })); }
 export async function getBarcode(skuId: number): Promise<{ skuId: number; barcode: string | null; barcodeBase64: string | null; productName: string }> { return parse(await fetch(`/api/admin/catalog/variants/${skuId}/barcode`, { cache: "no-store" })); }
 export async function createCategory(name: string): Promise<Category> { return parse<Category>(await fetch("/api/admin/catalog/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ categoryName: name }) })); }
 export async function updateCategory(id: number, name: string): Promise<Category> { return parse<Category>(await fetch(`/api/admin/catalog/categories/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ categoryName: name }) })); }
-export async function deleteCategory(id: number): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/categories/${id}`, { method: "DELETE" })); }
+export async function deleteCategory(id: number, reason?: string): Promise<boolean> { return parse<boolean>(await fetch(`/api/admin/catalog/categories/${id}`, { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}) })); }
 export async function uploadProductImage(id: string, file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file);

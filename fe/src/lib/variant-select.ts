@@ -18,6 +18,7 @@ export type VariantLike = {
   color: string | null;
   size: string | null;
   additionalPrice: number;
+  availableStock?: number | null;
   /** Cờ BE khi có (true = placeholder chắc chắn; false = thật chắc chắn). */
   colorIsSentinel?: boolean | null;
   sizeIsSentinel?: boolean | null;

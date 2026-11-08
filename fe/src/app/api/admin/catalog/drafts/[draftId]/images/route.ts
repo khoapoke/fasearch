@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ draftId: string }> }) {
   const { draftId } = await params;
   const n = idOf(draftId);
-  if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
+  if (!n) return authError("Mã Draft chưa hợp lệ.", 400);
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
   const token = authCookie(request);

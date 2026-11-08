@@ -20,7 +20,7 @@
 .commercePage .commerce-panel { min-width: 0; }
 .commercePage .commerce-lines { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--st-line); }
 .commercePage .commerce-line { display: grid; grid-template-columns: 82px minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--st-line); }
-.commercePage .commerce-line-image { width: 82px; height: 104px; object-fit: contain; border-radius: 4px; background: var(--st-select); }
+.commercePage .commerce-line-image { width: 82px; height: 104px; object-fit: contain; border-radius: 4px; background: #fff; }
 .commercePage .commerce-line-name { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.35; }
 .commercePage .commerce-line-meta { margin: 5px 0 0; color: var(--st-ink-soft); font-size: 12.5px; }
 .commercePage .commerce-line-price { margin: 8px 0 0; font-size: 15px; font-weight: 500; }

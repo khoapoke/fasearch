@@ -17,7 +17,8 @@ export function policyBody(body: Record<string, unknown>, create: boolean): Reco
 }
 
 export function tierBody(body: Record<string, unknown>): Record<string, unknown> | null {
-  if (!Number.isSafeInteger(body.version) || (body.version as number) < 1) return null;
+  // Tiers legitimately start at version 0 when unconfigured (minimumCumulativePaidSales null).
+  if (!Number.isSafeInteger(body.version) || (body.version as number) < 0) return null;
   const amount = body.minimumCumulativePaidSales;
   if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 || amount >= 1e17
     || Math.abs(amount * 100 - Math.round(amount * 100)) >= 1e-7) return null;

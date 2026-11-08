@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import { ProductCard, type CardProduct } from "@/components/storefront/product-card";
+import { colorSwatch } from "@/lib/color-swatch";
 import { authMe, type AuthIdentity } from "@/lib/customer-auth-client";
 import { recordSearchHistory } from "@/lib/customer-account-client";
 import { searchAi, type AiSearchMode } from "@/lib/ai-client";
@@ -39,15 +41,6 @@ function AiUploadIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
       <path d="M10 13V3m-4 4 4-4 4 4M3 12v5h14v-5" />
-    </svg>
-  );
-}
-
-function AiZoomIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <circle cx="8.5" cy="8.5" r="5.5" />
-      <path d="m13 13 4 4M6 8.5h5M8.5 6v5" />
     </svg>
   );
 }
@@ -92,8 +85,6 @@ type DoneState = {
   hits: AiHit[];
   label: string;
   mock?: boolean;
-  failImages?: boolean;
-  photos?: Record<string, AiPhoto>;
 };
 
 type SearchState =
@@ -106,39 +97,29 @@ type SearchState =
 
 type FieldError = { message: string; target: "query" | "file" } | null;
 
-function mockHits(): { hits: AiHit[]; photos: Record<string, AiPhoto> } {
-  const photos: Record<string, AiPhoto> = {};
-  const hits = MOCK_RESULTS.map((item) => {
-    const photo = AI_PHOTOS[item.photo];
-    photos[item.sourceId] = photo;
-    return {
-      sourceId: item.sourceId,
-      score: item.score,
-      fileName: item.fileName,
-      catalog: null,
-      imageUrl: photo.src,
-      tenHienThi: item.title,
-      thuocTinh: null,
-      nguonDuLieu: "Dữ liệu minh họa (mock)",
-      phienBanDuLieu: "preview",
-      maSpLienKet: null,
-    } satisfies AiHit;
-  });
-  return { hits, photos };
+function mockHits(): AiHit[] {
+  // Dạng xem thử: dữ liệu minh họa cố định, không phải sản phẩm thật.
+  return MOCK_RESULTS.map((item, i) => ({
+    sourceId: item.sourceId,
+    score: item.score,
+    productId: 990001 + i,
+    name: item.title,
+    brandName: null,
+    price: 299000 + i * 50000,
+    imageUrl: AI_PHOTOS[item.photo].src,
+    colors: [],
+  }));
 }
 
 function previewSearchState(preview: PreviewState | null): SearchState {
   if (!preview) return { kind: "idle" };
   if (preview === "pending") return { kind: "loading" };
   if (preview === "results" || preview === "imagefail") {
-    const { hits, photos } = mockHits();
     return {
       kind: "done",
-      hits,
+      hits: mockHits(),
       label: "“Áo thun đen, dáng rộng, phối quần jeans”",
       mock: true,
-      failImages: preview === "imagefail",
-      photos,
     };
   }
   if (preview === "empty") {
@@ -159,111 +140,20 @@ function errorMessage(status: number): string {
   return "Không kết nối được máy chủ. Giữ nguyên đầu vào rồi thử lại.";
 }
 
-/* ---------- Result media + zoom dialog ---------- */
+/* ---------- Kết quả: thẻ sản phẩm dùng chung với catalog ---------- */
 
-function ResultMedia({
-  hit,
-  photo,
-  failImages,
-  onZoom,
-}: {
-  hit: AiHit;
-  photo?: AiPhoto;
-  failImages?: boolean;
-  onZoom: (trigger: HTMLButtonElement) => void;
-}) {
-  const title = hit.tenHienThi ?? hit.fileName;
-  const [failed, setFailed] = useState(failImages || !hit.imageUrl);
-  if (failed || !hit.imageUrl) {
-    return (
-      <span className="result-image-fail" role="img" aria-label={`Không tải được ảnh: ${title}`}>
-        Không tải được ảnh AI
-      </span>
-    );
-  }
-  return (
-    <button
-      className="result-image-button"
-      type="button"
-      aria-label={`Phóng to ảnh ${title}`}
-      onClick={(event) => onZoom(event.currentTarget)}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- ảnh AI qua proxy/minh họa */}
-      <img
-        className="result-image"
-        src={hit.imageUrl}
-        alt={photo?.alt ?? `Ảnh AI: ${hit.fileName}`}
-        loading="lazy"
-        decoding="async"
-        referrerPolicy="no-referrer"
-        onError={() => setFailed(true)}
-      />
-      <span className="image-zoom" aria-hidden="true">
-        <AiZoomIcon />
-      </span>
-    </button>
-  );
-}
-
-function AiImageDialog({
-  viewer,
-  onClose,
-}: {
-  viewer: { src: string; alt: string; caption: string; trigger: HTMLButtonElement } | null;
-  onClose: () => void;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (viewer && !dialog.open) {
-      setFailed(false);
-      dialog.showModal();
-    } else if (!viewer && dialog.open) {
-      dialog.close();
-    }
-  }, [viewer]);
-
-  return (
-    <dialog
-      ref={dialogRef}
-      className="ai-dialog"
-      aria-labelledby="ai-dialog-title"
-      onClose={onClose}
-    >
-      <div className="ai-dialog-head">
-        <h2 id="ai-dialog-title">Xem ảnh</h2>
-        <button
-          className="ai-dialog-close"
-          type="button"
-          aria-label="Đóng ảnh phóng to"
-          onClick={() => dialogRef.current?.close()}
-        >
-          ✕
-        </button>
-      </div>
-      <div className="ai-dialog-media">
-        {viewer ? (
-          failed ? (
-            <p className="ai-dialog-fail" role="img" aria-label={`Không tải được ảnh: ${viewer.alt}`}>
-              Không tải được ảnh này. Đóng hộp thoại rồi thử kết quả khác.
-            </p>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- ảnh AI/minh họa
-            <img
-              src={viewer.src}
-              alt={viewer.alt}
-              referrerPolicy="no-referrer"
-              onError={() => setFailed(true)}
-            />
-          )
-        ) : null}
-      </div>
-      <p className="ai-dialog-caption">{viewer?.caption}</p>
-    </dialog>
-  );
+function hitToCard(hit: AiHit): CardProduct {
+  const swatches = hit.colors.map(colorSwatch).filter((c): c is string => c !== null);
+  const dots = swatches.slice(0, 4);
+  return {
+    id: hit.productId,
+    name: hit.name,
+    price: hit.price,
+    image: hit.imageUrl ?? undefined,
+    colors: dots,
+    moreColors: hit.colors.length > dots.length ? hit.colors.length - dots.length : undefined,
+    href: `/san-pham/${hit.productId}`,
+  };
 }
 
 /* ---------- Example board ---------- */
@@ -279,7 +169,7 @@ function ExamplesBoard({
     <>
       <div className="examples-heading">
         <h2>Gợi ý để bắt đầu</h2>
-        <p>Chọn một ảnh để thử bằng chữ.</p>
+        <p>Chọn một ảnh mẫu để điền sẵn mô tả, chưa tìm ngay.</p>
       </div>
       <div className="examples-board">
         {AI_EXAMPLES.map((example) => (
@@ -303,19 +193,6 @@ function ExamplesBoard({
           </button>
         ))}
       </div>
-      <details className="source-disclosure">
-        <summary>Nguồn ảnh</summary>
-        <div>
-          {[...new Set(AI_EXAMPLES.map((example) => example.photo))].map((key) => {
-            const photo = AI_PHOTOS[key];
-            return (
-              <a className="photo-credit" key={key} href={photo.page} target="_blank" rel="noopener noreferrer">
-                Ảnh Unsplash · {photo.author}
-              </a>
-            );
-          })}
-        </div>
-      </details>
     </>
   );
 }
@@ -331,10 +208,8 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [state, setState] = useState<SearchState>(() => previewSearchState(preview));
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [fieldError, setFieldError] = useState<FieldError>(null);
   const [selectedExample, setSelectedExample] = useState("");
-  const [viewer, setViewer] = useState<{ src: string; alt: string; caption: string; trigger: HTMLButtonElement } | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
 
   const generationRef = useRef(0);
@@ -407,8 +282,11 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
 
   function onFile(files: FileList | null) {
     if (!files || files.length === 0) return;
+    pickFile(files[0]);
+  }
+
+  function pickFile(next: File) {
     invalidatePending();
-    const next = files[0];
     try {
       validateImageFile(next);
     } catch (error) {
@@ -435,6 +313,37 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
     requestAnimationFrame(() => fileInputRef.current?.focus());
   }
+
+  // Dán ảnh từ clipboard (Ctrl+V / ⌘V) ở bất kỳ đâu trên trang. Chỉ chặn khi clipboard có ảnh,
+  // dán chữ vào ô mô tả vẫn bình thường. Đang ở tab Chữ thì tự chuyển sang Ảnh (hoặc Kết hợp nếu đã có mô tả).
+  const pasteHandlerRef = useRef<(event: ClipboardEvent) => void>(() => {});
+  useEffect(() => {
+    pasteHandlerRef.current = (event) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      let image: File | null = null;
+      for (const item of Array.from(items)) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          image = item.getAsFile();
+          if (image) break;
+        }
+      }
+      if (!image) return;
+      event.preventDefault();
+      const ext = image.type === "image/jpeg" ? "jpg" : image.type === "image/png" ? "png" : image.type.split("/")[1] || "img";
+      const generic = !image.name || /^image\.\w+$/i.test(image.name);
+      const named = generic ? new File([image], `anh-dan-tu-clipboard.${ext}`, { type: image.type }) : image;
+      if (mode === "text") setMode(query.trim() ? "composed" : "image");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      pickFile(named);
+    };
+  });
+  useEffect(() => {
+    if (isPreview) return;
+    const listener = (event: ClipboardEvent) => pasteHandlerRef.current(event);
+    document.addEventListener("paste", listener);
+    return () => document.removeEventListener("paste", listener);
+  }, [isPreview]);
 
   function pickExample(exampleId: string) {
     const example = AI_EXAMPLES.find((item) => item.id === exampleId);
@@ -483,7 +392,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     let searchMode: AiSearchMode = "text";
     let body: BodyInit | undefined = undefined;
     let decodeFile: File | null = null;
-    const limit = 5; // Reference không có control limit; API 1–5 giữ nguyên, mặc định 5.
+    const limit = 12; // Trang AI hiển thị tối đa 12 sản phẩm; BE chỉ trả những gì còn đang bán.
     let recordedQuery = "";
 
     setFieldError(null);
@@ -514,7 +423,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
         return;
       }
       decodeFile = file;
-      label = `Ảnh tham chiếu “${file.name}”`;
+      label = "";
       searchMode = "image";
       recordedQuery = file.name;
       const form = new FormData();
@@ -542,7 +451,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
         return;
       }
       decodeFile = file;
-      label = `“${q}” + ảnh “${file.name}”`;
+      label = `“${q}”`;
       searchMode = "multimodal";
       const form = new FormData();
       form.append("file", file);
@@ -563,7 +472,6 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
     const controller = new AbortController();
     abortRef.current = controller;
     setState({ kind: "loading" });
-    setSelectedIds(new Set());
     let stage: "decode" | "request" | "json" = "decode";
 
     try {
@@ -605,7 +513,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       // Record successful real search to per-account history (fire-and-forget).
       // Only SUCCESS is recorded here; failures/cancellations are not faked.
       const modeMap: Record<string, "TEXT" | "IMAGE" | "MULTIMODAL"> = { text: "TEXT", image: "IMAGE", multimodal: "MULTIMODAL" };
-      const refs = hits.map((h) => h.maSpLienKet).filter((v): v is number => typeof v === "number").slice(0, 50);
+      const refs = hits.map((h) => h.productId).slice(0, 50);
       void recordSearchHistory({
         mode: modeMap[searchMode] ?? "TEXT",
         query: recordedQuery || undefined,
@@ -633,24 +541,6 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
         abortRef.current = null;
       }
     }
-  }
-
-  function openZoom(hit: AiHit, trigger: HTMLButtonElement, photo?: AiPhoto, mock?: boolean) {
-    if (!hit.imageUrl) return;
-    setViewer({
-      src: hit.imageUrl,
-      alt: photo?.alt ?? hit.tenHienThi ?? `Ảnh AI: ${hit.fileName}`,
-      caption: mock
-        ? `${hit.tenHienThi ?? hit.fileName} · Điểm thô ${hit.score.toFixed(3)}. Ảnh minh họa (mock), không phải kết quả AI thật.`
-        : `${hit.tenHienThi ?? hit.fileName} · Điểm thô ${hit.score.toFixed(3)}. Ảnh từ tập dữ liệu AI, không phải sản phẩm đang bán.`,
-      trigger,
-    });
-  }
-
-  function closeZoom() {
-    const trigger = viewer?.trigger;
-    setViewer(null);
-    trigger?.focus();
   }
 
   const busy = state.kind === "loading";
@@ -705,72 +595,15 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
       return (
         <>
           {heading}
-          <p className="results-query">{state.label}</p>
-          <div className="results-grid">
-            {state.hits.map((hit) => {
-              const photo = state.photos?.[hit.sourceId];
-              const title = hit.tenHienThi ?? hit.fileName;
-              const isSelected = selectedIds.has(hit.sourceId);
-              const toggleSelect = () => setSelectedIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(hit.sourceId)) next.delete(hit.sourceId); else next.add(hit.sourceId);
-                return next;
-              });
-              return (
-                <article
-                  className={"result-card" + (isSelected ? " is-selected" : "")}
-                  key={hit.sourceId}
-                  aria-pressed={isSelected}
-                  tabIndex={0}
-                  onClick={toggleSelect}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSelect(); } if (e.key === "Escape") setSelectedIds(new Set()); }}
-                >
-                  <ResultMedia hit={hit} photo={photo} failImages={state.failImages} onZoom={(trigger) => openZoom(hit, trigger, photo, state.mock)} />
-                  <div className="result-copy">
-                    <h3>{title}</h3>
-                    <span className="raw-score">Điểm thô <strong>{hit.score.toFixed(3)}</strong></span>
-                  </div>
-                  <details className="result-details">
-                    <summary>Nguồn ảnh</summary>
-                    <div>
-                      sourceId: {hit.sourceId}
-                      <br />
-                      Tệp: {hit.fileName}
-                      <br />
-                      {hit.catalog ? <>Danh mục AI: {hit.catalog}<br /></> : null}
-                      {hit.nguonDuLieu ? <>Nguồn dữ liệu: {hit.nguonDuLieu}<br /></> : null}
-                      {hit.phienBanDuLieu ? <>Bản dữ liệu: {hit.phienBanDuLieu}<br /></> : null}
-                      {photo ? (
-                        <a className="photo-credit" href={photo.page} target="_blank" rel="noopener noreferrer">
-                          Ảnh minh họa Unsplash · {photo.author}
-                        </a>
-                      ) : null}
-                      {state.mock ? <span>Kết quả mẫu (mock), không phải AI thật.</span> : null}
-                      {hit.maSpLienKet !== null && hit.maSpLienKet !== undefined && String(hit.maSpLienKet).trim() !== "" ? (
-                        <>
-                          <br />
-                          <Link className="text-button" href={`/san-pham/${hit.maSpLienKet}`}>
-                            Xem catalog liên kết →
-                          </Link>
-                        </>
-                      ) : null}
-                    </div>
-                  </details>
-                </article>
-              );
-            })}
+          {state.label ? <p className="results-query">{state.label}</p> : null}
+          <div className="pgGrid ai-results-grid">
+            {state.hits.map((hit) => (
+              <ProductCard key={hit.sourceId} product={hitToCard(hit)} />
+            ))}
           </div>
-          {selectedIds.size > 0 ? (
-            <div className="result-selection-bar" role="status" aria-live="polite">
-              <span>Đã chọn {selectedIds.size} kết quả</span>
-              <button type="button" className="text-button" onClick={() => setSelectedIds(new Set())}>Bỏ chọn tất cả</button>
-            </div>
+          {state.mock ? (
+            <p className="result-provenance">Kết quả mẫu dùng cho kiểm tra giao diện; không phải sản phẩm thật.</p>
           ) : null}
-          <p className="result-provenance">
-            {state.mock
-              ? "Kết quả mẫu dùng cho kiểm tra giao diện; ảnh minh họa, không phải kết quả AI thật."
-              : "Ảnh tham khảo từ tập dữ liệu AI, chưa gắn sản phẩm đang bán. Điểm thô không phải xác suất."}
-          </p>
         </>
       );
     }
@@ -869,7 +702,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
                       if (fieldErrorOnQuery) setFieldError(null);
                     }}
                     maxLength={200}
-                    placeholder="black jacket, oversized fit…"
+                    placeholder="áo khoác đen dáng rộng…"
                     aria-invalid={fieldErrorOnQuery || undefined}
                     aria-describedby={queryDescribedBy}
                   />
@@ -878,7 +711,7 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
 
               {mode !== "text" ? (
                 <div className="field upload-field">
-                  <span className="field-label" id="ai-image-label">Ảnh tham chiếu</span>
+                  <span className="ai-sr-only" id="ai-image-label">Ảnh tham chiếu</span>
                   <input
                     ref={fileInputRef}
                     className="ai-sr-only"
@@ -908,7 +741,6 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
                       )}
                       <span className="reference-meta">
                         <span className="file-name">{file.name}</span>
-                        <span className="reference-hint">Ảnh tham chiếu</span>
                       </span>
                       <span className="reference-actions">
                         <button className="mini-button" type="button" onClick={() => fileInputRef.current?.click()}>
@@ -923,9 +755,10 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
                     <label className="upload-select" htmlFor="ai-file">
                       <AiUploadIcon />
                       <span>Chọn ảnh</span>
+                      <span className="upload-paste-hint">hoặc dán Ctrl+V</span>
                     </label>
                   )}
-                  <p className="panel-note">JPEG/PNG · ≤{Math.round(AI_MAX_BYTES / 1024 / 1024)}MiB · ≤4000px.</p>
+                  <p className="panel-note">JPEG/PNG · ≤{Math.round(AI_MAX_BYTES / 1024 / 1024)}MiB · ≤4000px · dán được ảnh từ clipboard.</p>
                 </div>
               ) : null}
 
@@ -963,7 +796,6 @@ export function AiSearchView({ preview }: { preview: PreviewState | null }) {
             {checking ? <p className="search-status" role="status">Đang kiểm tra phiên đăng nhập…</p> : renderOutput()}
           </section>
         </div>
-        <AiImageDialog viewer={viewer} onClose={closeZoom} />
       </div>
     </StorefrontShell>
   );

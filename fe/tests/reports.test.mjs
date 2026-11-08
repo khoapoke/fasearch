@@ -54,4 +54,9 @@ describe("contract query builders (BE CONTRACT v1)", () => {
     assert.equal(csvCell('a"b,c'), '"a""b,c"');
     assert.equal(csvCell(null), "");
   });
+  it("csvCell keeps genuine numbers, including negative amounts", () => {
+    assert.equal(csvCell(-5), "-5");
+    assert.equal(csvCell(-150000.5), "-150000.5");
+    assert.equal(csvCell("-5"), "'-5");
+  });
 });

@@ -104,7 +104,6 @@ export function BrandStrip({ motionEnabled }: { motionEnabled: boolean }) {
     <ul className={`hmBrandTrack${clone ? " hmBrandClone" : ""}`} aria-hidden={clone ? "true" : undefined}>
       {items.map((brand) => (
         <li key={`${clone ? "dup-" : ""}${brand.name}`} className="hmBrandItem">
-          {/* eslint-disable-next-line @next/next/no-img-element -- SVG thật, phục vụ cục bộ */}
           {brand.mono === "gray" ? (
             // Mark có nền đặc + khoét trắng (MLB, UNIQLO): mask một màu sẽ thành
             // khối đặc, nên giữ asset gốc ở dạng grayscale.

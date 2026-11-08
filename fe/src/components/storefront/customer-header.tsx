@@ -149,6 +149,7 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
 
   useEffect(() => {
     mountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     load();
     window.addEventListener("fasearch-auth-change", load);
     window.addEventListener("focus", load);
@@ -180,6 +181,23 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
     };
   }, []);
 
+  // R4-B: khi chỉ còn logo icon, mark phải nằm giữa viewport. Wordmark vẫn giữ
+  // chỗ trong layout (không animate width/margin), nên bù bằng transform đúng
+  // nửa bề rộng wordmark — đo một lần lúc mount/resize, không render mỗi frame.
+  useEffect(() => {
+    const measure = () => {
+      const brand = brandRef.current;
+      const mark = brand?.querySelector(".chMark");
+      if (!brand || !mark) return;
+      // Mark phải vào giữa viewport: bù đúng nửa phần "dôi ra" của brand so với mark.
+      const shift = (brand.getBoundingClientRect().width - mark.getBoundingClientRect().width) / 2;
+      brand.style.setProperty("--chWordShift", `${Math.round(shift)}px`);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [focused]);
+
   const closeMenu = () => {
     if (detailsRef.current) detailsRef.current.open = false;
   };
@@ -207,23 +225,6 @@ export function CustomerHeader({ active, focused = false }: { active?: string; f
   // để không có "ô focus vô hình". Logo ở giữa luôn hiện và là cửa vào bàn phím:
   // focus vào logo (hoặc chạm) mở lại toàn bộ nav TRƯỚC khi người dùng Tab tiếp.
   const clustersInert = compact && !menuOpen && !focusInside;
-
-  // R4-B: khi chỉ còn logo icon, mark phải nằm giữa viewport. Wordmark vẫn giữ
-  // chỗ trong layout (không animate width/margin), nên bù bằng transform đúng
-  // nửa bề rộng wordmark — đo một lần lúc mount/resize, không render mỗi frame.
-  useEffect(() => {
-    const measure = () => {
-      const brand = brandRef.current;
-      const mark = brand?.querySelector(".chMark");
-      if (!brand || !mark) return;
-      // Mark phải vào giữa viewport: bù đúng nửa phần "dôi ra" của brand so với mark.
-      const shift = (brand.getBoundingClientRect().width - mark.getBoundingClientRect().width) / 2;
-      brand.style.setProperty("--chWordShift", `${Math.round(shift)}px`);
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
 
   return (
     <header

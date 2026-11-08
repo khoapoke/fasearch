@@ -9,5 +9,5 @@ describe("admin stock/stocktake upstream", () => {
     it(name + " has no stale 18122", () => assert.equal(src.includes("127.0.0.1:18122"), false));
     it(name + " imports paired BE from admin-bff", () => assert.match(src, /import\s*\{[^}]*\bBE\b[^}]*\}\s*from\s*"@\/lib\/server\/admin-bff"/));
   }
-  it("admin-bff paired BE is 18126", () => assert.match(bff, /const BE = "http:\/\/127\.0\.0\.1:18126"/));
+  it("admin-bff paired BE is 18126", () => assert.match(bff, /const BE = (?:process\.env\.FASEARCH_BACKEND_URL\?\.replace\([^)]*\) \|\| )?"http:\/\/127\.0\.0\.1:18126";/));
 });

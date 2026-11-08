@@ -35,7 +35,6 @@ export default function RbacVariantB() {
 
   return (
     <AdminShell
-      active="rbac"
       crumbs={[{ label: "Hệ thống" }, { label: "Phân quyền" }, { label: "Biến thể B (preview)" }]}
       title="Phân quyền & Quản lý vai trò — biến thể B"
       tag="PREVIEW VARIANT"
@@ -45,7 +44,7 @@ export default function RbacVariantB() {
           Hủy thay đổi
         </button>
       }
-      previewNote="Preview tách riêng — route thường dùng biến thể 1 ở /he-thong/phan-quyen. Máy chủ chỉ có ADMIN/STAFF/CUSTOMER."
+      previewNote="Preview tách riêng. Trang phân quyền thường đã được gỡ để không bị hiểu nhầm là cấu hình thật; máy chủ chỉ có ADMIN/STAFF/CUSTOMER."
     >
       <div className="adCard">
         {discarded ? <p className="adMono" role="status">Đã hủy thay đổi preview, ma trận về mặc định minh họa.</p> : null}
@@ -71,7 +70,7 @@ export default function RbacVariantB() {
             </tbody>
           </table>
         </div>
-        <p style={{ marginTop: 10 }}><Link className="adBtn" href="/he-thong/phan-quyen"><Icon name="chevronRight" size={15} /> Về route phân quyền thường (biến thể 1)</Link></p>
+        <p style={{ marginTop: 10 }}><Link className="adBtn" href="/quan-tri"><Icon name="chevronRight" size={15} /> Về Không gian quản trị</Link></p>
       </div>
     </AdminShell>
   );

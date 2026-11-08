@@ -45,7 +45,7 @@ export function RegisterPanel() {
     if (values.username.trim().length < 4 || values.username.trim().length > 50) local.username = "Tên đăng nhập phải từ 4 đến 50 ký tự.";
     if (values.password.length < 6 || values.password.length > 100) local.password = "Mật khẩu phải từ 6 đến 100 ký tự.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) local.email = "Email chưa đúng định dạng.";
-    if (!values.lastName.trim()) local.lastName = "Nhập họ của bạn.";
+    if (!values.lastName.trim()) local.lastName = "Nhập tên của bạn.";
     if (!values.phoneNumber.trim()) local.phoneNumber = "Nhập số điện thoại.";
     if (Object.keys(local).length) {
       setFieldErrors(local);
@@ -130,12 +130,12 @@ export function RegisterPanel() {
               </div>
               <div className="auth-name-grid">
                 <div className="auth-field">
-                  <label htmlFor="register-firstName">Tên</label>
-                  <input className="auth-control" id="register-firstName" type="text" value={values.firstName} onChange={(e) => set("firstName", e.target.value)} autoComplete="given-name" />
+                  <label htmlFor="register-firstName">Họ</label>
+                  <input className="auth-control" id="register-firstName" type="text" value={values.firstName} onChange={(e) => set("firstName", e.target.value)} autoComplete="family-name" />
                 </div>
                 <div className="auth-field">
-                  <label htmlFor="register-lastName">Họ</label>
-                  <input {...field("lastName")} id="register-lastName" type="text" value={values.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="family-name" required />
+                  <label htmlFor="register-lastName">Tên</label>
+                  <input {...field("lastName")} id="register-lastName" type="text" value={values.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="given-name" required />
                   {fieldErrors.lastName ? <p className="auth-note" id="register-lastName-error" role="alert">{fieldErrors.lastName}</p> : null}
                 </div>
               </div>

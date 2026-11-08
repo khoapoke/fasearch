@@ -226,6 +226,7 @@ body:has(.studio) {
 }
 
 /* Ảnh sản phẩm: khung 4:5, contain (không cắt quần áo), nền trung tính. */
+.studio .pCardMedia { aspect-ratio: 4 / 5; }
 .studio .pCardMedia img {
   object-fit: contain;
   background: var(--media-soft);

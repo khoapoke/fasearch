@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { authMe, isAuthAbort, type AuthIdentity } from "@/lib/customer-auth-client";
 import { EmailVerificationBanner } from "@/components/customer-auth/email-verification-banner";
 
-import styles from "@/components/account/account.module.css";
+import s from "./security.module.css";
 
 /** Trang thai xac thuc email tren trang Bao mat (rieng, khong doi PasswordForm). */
 export function SecurityEmailStatus() {
@@ -30,8 +30,9 @@ export function SecurityEmailStatus() {
   if (!identity) return null;
   if (identity.emailVerified !== false) {
     return (
-      <p className={styles.muted} role="status">
-        Email {identity.email} đã được xác thực.
+      <p className={s.verified} role="status">
+        <span className={s.badge}><span aria-hidden="true">✓</span> Đã xác thực</span>
+        <span className={s.email}>{identity.email}</span>
       </p>
     );
   }

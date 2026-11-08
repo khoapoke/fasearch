@@ -1,4 +1,4 @@
-export type Stock = { skuId: number; productId: number; productName: string; color: string | null; size: string | null; barcode: string | null; physicalStock: number | null; reservedStock: number | null; availableStock: number | null; minThreshold: number | null };
+export type Stock = { skuId: number; productId: number; productName: string; color: string | null; size: string | null; barcode: string | null; physicalStock: number | null; reservedStock: number | null; availableStock: number | null; minThreshold: number | null; productStatus?: string | null };
 export type Page<T> = { content: T[]; pageNumber: number; pageSize: number; totalElements: number; totalPages: number; last: boolean };
 export type ImportItem = { id: number; skuId: number; productName: string; color: string | null; size: string | null; barcode: string | null; quantity: number; importPrice: number; subTotal: number };
 export type ImportSummary = { receiptId: number; receiptCode: string; supplierName: string; totalItems: number; totalQuantity: number; totalAmount: number; status: string; createdAt: string };

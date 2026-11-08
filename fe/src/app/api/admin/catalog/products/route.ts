@@ -10,6 +10,7 @@ function query(request: NextRequest): URLSearchParams {
   if (!Number.isInteger(size) || size < 1 || size > 50) throw new Error("size");
   const q = new URLSearchParams({ page: String(page), size: String(size), sort: "id,desc" });
   for (const key of ["keyword", "categoryId", "minPrice", "maxPrice", "status"]) { const v = p.get(key); if (v) q.set(key, v); }
+  if ((q.get("keyword") ?? "").length > 100) throw new Error("keyword");
   if (q.get("status") && !STATUS.has(q.get("status")!)) throw new Error("status");
   return q;
 }

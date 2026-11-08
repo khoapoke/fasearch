@@ -19,7 +19,8 @@ describe("admin overview upstream", () => {
   });
 
   it("admin-bff paired BE is 18126", () => {
-    assert.match(bffSource, /const BE = "http:\/\/127\.0\.0\.1:18126"/);
+    // The default stays the paired 18126 BE; FASEARCH_BACKEND_URL may override it.
+    assert.match(bffSource, /const BE = (?:process\.env\.FASEARCH_BACKEND_URL\?\.replace\([^)]*\) \|\| )?"http:\/\/127\.0\.0\.1:18126";/);
   });
 
   it("still calls /api/v1/orders on the paired BE", () => {

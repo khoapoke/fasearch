@@ -25,11 +25,14 @@ describe("nhãn vai trò (role-manager)", () => {
   });
 
   it("chỉ mục tài khoản nội bộ là ADMIN-only trong Admin B; Nhân sự hiển thị cho Quản lý", () => {
-    const shell = read("src/components/admin-b/admin-shell.tsx");
+    // Khung điều hướng nằm ở AdminFrame (layout bền vững), AdminShellB chỉ còn công bố tiêu đề.
+    const shell = read("src/components/admin-b/admin-frame.tsx");
     assert.match(shell, /const adminOnly = \["\/quan-tri\/tai-khoan-noi-bo"\]/);
-    assert.match(shell, /<span>Nhân sự<\/span>/);
+    // Nhân sự: không adminOnly, chỉ ẩn khi Quản lý bị tắt quyền xem hồ sơ nhân sự (O1).
+    assert.match(shell, /label: "Nhân sự", icon: "user-cog", perm: "EMPLOYEE_VIEW"\s*\}/);
     assert.doesNotMatch(shell, /Nhân viên/);
-    assert.match(shell, /role === "ADMIN" \? <Link[^\n]*tai-khoan-noi-bo/);
+    assert.match(shell, /href: "\/quan-tri\/tai-khoan-noi-bo"[^\n]*adminOnly: true/);
+    assert.match(shell, /!item\.adminOnly \|\| role === "ADMIN"/);
   });
 
   it("BFF tài khoản vẫn chặn Quản lý; BFF hồ sơ nhân sự và nghiệp vụ không còn khóa ADMIN", () => {

@@ -10,6 +10,8 @@ export type AuthIdentity = {
   createdAt: string;
   /** true khi tai khoan da xac thuc email (BE tra tu V21). */
   emailVerified?: boolean;
+  /** Mã quyền nghiệp vụ hiệu lực (chỉ để ẩn/hiện ở khu quản trị). */
+  permissions?: string[];
 };
 
 export class AuthApiError extends Error {

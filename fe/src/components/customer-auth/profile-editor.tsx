@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import "@/components/customer-auth/auth.css";
+import { DateInput } from "@/components/ui/date-input";
+import ac from "@/components/account/account-cards.module.css";
 import {
   getSelfProfile,
   updateSelfProfile,
+  customerFullName,
   ProfileError,
   profileGenderLabel,
   type CustomerProfile,
@@ -30,6 +32,17 @@ function valuesOf(p: CustomerProfile): Values {
     dob: p.dob ?? "",
     address: p.address ?? "",
   };
+}
+
+/** Ngày sinh khách nhập dạng YYYY-MM-DD; hiển thị một kiểu dd/MM/yyyy cho dễ đọc. */
+function formatDob(value: string | null): string {
+  if (!value) return "Chưa cập nhật";
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Chưa cập nhật";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 export function ProfileEditor() {
@@ -74,6 +87,7 @@ export function ProfileEditor() {
   }, [reportError]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     return load();
   }, [load, retryCount]);
 
@@ -107,7 +121,7 @@ export function ProfileEditor() {
     if (!values || busyRef.current) return;
 
     if (!values.lastName.trim()) {
-      reportError("Vui lòng nhập tên.");
+      reportError("Nhập tên của bạn.");
       return;
     }
     if (!/^(0|\+84)[0-9]{9}$/.test(values.phoneNumber.trim())) {
@@ -115,7 +129,7 @@ export function ProfileEditor() {
       return;
     }
     if (values.dob && !/^\d{4}-\d{2}-\d{2}$/.test(values.dob)) {
-      reportError("Ngày sinh phải có định dạng YYYY-MM-DD.");
+      reportError("Ngày sinh chưa hợp lệ.");
       return;
     }
     if (values.address.trim().length > 255) {
@@ -154,202 +168,237 @@ export function ProfileEditor() {
 
   if (error && !profile) {
     return (
-      <div className="acct-state" role="alert">
-        <h2>Không tải được hồ sơ</h2>
-        <p ref={errorRef} tabIndex={-1} className="auth-status is-error">{error}</p>
-        <button
-          className="auth-button is-primary"
-          type="button"
-          onClick={() => {
-            setError("");
-            setRetryCount((c) => c + 1);
-          }}
-          style={{ width: "auto", marginTop: 8 }}
-        >
-          Thử lại
-        </button>
+      <div className={ac.page}>
+        <section className={`${ac.card} ${ac.empty}`} aria-label="Không tải được hồ sơ">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>01 · Hồ sơ</p>
+            <h2 className={ac.title}>Không tải được hồ sơ</h2>
+          </div>
+          <p ref={errorRef} tabIndex={-1} className={ac.alert} role="alert">{error}</p>
+          <div className={ac.actions}>
+            <button
+              className={ac.secondary}
+              type="button"
+              onClick={() => {
+                setError("");
+                setRetryCount((c) => c + 1);
+              }}
+            >
+              Thử lại
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
 
   if (!profile || !values) {
     return (
-      <div className="acct-loading-wrap" role="status">
-        <p className="acct-note">Đang tải hồ sơ khách hàng…</p>
+      <div className={ac.page} aria-label="Đang tải hồ sơ">
+        <section className={ac.card} aria-labelledby="profile-loading">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>01 · Hồ sơ</p>
+            <h2 id="profile-loading" className={ac.title}>Đang tải hồ sơ</h2>
+          </div>
+          <div className={ac.group} role="status">
+            <div className={ac.skeleton} />
+            <div className={ac.skeleton} />
+          </div>
+          <p className={ac.meta}>Đang tải hồ sơ khách hàng…</p>
+        </section>
       </div>
     );
   }
 
   if (!editing) {
     return (
-      <div className="acct-profile-view">
+      <div className={ac.page}>
         {notice ? (
-          <p ref={noticeRef} tabIndex={-1} className="auth-status is-info" role="status">
+          <p ref={noticeRef} tabIndex={-1} className={ac.notice} role="status">
             {notice}
           </p>
         ) : null}
-        <dl className="acct-profile">
-          <div className="acct-row">
-            <dt>Họ và tên</dt>
-            <dd>
-              {[profile.firstName, profile.lastName].filter(Boolean).join(" ") || "—"}
-            </dd>
+        <section className={ac.card} aria-labelledby="profile-basic">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>01 · Hồ sơ</p>
+            <h2 id="profile-basic" className={ac.title}>Thông tin cơ bản</h2>
           </div>
-          <div className="acct-row">
-            <dt>Số điện thoại</dt>
-            <dd>{profile.phoneNumber || "—"}</dd>
+          <dl className={ac.kv}>
+            <div className={ac.kvRow}>
+              <dt>Họ và tên</dt>
+              <dd>{customerFullName(profile) || "Chưa cập nhật"}</dd>
+            </div>
+            <div className={ac.kvRow}>
+              <dt>Giới tính</dt>
+              <dd>{profileGenderLabel(profile.gender)}</dd>
+            </div>
+            <div className={ac.kvRow}>
+              <dt>Ngày sinh</dt>
+              <dd>{formatDob(profile.dob)}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className={ac.card} aria-labelledby="profile-contact">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>02 · Liên hệ</p>
+            <h2 id="profile-contact" className={ac.title}>Liên hệ và nhận hàng</h2>
           </div>
-          <div className="acct-row">
-            <dt>Giới tính</dt>
-            <dd>{profileGenderLabel(profile.gender)}</dd>
+          <dl className={ac.kv}>
+            <div className={ac.kvRow}>
+              <dt>Số điện thoại</dt>
+              <dd>{profile.phoneNumber || "Chưa cập nhật"}</dd>
+            </div>
+            <div className={ac.kvRow}>
+              <dt>Địa chỉ hiện tại</dt>
+              <dd className={ac.prose}>{profile.address || "Chưa cập nhật"}</dd>
+            </div>
+            <div className={ac.kvRow}>
+              <dt>Hạng thành viên</dt>
+              <dd>
+                <strong>{loyalty ? loyaltyTierDisplayName(loyalty.balance) : (profile.tierName ?? "Thành viên")}</strong>
+                {loyalty?.balance.availablePoints != null
+                  ? ` · ${loyalty.balance.availablePoints.toLocaleString("vi-VN")} điểm khả dụng`
+                  : (typeof profile.accumulatePoint === "number" ? ` · ${profile.accumulatePoint} điểm tích lũy` : "")}
+              </dd>
+            </div>
+          </dl>
+          <div className={ac.actions}>
+            <button
+              className={ac.primary}
+              type="button"
+              onClick={() => {
+                setEditing(true);
+                setNotice("");
+                setError("");
+              }}
+            >
+              Chỉnh sửa hồ sơ
+            </button>
+            <p className={ac.footnote}>Thông tin liên hệ và địa chỉ nhận hàng của tài khoản.</p>
           </div>
-          <div className="acct-row">
-            <dt>Ngày sinh</dt>
-            <dd>{profile.dob || "—"}</dd>
-          </div>
-          <div className="acct-row">
-            <dt>Địa chỉ hiện tại</dt>
-            <dd className="acct-prose">{profile.address || "—"}</dd>
-          </div>
-          <div className="acct-row">
-            <dt>Hạng thành viên</dt>
-            <dd>
-              <strong>{loyalty ? loyaltyTierDisplayName(loyalty.balance) : (profile.tierName ?? "Thành viên")}</strong>
-              {loyalty?.balance.availablePoints != null
-                ? ` · ${loyalty.balance.availablePoints.toLocaleString("vi-VN")} điểm khả dụng`
-                : (typeof profile.accumulatePoint === "number" ? ` · ${profile.accumulatePoint} điểm tích lũy` : "")}
-            </dd>
-          </div>
-        </dl>
-        <div className="acct-actions" style={{ marginTop: 20 }}>
-          <button
-            className="auth-button is-primary"
-            type="button"
-            onClick={() => {
-              setEditing(true);
-              setNotice("");
-              setError("");
-            }}
-            style={{ width: "auto" }}
-          >
-            Chỉnh sửa hồ sơ
-          </button>
-        </div>
-        <p className="acct-note">
-          Thông tin liên hệ và địa chỉ nhận hàng của tài khoản.
-        </p>
+        </section>
       </div>
     );
   }
 
   return (
-    <form className="acct-edit-form" onSubmit={save} aria-busy={busy} noValidate>
-      {error ? (
-        <p ref={errorRef} tabIndex={-1} className="auth-status is-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+    <div className={ac.page}>
+      <form className={ac.form} onSubmit={save} aria-busy={busy} noValidate>
+        {error ? (
+          <p ref={errorRef} tabIndex={-1} className={ac.alert} role="alert">
+            {error}
+          </p>
+        ) : null}
 
-      <div className="acct-form-grid">
-        <div className="acct-field">
-          <label htmlFor="acct-first">Họ đệm</label>
-          <input
-            id="acct-first"
-            className="auth-control"
-            maxLength={50}
-            value={values.firstName}
-            onChange={(e) => set("firstName", e.target.value)}
-            autoComplete="given-name"
-          />
-        </div>
-        <div className="acct-field">
-          <label htmlFor="acct-last">Tên *</label>
-          <input
-            id="acct-last"
-            className="auth-control"
-            maxLength={50}
-            value={values.lastName}
-            onChange={(e) => set("lastName", e.target.value)}
-            required
-            autoComplete="family-name"
-          />
-        </div>
-      </div>
+        <section className={ac.card} aria-labelledby="profile-edit-basic">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>01 · Thông tin cơ bản</p>
+            <h2 id="profile-edit-basic" className={ac.title}>Sửa thông tin cơ bản</h2>
+          </div>
+          <div className={ac.grid2}>
+            <div className={ac.field}>
+              <label className={ac.label} htmlFor="acct-first">Họ</label>
+              <input
+                id="acct-first"
+                className={ac.input}
+                maxLength={50}
+                value={values.firstName}
+                onChange={(e) => set("firstName", e.target.value)}
+                autoComplete="family-name"
+              />
+            </div>
+            <div className={ac.field}>
+              <label className={ac.label} htmlFor="acct-last">Tên *</label>
+              <input
+                id="acct-last"
+                className={ac.input}
+                maxLength={50}
+                value={values.lastName}
+                onChange={(e) => set("lastName", e.target.value)}
+                required
+                autoComplete="given-name"
+              />
+            </div>
+          </div>
+          <div className={ac.grid2}>
+            <div className={ac.field}>
+              <label className={ac.label} htmlFor="acct-gender">Giới tính</label>
+              <select
+                id="acct-gender"
+                className={ac.input}
+                value={values.gender}
+                onChange={(e) => set("gender", e.target.value)}
+              >
+                <option value="">Không chỉ định</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
+              </select>
+            </div>
+            <div className={ac.field}>
+              <label className={ac.label} htmlFor="acct-dob">Ngày sinh</label>
+              <DateInput
+                id="acct-dob"
+                className={ac.input}
+                value={values.dob}
+                onChange={(v) => set("dob", v)}
+                autoComplete="bday"
+              />
+            </div>
+          </div>
+        </section>
 
-      <div className="acct-form-grid">
-        <div className="acct-field">
-          <label htmlFor="acct-phone">Số điện thoại *</label>
-          <input
-            id="acct-phone"
-            className="auth-control"
-            inputMode="tel"
-            maxLength={12}
-            value={values.phoneNumber}
-            onChange={(e) => set("phoneNumber", e.target.value)}
-            required
-            autoComplete="tel"
-          />
-        </div>
-        <div className="acct-field">
-          <label htmlFor="acct-gender">Giới tính</label>
-          <select
-            id="acct-gender"
-            className="auth-control"
-            value={values.gender}
-            onChange={(e) => set("gender", e.target.value)}
-          >
-            <option value="">Không chỉ định</option>
-            <option value="MALE">Nam</option>
-            <option value="FEMALE">Nữ</option>
-            <option value="OTHER">Khác</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="acct-field">
-        <label htmlFor="acct-dob">Ngày sinh</label>
-        <input
-          id="acct-dob"
-          className="auth-control"
-          type="date"
-          value={values.dob}
-          onChange={(e) => set("dob", e.target.value)}
-          autoComplete="bday"
-        />
-      </div>
-
-      <div className="acct-field">
-        <label htmlFor="acct-address">Địa chỉ hiện tại</label>
-        <textarea
-          id="acct-address"
-          className="auth-control"
-          rows={3}
-          maxLength={255}
-          value={values.address}
-          onChange={(e) => set("address", e.target.value)}
-          autoComplete="street-address"
-          placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-        />
-      </div>
-
-      <div className="acct-actions" style={{ marginTop: 8 }}>
-        <button className="auth-button is-primary" type="submit" disabled={busy} style={{ width: "auto" }}>
-          {busy ? "Đang lưu…" : "Lưu thay đổi"}
-        </button>
-        <button
-          className="auth-button"
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            setEditing(false);
-            setError("");
-            setValues(valuesOf(profile));
-          }}
-          style={{ width: "auto" }}
-        >
-          Hủy
-        </button>
-      </div>
-    </form>
+        <section className={ac.card} aria-labelledby="profile-edit-contact">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>02 · Liên hệ</p>
+            <h2 id="profile-edit-contact" className={ac.title}>Sửa liên hệ</h2>
+          </div>
+          <div className={ac.field}>
+            <label className={ac.label} htmlFor="acct-phone">Số điện thoại *</label>
+            <input
+              id="acct-phone"
+              className={ac.input}
+              inputMode="tel"
+              maxLength={12}
+              value={values.phoneNumber}
+              onChange={(e) => set("phoneNumber", e.target.value)}
+              required
+              autoComplete="tel"
+            />
+          </div>
+          <div className={ac.field}>
+            <label className={ac.label} htmlFor="acct-address">Địa chỉ hiện tại</label>
+            <textarea
+              id="acct-address"
+              className={ac.input}
+              rows={3}
+              maxLength={255}
+              value={values.address}
+              onChange={(e) => set("address", e.target.value)}
+              autoComplete="street-address"
+              placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+            />
+          </div>
+          <div className={ac.actions}>
+            <button className={ac.primary} type="submit" disabled={busy}>
+              {busy ? "Đang lưu…" : "Lưu thay đổi"}
+            </button>
+            <button
+              className={ac.secondary}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                setError("");
+                setValues(valuesOf(profile));
+              }}
+            >
+              Hủy
+            </button>
+          </div>
+        </section>
+      </form>
+    </div>
   );
 }

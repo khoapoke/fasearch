@@ -84,9 +84,15 @@ export function AccountCenterShell({
           <nav className="sfCrumbs" aria-label="Đường dẫn">
             <Link href="/">Trang chủ</Link>
             <span aria-hidden="true">›</span>
-            <Link href="/tai-khoan">Tài khoản của tôi</Link>
-            <span aria-hidden="true">›</span>
-            <span aria-current="page">{title}</span>
+            {title === "Tài khoản của tôi" ? (
+              <span aria-current="page">{title}</span>
+            ) : (
+              <>
+                <Link href="/tai-khoan">Tài khoản của tôi</Link>
+                <span aria-hidden="true">›</span>
+                <span aria-current="page">{title}</span>
+              </>
+            )}
           </nav>
           <div className="acct-head">
             {kicker ? <p className="hmKicker">{kicker}</p> : null}

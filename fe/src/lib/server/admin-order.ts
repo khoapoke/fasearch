@@ -6,10 +6,37 @@ import { adminIdentity, BE } from "@/lib/server/admin-bff";
 const TARGETS = new Set(["CONFIRMED", "PACKING", "SHIPPING", "COMPLETED"]);
 const MAX_NOTE = 1000;
 const bad = (message: string, status: number, code: string | number) => Response.json({ success: false, code, message, result: null }, { status, headers: { "cache-control": "no-store" } });
+function mapRefusal(rawMessage: string): string | null {
+  const m = (rawMessage || "").trim();
+  if (!m) return null;
+  if (/Paid orders cannot be cancelled|Đơn đã thu tiền không thể hủy/i.test(m)) return "Đơn đã thanh toán, không thể hủy.";
+  if (/Order is already paid|Đơn hàng đã thanh toán/i.test(m)) return "Đơn đã thanh toán, không thể thu thêm.";
+  if (/Order is not in a payable state|Đơn hàng không ở trạng thái có thể thanh toán/i.test(m)) return "Đơn không ở trạng thái có thể thu tiền.";
+  if (/must be settled through an invoice|COD must be settled|invoice before completion|thu qua hóa đơn|COD phải được thu/i.test(m)) return "Đơn cần ghi nhận thu tiền (hóa đơn) trước khi hoàn tất.";
+  if (/S2 financial holds remain committed|Voucher order can no longer be cancelled|Các khoản giữ tài chính S2|Đơn có Voucher không thể hủy/i.test(m)) return "Đơn có voucher/điểm sau bàn giao không thể hủy.";
+  if (/Paid amount.*insufficient|không đủ thanh toán|Số tiền thanh toán không đủ/i.test(m)) return "Số tiền thực thu phải ít nhất bằng số tiền còn phải thu.";
+  if (/Tổng tiền đơn hàng chưa được ghi nhận/i.test(m)) return "Tổng tiền đơn hàng chưa được ghi nhận, không thể thu tiền mặt.";
+  if (/Chỉ ghi nhận thu COD cho đơn đang giao/i.test(m)) return "Chỉ ghi nhận thu COD cho đơn đang giao.";
+  if (/^Đơn hàng đã được hủy trước đó/.test(m) && m.length <= 200) return "Đơn hàng đã được hủy trước đó.";
+  // Known clear Vietnamese BE messages (order lifecycle) are safe to show verbatim.
+  if (/^Đơn hàng đã (bị hủy|hoàn tất|hoàn trả|được trả lại)/.test(m) && m.length <= 200) return m;
+  if (/^Không thể chuyển trạng thái/.test(m) && m.length <= 300) return "Không chuyển được trạng thái theo thứ tự cho phép.";
+  return null;
+}
 async function out(upstream: Response): Promise<Response> {
   if (!upstream.ok) {
     let code: string | number = upstream.status;
-    try { const payload = await upstream.json() as { code?: unknown }; if (typeof payload.code === "number" || typeof payload.code === "string") code = payload.code; } catch { /* safe status fallback */ }
+    let rawMessage = "";
+    try {
+      const payload = await upstream.json() as { code?: unknown; message?: unknown };
+      if (typeof payload.code === "number" || typeof payload.code === "string") code = payload.code;
+      if (typeof payload.message === "string") rawMessage = payload.message;
+      if (code === 400 && /already paid|Đơn hàng đã thanh toán/i.test(rawMessage)) {
+        return bad("Đơn đã thanh toán, không thể thu thêm.", upstream.status, code);
+      }
+    } catch { /* safe status fallback */ }
+    const mapped = mapRefusal(rawMessage);
+    if (mapped) return bad(mapped, upstream.status, code);
     const message = upstream.status === 401 ? "Vui lòng đăng nhập lại." : upstream.status === 403 ? "Bạn không có quyền thực hiện thao tác này." : upstream.status === 404 ? "Không tìm thấy đơn hàng." : upstream.status === 409 ? "Đơn hàng đã thay đổi hoặc thao tác không hợp lệ." : upstream.status >= 500 ? "Dịch vụ đơn hàng đang bận." : "Yêu cầu chưa hợp lệ.";
     return bad(message, upstream.status, code);
   }

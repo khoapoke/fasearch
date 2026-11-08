@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import ac from "@/components/account/account-cards.module.css";
 import { fetchOwnLoyalty, fetchOwnLoyaltyHistory, fetchOwnLoyaltyPolicy, type OwnLoyalty, type OwnPolicy } from "@/lib/benefits-client";
 import { benefitErrorMessage, formatVnDateTime, loyaltyActionLabel, loyaltyHistoryAmount, loyaltyTierDisplayName, type LoyaltyHistoryEntry } from "@/lib/benefits";
 import { getAccountIdentity } from "@/lib/account-identity-cache";
@@ -80,14 +81,35 @@ export default function LoyaltyPage() {
   }, [state]);
 
   if (state.kind === "checking" || state.kind === "loading") {
-    return <p className="pgState" role="status"><strong>Đang tải điểm thưởng…</strong></p>;
+    return (
+      <div className={ac.page}>
+        <section className={ac.card} aria-labelledby="loyalty-loading">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>01 · Điểm thưởng</p>
+            <h2 id="loyalty-loading" className={ac.title}>Đang tải điểm thưởng</h2>
+          </div>
+          <div className={ac.group} role="status">
+            <div className={ac.skeleton} />
+            <div className={ac.skeleton} />
+          </div>
+        </section>
+      </div>
+    );
   }
 
   if (state.kind === "error") {
     return (
-      <div className="lyError" role="alert" tabIndex={-1} ref={errorRef}>
-        <p>{state.message}</p>
-        <button className="auth-button" type="button" onClick={load}>Thử lại</button>
+      <div className={ac.page}>
+        <div className={ac.card} role="alert" tabIndex={-1} ref={errorRef}>
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>Điểm thưởng</p>
+            <h2 className={ac.title}>Không tải được điểm</h2>
+          </div>
+          <p className={ac.meta}>{state.message}</p>
+          <div className={ac.actions}>
+            <button className={ac.secondary} type="button" onClick={load}>Thử lại</button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -109,79 +131,96 @@ export default function LoyaltyPage() {
     : 0;
 
   return (
-    <>
-      <section className={`lyCard ${tierClass(balance.salesTierName)}`} aria-label="Thẻ thành viên FaSearch">
-        <div className="lyCard-top">
-          <span className="lyCard-brand"><ShirtMark /> FaSearch</span>
-          <span className="lyCard-tier">{tierName}</span>
+    <div className={ac.pageWide}>
+      <section className={ac.card} aria-labelledby="loyalty-tier">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>01 · Hạng hiện tại</p>
+          <h2 id="loyalty-tier" className={ac.title}>Hạng thành viên</h2>
+          <p className={ac.lead}><span className={ac.chipBrand}>{tierName}</span></p>
         </div>
-        <p className="lyCard-name">{state.memberName}</p>
-        <p className="lyCard-sub">Thẻ thành viên</p>
-        <p className="lyCard-points">
-          {balance.availablePoints?.toLocaleString("vi-VN") ?? "—"} <small>điểm khả dụng</small>
-        </p>
-      </section>
-
-      <div className="lyStats">
-        <div className="lyStat">
-          <b>{balance.availablePoints?.toLocaleString("vi-VN") ?? "—"}</b>
-          <span>điểm khả dụng</span>
-        </div>
-        <div className="lyStat">
-          <b>{balance.heldPoints.toLocaleString("vi-VN")}</b>
-          <span>đang giữ (đơn chưa xong)</span>
-        </div>
-        <div className="lyStat">
-          <b>{cumulative === null ? "—" : `${cumulative.toLocaleString("vi-VN")}₫`}</b>
-          <span>chi tiêu tích lũy</span>
-        </div>
-      </div>
-
-      {nextTier && cumulative !== null ? (
-        <section className="lyProgress" aria-label="Tiến độ lên hạng tiếp theo">
-          <p>Còn <strong>{(nextTier.minimumCumulativePaidSales - cumulative).toLocaleString("vi-VN")}₫</strong> nữa để lên hạng <strong>{nextTier.name}</strong></p>
-          <div className="lyBar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPct)} aria-label={`Đã đạt ${Math.round(progressPct)}% tới hạng ${nextTier.name}`}>
-            <i style={{ width: `${progressPct}%` }} />
+        <section className={`lyCard ${tierClass(balance.salesTierName)}`} aria-label="Thẻ thành viên FaSearch">
+          <div className="lyCard-top">
+            <span className="lyCard-brand"><ShirtMark /> FaSearch</span>
+            <span className="lyCard-tier">{tierName}</span>
           </div>
-          <small>{cumulative.toLocaleString("vi-VN")}₫ / {nextTier.minimumCumulativePaidSales.toLocaleString("vi-VN")}₫</small>
+          <p className="lyCard-name">{state.memberName}</p>
+          <p className="lyCard-sub">Thẻ thành viên</p>
+          <p className="lyCard-points">
+            {balance.availablePoints?.toLocaleString("vi-VN") ?? "—"} <small>điểm khả dụng</small>
+          </p>
         </section>
-      ) : null}
 
-      <section className="lyHowto" aria-label="Cách tích và dùng điểm">
-        <h2>Cách tích và dùng điểm</h2>
+        <div className="lyStats">
+          <div className="lyStat">
+            <b>{balance.availablePoints?.toLocaleString("vi-VN") ?? "—"}</b>
+            <span>điểm khả dụng</span>
+          </div>
+          <div className="lyStat">
+            <b>{balance.heldPoints.toLocaleString("vi-VN")}</b>
+            <span>đang giữ (đơn chưa xong)</span>
+          </div>
+          <div className="lyStat">
+            <b>{cumulative === null ? "—" : `${cumulative.toLocaleString("vi-VN")}đ`}</b>
+            <span>chi tiêu tích lũy</span>
+          </div>
+        </div>
+
+        {nextTier && cumulative !== null ? (
+          <div aria-label="Tiến độ lên hạng tiếp theo">
+            <p className={ac.meta}>Còn <strong>{(nextTier.minimumCumulativePaidSales - cumulative).toLocaleString("vi-VN")}đ</strong> nữa để lên hạng <strong>{nextTier.name}</strong></p>
+            <div className="lyBar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPct)} aria-label={`Đã đạt ${Math.round(progressPct)}% tới hạng ${nextTier.name}`}>
+              <i style={{ width: `${progressPct}%` }} />
+            </div>
+            <p className={ac.meta}>{cumulative.toLocaleString("vi-VN")}đ / {nextTier.minimumCumulativePaidSales.toLocaleString("vi-VN")}đ</p>
+          </div>
+        ) : null}
+      </section>
+
+      <section className={ac.card} aria-labelledby="loyalty-howto">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>02 · Quyền lợi</p>
+          <h2 id="loyalty-howto" className={ac.title}>Cách tích và dùng điểm</h2>
+        </div>
         {state.policy && enabled ? (
-          <>
-            <p>Mỗi {state.policy.policy.earnCurrencyPerPoint.toLocaleString("vi-VN")}₫ chi tiêu được 1 điểm.</p>
-            <p>{state.policy.policy.redeemCurrencyPerPoint.toLocaleString("vi-VN")} điểm giảm 1₫ khi thanh toán.</p>
-          </>
+          <div className={ac.group}>
+            <p className={ac.meta}>Mỗi {state.policy.policy.earnCurrencyPerPoint.toLocaleString("vi-VN")}đ chi tiêu được 1 điểm.</p>
+            <p className={ac.meta}>1 điểm giảm {state.policy.policy.redeemCurrencyPerPoint.toLocaleString("vi-VN")}đ khi thanh toán.</p>
+          </div>
         ) : (
-          <p>Chính sách điểm hiện chưa bật cho tài khoản này.</p>
+          <p className={ac.meta}>Chính sách điểm hiện chưa bật cho tài khoản này.</p>
         )}
       </section>
 
-      <section className="lyHist" aria-label="Lịch sử điểm">
-        <h2>Lịch sử điểm</h2>
+      <section className={ac.card} aria-labelledby="loyalty-history">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>03 · Lịch sử điểm</p>
+          <h2 id="loyalty-history" className={ac.title}>Lịch sử điểm</h2>
+        </div>
         {state.history.length === 0 ? (
-          <p className="lyHist-empty">Chưa có biến động điểm nào cho tài khoản này.</p>
+          <div className={`${ac.card} ${ac.empty}`} style={{ padding: "20px 22px" }}>
+            <p className={ac.meta}>Bạn chưa có biến động điểm nào.</p>
+          </div>
         ) : (
-          state.history.map((h) => {
-            const amount = loyaltyHistoryAmount(h.type, h.points);
-            return (
-              <div className="lyHist-row" key={String(h.entryId)}>
-                <div>
-                  <b className="name">{loyaltyActionLabel(h.type)}</b>
-                  <small>{formatVnDateTime(h.occurredAt)}{h.orderId ? ` · Đơn #${h.orderId}` : ""}</small>
-                </div>
-                <span className={`lyHist-amt ${amount.direction}`}>{amount.text}</span>
-              </div>
-            );
-          })
+          <ul className={ac.list}>
+            {state.history.map((h) => {
+              const amount = loyaltyHistoryAmount(h.type, h.points);
+              return (
+                <li key={String(h.entryId)}>
+                  <span style={{ minWidth: 0 }}>
+                    <strong style={{ display: "block", fontSize: 14 }}>{loyaltyActionLabel(h.type)}</strong>
+                    <span className={ac.meta}>{formatVnDateTime(h.occurredAt)}{h.orderId ? ` · Đơn #${h.orderId}` : ""}</span>
+                  </span>
+                  <span className={ac.chip}>{amount.text}</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
 
-      <p className="lyFoot">
-        Điểm chỉ cộng từ đơn đã thanh toán thật. <Link href="/voucher">Xem voucher →</Link>
+      <p className={ac.meta}>
+        Điểm chỉ cộng từ đơn đã thanh toán thật. <Link className={ac.link} href="/voucher">Xem voucher →</Link>
       </p>
-    </>
+    </div>
   );
 }

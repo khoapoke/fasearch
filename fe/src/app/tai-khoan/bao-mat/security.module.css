@@ -1,0 +1,15 @@
+/* Bảo mật: chỉ giữ phần thực sự riêng (trạng thái email). Thẻ/form/nút dùng chung. */
+.verified { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin: 0; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--st-brand-text, #3730d8) 35%, transparent);
+  border-radius: 999px;
+  color: var(--st-brand-text, #3730d8);
+  background: color-mix(in srgb, var(--st-brand-text, #3730d8) 8%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+}
+.email { color: var(--st-ink, var(--ink, #181b30)); font-size: 15px; overflow-wrap: anywhere; }

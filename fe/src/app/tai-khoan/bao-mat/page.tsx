@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { PasswordForm } from "./password-form";
 import { SecurityEmailStatus } from "./verification-status";
+import ac from "@/components/account/account-cards.module.css";
 
 export const metadata = {
   title: "Cài Đặt Tài Khoản & Bảo Mật | FaSearch",
@@ -9,25 +9,34 @@ export const metadata = {
 
 export default function SecurityPage() {
   return (
-    <>
-      <section aria-label="Xác thực email">
-        <h2>Email xác thực</h2>
+    <div className={ac.page}>
+      <section className={ac.card} aria-labelledby="sec-email">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>01 · Email</p>
+          <h2 id="sec-email" className={ac.title}>Email xác thực</h2>
+        </div>
         <SecurityEmailStatus />
       </section>
-      <section aria-label="Form đổi mật khẩu">
+
+      <section className={ac.card} aria-labelledby="sec-password">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>02 · Mật khẩu</p>
+          <h2 id="sec-password" className={ac.title}>Đổi mật khẩu</h2>
+          <p className={ac.lead}>Chọn một mật khẩu dài, dễ nhớ với bạn và không dùng lại ở trang khác.</p>
+        </div>
         <PasswordForm />
       </section>
-      <section className="acct-note" aria-label="Tính năng chưa hỗ trợ">
-        <h2>Chưa hỗ trợ</h2>
-        <p>
-          Xác thực hai lớp và quản lý phiên đăng nhập chưa có trong hệ thống hiện tại.
-          Trang này không mô phỏng các tính năng đó.
-        </p>
-        <p>
-          Sau khi đổi mật khẩu thành công, bạn được đưa về trang đăng nhập để đăng nhập lại bằng mật khẩu mới.
-        </p>
-        <p><Link href="/tai-khoan">Quay lại trung tâm tài khoản →</Link></p>
+
+      <section className={`${ac.card} ${ac.soon}`} aria-labelledby="sec-soon">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>03 · Sắp có</p>
+          <h2 id="sec-soon" className={ac.title}>Bảo mật nâng cao</h2>
+        </div>
+        <ul className={ac.list}>
+          <li><span>Xác thực hai lớp</span><span className={ac.chip}>Sắp có</span></li>
+          <li><span>Quản lý phiên đăng nhập trên các thiết bị</span><span className={ac.chip}>Sắp có</span></li>
+        </ul>
       </section>
-    </>
+    </div>
   );
 }

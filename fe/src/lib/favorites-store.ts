@@ -3,6 +3,10 @@
 
 import { addFavorite, fetchFavorites, removeFavorite } from "@/lib/customer-account-client";
 
+/** Broadcast on every successful toggle so hearts for the same product stay in sync. */
+export const FAVORITE_EVENT = "fa:favorite";
+export type FavoriteChange = { id: number; loved: boolean };
+
 let cachedIds: Set<number> | null = null;
 let loadingPromise: Promise<Set<number>> | null = null;
 let authed = false;
@@ -38,6 +42,17 @@ export function isFavoriteCached(id: number): boolean {
   return cachedIds?.has(id) ?? false;
 }
 
+/** Valid only after loadFavoriteIds() settled: false = not logged in (or session expired). */
+export function isFavoriteAuthed(): boolean {
+  return authed;
+}
+
+function announce(id: number, loved: boolean) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<FavoriteChange>(FAVORITE_EVENT, { detail: { id, loved } }));
+  }
+}
+
 export async function toggleFavoriteServer(id: number): Promise<boolean> {
   if (!authed) {
     // not logged in; redirect caller handles
@@ -46,9 +61,11 @@ export async function toggleFavoriteServer(id: number): Promise<boolean> {
   if (cachedIds?.has(id)) {
     await removeFavorite(id);
     cachedIds?.delete(id);
+    announce(id, false);
     return false;
   }
   await addFavorite(id);
   cachedIds?.add(id);
+  announce(id, true);
   return true;
 }

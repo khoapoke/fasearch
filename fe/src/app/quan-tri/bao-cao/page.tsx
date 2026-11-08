@@ -1,283 +1,433 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import "@/components/admin-b/f5.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { AdminShellB } from "@/components/admin-b/admin-shell";
-import "@/components/admin/admin.css";
+import { BarChart, HBarChart, fillPeriods, periodTitle, type Granularity } from "@/components/admin-b/bar-chart";
+import { InfoHint } from "@/components/admin-b/info-hint";
+import { PageHeader } from "@/components/admin-b/page-header";
+import { ReportOverview } from "@/components/admin-b/report-overview";
+import { REPORT_PRESETS, presetOf } from "@/lib/admin-reports-overview";
+import { Pager } from "@/components/admin-b/pagination";
+import { CardSkeleton, TableSkeleton } from "@/components/admin-b/skeleton";
+import { Num } from "@/components/admin-b/status-badge";
+import { formatNumber } from "@/lib/admin-format";
 import {
   downloadCsv, fetchMovement, fetchRevenue, fetchTopProducts,
   type MovementResult, type RevenueResult, type TopProductRow,
 } from "@/lib/reports-client";
 import {
-  buildMovementQuery, buildRevenueQuery, buildTopQuery, normalizeTopN, reportCsvName,
+  buildMovementQuery, buildRevenueQuery, buildTopQuery, normalizeTopN, reportCsvName, validateReportRange,
   type ReportFilters, type RevenuePeriod, type TopType,
 } from "@/lib/reports";
 
-type Tab = "doanh-thu" | "san-pham" | "xuat-nhap-ton";
+type Tab = "tong-hop" | "doanh-thu" | "san-pham" | "xuat-nhap-ton";
 
-type State =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "ready"; tab: Tab; doanhThu?: RevenueResult; sanPham?: TopProductRow[]; sanPhamType?: TopType; xnt?: MovementResult }
-  | { kind: "error"; message: string; status: number };
+type Loaded = {
+  tab: Tab;
+  from: string;
+  to: string;
+  period: RevenuePeriod;
+  doanhThu?: RevenueResult;
+  sanPham?: TopProductRow[];
+  sanPhamType?: TopType;
+  xnt?: MovementResult;
+};
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+const TABS: Array<{ key: Tab; label: string }> = [
+  { key: "tong-hop", label: "Tổng hợp" },
+  { key: "doanh-thu", label: "Doanh thu" },
+  { key: "san-pham", label: "Sản phẩm" },
+  { key: "xuat-nhap-ton", label: "Xuất–nhập–tồn" },
+];
 
-function monthStart(): string {
-  return new Date().toISOString().slice(0, 7) + "-01";
-}
+const PERIOD_TITLE: Record<RevenuePeriod, string> = { DAY: "ngày", WEEK: "tuần", MONTH: "tháng", YEAR: "năm" };
 
-function fmtMoney(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "Chưa rõ";
-  return `${v.toLocaleString("vi-VN")}₫`;
-}
+const TZ = "Asia/Ho_Chi_Minh";
+const fmtIso = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+const today = () => fmtIso(new Date());
+const monthStart = () => today().slice(0, 7) + "-01";
+const dmy = (iso: string) => iso.split("-").reverse().join("/");
+
+const PRESETS = REPORT_PRESETS;
+
+const moneyText = (v: number) => `${formatNumber(v)} đ`;
+
+type Filters = ReportFilters & { topN: number; loaiTop: TopType; thang: string };
+
+const XNT_EXPORT_MAX_PAGES = 50;
 
 export default function ReportsPage() {
-  const [tab, setTab] = useState<Tab>("doanh-thu");
-  const [f, setF] = useState<ReportFilters & { topN: number; loaiTop: TopType; thang: string }>({
+  const [tab, setTab] = useState<Tab>("tong-hop");
+  const [compare, setCompare] = useState(true);
+  const [f, setF] = useState<Filters>({
     tuNgay: monthStart(), denNgay: today(), period: "DAY", type: "BEST_SELLER", limit: 10, topN: 10, loaiTop: "BEST_SELLER", thang: "",
     sku: "", page: 0, size: 20,
   });
-  const [state, setState] = useState<State>({ kind: "idle" });
+  const [skuInput, setSkuInput] = useState("");
+  const [data, setData] = useState<Loaded | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failure, setFailure] = useState<{ message: string; status: number } | null>(null);
   const [csvBusy, setCsvBusy] = useState(false);
+  const [csvError, setCsvError] = useState("");
   const errorRef = useRef<HTMLDivElement>(null);
+  const requestId = useRef(0);
+
+  const rangeError = (() => {
+    try { validateReportRange(f.tuNgay, f.denNgay); return ""; } catch (e) { return e instanceof Error ? e.message : "Khoảng ngày chưa hợp lệ."; }
+  })();
 
   const load = useCallback(async () => {
-    setState({ kind: "loading" });
+    const id = ++requestId.current;
+    if (rangeError || tab === "tong-hop") { setLoading(false); return; }
+    setLoading(true);
+    setFailure(null);
     try {
+      validateReportRange(f.tuNgay, f.denNgay);
+      const base = { tab, from: f.tuNgay, to: f.denNgay, period: (f.period ?? "DAY") as RevenuePeriod };
+      let next: Loaded;
       if (tab === "doanh-thu") {
         const q = buildRevenueQuery({ tuNgay: f.tuNgay, denNgay: f.denNgay, period: f.period });
-        setState({ kind: "ready", tab, doanhThu: await fetchRevenue(q) });
+        next = { ...base, doanhThu: await fetchRevenue(q) };
       } else if (tab === "san-pham") {
         const q = buildTopQuery({ tuNgay: f.tuNgay, denNgay: f.denNgay, type: f.loaiTop, limit: normalizeTopN(f.topN) });
-        setState({ kind: "ready", tab, sanPham: await fetchTopProducts(q), sanPhamType: f.loaiTop });
+        next = { ...base, sanPham: await fetchTopProducts(q), sanPhamType: f.loaiTop };
       } else {
         const q = buildMovementQuery({ tuNgay: f.tuNgay, denNgay: f.denNgay, page: f.page, size: f.size, month: f.thang, sku: f.sku });
-        setState({ kind: "ready", tab, xnt: await fetchMovement(q) });
+        next = { ...base, xnt: await fetchMovement(q) };
       }
+      if (id !== requestId.current) return;
+      setData(next);
     } catch (e) {
+      if (id !== requestId.current) return;
       const st = (e as { status?: number })?.status ?? 0;
-      setState({
-        kind: "error",
+      setFailure({
         status: st,
-        message: st === 401 ? "Phiên đăng nhập đã hết. Đăng nhập lại." : st === 403 ? "Tài khoản không có quyền xem báo cáo (cần Quản trị viên hoặc Quản lý)." : e instanceof Error ? e.message : "Không tải được báo cáo.",
+        message: st === 401 ? "Phiên đăng nhập đã hết. Đăng nhập lại." : st === 403 ? "Tài khoản không có quyền xem Report (cần Quản trị viên hoặc Quản lý)." : e instanceof Error ? e.message : "Không tải được báo cáo.",
       });
       setTimeout(() => errorRef.current?.focus(), 0);
+    } finally {
+      if (id === requestId.current) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, f.tuNgay, f.denNgay, f.period, f.loaiTop, f.topN, f.thang, f.sku, f.page]);
+  }, [rangeError, tab, f.tuNgay, f.denNgay, f.period, f.loaiTop, f.topN, f.thang, f.sku, f.page, f.size]);
 
   useEffect(() => {
     void Promise.resolve().then(() => load());
   }, [load]);
 
-  function set<K extends keyof typeof f>(k: K, v: (typeof f)[K]) {
-    setF((prev) => ({ ...prev, [k]: v }));
+  // SKU search commits after a short pause so typing does not fire a request per key.
+  useEffect(() => {
+    if (skuInput === (f.sku ?? "")) return;
+    const t = window.setTimeout(() => setF((p) => ({ ...p, sku: skuInput, page: 0 })), 350);
+    return () => window.clearTimeout(t);
+  }, [skuInput, f.sku]);
+
+  function set<K extends keyof Filters>(k: K, v: Filters[K]) {
+    setF((prev) => ({ ...prev, [k]: v, ...(k === "page" ? {} : { page: 0 }) }));
   }
 
-  const ready = state.kind === "ready" && state.tab === tab ? state : null;
+  function onTabKey(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    const last = TABS.length - 1;
+    const next = event.key === "ArrowRight" ? (index === last ? 0 : index + 1)
+      : event.key === "ArrowLeft" ? (index === 0 ? last : index - 1)
+      : event.key === "Home" ? 0
+      : event.key === "End" ? last : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    setTab(TABS[next].key);
+    document.getElementById(`report-tab-${TABS[next].key}`)?.focus();
+  }
+
+  const ready = data && data.tab === tab ? data : null;
+  const overviewTab = tab === "tong-hop";
+  const activePreset = presetOf(f.tuNgay, f.denNgay);
 
   async function csv() {
-    if (!ready) return;
+    if (!ready || tab === "tong-hop") return;
     setCsvBusy(true);
+    setCsvError("");
     try {
       const name = reportCsvName(tab === "san-pham" ? "san-pham" : tab, f.tuNgay, f.denNgay);
       if (tab === "doanh-thu" && ready.doanhThu) {
-        downloadCsv(name, ["Ngay", "SoDon", "DoanhThu"],
-          ready.doanhThu.timeline.map((r) => [r.date, r.orders, r.revenue]));
+        // Same zero-filled series as the chart and the table, so the file matches the screen.
+        const series = fillPeriods({
+          from: ready.from, to: ready.to, granularity: ready.period as Granularity,
+          rows: ready.doanhThu.timeline.map((p) => ({ date: p.date, value: p.revenue, count: p.orders })),
+        });
+        downloadCsv(name, ["Ngay", "SoDon", "DoanhThu"], series.map((r) => [r.key, r.count ?? 0, r.value]));
       } else if (tab === "san-pham" && ready.sanPham) {
         downloadCsv(name, ["Hang", "MaSP", "TenSP", "DanhMuc", "SLBan", "DoanhThu", "TonHienTai"],
           ready.sanPham.map((r) => [r.rank, r.productId, r.productName, r.categoryName ?? "", r.totalQuantitySold, r.totalRevenue, r.currentInventory ?? ""]));
       } else if (tab === "xuat-nhap-ton" && ready.xnt) {
-        downloadCsv(name, ["SKU", "TenSP", "Mau", "Co", "Barcode", "TonDau", "Nhap", "Ban", "Hong", "TonCuoi"],
-          ready.xnt.items.map((r) => [r.skuId, r.productName, r.color ?? "", r.size ?? "", r.barcode ?? "", r.openingStock ?? "Chua ro", r.totalImport, r.totalSold, r.totalDamaged, r.closingStock ?? ""]));
+        // The screen shows one page; the file holds every page of the current month and SKU filter (bounded).
+        const items: typeof ready.xnt.items = [];
+        let totalPages = 1;
+        let totalElements = 0;
+        for (let p = 0; p < Math.min(totalPages, XNT_EXPORT_MAX_PAGES); p++) {
+          const part = await fetchMovement(buildMovementQuery({ tuNgay: f.tuNgay, denNgay: f.denNgay, page: p, size: 100, month: f.thang, sku: f.sku }));
+          items.push(...part.items);
+          totalPages = part.totalPages;
+          totalElements = part.totalElements;
+        }
+        if (totalPages > XNT_EXPORT_MAX_PAGES) setCsvError(`File chỉ gồm ${formatNumber(items.length)} dòng đầu trong ${formatNumber(totalElements)} dòng. Lọc theo SKU để lấy phần còn lại.`);
+        downloadCsv(name, ["SKU", "TenSP", "Mau", "Co", "MaVach", "Nhap", "Ban", "Hong", "TonHienTai"],
+          items.map((r) => [r.skuId, r.productName, r.color ?? "", r.size ?? "", r.barcode ?? "", r.totalImport ?? "", r.totalSold, r.totalDamaged ?? "", r.closingStock ?? ""]));
       }
     } catch (e) {
-      setState({ kind: "error", status: 0, message: e instanceof Error ? e.message : "Tải CSV thất bại." });
+      setCsvError(e instanceof Error ? e.message : "Tải CSV thất bại.");
     } finally {
       setCsvBusy(false);
     }
   }
 
+  const hint = overviewTab
+    ? "Tổng hợp nhanh theo kỳ đã chọn. Doanh thu, số đơn và khách hàng tính từ hóa đơn đã thanh toán; đơn theo trạng thái tính các đơn tạo trong kỳ. Mỗi thẻ có giải thích riêng."
+    : tab === "doanh-thu"
+    ? "Doanh thu tính từ hóa đơn đã thu. Giá vốn và lãi gộp chưa có dữ liệu nên không hiển thị."
+    : tab === "san-pham"
+      ? "Bán chạy xếp theo số lượng bán trong kỳ (hóa đơn đã thu). Bán chậm là sản phẩm không bán được cái nào trong kỳ, kể cả sản phẩm đã hết hàng; cột Tồn là số khả dụng hiện tại."
+      : "Nhập và Hỏng lấy từ phiếu nhập và phiếu xuất hỏng đã hoàn tất trong tháng; Xuất bán lấy từ hóa đơn đã thu, nên hàng hỏng không bị tính hai lần. Không có dữ liệu tồn đầu tháng nên cột này không hiển thị; Tồn cuối là số khả dụng hiện tại, không phải tồn cuối tháng.";
+
   return (
-    <AdminShellB active="reports" title="Báo cáo doanh thu & hàng hóa" eyebrow="Quản trị">
-      <p className="adLede">Số liệu từ hóa đơn đã thu thật. Chi phí lịch sử chưa rõ và tồn đầu kỳ chưa rõ hiện cảnh báo, không tính 0.</p>
-      <div className="adActions" style={{ margin: "0 0 16px" }}><button className="adBtn adBtnPrimary" type="button" disabled={csvBusy || !ready} onClick={csv}>{csvBusy ? "Đang xuất…" : "Xuất CSV (dữ liệu bảng đang xem)"}</button></div>
-      <div className="adFilters" role="group" aria-label="Loại báo cáo" style={{ marginBottom: 12 }}>
-        {(["doanh-thu", "san-pham", "xuat-nhap-ton"] as Tab[]).map((t) => (
-          <button key={t} className="adBtn" type="button" aria-pressed={tab === t} onClick={() => setTab(t)} style={tab === t ? { background: "#4338ca", borderColor: "#4338ca", color: "#fff" } : undefined}>
-            {t === "doanh-thu" ? "Doanh thu & lãi gộp" : t === "san-pham" ? "Sản phẩm bán chạy/chậm" : "Xuất–nhập–tồn"}
-          </button>
-        ))}
-      </div>
-      <section className="adCard" aria-label="Bộ lọc">
-        <form className="adFilters" onSubmit={(e) => { e.preventDefault(); load(); }}>
-          <label>Từ ngày <input type="date" value={f.tuNgay} onChange={(e) => set("tuNgay", e.target.value)} aria-label="Từ ngày" /></label>
-          <label>Đến ngày <input type="date" value={f.denNgay} onChange={(e) => set("denNgay", e.target.value)} aria-label="Đến ngày" /></label>
+    <AdminShellB active="reports" title="Report">
+      <PageHeader
+        title="Report"
+        hint={hint}
+        actions={overviewTab ? undefined : <button className="secondary" type="button" disabled={csvBusy || !ready} onClick={csv} title={tab === "xuat-nhap-ton" ? "Xuất mọi dòng theo bộ lọc hiện tại, không chỉ trang đang xem" : undefined}>{csvBusy ? "Đang export…" : "Export CSV"}</button>}
+      />
+      <div className="rp-toolbar">
+        <div className="stage-tabs report-tabs" role="tablist" aria-label="Loại Report">
+          {TABS.map((item, index) => (
+            <button
+              key={item.key}
+              id={`report-tab-${item.key}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.key}
+              aria-controls="report-panel"
+              tabIndex={tab === item.key ? 0 : -1}
+              onClick={() => setTab(item.key)}
+              onKeyDown={(event) => onTabKey(event, index)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="rp-filters" role="group" aria-label="Bộ lọc Report">
+          <div className="seg" role="group" aria-label="Khoảng thời gian">
+            {PRESETS.map((p) => (
+              <button key={p.id} type="button" aria-pressed={activePreset === p.id} onClick={() => { const [a, b] = p.range(); setF((prev) => ({ ...prev, tuNgay: a, denNgay: b, page: 0 })); }}>{p.label}</button>
+            ))}
+            <button type="button" aria-pressed={activePreset === "custom"} onClick={() => document.getElementById("rp-from")?.focus()}>Tùy chọn</button>
+          </div>
+          <div className="range-dates">
+            <DateInput id="rp-from" className="catalog-input" value={f.tuNgay} max={f.denNgay} onChange={(v) => { if (/^\d{4}-\d{2}-\d{2}$/.test(v)) set("tuNgay", v); }} aria-label="Từ ngày" />
+            <span aria-hidden="true">–</span>
+            <DateInput id="rp-to" className="catalog-input" value={f.denNgay} min={f.tuNgay} onChange={(v) => { if (/^\d{4}-\d{2}-\d{2}$/.test(v)) set("denNgay", v); }} aria-label="Đến ngày" />
+          </div>
+          {overviewTab ? (
+            <label className="s1-compare"><input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} /> So với kỳ trước</label>
+          ) : null}
           {tab === "doanh-thu" ? (
-            <>
-              <label>Chu kỳ{" "}
-                <select value={f.period} onChange={(e) => set("period", e.target.value as RevenuePeriod)} aria-label="Chu kỳ">
-                  <option value="DAY">Ngày</option>
-                  <option value="WEEK">Tuần</option>
-                  <option value="MONTH">Tháng</option>
-                  <option value="YEAR">Năm</option>
-                </select>
-              </label>
-              <span className="adNote">Kênh: mọi kênh (duy nhất được hỗ trợ — schema không có cột kênh).</span>
-            </>
+            <select id="rp-period" className="catalog-input rp-select" value={f.period} onChange={(e) => set("period", e.target.value as RevenuePeriod)} aria-label="Chu kỳ">
+              <option value="DAY">Theo ngày</option>
+              <option value="WEEK">Theo tuần</option>
+              <option value="MONTH">Theo tháng</option>
+              <option value="YEAR">Theo năm</option>
+            </select>
           ) : null}
           {tab === "san-pham" ? (
             <>
-              <label>Loại{" "}
-                <select value={f.loaiTop} onChange={(e) => set("loaiTop", e.target.value as TopType)} aria-label="Loại top">
-                  <option value="BEST_SELLER">Bán chạy</option>
-                  <option value="SLOW_MOVING">Bán chậm (không bán trong window)</option>
-                </select>
-              </label>
-              <label>Top <input value={String(f.topN)} onChange={(e) => set("topN", Number(e.target.value))} aria-label="Top N" inputMode="numeric" style={{ width: 80 }} /></label>
+              <select id="rp-type" className="catalog-input rp-select" value={f.loaiTop} onChange={(e) => set("loaiTop", e.target.value as TopType)} aria-label="Loại">
+                <option value="BEST_SELLER">Bán chạy</option>
+                <option value="SLOW_MOVING">Bán chậm</option>
+              </select>
+              <select id="rp-topn" className="catalog-input rp-select rp-select-sm" value={String(f.topN)} onChange={(e) => set("topN", Number(e.target.value))} aria-label="Số lượng hiển thị">
+                {[5, 10, 20, 50, 100].map((n) => <option key={n} value={n}>Top {n}</option>)}
+              </select>
             </>
           ) : null}
           {tab === "xuat-nhap-ton" ? (
             <>
-              <label>Tháng <input type="month" value={f.thang ? `${f.thang.slice(3)}-${f.thang.slice(0, 2)}` : ""} onChange={(e) => { const v = e.target.value; set("thang", v ? `${v.slice(5, 7)}-${v.slice(0, 4)}` : ""); }} aria-label="Tháng (MM-YYYY, trống = tháng hiện tại)" /></label>
-              <label>Mã SKU <input value={f.sku ?? ""} onChange={(e) => set("sku", e.target.value)} placeholder="Mã SKU" aria-label="Mã SKU" style={{ width: 120 }} /></label>
+              <input id="rp-month" className="catalog-input rp-month" type="month" value={f.thang ? `${f.thang.slice(3)}-${f.thang.slice(0, 2)}` : ""} onChange={(e) => { const v = e.target.value; set("thang", v ? `${v.slice(5, 7)}-${v.slice(0, 4)}` : ""); }} aria-label="Tháng, để trống là tháng hiện tại" />
+              <input id="rp-sku" className="catalog-input rp-sku" value={skuInput} onChange={(e) => setSkuInput(e.target.value)} placeholder="SKU" aria-label="SKU" />
             </>
           ) : null}
-          <button className="adBtn" type="submit">Lọc (giữ điều kiện)</button>
-        </form>
-      </section>
-      {state.kind === "loading" ? <p className="adState" role="status">Đang tải báo cáo…</p> : null}
-      {state.kind === "error" ? (
-        <div ref={errorRef} tabIndex={-1} className="adCard" role="alert">
-          <p className="adNote">{state.message}</p>
-          <button className="adBtn" type="button" onClick={load}>Thử lại (giữ lọc)</button>
         </div>
-      ) : null}
-      {ready ? (
-        <div key={tab} className="fade-swap">
-          {ready.doanhThu ? <DoanhThuView data={ready.doanhThu} /> : null}
-          {ready.sanPham ? <SanPhamView data={ready.sanPham} loai={ready.sanPhamType ?? "BEST_SELLER"} /> : null}
-          {ready.xnt ? <XntView data={ready.xnt} page={f.page ?? 0} onPage={(n) => setF((p) => ({ ...p, page: n }))} /> : null}
-        </div>
-      ) : null}
+      </div>
+      {rangeError ? <p className="catalog-error" role="alert">{rangeError}</p> : null}
+      {csvError ? <p className="catalog-error" role="alert">{csvError}</p> : null}
+      <div id="report-panel" role="tabpanel" aria-labelledby={`report-tab-${tab}`} aria-busy={loading} className={`rp-panel${loading && ready ? " is-loading" : ""}`}>
+        {overviewTab && !rangeError ? <ReportOverview from={f.tuNgay} to={f.denNgay} compare={compare} onOpenTab={(t) => setTab(t)} /> : null}
+        {!overviewTab && failure ? (
+          <div ref={errorRef} tabIndex={-1} className="order-empty" role="alert">
+            <strong>Không tải được Report</strong>
+            <p>{failure.message}</p>
+            <button className="secondary" type="button" onClick={load}>Thử lại</button>
+          </div>
+        ) : null}
+        {!overviewTab && !failure && !ready && !rangeError ? <ReportSkeleton tab={tab} /> : null}
+        {!overviewTab && !failure && ready ? (
+          <>
+            {ready.doanhThu ? <DoanhThuView data={ready.doanhThu} from={ready.from} to={ready.to} period={ready.period} onPreset={(id) => { const p = PRESETS.find((x) => x.id === id); if (p) { const [a, b] = p.range(); setF((prev) => ({ ...prev, tuNgay: a, denNgay: b, page: 0 })); } }} /> : null}
+            {ready.sanPham ? <SanPhamView data={ready.sanPham} loai={ready.sanPhamType ?? "BEST_SELLER"} /> : null}
+            {ready.xnt ? <XntView data={ready.xnt} page={f.page ?? 0} onPage={(n) => set("page", n)} /> : null}
+          </>
+        ) : null}
+      </div>
     </AdminShellB>
   );
 }
 
-function DoanhThuView({ data }: { data: RevenueResult }) {
-  const max = Math.max(1, ...data.timeline.map((r) => r.revenue));
+function ReportSkeleton({ tab }: { tab: Tab }) {
+  return (
+    <div aria-hidden="true">
+      {tab === "doanh-thu" ? <div className="kpi-row rp-kpis"><CardSkeleton height={84} /><CardSkeleton height={84} /><CardSkeleton height={84} /></div> : null}
+      <TableSkeleton rows={8} columns={tab === "xuat-nhap-ton" ? 6 : 4} />
+    </div>
+  );
+}
+
+function useChartHeight() {
+  const [h, setH] = useState(300);
+  useEffect(() => {
+    const on = () => setH(window.innerWidth < 1000 ? 260 : Math.max(240, Math.min(520, window.innerHeight - 410)));
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return h;
+}
+
+function Empty({ title, children }: { title: string; children?: React.ReactNode }) {
+  return <div className="order-empty rp-empty"><strong>{title}</strong>{children}</div>;
+}
+
+function DoanhThuView({ data, from, to, period, onPreset }: { data: RevenueResult; from: string; to: string; period: RevenuePeriod; onPreset: (id: string) => void }) {
+  const chartH = useChartHeight();
+  const g = period as Granularity;
+  const filled = useMemo(() => fillPeriods({
+    from, to, granularity: g,
+    rows: data.timeline.map((p) => ({ date: p.date, value: p.revenue, count: p.orders })),
+  }), [data.timeline, from, to, g]);
+  const cogs = data.summary.totalCogs as number | null | undefined;
+  const profit = data.summary.grossProfit as number | null | undefined;
+  const avg = data.summary.averageOrderValue;
+  const hasData = data.timeline.length > 0 && data.summary.totalOrders > 0;
+  const noteHint = `Doanh thu tính từ hóa đơn đã thu, không gồm ${data.coverage.excludedPending ?? "?"} đơn chờ và đơn hủy/chưa thu.${cogs == null && profit == null ? " Giá vốn và lãi gộp chưa có dữ liệu nên không hiển thị." : ""}`;
   return (
     <>
-      <p className="adNote" role="note">
-        Doanh thu = tổng hóa đơn đã thu (PAID), loại {data.coverage.excludedPending ?? "?"} đơn chờ
-        và đơn hủy/chưa thu; tồn kho/coGS không có lịch sử nên Vốn và Lãi gộp hiện “Chưa rõ”, không tính 0.
-      </p>
-      <section className="adStats" aria-label="Tổng hợp">
-        <div className="adStat"><small>Tổng thu</small><b>{fmtMoney(data.summary.totalRevenue)}</b></div>
-        <div className="adStat"><small>Số đơn đã thu</small><b>{data.summary.totalOrders}</b></div>
-        <div className="adStat"><small>Trung bình/đơn</small><b>{fmtMoney(data.summary.averageOrderValue)}</b></div>
-        <div className="adStat"><small>Vốn hàng bán</small><b>{fmtMoney(data.summary.totalCogs)}</b></div>
-        <div className="adStat"><small>Lãi gộp</small><b>{fmtMoney(data.summary.grossProfit)}</b></div>
-      </section>
-      {data.timeline.length === 0 ? <p className="adState">Không có dòng nào với bộ lọc hiện tại (tập rỗng hợp lệ).</p> : (
-        <section className="adCard" aria-label="Diễn biến theo kỳ">
-          <div className="adChart" role="img" aria-label={`Biểu đồ doanh thu ${data.timeline.length} kỳ, cùng số liệu bảng bên dưới`}>
-            {data.timeline.map((r) => (
-              <div className="adBar" key={r.date} title={`${r.date}: ${fmtMoney(r.revenue)} (${r.orders} đơn)`}>
-                <span style={{ height: `${Math.max(2, Math.round((r.revenue / max) * 100))}%` }} />
-                <em>{r.date.slice(5)}</em>
-              </div>
-            ))}
-          </div>
-          <div className="adTableWrap">
-            <table className="adTable">
-              <caption>Doanh thu theo kỳ (cùng số liệu với biểu đồ)</caption>
-              <thead><tr><th>Kỳ</th><th>Số đơn</th><th>Doanh thu</th></tr></thead>
-              <tbody>
-                {data.timeline.map((r) => (
-                  <tr key={r.date}><td className="adMono">{r.date}</td><td>{r.orders}</td><td>{fmtMoney(r.revenue)}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="kpi-row rp-kpis" aria-label="Tổng hợp">
+        <div className="kpi-card kpi-green"><span className="kpi-label">Tổng thu</span><span className="kpi-value"><Num tone="green" money bold value={data.summary.totalRevenue} /></span></div>
+        <div className="kpi-card kpi-blue"><span className="kpi-label">Số đơn đã thu</span><span className="kpi-value"><Num tone="blue" value={data.summary.totalOrders} /></span></div>
+        <div className="kpi-card kpi-violet"><span className="kpi-label">Trung bình/đơn</span><span className="kpi-value"><Num tone="violet" money value={avg === null || avg === undefined ? null : Math.round(avg)} /></span></div>
+        {cogs != null ? <div className="kpi-card"><span className="kpi-label">Vốn hàng bán</span><span className="kpi-value"><Num money value={cogs} /></span></div> : null}
+        {profit != null ? <div className="kpi-card kpi-green"><span className="kpi-label">Lãi gộp</span><span className="kpi-value"><Num tone="green" money value={profit} /></span></div> : null}
+      </div>
+      {!hasData ? (
+        <section className="form-card rp-card">
+          <Empty title="Chưa có doanh thu trong kỳ này">
+            <p>Không có hóa đơn đã thu từ {dmy(from)} đến {dmy(to)}. Thử chọn kỳ dài hơn.</p>
+            <div className="rp-empty-actions"><button className="secondary" type="button" onClick={() => onPreset("30")}>Xem 30 ngày gần nhất</button><button className="secondary" type="button" onClick={() => onPreset("month")}>Tháng này</button></div>
+          </Empty>
         </section>
+      ) : (
+        <div className="rp-grid">
+          <section className="form-card rp-card rp-chart" aria-label="Biểu đồ doanh thu">
+            <div className="rp-card-head"><h2>Doanh thu theo {PERIOD_TITLE[period]}</h2><InfoHint align="start">{noteHint}</InfoHint></div>
+            <BarChart title={`Doanh thu theo ${PERIOD_TITLE[period]}`} data={filled} tone="green" height={chartH} formatValue={moneyText} countUnit="đơn" valueHeader="Doanh thu" />
+          </section>
+          <section className="form-card rp-card rp-table" aria-label="Bảng doanh thu">
+            <div className="table-scroll rp-scroll" tabIndex={0} aria-label="Bảng doanh thu theo kỳ">
+              <table className="review-orders-table l3-table rp-rev-table" data-testid="rev-table">
+                <caption className="sr-only">Doanh thu theo kỳ, cùng số liệu với biểu đồ</caption>
+                <thead><tr><th>Kỳ</th><th className="num">Số đơn</th><th className="num">Doanh thu</th></tr></thead>
+                <tbody>
+                  {filled.map((r) => (
+                    <tr key={r.key}>
+                      <td data-label="Kỳ" className="tabnum">{periodTitle(r.key, g)}</td>
+                      <td data-label="Số đơn" className="num"><Num tone="blue" value={r.count ?? 0} /></td>
+                      <td data-label="Doanh thu" className="num"><Num tone="green" money value={r.value} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       )}
     </>
   );
 }
 
 function SanPhamView({ data, loai }: { data: TopProductRow[]; loai: TopType }) {
-  if (data.length === 0) return <p className="adState">Không có dòng nào với bộ lọc hiện tại (tập rỗng hợp lệ).</p>;
+  const best = loai === "BEST_SELLER";
+  const bars = useMemo(() => data.map((r) => ({
+    key: `${r.rank}-${r.productId}`,
+    label: r.productName,
+    value: best ? r.totalQuantitySold : r.currentInventory ?? 0,
+    tooltip: best
+      ? `${r.productName} · ${formatNumber(r.totalQuantitySold)} đã bán · ${moneyText(r.totalRevenue)}`
+      : `${r.productName} · tồn ${r.currentInventory === null ? "chưa có" : formatNumber(r.currentInventory)} · không bán trong kỳ`,
+  })), [data, best]);
+  if (data.length === 0) return <section className="form-card rp-card"><Empty title={best ? "Chưa có sản phẩm bán được trong kỳ này" : "Không có sản phẩm bán chậm trong kỳ này"}><p>Thử chọn kỳ dài hơn hoặc đổi loại.</p></Empty></section>;
   return (
-    <section className="adCard" aria-label={loai === "BEST_SELLER" ? "Bán chạy" : "Bán chậm"}>
-      {loai === "SLOW_MOVING" ? (
-        <p className="adNote" role="note">Bán chậm = có hàng nhưng không bán trong window đã chọn (ghi nhận rõ, không đoán số 0).</p>
-      ) : (
-        <p className="adNote" role="note">Xếp hạng theo dòng hóa đơn đã thu; sản phẩm đã xóa mềm giữ tên snapshot và được gắn cờ.</p>
-      )}
-      <div className="adTableWrap">
-        <table className="adTable">
-          <caption>{loai === "BEST_SELLER" ? "Top bán chạy" : "Bán chậm"}</caption>
-          <thead><tr><th>Hạng</th><th>Mã SP</th><th>Tên (snapshot)</th><th>Danh mục</th><th>SL bán</th><th>Doanh thu</th><th>Tồn hiện tại</th></tr></thead>
+    <div className="rp-grid rp-grid-top">
+      <section className="form-card rp-card rp-chart" aria-label={best ? "Biểu đồ bán chạy" : "Biểu đồ bán chậm"}>
+        <div className="rp-card-head"><h2>{best ? "Số lượng bán" : "Tồn hiện tại"}</h2></div>
+        <HBarChart title={best ? "Sản phẩm bán chạy" : "Sản phẩm bán chậm"} tone={best ? "blue" : "gray"} data={bars} formatValue={(v) => formatNumber(v)} />
+      </section>
+      <section className="form-card rp-card rp-table" aria-label="Bảng sản phẩm">
+        <div className="table-scroll rp-scroll" tabIndex={0} aria-label={best ? "Top bán chạy" : "Bán chậm"}>
+          <table className="review-orders-table l3-table">
+            <caption className="sr-only">{best ? "Sản phẩm bán chạy" : "Sản phẩm bán chậm"} · {formatNumber(data.length)} dòng</caption>
+            <thead><tr><th className="num rp-rank">Hạng</th><th>Sản phẩm</th><th>Danh mục</th><th className="num">SL bán</th><th className="num">Doanh thu</th><th className="num">Tồn</th></tr></thead>
+            <tbody>
+              {data.map((r) => (
+                <tr key={`${r.rank}-${r.productId}`}>
+                  <td data-label="Hạng" className="num rp-rank tabnum">{r.rank}</td>
+                  <td data-label="Sản phẩm" className="cell-title"><span className="rp-clip" title={r.productName}>{r.productName}</span></td>
+                  <td data-label="Danh mục">{r.categoryName ?? <span className="empty-value">Chưa có</span>}</td>
+                  <td data-label="SL bán" className="num"><Num tone="blue" value={r.totalQuantitySold} /></td>
+                  <td data-label="Doanh thu" className="num"><Num tone="green" money value={r.totalRevenue} /></td>
+                  <td data-label="Tồn" className="num">{r.currentInventory === null ? <span className="empty-value">Chưa có</span> : <Num tone={r.currentInventory <= 0 ? "red" : "green"} dimZero={false} value={r.currentInventory} />}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function XntView({ data, page, onPage }: { data: MovementResult; page: number; onPage: (n: number) => void }) {
+  if (data.items.length === 0) return <section className="form-card rp-card"><Empty title="Không có SKU khớp"><p>Thử đổi khoảng ngày, tháng hoặc SKU.</p></Empty></section>;
+  return (
+    <section className="form-card rp-card rp-xnt" aria-label="Xuất nhập tồn">
+      <div className="table-scroll rp-scroll" tabIndex={0} aria-label="Bảng xuất nhập tồn">
+        <table className="review-orders-table l3-table">
+          <caption className="sr-only">Biến động trong tháng · tồn cuối là số khả dụng hiện tại</caption>
+          <thead><tr><th>SKU</th><th>Sản phẩm</th><th className="num">Nhập</th><th className="num">Xuất bán</th><th className="num">Hỏng</th><th className="num">Tồn cuối</th></tr></thead>
           <tbody>
-            {data.map((r) => (
-              <tr key={`${r.rank}-${r.productId}`}>
-                <td>{r.rank}</td>
-                <td className="adMono">{r.productId}</td>
-                <td>{r.productName}</td>
-                <td>{r.categoryName ?? "—"}</td>
-                <td>{r.totalQuantitySold}</td>
-                <td>{fmtMoney(r.totalRevenue)}</td>
-                <td>{r.currentInventory === null ? "Chưa rõ" : r.currentInventory}</td>
+            {data.items.map((r) => (
+              <tr key={r.skuId}>
+                <td data-label="SKU" className="tabnum">{r.skuId}</td>
+                <td data-label="Sản phẩm" className="cell-title">
+                  <span className="rp-clip" title={r.productName}>{r.productName}</span>
+                  <small className="meta">{[r.color, r.size].filter(Boolean).join(" · ") || "Chưa có màu/cỡ"}{r.barcode ? ` · ${r.barcode}` : ""}</small>
+                </td>
+                <td data-label="Nhập" className="num">{r.totalImport === null ? <span className="empty-value">—</span> : <Num tone="green" value={r.totalImport} />}</td>
+                <td data-label="Xuất bán" className="num"><Num tone="orange" value={r.totalSold} /></td>
+                <td data-label="Hỏng" className="num">{r.totalDamaged === null ? <span className="empty-value">—</span> : <Num tone="red" value={r.totalDamaged} />}</td>
+                <td data-label="Tồn cuối" className="num">{r.closingStock === null ? <span className="empty-value">—</span> : <Num tone={r.closingStock <= 0 ? "red" : "green"} dimZero={false} bold value={r.closingStock} />}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <Pager page={page} totalPages={data.totalPages} total={data.totalElements} unit="SKU" onPage={onPage} />
     </section>
-  );
-}
-
-function XntView({ data, page, onPage }: { data: MovementResult; page: number; onPage: (n: number) => void }) {
-  return (
-    <>
-      <p className="adNote" role="note">
-        Tồn đầu kỳ <b>không tính được</b> (schema không có lịch sử kho/mở đầu) nên hiện “Chưa đủ dữ liệu” —
-        không bịa từ tồn hiện tại. Tồn cuối là ảnh chụp hiện tại, khác với biến động trong kỳ.
-      </p>
-      {data.items.length === 0 ? <p className="adState">Không có dòng nào với bộ lọc hiện tại (tập rỗng hợp lệ).</p> : (
-        <section className="adCard" aria-label="Xuất nhập tồn">
-          <div className="adTableWrap">
-            <table className="adTable">
-              <thead><tr><th>SKU</th><th>Sản phẩm</th><th>Màu/Cỡ</th><th>Barcode</th><th>Tồn đầu</th><th>Nhập</th><th>Bán</th><th>Hỏng</th><th>Tồn cuối (ảnh chụp)</th></tr></thead>
-              <tbody>
-                {data.items.map((r) => (
-                  <tr key={r.skuId}>
-                    <td className="adMono">{r.skuId}</td>
-                    <td>{r.productName}</td>
-                    <td>{[r.color, r.size].filter(Boolean).join(" · ") || "—"}</td>
-                    <td className="adMono">{r.barcode ?? "—"}</td>
-                    <td>Chưa đủ dữ liệu</td>
-                    <td>{r.totalImport === null ? "Chưa rõ" : r.totalImport}</td>
-                    <td>{r.totalSold}</td>
-                    <td>{r.totalDamaged === null ? "Chưa rõ" : r.totalDamaged}</td>
-                    <td><b>{r.closingStock === null ? "Chưa rõ" : r.closingStock}</b></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {data.totalPages > 1 ? (
-            <nav className="adPager" aria-label="Phân trang tồn kho">
-              <button className="adBtn" type="button" disabled={page <= 0} onClick={() => onPage(Math.max(0, page - 1))}>Trang trước</button>
-              <span>Trang {page + 1}/{data.totalPages} — {data.totalElements} SKU</span>
-              <button className="adBtn" type="button" disabled={page + 1 >= data.totalPages} onClick={() => onPage(page + 1)}>Trang sau</button>
-            </nav>
-          ) : null}
-        </section>
-      )}
-    </>
   );
 }

@@ -38,7 +38,7 @@
   /* Form gọn 400–440px, ảnh giữ phần còn lại; tỉ lệ cân hơn panel cũ. */
   grid-template-columns: minmax(0, 1fr) minmax(400px, 440px);
   gap: clamp(28px, 4vw, 56px);
-  align-items: center;
+  align-items: start;
 }
 .authPage .auth-editorial {
   display: grid;

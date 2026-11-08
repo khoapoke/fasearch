@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { AuthApiError, type AuthIdentity } from "@/lib/customer-auth-client";
 import { getAccountIdentity } from "@/lib/account-identity-cache";
 import { fetchCustomerOrders } from "@/lib/customer-commerce-client";
-import { formatMoney, orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
-import "./auth.css";
+import { orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
 import { EmailVerificationBanner } from "./email-verification-banner";
 import { ProfileEditor } from "./profile-editor";
+import { PriceTag } from "@/components/storefront/price-tag";
+import ac from "@/components/account/account-cards.module.css";
 
 type State =
   | { kind: "loading" }
@@ -19,6 +20,13 @@ type State =
 
 const ROLE_LABEL: Record<string, string> = { CUSTOMER: "Khách hàng", STAFF: "Quản lý", ADMIN: "Quản trị viên" };
 const STATUS_LABEL: Record<string, string> = { ACTIVE: "Đang hoạt động", INACTIVE: "Chưa hoạt động", LOCKED: "Đang bị khóa", DELETED: "Đã vô hiệu hóa" };
+
+function formatDate(value: string): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Chưa cập nhật";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 /**
  * Nội dung trang tổng quan tài khoản.
@@ -37,52 +45,63 @@ export function AccountHub({
   orders: CustomerOrder[] | null;
   ordersError: string;
 }) {
+  const isCustomer = identity.role === "CUSTOMER";
   return (
-    <>
+    <div className={ac.pageWide}>
       {identity.emailVerified === false ? <EmailVerificationBanner email={identity.email} /> : null}
-      <section className="sfSideCard" aria-labelledby="account-profile-title">
-        <div className="acct-section-head">
-          <h2 id="account-profile-title">Hồ sơ</h2>
-          {identity.role === "CUSTOMER" ? <Link className="acct-logout" href="/tai-khoan/thong-tin">Sửa thông tin</Link> : null}
-        </div>
-        {identity.role === "CUSTOMER" ? <ProfileEditor /> : (
-          <>
-            <dl className="acct-profile">
-              <div className="acct-row"><dt>Mã tài khoản</dt><dd>{identity.id}</dd></div>
-              <div className="acct-row"><dt>Tên đăng nhập</dt><dd>{identity.username}</dd></div>
-              <div className="acct-row"><dt>Email</dt><dd>{identity.email}</dd></div>
-              <div className="acct-row"><dt>Vai trò</dt><dd>{ROLE_LABEL[identity.role] ?? identity.role}</dd></div>
-              <div className="acct-row"><dt>Trạng thái</dt><dd>{STATUS_LABEL[identity.status] ?? identity.status}</dd></div>
-            </dl>
-            <p className="acct-note">Tài khoản quản trị dùng trang quản trị riêng; hồ sơ khách hàng không áp dụng tại đây.</p>
-          </>
-        )}
-      </section>
+      {isCustomer ? <ProfileEditor /> : (
+        <section className={ac.card} aria-labelledby="account-profile-title">
+          <div className={ac.head}>
+            <p className={ac.eyebrow}>01 · Hồ sơ</p>
+            <h2 id="account-profile-title" className={ac.title}>Hồ sơ</h2>
+          </div>
+          <dl className={ac.kv}>
+            <div className={ac.kvRow}><dt>Mã tài khoản</dt><dd>{identity.id}</dd></div>
+            <div className={ac.kvRow}><dt>Tên đăng nhập</dt><dd>{identity.username}</dd></div>
+            <div className={ac.kvRow}><dt>Email</dt><dd>{identity.email}</dd></div>
+            <div className={ac.kvRow}><dt>Vai trò</dt><dd>{ROLE_LABEL[identity.role] ?? identity.role}</dd></div>
+            <div className={ac.kvRow}><dt>Trạng thái</dt><dd>{STATUS_LABEL[identity.status] ?? identity.status}</dd></div>
+          </dl>
+          <p className={ac.meta}>Tài khoản quản trị dùng trang quản trị riêng; hồ sơ khách hàng không áp dụng tại đây.</p>
+        </section>
+      )}
 
-      <section className="sfSideCard" aria-labelledby="account-orders-title">
-        <div className="acct-section-head">
-          <h2 id="account-orders-title">Đơn gần đây</h2>
-          <Link className="acct-logout" href="/don-hang">Xem tất cả</Link>
+      <section className={ac.card} aria-labelledby="account-orders-title">
+        <div className={ac.head}>
+          <p className={ac.eyebrow}>{isCustomer ? "03 · Đơn hàng" : "02 · Đơn hàng"}</p>
+          <h2 id="account-orders-title" className={ac.title}>Đơn gần đây</h2>
+          <p className={ac.lead}>Ba đơn mới nhất của bạn. <Link className={ac.link} href="/don-hang">Xem tất cả</Link></p>
         </div>
         {ordersError ? (
-          <p className="acct-note" role="alert">{ordersError} <Link className="auth-link" href="/don-hang">Mở đơn hàng →</Link></p>
+          <p className={ac.alert} role="alert">{ordersError} <Link className={ac.link} href="/don-hang">Mở đơn hàng →</Link></p>
         ) : null}
-        {orders === null && !ordersError ? <p className="acct-note" role="status">Đang tải đơn gần đây…</p> : null}
-        {orders && orders.length === 0 ? (
-          <p className="acct-note">Chưa có đơn thật. <Link className="auth-link" href="/gio-hang">Mở giỏ hàng →</Link></p>
-        ) : null}
-        {orders && orders.length > 0 ? (
-          <div className="acct-order-list">
-            {orders.map((order) => (
-              <Link className="acct-order-row" href={`/don-hang/${order.orderId}`} key={order.orderId}>
-                <span><strong>{order.orderCode}</strong><small>{orderStatusText(order.status)} · {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : ""}</small></span>
-                <strong>{formatMoney(order.totalAmount)}</strong>
-              </Link>
-            ))}
+        {orders === null && !ordersError ? <div className={ac.group} role="status"><div className={ac.skeleton} /><p className={ac.meta}>Đang tải đơn gần đây…</p></div> : null}
+        {orders && orders.length === 0 && !ordersError ? (
+          <div className={`${ac.card} ${ac.empty}`} style={{ padding: "20px 22px" }}>
+            <p className={ac.meta}>Bạn chưa có đơn hàng nào.</p>
+            <div className={ac.actions}>
+              <Link className={ac.primary} href="/nam">Mua sắm ngay</Link>
+            </div>
           </div>
         ) : null}
+        {orders && orders.length > 0 ? (
+          <ul className={ac.list}>
+            {orders.map((order) => (
+              <li key={order.orderId}>
+                <span style={{ minWidth: 0 }}>
+                  <Link className={ac.link} href={`/don-hang/${order.orderId}`} style={{ fontWeight: 650, fontSize: 14 }}>{order.orderCode}</Link>
+                  <span className={ac.meta} style={{ display: "block", marginTop: 4 }}>{order.createdAt ? formatDate(order.createdAt) : "Chưa cập nhật"}</span>
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
+                  <span className={ac.chip}>{orderStatusText(order.status)}</span>
+                  <PriceTag value={order.totalAmount} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
-    </>
+    </div>
   );
 }
 
@@ -115,6 +134,7 @@ export function useAccountHub() {
   useEffect(() => {
     if (state.kind !== "ready") return;
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     setOrdersError("");
     fetchCustomerOrders("page=0&size=3", controller.signal)
       .then((result) => { if (!controller.signal.aborted) setOrders(result.items); })
@@ -132,9 +152,9 @@ export function useAccountHub() {
 /** Thân trang tổng quan: đọc dữ liệu rồi hiển thị, giữ trạng thái khách/lỗi rõ ràng. */
 export function HubBody() {
   const { state, orders, ordersError } = useAccountHub();
-  if (state.kind === "loading") return <p className="acct-note" role="status">Đang tải tài khoản…</p>;
-  if (state.kind === "guest") return <p className="acct-note">Phiên đăng nhập đã kết thúc. Đăng nhập lại để xem tài khoản.</p>;
-  if (state.kind === "forbidden") return <p className="acct-note" role="alert">{state.message}</p>;
-  if (state.kind === "error") return <p className="acct-note" role="alert">{state.message}</p>;
+  if (state.kind === "loading") return <div className={ac.page}><section className={ac.card}><p className={ac.meta} role="status">Đang tải tài khoản…</p><div className={ac.skeleton} /></section></div>;
+  if (state.kind === "guest") return <div className={ac.page}><section className={ac.card}><div className={ac.head}><p className={ac.eyebrow}>Tài khoản</p><h2 className={ac.title}>Cần đăng nhập</h2></div><p className={ac.meta}>Phiên đăng nhập đã kết thúc. Đăng nhập lại để xem tài khoản.</p></section></div>;
+  if (state.kind === "forbidden") return <div className={ac.page}><section className={ac.card}><p className={ac.alert} role="alert">{state.message}</p></section></div>;
+  if (state.kind === "error") return <div className={ac.page}><section className={ac.card}><p className={ac.alert} role="alert">{state.message}</p></section></div>;
   return <AccountHub identity={state.identity} orders={orders} ordersError={ordersError} />;
 }

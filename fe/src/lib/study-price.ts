@@ -55,6 +55,6 @@ export function validatePriceBounds(
 
 export function boundsErrorText(code: BoundsError, axisMin: number | null, axisMax: number | null): string {
   if (code === "minMaxOrder") return "Giá từ phải nhỏ hơn hoặc bằng giá đến.";
-  const fmt = (n: number | null) => (n === null ? "?" : n.toLocaleString("vi-VN") + " ₫");
+  const fmt = (n: number | null) => (n === null ? "?" : n.toLocaleString("vi-VN") + "đ");
   return `Giá phải trong khoảng ${fmt(axisMin)} – ${fmt(axisMax)} của danh mục.`;
 }

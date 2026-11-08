@@ -142,8 +142,13 @@ describe("discountLines (nhãn giảm theo snapshot máy chủ)", () => {
     const root = join(dirname(fileURLToPath(import.meta.url)), "..");
     const detail = readFileSync(join(root, "src/app/don-hang/[id]/page.tsx"), "utf8");
     const pos = readFileSync(join(root, "src/app/kenh-ban/pos/page.tsx"), "utf8");
+    // Biên lai POS (dữ liệu legacy giamGia/giamVoucher/giamDiem) render qua discountLines().
+    assert.match(pos, /discountLines\(/, "biên lai POS: phải render qua discountLines()");
+    // Trang chi tiết đơn khách dùng mô hình đơn mới (discountAmount/pointsDiscount từ snapshot
+    // máy chủ), nên không gọi discountLines() nữa; vẫn cấm nguồn dòng giảm thứ hai và cấm tự tính giảm.
+    assert.match(detail, /order\.discountAmount/, "chi tiết đơn: dòng voucher lấy từ snapshot máy chủ");
+    assert.match(detail, /order\.pointsDiscount/, "chi tiết đơn: dòng điểm lấy từ snapshot máy chủ");
     for (const [name, src] of [["chi tiết đơn", detail], ["biên lai POS", pos]]) {
-      assert.match(src, /discountLines\(/, `${name}: phải render qua discountLines()`);
       assert.doesNotMatch(src, /function OrderDiscountLines/, `${name}: không được có nguồn dòng giảm thứ hai`);
     }
   });

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { authCookie, authError, fetchMyInfo, readJsonObject, requireJsonPost } from "@/lib/server/customer-auth";
+import { authCookie, authError, readJsonObject, requireJsonPost } from "@/lib/server/customer-auth";
 import { authBackendUrl } from "@/lib/server/be-upstream";
 
 export const dynamic = "force-dynamic";

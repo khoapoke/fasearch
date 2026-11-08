@@ -391,6 +391,7 @@ export function HomeSections() {
   useEffect(() => {
     if (motionOn) return;
     clearDemoTimers();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: state sync/reset or one-shot mount read inside an effect; refactor would change behaviour
     setStage("complete");
     setTyped(HOME_DEMO.query.length);
   }, [motionOn, clearDemoTimers]);
@@ -608,7 +609,7 @@ export function HomeSections() {
           <section className="hmCats" aria-labelledby="hm-cats-title">
             <div className="hmSecHead">
               <h2 className="hmSectionTitle" id="hm-cats-title">Danh mục nổi bật</h2>
-              <Link href="/nam">Xem tất cả sản phẩm →</Link>
+              <Link href="/nam">Xem tất cả danh mục →</Link>
             </div>
             <div className="hmCatRow">
               {discovery.categories.slice(0, 7).map((c) => (
@@ -624,9 +625,9 @@ export function HomeSections() {
       <section className="hmBest" aria-labelledby="hm-best-title">
         <div className="hmSecHead">
           <h2 className="hmSectionTitle" id="hm-best-title">
-            Sản phẩm nổi bật{discovery.status === "ready" ? ` (${discovery.total})` : ""}
+            Sản phẩm nổi bật
           </h2>
-          <Link href="/nam">Xem cả danh mục →</Link>
+          <Link href="/nam">Xem tất cả sản phẩm →</Link>
         </div>
 
         {discovery.status === "loading" ? (

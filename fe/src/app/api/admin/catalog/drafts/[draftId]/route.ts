@@ -12,7 +12,7 @@ function draftOf(params: { draftId: string }): number | null {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ draftId: string }> }) {
   const { draftId } = await params;
   const n = draftOf({ draftId });
-  if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
+  if (!n) return authError("Mã Draft chưa hợp lệ.", 400);
   return catalogRead(request, `/api/v1/admin/products/drafts/${n}`);
 }
 
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (guard) return guard;
   const { draftId } = await params;
   const n = draftOf({ draftId });
-  if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
+  if (!n) return authError("Mã Draft chưa hợp lệ.", 400);
   const parsed = await readJsonObject(request);
   if (!parsed.ok) return parsed.response;
   const b = parsed.body;
@@ -37,6 +37,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ draftId: string }> }) {
   const { draftId } = await params;
   const n = draftOf({ draftId });
-  if (!n) return authError("Mã bản nháp chưa hợp lệ.", 400);
+  if (!n) return authError("Mã Draft chưa hợp lệ.", 400);
   return catalogDelete(request, `/api/v1/admin/products/drafts/${n}`);
 }

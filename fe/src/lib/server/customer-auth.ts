@@ -25,6 +25,8 @@ export type SafeIdentity = {
   createdAt: string;
   /** true khi tai khoan da xac thuc email (BE V21+). Vang mat -> false (huong an toan: hien banner). */
   emailVerified: boolean;
+  /** Mã quyền hiệu lực (ADMIN: mọi mã; Quản lý: mã đang bật; khách hàng: rỗng). */
+  permissions: string[];
 };
 
 type Envelope<T> = { success?: boolean; code?: number; message?: string; result?: T; errors?: Array<{ field?: string; reason?: string }> };
@@ -164,10 +166,14 @@ export function validateIdentity(payload: Envelope<Record<string, unknown>> | nu
   const status = typeof result.status === "string" ? result.status : "";
   const createdAt = typeof result.createdAt === "string" ? result.createdAt : "";
   const emailVerified = typeof result.emailVerified === "boolean" ? result.emailVerified : false;
+  // Mã quyền nghiệp vụ (chỉ để FE ẩn/hiện; BE kiểm tra lại mỗi yêu cầu). Chỉ nhận chuỗi dạng mã.
+  const permissions = Array.isArray(result.permissions)
+    ? (result.permissions as unknown[]).filter((code): code is string => typeof code === "string" && /^[A-Z_]{1,64}$/.test(code))
+    : [];
   if (!Number.isInteger(id) || id <= 0 || !username || !email || !role || !status || !createdAt) {
     throw new Error("IDENTITY_INVALID_RESPONSE");
   }
-  return { id, username, email, role, status, createdAt, emailVerified };
+  return { id, username, email, role, status, createdAt, emailVerified, permissions };
 }
 
 export function mapUpstreamError(status: number, payload: Envelope<unknown> | null): { message: string; code: string; errors?: Array<{ field?: string; reason?: string }> } {

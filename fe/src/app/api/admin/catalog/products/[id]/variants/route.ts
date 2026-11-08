@@ -10,6 +10,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const b = parsed.body; const color = typeof b.color === "string" ? b.color.trim() : ""; const size = typeof b.size === "string" ? b.size.trim() : ""; const barcode = typeof b.barcode === "string" ? b.barcode.trim() : "";
   if (!color || color.length > 50) return authError("Màu sắc phải từ 1 đến 50 ký tự.", 400);
   if (!size || size.length > 50) return authError("Kích cỡ phải từ 1 đến 50 ký tự.", 400);
-  if (barcode.length > 100) return authError("Mã vạch tối đa 100 ký tự.", 400);
+  if (barcode.length > 100) return authError("Barcode tối đa 100 ký tự.", 400);
   return catalogWrite(request, `/api/v1/products/${n}/variants`, "POST", { color, size, ...(barcode ? { barcode } : {}) });
 }

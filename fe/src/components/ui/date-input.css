@@ -1,0 +1,31 @@
+.dateInput { position: relative; display: block; width: 100%; }
+.dateInput > input[type="text"] { width: 100%; padding-right: 38px; }
+.dateInputBtn {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.65;
+  cursor: pointer;
+}
+.dateInputBtn:hover { opacity: 1; }
+.dateInputNative {
+  position: absolute;
+  right: 6px;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

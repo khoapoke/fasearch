@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { clearFavoriteCache, isFavoriteCached, loadFavoriteIds, toggleFavoriteServer } from "@/lib/favorites-store";
-import { Icon } from "@/components/ui/icon";
+import { FavoriteHeart } from "./favorite-heart";
+import { PriceTag } from "./price-tag";
 import { StitchImage } from "@/components/ui/stitch-image";
 import "./listing.css";
 
@@ -27,13 +26,6 @@ export function formatVnd(value: number): string {
 }
 
 export function ProductCard({ product }: { product: CardProduct }) {
-  const [loved, setLoved] = useState<boolean | null>(null);
-  useEffect(() => {
-    let active = true;
-    loadFavoriteIds().then((ids) => { if (active) setLoved(ids.has(product.id)); }).catch(() => { if (active) setLoved(false); });
-    return () => { active = false; };
-  }, [product.id]);
-  const isLoved = loved ?? false;
   return (
     <article className="pCard">
       <Link className="pCardMedia" href={product.href} aria-label={product.name}>
@@ -53,22 +45,7 @@ export function ProductCard({ product }: { product: CardProduct }) {
           </span>
         ) : null}
       </Link>
-      <button
-        className="pFav"
-        type="button"
-        aria-pressed={isLoved}
-        aria-label={isLoved ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
-        onClick={async () => {
-          try {
-            const next = await toggleFavoriteServer(product.id);
-            setLoved(next);
-          } catch {
-            window.location.href = "/dang-nhap?next=" + encodeURIComponent(window.location.pathname);
-          }
-        }}
-      >
-        <Icon name="heart" size={17} filled={isLoved} />
-      </button>
+      <FavoriteHeart productId={product.id} className="pFav" />
       <div className="pCardBody">
         {product.colors && product.colors.length > 0 ? (
           <p className="pCardDots">
@@ -88,7 +65,7 @@ export function ProductCard({ product }: { product: CardProduct }) {
           {product.sold ? <span>Đã bán {product.sold}</span> : null}
         </p>
         <p className="pCardPrice">
-          <span className="pPrice">{formatVnd(product.price)}</span>
+          <span className="pPrice"><PriceTag value={product.price} /></span>
           {product.oldPrice ? <span className="pOld">{formatVnd(product.oldPrice)}</span> : null}
         </p>
         {typeof product.match === "number" ? (

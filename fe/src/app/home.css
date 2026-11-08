@@ -288,7 +288,7 @@ html[data-theme="dark"] .hmHome {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -296,9 +296,9 @@ html[data-theme="dark"] .hmHome {
 .hmMode {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 44px;
-  padding: 15px 2px;
+  gap: 10px;
+  min-height: 0;
+  padding: 9px 2px;
   border-top: 1px solid var(--hm-line);
   color: var(--hm-text);
   text-decoration: none;
@@ -307,8 +307,8 @@ html[data-theme="dark"] .hmHome {
 .hmModeIcon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   flex: 0 0 auto;
   color: var(--hm-muted);
 }
@@ -320,7 +320,7 @@ html[data-theme="dark"] .hmHome {
 .hmModeCopy strong {
   display: block;
   color: var(--hm-text);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
@@ -348,8 +348,8 @@ html[data-theme="dark"] .hmHome {
 }
 
 /* ---------- Một demo tích hợp, ba bước tĩnh ---------- */
-.hmDemo {
-  margin-top: clamp(28px, 4.5vh, 52px);
+.hmHome > .hmDemo {
+  margin-top: clamp(36px, 6vh, 68px);
   padding-bottom: 8px;
 }
 
@@ -433,11 +433,16 @@ html[data-theme="dark"] .hmHome {
 }
 
 .hmDemoPrompt {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   min-width: 0;
 }
+
+/* Ô mô tả cao như một ô nhập nhiều dòng và dòng trạng thái đáy cột thẳng hàng với đáy kết quả:
+   không còn khoảng trống lớn dưới ô, hình học vẫn ổn định khi chuyển bước. */
+.hmDemoPrompt .hmQuery { flex: 1 1 auto; min-height: 128px; max-height: 168px; }
+.hmDemoPrompt .hmDemoStatus { margin-top: auto; }
 
 .hmDemoPromptTop {
   display: flex;
@@ -758,6 +763,18 @@ html[data-theme="dark"] .hmHome {
 /* Sản phẩm thật chưa có ảnh: hiện nhãn giữ chỗ thay vì khung trắng trống.
    Chỉ trong lưới của Home (`.hmBest`) nên không đổi card ở route khác. */
 .hmBest .pCardMedia {
+  background: #fff;
+}
+
+/* Ảnh sản phẩm nền trắng: khung 3:4 giữ nguyên (không nhảy layout), ảnh vuông đặt giữa khung
+   và nền ảnh trắng như nền ảnh gốc (studio.css đặt nền be cho img), nên không còn dải màu dưới ảnh. */
+.hmBest .pCardMedia img {
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
+}
+
+.hmBest .pCardMedia:not(:has(img)) {
   background: var(--hm-media);
 }
 
@@ -846,13 +863,17 @@ html[data-theme="dark"] .hmHome {
   padding-bottom: 40px;
 }
 
-.hmTrust div {
+.hmTrust > div {
   display: flex;
   gap: 12px;
   padding: 16px;
   border: 1px solid var(--hm-line);
   border-radius: 10px;
   background: var(--hm-surface);
+}
+
+.hmTrust > div > div {
+  min-width: 0;
 }
 
 .hmTrustIco {
@@ -870,12 +891,13 @@ html[data-theme="dark"] .hmHome {
 .hmTrust b {
   display: block;
   color: var(--hm-text);
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.4;
 }
 
 .hmTrust small {
   color: var(--hm-muted);
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 
@@ -1044,6 +1066,8 @@ html[data-theme="dark"] .hmHome {
   .hmDemoOutcome {
     min-height: 0;
   }
+
+  .hmDemoPrompt .hmQuery { flex: 0 0 auto; min-height: 96px; max-height: none; }
 
   .hmTrust {
     grid-template-columns: repeat(2, minmax(0, 1fr));
