@@ -17,5 +17,5 @@ public interface CategoryService {
 
     CategoryRes updateCategory(Long id, CategoryReq req);
 
-    void deleteCategory(Long id);
+    void deleteCategory(Long id, String reason);
 }

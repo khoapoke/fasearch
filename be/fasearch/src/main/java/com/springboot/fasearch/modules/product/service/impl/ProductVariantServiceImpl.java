@@ -5,8 +5,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.modules.inventory.dto.response.StockRes;
+import com.springboot.fasearch.modules.inventory.entity.Inventory;
+import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.product.dto.request.VariantCreateReq;
 import com.springboot.fasearch.modules.product.dto.request.VariantUpdateReq;
 import com.springboot.fasearch.modules.product.dto.response.BarcodeRes;
@@ -19,6 +23,7 @@ import com.springboot.fasearch.modules.product.repository.ProductRepository;
 import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
 import com.springboot.fasearch.modules.product.service.interfaces.BarcodeService;
 import com.springboot.fasearch.modules.product.service.interfaces.ProductVariantService;
+import com.springboot.fasearch.modules.trash.service.impl.DeleteGuards;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +35,9 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     private final ProductVariantRepository productVariantRepository;
     private final ProductMapper productMapper;
     private final BarcodeService barcodeService;
+    private final DeleteGuards deleteGuards;
+    private final SoftDeleteRecorder softDeleteRecorder;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -121,11 +129,12 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     @Override
     @Transactional
-    public void deleteVariant(Long variantId) {
+    public void deleteVariant(Long variantId, String reason) {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND));
 
-        variant.setIsDeleted(true);
+        deleteGuards.assertVariantDeletable(variantId);
+        softDeleteRecorder.mark(variant, reason);
         productVariantRepository.save(variant);
     }
 
@@ -200,6 +209,37 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         }
 
         return barcodeService.generateBarcodePngBytes(barcode, 300, 100);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StockRes scanLookup(String code) {
+        if (code == null || code.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Mã quét không được để trống");
+        }
+        String clean = code.trim();
+        ProductVariant variant = productVariantRepository.findByBarcodeIgnoreCase(clean).orElse(null);
+        if (variant == null && clean.matches("^[1-9]\\d{0,17}$")) {
+            variant = productVariantRepository.findById(Long.parseLong(clean)).orElse(null);
+        }
+        if (variant == null || variant.getProduct() == null) {
+            throw new AppException(ErrorCode.VARIANT_NOT_FOUND);
+        }
+        Product product = variant.getProduct();
+        Inventory inv = inventoryRepository.findByVariantId(variant.getId()).orElse(null);
+        return StockRes.builder()
+                .skuId(variant.getId())
+                .productId(product.getId())
+                .productName(product.getProductName())
+                .color(variant.getColor())
+                .size(variant.getSize())
+                .barcode(variant.getBarcode())
+                .productStatus(product.getStatus())
+                .physicalStock(inv == null ? 0 : inv.getPhysicalStock())
+                .reservedStock(inv == null ? 0 : inv.getReservedStock())
+                .availableStock(inv == null ? 0 : inv.getAvailableStock())
+                .minThreshold(inv == null ? null : inv.getMinThreshold())
+                .build();
     }
 
     @Override

@@ -12,9 +12,9 @@ Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc R
 
 | STT | Phân hệ (Module) | File tài liệu | Mô tả |
 | :---: | :--- | :--- | :--- |
-| 1 | **Xác thực & Tài khoản** | [api-auth.md](./api-auth.md) | Đăng nhập, đăng ký, quên / đặt lại mật khẩu, xác thực email, quản lý tài khoản & RBAC |
-| 2 | **Người dùng & Khách hàng** | [api-user.md](./api-user.md) | Hồ sơ khách hàng, nhân viên, tích điểm & hạng thành viên |
-| 3 | **Sản phẩm & Danh mục** | [api-product.md](./api-product.md) | Danh mục, sản phẩm, biến thể SKU, mã vạch Barcode, ảnh sản phẩm, tra cứu POS |
+| 1 | **Xác thực & Tài khoản** | [api-auth.md](./api-auth.md) | Đăng nhập, đăng ký, quên / đặt lại mật khẩu, xác thực email, quản lý tài khoản, phân quyền theo vai trò (PERM) |
+| 2 | **Người dùng & Khách hàng** | [api-user.md](./api-user.md) | Hồ sơ khách hàng, nhân viên, tích điểm, điều chỉnh / tính lại điểm Hồ sơ khách hàng, nhân viên, tích điểm & hạng thành viên hạng thành viên |
+| 3 | **Sản phẩm & Danh mục** | [api-product.md](./api-product.md) | Danh mục, sản phẩm, biến thể SKU, mã vạch Barcode, ảnh sản phẩm, tra cứu POS, tra cứu mã quét khi lập phiếu kho |
 | 4 | **Bản nháp & Xuất bản** | [api-publish.md](./api-publish.md) | Bản nháp sản phẩm, nhập từ URL, xuất bản / gỡ xuất bản & đồng bộ AI |
 | 5 | **Thương hiệu** | [api-brand.md](./api-brand.md) | Danh sách thương hiệu công khai & logo |
 | 6 | **Tìm kiếm thông minh (AI)** | [api-search.md](./api-search.md) | Tìm kiếm tự nhiên NLP, tìm kiếm bằng ảnh, đa phương thức, lịch sử tìm kiếm & yêu thích |
@@ -24,7 +24,8 @@ Tài liệu này tổng hợp toàn bộ thông số kỹ thuật, cấu trúc R
 | 10 | **Thanh toán & Hóa đơn** | [api-payment.md](./api-payment.md) | Tính tiền, xuất hóa đơn, thanh toán Stripe / VNPAY |
 | 11 | **Khuyến mãi & Giảm giá** | [api-promotion.md](./api-promotion.md) | Chương trình khuyến mãi, phát hành mã voucher, ưu đãi công khai |
 | 12 | **Đổi / Trả hàng** | [api-returnorder.md](./api-returnorder.md) | Chưa triển khai |
-| 13 | **Báo cáo & Thống kê** | [api-analytics.md](./api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn |
+| 13 | **Báo cáo & Thống kê** | [api-analytics.md](./api-analytics.md) | Doanh thu, top sản phẩm bán chạy, báo cáo xuất - nhập - tồn, tổng hợp (overview) |
+| 14 | **Đánh giá sản phẩm** | [api-review.md](./api-review.md) | Danh sách & tổng quan đánh giá, viết / sửa / xóa đánh giá (khách đã nhận hàng), ẩn / hiện đánh giá |
 
 ---
 
@@ -130,6 +131,6 @@ Các mã dưới đây độc lập với HTTP status (cột HTTP là status tr�
 
 | Vai trò | Tên hiển thị | Phạm vi |
 | :--- | :--- | :--- |
-| `ADMIN` | Quản trị viên hệ thống | Toàn quyền, gồm quản lý tài khoản đăng nhập / phân quyền (`/api/v1/auth/accounts/**`) và mở đầu điểm tích lũy (`POST /api/v1/quan-tri/thanh-vien/mo-dau`) |
+| `ADMIN` | Quản trị viên hệ thống | Toàn quyền, gồm quản lý tài khoản đăng nhập / phân quyền (`/api/v1/auth/accounts/**`) và mở đầu điểm tích lũy (`POST /api/v1/quan-tri/thanh-vien/mo-dau`) và điều chỉnh điểm thủ công (`POST /api/v1/quan-tri/thanh-vien/khach-hang/{id}/dieu-chinh`) |
 | `STAFF` | Quản lý | Toàn bộ nghiệp vụ cửa hàng: sản phẩm, tồn kho, đơn hàng, khách hàng, hồ sơ nhân sự, khuyến mãi, tích điểm, báo cáo; không quản lý tài khoản đăng nhập |
 | `CUSTOMER` | Khách hàng | Giỏ hàng, đặt hàng, thanh toán, hồ sơ và điểm của chính mình |

@@ -1,5 +1,6 @@
 package com.springboot.fasearch.modules.inventory.dto.response;
 
+import com.springboot.fasearch.common.enums.ProductStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,4 +24,5 @@ public class StockRes {
     private Integer reservedStock;
     private Integer availableStock;
     private Integer minThreshold;
+    private ProductStatus productStatus;
 }

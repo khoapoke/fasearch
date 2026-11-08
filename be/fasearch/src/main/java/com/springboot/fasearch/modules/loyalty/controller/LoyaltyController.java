@@ -62,13 +62,13 @@ public class LoyaltyController {
     }
 
     @GetMapping("/khach-hang/{customerId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CUSTOMER_VIEW')")
     public ResponseEntity<ApiResponse<LoyaltyBalanceResponse>> customerBalance(@PathVariable Long customerId) {
         return noStore(ApiResponse.success(200, "Customer loyalty balance", loyaltyService.customerBalance(customerId)));
     }
 
     @GetMapping("/chinh-sach")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_LOYALTY_POLICY_VIEW')")
     public ResponseEntity<ApiResponse<PageResponse<LoyaltyPolicyResponse>>> policies(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
@@ -76,27 +76,27 @@ public class LoyaltyController {
     }
 
     @PostMapping("/chinh-sach")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_LOYALTY_POLICY_MANAGE')")
     public ResponseEntity<ApiResponse<LoyaltyPolicyResponse>> createPolicy(
             @Valid @RequestBody LoyaltyPolicyCreateRequest request) {
         return noStore(HttpStatus.CREATED, ApiResponse.success(201, "Loyalty policy created", loyaltyService.createPolicy(request)));
     }
 
     @PutMapping("/chinh-sach/{policyId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_LOYALTY_POLICY_MANAGE')")
     public ResponseEntity<ApiResponse<LoyaltyPolicyResponse>> updatePolicy(@PathVariable Long policyId,
             @Valid @RequestBody LoyaltyPolicyUpdateRequest request) {
         return noStore(ApiResponse.success(200, "Loyalty policy updated", loyaltyService.updatePolicy(policyId, request)));
     }
 
     @GetMapping("/chinh-sach/hang")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_LOYALTY_POLICY_VIEW')")
     public ResponseEntity<ApiResponse<List<SalesTierResponse>>> salesTiers() {
         return noStore(ApiResponse.success(200, "Sales tiers", loyaltyService.salesTiers()));
     }
 
     @PutMapping("/chinh-sach/hang/{tierId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_LOYALTY_POLICY_MANAGE')")
     public ResponseEntity<ApiResponse<SalesTierResponse>> updateSalesTier(@PathVariable Long tierId,
             @Valid @RequestBody SalesTierUpdateRequest request) {
         return noStore(ApiResponse.success(200, "Sales tier updated", loyaltyService.updateSalesTier(tierId, request)));

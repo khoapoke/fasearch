@@ -29,42 +29,48 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/khuyen-mai")
-@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+@PreAuthorize("hasAuthority('PERM_PROMOTION_MANAGE')")
 @RequiredArgsConstructor
 public class AdminCampaignController {
     private final KhuyenMaiService khuyenMaiService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_PROMOTION_MANAGE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CampaignResponse> create(@Valid @RequestBody CampaignCreateRequest request) {
         return ApiResponse.success(201, "Tạo chương trình thành công", khuyenMaiService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PROMOTION_MANAGE')")
     public ApiResponse<CampaignResponse> update(@PathVariable Long id, @Valid @RequestBody CampaignUpdateRequest request) {
         return ApiResponse.success(200, "Cập nhật thành công", khuyenMaiService.update(id, request));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PROMOTION_VIEW')")
     public ApiResponse<CampaignResponse> get(@PathVariable Long id) {
         return ApiResponse.success(200, "Lấy chi tiết thành công", khuyenMaiService.get(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_PROMOTION_VIEW')")
     public ApiResponse<PageResponse<CampaignResponse>> list(
             @RequestParam(required = false) String trangThai,
+            @RequestParam(required = false) String hieuLuc,
             @RequestParam(required = false) String loai,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         if (page < 0 || size < 1 || size > 100 || (q != null && q.length() > 100)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid page, size, or search query bounds");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Trang, kích thước hoặc giới hạn tìm kiếm không hợp lệ.");
         }
         return ApiResponse.success(200, "Lấy danh sách thành công",
-                khuyenMaiService.list(trangThai, loai, q, PageRequest.of(page, size)));
+                khuyenMaiService.list(trangThai, hieuLuc, loai, q, PageRequest.of(page, size)));
     }
 
     @PostMapping("/{id}/codes")
+    @PreAuthorize("hasAuthority('PERM_PROMOTION_MANAGE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CodeResponse> createCode(@PathVariable Long id, @Valid @RequestBody CodeCreateRequest request) {
         return ApiResponse.success(201, "Phát hành mã thành công", khuyenMaiService.createCode(id, request));

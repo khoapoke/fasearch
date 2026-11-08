@@ -83,7 +83,7 @@ public class PublishServiceImpl implements PublishService {
                 throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
             }
             if (draftRepository.findByProduct_IdAndDraftState(published.getId(), "DRAFT").isPresent()) {
-                throw new AppException(ErrorCode.DATA_CONFLICT, "An open draft already exists for this product");
+                throw new AppException(ErrorCode.DATA_CONFLICT, "Sản phẩm này đã có Draft đang mở.");
             }
             seedFromPublished(request, published);
         } else {
@@ -103,10 +103,10 @@ public class PublishServiceImpl implements PublishService {
     @Transactional
     public AdminDraftRes updateDraft(Long draftId, AdminDraftUpdateReq request) {
         ProductDraft draft = draftRepository.findByIdForUpdate(draftId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Draft."));
         requireOpen(draft);
         if (!draft.getVersion().equals(request.getExpectedVersion())) {
-            throw new AppException(ErrorCode.DATA_CONFLICT, "Draft changed by another session; reload and retry");
+            throw new AppException(ErrorCode.DATA_CONFLICT, "Draft đã được thay đổi ở phiên khác. Tải lại và thử lại.");
         }
         applyScalars(draft, request.getProductName(), request.getCategoryId(), request.getBrandId(),
                 request.getModelCode(), request.getMaterial(), request.getStyle(), request.getDescription(),
@@ -125,7 +125,7 @@ public class PublishServiceImpl implements PublishService {
     @Transactional(readOnly = true)
     public AdminDraftRes getDraft(Long draftId) {
         return response(draftRepository.findById(draftId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft not found")));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Draft.")));
     }
 
     @Override
@@ -141,7 +141,7 @@ public class PublishServiceImpl implements PublishService {
     @Transactional
     public void deleteDraft(Long draftId) {
         ProductDraft draft = draftRepository.findById(draftId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Draft."));
         requireOpen(draft);
         draftVariantRepository.deleteByDraft_Id(draft.getId());
         draftRepository.delete(draft);
@@ -151,7 +151,7 @@ public class PublishServiceImpl implements PublishService {
     @Transactional
     public String uploadDraftImage(Long draftId, MultipartFile file) {
         ProductDraft draft = draftRepository.findByIdForUpdate(draftId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Draft."));
         requireOpen(draft);
         java.nio.file.Path root = DraftImageFiles.uploadRoot(uploadDir);
         String fileName = DraftImageFiles.store(file, root);
@@ -174,10 +174,10 @@ public class PublishServiceImpl implements PublishService {
     @Transactional
     public PublishRes publishDraft(Long draftId, Long expectedVersion) {
         ProductDraft draft = draftRepository.findByIdForUpdate(draftId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Draft."));
         requireOpen(draft);
         if (!draft.getVersion().equals(expectedVersion)) {
-            throw new AppException(ErrorCode.DATA_CONFLICT, "Draft changed by another session; reload and retry");
+            throw new AppException(ErrorCode.DATA_CONFLICT, "Draft đã được thay đổi ở phiên khác. Tải lại và thử lại.");
         }
         validateDraftComplete(draft);
         final Product product;
@@ -240,7 +240,7 @@ public class PublishServiceImpl implements PublishService {
         Product product = productRepository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         if (product.getPublicationStatus() != PublicationStatus.PUBLISHED) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Only a published product can be unpublished");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Chỉ sản phẩm đã Publish mới có thể Unpublish.");
         }
         product.setPublicationStatus(PublicationStatus.UNPUBLISHED);
         product.setPublicationVersion(product.getPublicationVersion() + 1);
@@ -268,7 +268,7 @@ public class PublishServiceImpl implements PublishService {
     @Transactional
     public AiSyncRes retryAiSync(Long productId) {
         ProductAiSync sync = aiSyncRepository.findByIdForUpdate(productId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "No AI sync record for product"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Chưa có bản ghi đồng bộ AI cho sản phẩm."));
         if (sync.getStatus() == AiSyncStatus.READY) {
             Product product = productRepository.findById(productId).orElse(null);
             if (product != null && sync.getVersion().equals(product.getPublicationVersion())) {
@@ -343,7 +343,7 @@ public class PublishServiceImpl implements PublishService {
         mapped.setSourceKind(parsed.kind());
         if (mapped.getCategoryId() == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST,
-                    "Cannot map feed category; create the category first or enter the draft manually");
+                    "Không ánh xạ được danh mục từ nguồn; hãy tạo danh mục trước hoặc nhập Draft thủ công.");
         }
         return createDraft(mapped);
     }
@@ -363,7 +363,7 @@ public class PublishServiceImpl implements PublishService {
 
     private void requireOpen(ProductDraft draft) {
         if (!"DRAFT".equals(draft.getDraftState())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft is closed");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft đã đóng.");
         }
     }
 
@@ -423,14 +423,14 @@ public class PublishServiceImpl implements PublishService {
         if (request.getBrandId() != null) {
             brand = brandRepository.findById(request.getBrandId()).orElse(null);
             if (brand == null) {
-                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand not found");
+                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thương hiệu.");
             }
         }
         if (request.getPrice() != null && request.getPrice().signum() < 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Price must be non-negative");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Giá không được âm.");
         }
         if (request.getSourceHash() != null && !request.getSourceHash().matches("[0-9a-fA-F]{64}")) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "sourceHash must be a 64-hex digest");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "sourceHash phải là chuỗi hex 64 ký tự.");
         }
         ProductDraft draft = ProductDraft.builder()
                 .product(published)
@@ -467,7 +467,7 @@ public class PublishServiceImpl implements PublishService {
             BigDecimal price, String imageUrl) {
         if (productName != null) {
             if (productName.isBlank() || productName.length() > 255) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Product name is invalid");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Tên sản phẩm không hợp lệ.");
             }
             draft.setProductName(productName.strip());
         }
@@ -478,25 +478,25 @@ public class PublishServiceImpl implements PublishService {
         if (brandId != null) {
             Brand foundBrand = brandRepository.findById(brandId).orElse(null);
             if (foundBrand == null) {
-                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand not found");
+                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thương hiệu.");
             }
             draft.setBrand(foundBrand);
         }
         if (modelCode != null) {
-            if (modelCode.length() > 100) throw new AppException(ErrorCode.INVALID_REQUEST, "Model code too long");
+            if (modelCode.length() > 100) throw new AppException(ErrorCode.INVALID_REQUEST, "Mã mẫu quá dài.");
             draft.setModelCode(modelCode);
         }
         if (material != null) {
-            if (material.length() > 100) throw new AppException(ErrorCode.INVALID_REQUEST, "Material too long");
+            if (material.length() > 100) throw new AppException(ErrorCode.INVALID_REQUEST, "Chất liệu quá dài.");
             draft.setMaterial(material);
         }
         if (style != null) {
-            if (style.length() > 100) throw new AppException(ErrorCode.INVALID_REQUEST, "Style too long");
+            if (style.length() > 100) throw new AppException(ErrorCode.INVALID_REQUEST, "Kiểu dáng quá dài.");
             draft.setStyle(style);
         }
         if (description != null) draft.setDescription(description);
         if (price != null) {
-            if (price.signum() < 0) throw new AppException(ErrorCode.INVALID_REQUEST, "Price must be non-negative");
+            if (price.signum() < 0) throw new AppException(ErrorCode.INVALID_REQUEST, "Giá không được âm.");
             draft.setPrice(price);
         }
         if (imageUrl != null) draft.setImageUrl(imageUrl);
@@ -505,17 +505,17 @@ public class PublishServiceImpl implements PublishService {
     private void validateNewDraft(AdminDraftCreateReq request) {
         if (request.getProductName() == null || request.getProductName().isBlank()
                 || request.getProductName().length() > 255) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Product name is required (max 255)");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Cần nhập tên sản phẩm (tối đa 255 ký tự).");
         }
         if (request.getCategoryId() == null
                 || !categoryRepository.findById(request.getCategoryId()).isPresent()) {
             throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
         }
         if (request.getPrice() == null || request.getPrice().signum() < 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Price is required and must be non-negative");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Cần nhập giá và giá không được âm.");
         }
         if (request.getBrandId() != null && !brandRepository.findById(request.getBrandId()).isPresent()) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand not found");
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thương hiệu.");
         }
     }
 
@@ -530,30 +530,30 @@ public class PublishServiceImpl implements PublishService {
             String size = blankToNull(v.getSize());
             String barcode = blankToNull(v.getBarcode());
             if (color == null && size == null && barcode == null) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Variant needs color, size or barcode");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Biến thể cần có màu, cỡ hoặc Barcode.");
             }
             String comboKey = norm(color) + "|" + norm(size);
             if (!"|".equals(comboKey) && !seenCombo.add(comboKey)) {
-                throw new AppException(ErrorCode.DATA_CONFLICT, "Duplicate color/size combination in draft");
+                throw new AppException(ErrorCode.DATA_CONFLICT, "Tổ hợp màu và cỡ bị trùng trong Draft.");
             }
             String normalizedBarcode = barcode == null ? null : barcode.toUpperCase(Locale.ROOT);
             if (normalizedBarcode != null && !seenBarcode.add(normalizedBarcode)) {
-                throw new AppException(ErrorCode.DATA_CONFLICT, "Duplicate barcode in draft");
+                throw new AppException(ErrorCode.DATA_CONFLICT, "Barcode bị trùng trong Draft.");
             }
             if (normalizedBarcode != null) {
                 final String code = normalizedBarcode;
                 productVariantRepository.findByBarcode(code).ifPresent(existing -> {
                     if (publishedProductId == null || existing.getProduct() == null
                             || !publishedProductId.equals(existing.getProduct().getId())) {
-                        throw new AppException(ErrorCode.DATA_CONFLICT, "Barcode already exists");
+                        throw new AppException(ErrorCode.DATA_CONFLICT, "Mã vạch đã tồn tại.");
                     }
                 });
             }
             if (v.getAdditionalPrice() != null && v.getAdditionalPrice().signum() < 0) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Additional price must be non-negative");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Giá cộng thêm không được âm.");
             }
             if (v.getStock() != null && v.getStock() < 0) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Stock must be non-negative");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Số lượng tồn không được là số âm.");
             }
         }
     }
@@ -577,13 +577,13 @@ public class PublishServiceImpl implements PublishService {
     private void validateDraftComplete(ProductDraft draft) {
         if (draft.getProductName() == null || draft.getProductName().isBlank()
                 || draft.getCategory() == null || draft.getPrice() == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft is incomplete: name, category and price are required");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft chưa đầy đủ: cần có tên, danh mục và giá.");
         }
         if (draftVariantRepository.findByDraft_Id(draft.getId()).isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft needs at least one SKU");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft cần có ít nhất một SKU.");
         }
         if (draft.getImageUrl() == null || draft.getImageUrl().isBlank()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft needs a primary image before publish");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft cần có ảnh chính trước khi Publish.");
         }
     }
 
@@ -634,7 +634,7 @@ public class PublishServiceImpl implements PublishService {
             }
             if (orderDetailRepository.existsById_SkuId(existing.getId())) {
                 throw new AppException(ErrorCode.DATA_CONFLICT,
-                        "Cannot remove SKU referenced by orders: " + existing.getBarcode());
+                        "Không thể xóa SKU đang được đơn hàng tham chiếu: " + existing.getBarcode());
             }
             inventoryRepository.findByVariantId(existing.getId()).ifPresent(inventoryRepository::delete);
             product.getVariants().remove(existing);
@@ -671,7 +671,7 @@ public class PublishServiceImpl implements PublishService {
         }
         String fileName = draftUrl.substring(draftUrl.lastIndexOf('/') + 1);
         if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid draft image reference");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Tham chiếu ảnh của Draft không hợp lệ.");
         }
         java.nio.file.Path source = uploadPath().resolve(fileName).normalize();
         java.nio.file.Path publicRoot = java.nio.file.Paths.get(uploadDir).toAbsolutePath().normalize();
@@ -679,7 +679,7 @@ public class PublishServiceImpl implements PublishService {
         String published = java.util.UUID.randomUUID() + ext;
         java.nio.file.Path target = publicRoot.resolve(published).normalize();
         if (!source.startsWith(uploadPath()) || !target.startsWith(publicRoot) || !java.nio.file.Files.exists(source)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Draft image missing; upload the image again");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Thiếu ảnh của Draft; hãy tải ảnh lên lại.");
         }
         try {
             java.nio.file.Files.createDirectories(publicRoot);
@@ -693,19 +693,19 @@ public class PublishServiceImpl implements PublishService {
     /** Draft image bytes for the ADMIN-only preview endpoint. */
     public byte[] readDraftImage(Long draftId, String fileName) {
         ProductDraft draft = draftRepository.findById(draftId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Draft."));
         if (fileName == null || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")
                 || draft.getImageUrl() == null || !draft.getImageUrl().endsWith("/" + fileName)) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft image not found");
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ảnh của Draft.");
         }
         java.nio.file.Path file = uploadPath().resolve(fileName).normalize();
         if (!file.startsWith(uploadPath()) || !java.nio.file.Files.exists(file)) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft image not found");
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ảnh của Draft.");
         }
         try {
             return java.nio.file.Files.readAllBytes(file);
         } catch (java.io.IOException e) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Draft image not found");
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ảnh của Draft.");
         }
     }
 

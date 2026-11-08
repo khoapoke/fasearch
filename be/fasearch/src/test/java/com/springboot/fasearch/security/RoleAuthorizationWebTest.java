@@ -21,8 +21,10 @@ import com.springboot.fasearch.exception.GlobalExceptionHandler;
 import com.springboot.fasearch.modules.analytics.controller.AdminAnalyticsController;
 import com.springboot.fasearch.modules.analytics.service.interfaces.AnalyticsService;
 import com.springboot.fasearch.modules.auth.controller.AccountController;
+import com.springboot.fasearch.modules.auth.controller.RolePermissionController;
 import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 import com.springboot.fasearch.modules.auth.service.interfaces.AuthService;
+import com.springboot.fasearch.modules.auth.service.interfaces.RolePermissionService;
 import com.springboot.fasearch.modules.inventory.controller.InventoryController;
 import com.springboot.fasearch.modules.inventory.service.interfaces.InventoryService;
 import com.springboot.fasearch.modules.khuyenmai.controller.AdminCampaignController;
@@ -46,7 +48,9 @@ import com.springboot.fasearch.modules.user.service.interfaces.EmployeeService;
 import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 
 /**
- * Role matrix for the Quản lý (STAFF) rollout, exercised through the real {@link SecurityConfig}
+ * Role matrix (URL gates + method security wiring) for the Quản lý (STAFF) rollout. STAFF here carries the
+ * default permission set seeded by V27 ({@link TestAuthorities#staffDefaults()}); the per-permission matrix is
+ * {@link PermissionMatrixTest}. Exercised through the real {@link SecurityConfig}
  * filter chain AND method security (no database): ADMIN = Quản trị viên hệ thống, STAFF = Quản lý,
  * CUSTOMER = Khách hàng. "Allowed" means the request was not rejected by authorization (any non-403
  * status, e.g. 200/400 from mocked services or validation); "denied" must be exactly 403.
@@ -56,7 +60,8 @@ import com.springboot.fasearch.modules.user.service.interfaces.UserService;
         AccountController.class, CategoryController.class, ProductController.class, ProductVariantController.class,
         ProductImageController.class, InventoryController.class, AdminCampaignController.class,
         LoyaltyController.class, AdminLoyaltyController.class, AdminAnalyticsController.class,
-        AdminProductPublishController.class, EmployeeController.class, UserController.class })
+        AdminProductPublishController.class, EmployeeController.class, UserController.class,
+        RolePermissionController.class })
 @Import({ SecurityConfig.class, JwtAuthenticationFilter.class, JwtAuthenticationEntryPoint.class,
         CustomAccessDeniedHandler.class, GlobalExceptionHandler.class })
 class RoleAuthorizationWebTest {
@@ -65,6 +70,7 @@ class RoleAuthorizationWebTest {
 
     @MockitoBean private JwtProvider jwtProvider;
     @MockitoBean private AccountRepository accountRepository;
+    @MockitoBean private RolePermissionResolver rolePermissionResolver;
     @MockitoBean private AuthService authService;
     @MockitoBean private CategoryService categoryService;
     @MockitoBean private ProductService productService;
@@ -77,11 +83,12 @@ class RoleAuthorizationWebTest {
     @MockitoBean private PublishService publishService;
     @MockitoBean private EmployeeService employeeService;
     @MockitoBean private UserService userService;
+    @MockitoBean private RolePermissionService rolePermissionService;
 
     private int status(String method, String url, String role) throws Exception {
         return mockMvc.perform(request(HttpMethod.valueOf(method), url)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"customerId\":1}") // valid for the one @Valid body guarded only at method level
-                        .with(user("tester").roles(role)))
+                        .with(user("tester").authorities(TestAuthorities.forRole(role))))
                 .andReturn().getResponse().getStatus();
     }
 
@@ -145,7 +152,10 @@ class RoleAuthorizationWebTest {
             "PATCH|/api/v1/auth/accounts/1",
             "PUT|/api/v1/auth/accounts/1",
             "DELETE|/api/v1/auth/accounts/1",
-            "POST|/api/v1/quan-tri/thanh-vien/mo-dau"
+            "POST|/api/v1/quan-tri/thanh-vien/mo-dau",
+            "GET|/api/v1/auth/roles/STAFF/permissions",
+            "PUT|/api/v1/auth/roles/STAFF/permissions",
+            "GET|/api/v1/auth/roles/STAFF/permissions/audit"
     })
     void accountAndRoleAdministrationStaysAdminOnly(String method, String url) throws Exception {
         assertDenied(method, url, "STAFF");
@@ -161,5 +171,31 @@ class RoleAuthorizationWebTest {
         assertAllowed("DELETE", "/api/v1/users/employees/1", "STAFF");
         assertDenied("GET", "/api/v1/users/employees", "CUSTOMER");
         assertDenied("DELETE", "/api/v1/users/employees/1", "CUSTOMER");
+    }
+
+    /** URL gates added with permissions: customers never reach staff-only prefixes, even before method security. */
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource(delimiter = '|', value = {
+            "POST|/api/v1/users/employees",
+            "PATCH|/api/v1/users/employees/1",
+            "GET|/api/v1/analytics/revenue?startDate=2026-01-01&endDate=2026-01-02",
+            "GET|/api/v1/quan-tri/thanh-vien/anything",
+            "GET|/api/v1/auth/roles/STAFF/permissions"
+    })
+    void customerStoppedAtUrlLevel(String method, String url) throws Exception {
+        assertDenied(method, url, "CUSTOMER");
+    }
+
+    /** A STAFF token with the permission switched off is refused (403), with it switched on allowed. */
+    @Test
+    void staffPermissionToggleIsEnforcedOverHttp() throws Exception {
+        int off = mockMvc.perform(request(HttpMethod.GET, "/api/v1/inventory/stock-summary")
+                        .with(user("tester").authorities(TestAuthorities.staffAllExcept(Permission.INVENTORY_VIEW))))
+                .andReturn().getResponse().getStatus();
+        int on = mockMvc.perform(request(HttpMethod.GET, "/api/v1/inventory/stock-summary")
+                        .with(user("tester").authorities(TestAuthorities.staff(java.util.Set.of(Permission.INVENTORY_VIEW)))))
+                .andReturn().getResponse().getStatus();
+        assertEquals(403, off);
+        assertEquals(200, on);
     }
 }

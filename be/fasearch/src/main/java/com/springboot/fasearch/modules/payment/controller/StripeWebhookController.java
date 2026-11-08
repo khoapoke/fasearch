@@ -44,7 +44,7 @@ public class StripeWebhookController {
             @RequestHeader(value = "Stripe-Signature", required = false) String signature) {
         if (webhookSecret == null || webhookSecret.isBlank()
                 || !signatureVerifier.verify(payload, signature, webhookSecret, 300)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid Stripe signature");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Chữ ký Stripe không hợp lệ.");
         }
         try {
             JsonNode root = OBJECT_MAPPER.readTree(payload);
@@ -64,7 +64,7 @@ public class StripeWebhookController {
             long amount = object.path("amount_total").asLong(-1);
             String currency = object.path("currency").asText().toUpperCase();
             if (eventId.isBlank() || sessionId.isBlank() || amount < 0 || currency.isBlank()) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "Incomplete Stripe event");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Sự kiện Stripe chưa đầy đủ.");
             }
             String payloadHash = HexFormat.of().formatHex(
                     MessageDigest.getInstance("SHA-256").digest(payload.getBytes(StandardCharsets.UTF_8)));
@@ -75,7 +75,7 @@ public class StripeWebhookController {
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Malformed Stripe event");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Sự kiện Stripe không đúng định dạng.");
         }
     }
 }

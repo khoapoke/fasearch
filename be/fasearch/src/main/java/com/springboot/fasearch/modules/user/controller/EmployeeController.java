@@ -22,6 +22,7 @@ import com.springboot.fasearch.modules.user.dto.request.EmployeeUpdateReq;
 import com.springboot.fasearch.modules.user.dto.response.EmployeeRes;
 import com.springboot.fasearch.modules.user.service.interfaces.EmployeeService;
 import com.springboot.fasearch.shared.ApiResponse;
+import com.springboot.fasearch.shared.DeleteReasonReq;
 import com.springboot.fasearch.shared.PageResponse;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,7 +38,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<EmployeeRes>> getEmployees(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
@@ -48,7 +49,7 @@ public class EmployeeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<EmployeeRes> getEmployeeById(@PathVariable Long id) {
         EmployeeRes result = employeeService.getEmployeeById(id);
@@ -56,7 +57,7 @@ public class EmployeeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_CREATE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<EmployeeRes> createEmployee(@Valid @RequestBody EmployeeCreateReq req) {
         EmployeeRes result = employeeService.createEmployee(req);
@@ -64,7 +65,7 @@ public class EmployeeController {
     }
 
     @RequestMapping(value = "/{id}", method = {RequestMethod.PATCH, RequestMethod.PUT})
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_EDIT')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<EmployeeRes> updateEmployee(
             @PathVariable Long id,
@@ -74,10 +75,11 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_DELETE')")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Boolean> deleteEmployee(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
+    public ApiResponse<Boolean> deleteEmployee(@PathVariable Long id,
+            @Valid @RequestBody(required = false) DeleteReasonReq req) {
+        employeeService.deleteEmployee(id, req == null ? null : req.getReason());
         return ApiResponse.success(200, "Xóa nhân viên thành công", true);
     }
 }

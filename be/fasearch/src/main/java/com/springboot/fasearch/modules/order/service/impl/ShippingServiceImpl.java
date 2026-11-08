@@ -44,7 +44,7 @@ public class ShippingServiceImpl implements ShippingService {
     public static void validateCoordinates(Double lat, Double lng) {
         if ((lat == null) != (lng == null) || (lat != null && (!Double.isFinite(lat) || !Double.isFinite(lng)
             || lat < -90 || lat > 90 || lng < -180 || lng > 180))) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Delivery coordinates must be a valid pair");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Tọa độ giao hàng phải là một cặp hợp lệ.");
         }
     }
     public static double haversine(double lat1, double lng1, double lat2, double lng2) {
@@ -54,7 +54,7 @@ public class ShippingServiceImpl implements ShippingService {
     }
     @Override public ShippingFeeRes quote(Double lat, Double lng) {
         validateCoordinates(lat,lng);
-        if (lat == null) throw new AppException(ErrorCode.INVALID_REQUEST, "Coordinates required");
+        if (lat == null) throw new AppException(ErrorCode.INVALID_REQUEST, "Thiếu tọa độ giao hàng.");
         Double google = maps.distance(latitude, longitude, lat, lng);
         double distance = google == null ? haversine(latitude,longitude,lat,lng)*roadFactor : google;
         long fee = Math.min(cap, distance <= nearKm ? nearFee : distance <= middleKm ? middleFee

@@ -7,7 +7,7 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 ## 1. Tính toán giá trị thanh toán (FR-42)
 
 - **Endpoint:** `POST /api/v1/payments/calculate`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ tính đơn của mình)
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ tính đơn của mình) — Quản lý cần quyền `POS_USE` hoặc `ORDER_COLLECT_CASH`
 - **Mô tả:** Xem trước số tiền thực trả của đơn hàng sau voucher, điểm và phí vận chuyển kèm VAT. Chỉ để hiển thị: không sửa đơn, không giữ điểm/voucher.
 
 ### Request Body
@@ -93,7 +93,7 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 ## 3. Thực hiện thanh toán & Xuất hóa đơn (FR-43)
 
 - **Endpoint:** `POST /api/v1/payments/process`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ thanh toán đơn của mình)
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ thanh toán đơn của mình) — Quản lý cần quyền `POS_USE` (đơn `POS-*`) hoặc `ORDER_COLLECT_CASH` (đơn khác)`
 - **Mô tả:** Thu tiền mặt, lập hóa đơn `hoa_don`, trừ tồn kho và chuyển đơn sang đã thanh toán. Chỉ nhận `CASH`; phương thức khác phải đi qua cổng thanh toán (mục 4 - 10). Gửi lại request POS y hệt trả lại hóa đơn cũ với HTTP 200.
 
 ### Request Body

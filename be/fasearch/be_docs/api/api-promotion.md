@@ -38,7 +38,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ## 2. Xem danh sách chương trình khuyến mãi (FR-44)
 
 - **Endpoint:** `GET /api/v1/khuyen-mai`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_VIEW`
 - **Mô tả:** Danh sách chương trình khuyến mãi có phân trang và bộ lọc.
 
 ### Query Params
@@ -46,7 +46,8 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 | :--- | :--- | :---: | :--- |
 | `page` | Integer | Không | Số trang (mặc định: `0`) |
 | `size` | Integer | Không | Số bản ghi/trang, `1` - `100` (mặc định: `20`) |
-| `trangThai` | String | Không | `HOAT_DONG`, `TAM_DUNG` |
+| `trangThai` | String | Không | Trạng thái lưu: `HOAT_DONG`, `TAM_DUNG` |
+| `hieuLuc` | String | Không | Trạng thái hiệu lực tại thời điểm gọi, tính từ ngày bắt đầu/kết thúc và trạng thái lưu: `DANG_CHAY`, `TAM_DUNG`, `DA_KET_THUC` (quá `ngayKetThuc`), `CHUA_BAT_DAU` (trước `ngayBatDau`). Ưu tiên: `DA_KET_THUC`, `CHUA_BAT_DAU`, `TAM_DUNG`, `DANG_CHAY`. Lọc ở máy chủ nên đúng trên mọi trang; kết hợp được với `trangThai`. |
 | `loai` | String | Không | Loại giảm: `PHAN_TRAM`, `SO_TIEN`, `FREE_SHIP` |
 | `q` | String | Không | Tìm theo tên chương trình (tối đa 100 ký tự) |
 
@@ -84,7 +85,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** `page` / `size` / `q` ngoài miền cho phép hoặc `trangThai` không hỗ trợ.
+- **HTTP 400 Bad Request:** `page` / `size` / `q` ngoài miền cho phép hoặc `trangThai` hoặc `hieuLuc` không hỗ trợ.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 
 ---
@@ -92,7 +93,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ## 3. Xem chi tiết chương trình khuyến mãi (FR-44)
 
 - **Endpoint:** `GET /api/v1/khuyen-mai/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_VIEW`
 - **Mô tả:** Chi tiết chương trình kèm danh sách mã voucher đã phát hành.
 
 ### Response Thành công (HTTP 200 OK)
@@ -138,7 +139,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ## 4. Thêm mới chương trình khuyến mãi (FR-45)
 
 - **Endpoint:** `POST /api/v1/khuyen-mai`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_MANAGE`
 - **Mô tả:** Khởi tạo chương trình ưu đãi ở trạng thái `TAM_DUNG`; bật bằng cách cập nhật sang `HOAT_DONG` (mục 5). Loại `FREE_SHIP` miễn toàn bộ phí vận chuyển, không giảm tiền hàng và không dùng chung với voucher giảm giá khác; `giaTriGiam` chỉ cần là số dương (quy ước `1`).
 
 ### Request Body
@@ -197,7 +198,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ## 5. Sửa & Tạm dừng chương trình khuyến mãi (FR-46)
 
 - **Endpoint:** `PUT /api/v1/khuyen-mai/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_MANAGE`
 - **Mô tả:** Cập nhật điều kiện, thời gian, mức giảm hoặc chuyển trạng thái `HOAT_DONG` / `TAM_DUNG`. Phải gửi đúng `phienBan` hiện hành (khóa lạc quan); chỉ các trường được gửi lên mới đổi.
 
 ### Request Body
@@ -256,7 +257,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ## 6. Phát hành mã voucher (FR-45)
 
 - **Endpoint:** `POST /api/v1/khuyen-mai/{id}/codes`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_MANAGE`
 - **Mô tả:** Phát hành một mã voucher cho chương trình; mã được chuẩn hóa chữ hoa và phải duy nhất toàn hệ thống.
 
 ### Request Body

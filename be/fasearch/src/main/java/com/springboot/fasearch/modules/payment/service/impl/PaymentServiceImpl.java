@@ -48,6 +48,9 @@ import com.springboot.fasearch.modules.user.entity.Employee;
 import com.springboot.fasearch.modules.user.repository.EmployeeRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 
+import com.springboot.fasearch.security.Permission;
+import com.springboot.fasearch.security.SecurityUtils;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -96,6 +99,12 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
+        // 3b. Phân quyền nội bộ: giống processPayment, đơn POS cần POS_USE, đơn khác cần ORDER_COLLECT_CASH.
+        boolean posOrderCalc = order.getOrderCode() != null && order.getOrderCode().startsWith("POS-");
+        if (!isCustomer && !SecurityUtils.hasPermission(posOrderCalc ? Permission.POS_USE : Permission.ORDER_COLLECT_CASH)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
         // 4. Tính tổng tiền hàng (subTotal)
         BigDecimal subTotal = BigDecimal.ZERO;
         if (order.getDetails() != null) {
@@ -120,19 +129,19 @@ public class PaymentServiceImpl implements PaymentService {
             }
             pointDiscount = order.getPointsDiscount() == null ? BigDecimal.ZERO : order.getPointsDiscount();
         } else if (order.getVoucherCode() != null) {
-            if (requestedPoints > 0) throw new AppException(ErrorCode.INVALID_REQUEST, "Legacy voucher orders cannot add request-only points");
+            if (requestedPoints > 0) throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn Voucher cũ không thể thêm điểm chỉ theo yêu cầu.");
             pointDiscount = BigDecimal.ZERO;
         } else {
             // Pre-S2 non-voucher calculation remains a display-only legacy preview.
             pointDiscount = BigDecimal.ZERO;
             if (requestedPoints > 0) {
                 if (order.getCustomer() == null) {
-                    throw new AppException(ErrorCode.INVALID_REQUEST, "Guest orders cannot use loyalty points");
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn của khách vãng lai không thể dùng điểm thành viên.");
                 }
                 int availablePoints = order.getCustomer().getAccumulatePoint() == null
                         ? 0 : order.getCustomer().getAccumulatePoint();
                 if (requestedPoints > availablePoints) {
-                    throw new AppException(ErrorCode.INVALID_REQUEST, "Requested points exceed legacy balance");
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "Số điểm yêu cầu vượt quá số dư cũ.");
                 }
                 pointDiscount = BigDecimal.valueOf(requestedPoints).multiply(BigDecimal.valueOf(1000))
                         .setScale(2, RoundingMode.HALF_UP);
@@ -218,6 +227,11 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
+        // 4b. Phân quyền nội bộ: thanh toán đơn POS cần quyền bán tại quầy, ghi nhận thu tiền đơn khác cần quyền thu COD.
+        if (!isCustomer && !SecurityUtils.hasPermission(posOrder ? Permission.POS_USE : Permission.ORDER_COLLECT_CASH)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
         // 5. Xác định nhân viên thu ngân (nếu là ADMIN hoặc STAFF tạo/thanh toán hóa đơn)
         Employee employee = null;
         if (!isCustomer) {
@@ -228,7 +242,7 @@ public class PaymentServiceImpl implements PaymentService {
         boolean hasBenefitInput = (req.getVoucherCode() != null && !req.getVoucherCode().isBlank())
                 || requestedPoints > 0 || (req.getQuoteFingerprint() != null && !req.getQuoteFingerprint().isBlank());
         if (!posOrder && hasBenefitInput) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "POS benefit fields are only accepted for POS orders");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Các trường ưu đãi POS chỉ được chấp nhận cho đơn POS.");
         }
         if (previousInvoice != null) {
             if (posOrder && previousInvoice.getStatus() == PaymentStatus.PAID
@@ -245,15 +259,15 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentMethod paymentMethod = paymentMethodRepository.findByTypeAndStatus(req.getPaymentMethodCode(), "ACTIVE")
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
         if (paymentMethod.getType() != PaymentMethodType.CASH) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Non-cash payments must use the provider checkout flow");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Thanh toán không tiền mặt phải đi qua luồng thanh toán của nhà cung cấp.");
         }
         if (posDraft && paymentMethod.getType() != PaymentMethodType.CASH) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "POS draft orders must be settled in cash");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn Draft POS phải được thu bằng tiền mặt.");
         }
         if (order.getVoucherCode() != null && isCustomer) throw new AppException(ErrorCode.FORBIDDEN);
         if (!posDraft && order.getVoucherCode() != null && (order.getStatus() != OrderStatus.SHIPPING
                 || paymentMethod.getType() != PaymentMethodType.CASH)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher COD orders can only be collected in cash by staff after handoff");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn Voucher COD chỉ được nhân viên thu bằng tiền mặt sau khi bàn giao.");
         }
 
         if (posDraft) {
@@ -278,10 +292,13 @@ public class PaymentServiceImpl implements PaymentService {
             checkoutBenefitService.recordHold(order.getId(), benefit);
         } else if (order.getStatus() != OrderStatus.SHIPPING && order.getStatus() != OrderStatus.PENDING
                 && order.getStatus() != OrderStatus.CONFIRMED && order.getStatus() != OrderStatus.PACKING) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Order is not in a payable state");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng không ở trạng thái có thể thanh toán.");
         }
 
-        BigDecimal totalAmount = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
+        if (order.getTotalAmount() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Tổng tiền đơn hàng chưa được ghi nhận, không thể thu tiền mặt.");
+        }
+        BigDecimal totalAmount = order.getTotalAmount();
         BigDecimal cashReceived;
         BigDecimal cashChange;
         BigDecimal totalActualPaid = totalAmount;

@@ -40,21 +40,21 @@ public class BrandServiceImpl implements BrandService {
     @Transactional(readOnly = true)
     public BrandLogoData logo(String slug) {
         Brand brand = brandRepository.findBySlug(slug)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thương hiệu."));
         String fileName = brand.getLogoFileName();
         if (fileName == null || fileName.isBlank() || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand logo not found");
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy logo thương hiệu.");
         }
         try {
             Path root = Paths.get(logoUploadDir).toAbsolutePath().normalize();
             Path file = root.resolve(fileName).normalize();
             if (!file.startsWith(root) || !Files.exists(file)) {
-                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Brand logo not found");
+                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy logo thương hiệu.");
             }
             byte[] bytes = Files.readAllBytes(file);
             return new BrandLogoData(validatedContentType(fileName, bytes), bytes);
         } catch (IOException e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot read brand logo");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không đọc được logo thương hiệu.");
         }
     }
 
@@ -72,7 +72,7 @@ public class BrandServiceImpl implements BrandService {
                     || normalized.contains("<!entity") || normalized.contains("<!doctype")
                     || normalized.contains("href=\"http") || normalized.contains("href='http")
                     || normalized.contains("xlink:href=\"http") || normalized.contains("xlink:href='http");
-            if (!svgRoot || active) throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Unsafe SVG logo");
+            if (!svgRoot || active) throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Logo SVG không an toàn.");
             return "image/svg+xml";
         }
         if (lower.endsWith(".png") && bytes.length > 8 && (bytes[0] & 0xff) == 0x89
@@ -88,7 +88,7 @@ public class BrandServiceImpl implements BrandService {
                 && bytes[10] == 'B' && bytes[11] == 'P') {
             return "image/webp";
         }
-        throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Unsupported or mismatched brand logo content");
+        throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Nội dung logo thương hiệu không được hỗ trợ hoặc không khớp.");
     }
 
     private BrandRes response(Brand brand) {

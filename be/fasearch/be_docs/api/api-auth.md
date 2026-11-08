@@ -122,12 +122,19 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "role": "ADMIN",
     "status": "ACTIVE",
     "emailVerified": true,
-    "createdAt": "2026-10-25T08:00:00"
+    "createdAt": "2026-10-25T08:00:00",
+    "permissions": ["ORDER_VIEW", "ORDER_UPDATE_STATUS", "...", "TRASH_RESTORE"]
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
+
+| Trường | Kiểu dữ liệu | Mô tả |
+| :--- | :--- | :--- |
+| `customerId` | Long | Mã hồ sơ khách hàng; `null` nếu tài khoản không có hồ sơ |
+| `emailVerified` | Boolean | Trạng thái xác thực email |
+| `permissions` | String[] | Mã quyền nghiệp vụ hiệu lực (mục 15): `ADMIN` = mọi mã; `STAFF` = các mã đang bật; `CUSTOMER` = `[]`. Chỉ để giao diện ẩn/hiện, BE vẫn kiểm tra quyền ở từng endpoint |
 
 ### Response Lỗi thường gặp
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
@@ -282,7 +289,7 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Email sai định dạng hoặc đã tồn tại (`EMAIL_ALREADY_EXISTS`).
-- **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 403 Forbidden:** Không phải `ADMIN`; hoặc đổi `role`/`status` của **chính tài khoản đang đăng nhập** (`ACCESS_DENIED`, "Không thể đổi vai trò hoặc trạng thái của chính tài khoản đang đăng nhập."). Gửi lại đúng giá trị hiện tại, hoặc chỉ đổi email, vẫn được phép.
 - **HTTP 404 Not Found:** Không tìm thấy tài khoản (`USER_NOT_FOUND`).
 
 ---
@@ -291,7 +298,12 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 
 - **Endpoint:** `DELETE /api/v1/auth/accounts/{id}`
 - **Quyền hạn:** `ADMIN`
-- **Mô tả:** Chuyển trạng thái tài khoản thành `DELETED` và cập nhật `da_xoa = true` để vô hiệu hóa tài khoản mà không mất dữ liệu lịch sử.
+- **Mô tả:** Chuyển trạng thái tài khoản thành `DELETED` và cập nhật `da_xoa = true` (kèm `ngay_xoa`, `nguoi_xoa` từ security context, `ly_do_xoa`) để vô hiệu hóa tài khoản mà không mất dữ liệu lịch sử. `token_version` tăng ngay khi xóa, nên token đã cấp trước đó mất hiệu lực và không thể sống lại kể cả khi tài khoản được khôi phục rồi bật lại; bộ lọc JWT cũng từ chối mọi tài khoản không `ACTIVE` hoặc đã `da_xoa = true`. **Chặn** tự xóa tài khoản đang đăng nhập, chặn xóa `ADMIN` đang `ACTIVE` cuối cùng, và chặn khi còn hồ sơ `nhan_vien`/`khach_hang` liên kết.
+
+### Request Body (không bắt buộc)
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `reason` | String | Không | Lý do xóa, được cắt khoảng trắng, tối đa 255 ký tự |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -306,8 +318,10 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 ```
 
 ### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
 - **HTTP 404 Not Found:** Không tìm thấy tài khoản (`USER_NOT_FOUND`).
+- **HTTP 409 Conflict:** Tự xóa hoặc xóa `ADMIN` `ACTIVE` cuối cùng (`DELETE_NOT_ALLOWED`); còn hồ sơ nhân sự/khách hàng liên kết (`DELETE_BLOCKED_BY_REFERENCES`).
 
 ---
 
@@ -478,3 +492,272 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Token sai, đã dùng hoặc hết hạn (`EMAIL_TOKEN_INVALID`).
 - **HTTP 429 Too Many Requests:** Vượt giới hạn số lượt yêu cầu.
+
+---
+
+## 13. Thùng rác tài khoản đăng nhập (FR-04)
+
+- **Endpoint:** `GET /api/v1/admin/trash/accounts`
+- **Quyền hạn:** `ADMIN` (không liệt kê cho `STAFF (Quản lý)` ở giao diện, và API trả **HTTP 403** nếu `STAFF` gọi)
+- **Mô tả:** Danh sách tài khoản đã xóa mềm, mới xóa trước. Đọc bằng SQL gốc vì `@SQLRestriction("da_xoa = false")` ẩn các dòng này khỏi JPA. Phản hồi chỉ có tên đăng nhập, email, vai trò, trạng thái, người/thời điểm xóa và lý do — **không bao giờ** có mật khẩu, hash hay token. Dòng xóa trước khi có cột `ngay_xoa`/`nguoi_xoa` trả `deletedAt`/`deletedBy` là `null` (giao diện hiển thị "Không rõ").
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `page` | Integer | Không | Số trang (mặc định: `0`) |
+| `size` | Integer | Không | Số bản ghi/trang (mặc định: `20`, tối đa `100`) |
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách tài khoản đã xóa thành công",
+  "result": {
+    "content": [
+      {
+        "id": 92,
+        "name": "qa_staff_trash",
+        "status": "DELETED",
+        "publicationStatus": null,
+        "productId": null,
+        "productName": null,
+        "color": null,
+        "size": null,
+        "barcode": null,
+        "parentDeleted": false,
+        "phone": null,
+        "email": "qa@example.com",
+        "role": "STAFF",
+        "linkedUsername": null,
+        "linkedAccountStatus": null,
+        "deletedAt": "2026-11-07T12:56:00",
+        "deletedBy": "chapter5_admin",
+        "deleteReason": "Dọn dữ liệu kiểm thử"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true
+  },
+  "errors": null,
+  "timestamp": "2026-11-07T13:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+- **HTTP 403 Forbidden:** Không phải `ADMIN` (kể cả `STAFF`).
+
+---
+
+## 14. Khôi phục tài khoản đăng nhập (FR-04)
+
+- **Endpoint:** `POST /api/v1/admin/trash/accounts/{id}/restore`
+- **Quyền hạn:** `ADMIN`
+- **Mô tả:** Cập nhật có điều kiện `da_xoa = true` → `false` (kiểm tra đúng một dòng thay đổi) và xóa dấu vết xóa. Tài khoản trở lại với trạng thái **`INACTIVE`**: chưa đăng nhập được cho tới khi `ADMIN` bật `ACTIVE` ở mục 6. `token_version` tăng thêm một lần nữa để mọi token cấp trước khi xóa không thể dùng lại sau khi bật. Từ chối khi còn hồ sơ nhân sự/khách hàng đang hoạt động liên kết, hoặc khi tên đăng nhập/email đã được tài khoản khác dùng.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Khôi phục tài khoản thành công",
+  "result": true,
+  "errors": null,
+  "timestamp": "2026-11-07T13:05:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 404 Not Found:** Tài khoản không còn trong thùng rác (`TRASH_ITEM_NOT_FOUND`).
+- **HTTP 409 Conflict:** Còn hồ sơ liên kết đang hoạt động (`RESTORE_BLOCKED`); trùng tên đăng nhập hoặc email (`RESTORE_CONFLICT`).
+
+---
+
+## 15. Phân quyền theo vai trò: danh mục quyền và cách kiểm tra
+
+- **Quyền hạn:** Áp dụng cho mọi endpoint quản trị.
+- **Mô tả:** Hai vai trò nội bộ giữ nguyên: Quản trị viên (`ADMIN`) và Quản lý (`STAFF`). `ADMIN` luôn có **mọi** quyền (không lưu, không sửa được). Quản lý có đúng các quyền mà `ADMIN` bật ở mục 16 (bảng `quyen_vai_tro`, V27; mã lạ trong bảng bị bỏ qua). Khách hàng (`CUSTOMER`) không có quyền nào ở đây. Bộ lọc JWT đọc vai trò và bảng quyền **mỗi request**, cấp authority `ROLE_<vai trò>` và `PERM_<mã>`; đổi phân quyền có hiệu lực ngay ở request kế tiếp, không cần đăng nhập lại. Lỗi đọc bảng quyền thì Quản lý không có quyền nào (đóng khi lỗi). Seed V27: Quản lý giữ đúng phạm vi trước đây (mọi quyền) trừ `LOYALTY_ADJUST` (quyền mới, mặc định tắt).
+
+Danh mục mã quyền (nhóm → mã: nhãn):
+
+| Nhóm | Mã | Nhãn |
+| :--- | :--- | :--- |
+| Đơn hàng | `ORDER_VIEW` | Xem đơn hàng |
+| Đơn hàng | `ORDER_UPDATE_STATUS` | Chuyển trạng thái đơn |
+| Đơn hàng | `ORDER_CANCEL` | Hủy đơn |
+| Đơn hàng | `ORDER_COLLECT_CASH` | Ghi nhận thu tiền COD |
+| Đơn hàng | `POS_USE` | Bán tại quầy (POS) |
+| Khách hàng | `CUSTOMER_VIEW` / `CUSTOMER_CREATE` / `CUSTOMER_EDIT` / `CUSTOMER_DELETE` | Xem / Thêm / Sửa / Xóa khách hàng |
+| Nhân sự | `EMPLOYEE_VIEW` / `EMPLOYEE_CREATE` / `EMPLOYEE_EDIT` / `EMPLOYEE_DELETE` | Xem / Thêm / Sửa / Xóa hồ sơ nhân sự |
+| Sản phẩm | `PRODUCT_VIEW` | Xem sản phẩm, Draft và Barcode |
+| Sản phẩm | `PRODUCT_EDIT` | Thêm, sửa sản phẩm, SKU, ảnh và Draft |
+| Sản phẩm | `PRODUCT_DELETE` | Xóa sản phẩm và SKU |
+| Sản phẩm | `PRODUCT_PUBLISH` | Publish, Unpublish và đồng bộ AI search |
+| Sản phẩm | `PRODUCT_IMPORT` | Import sản phẩm (CSV, đường dẫn) |
+| Sản phẩm | `CATEGORY_MANAGE` | Thêm, sửa, xóa danh mục |
+| Sản phẩm | `REVIEW_MODERATE` | Xem và ẩn/hiện đánh giá |
+| Kho | `INVENTORY_VIEW` | Xem tồn kho, phiếu và kiểm kê |
+| Kho | `INVENTORY_RECEIPT_CREATE` | Tạo phiếu nhập, phiếu xuất |
+| Kho | `STOCKTAKE_CREATE` | Tạo phiếu kiểm kê |
+| Khuyến mãi | `PROMOTION_VIEW` / `PROMOTION_MANAGE` | Xem / Tạo, sửa khuyến mãi và Voucher |
+| Điểm | `LOYALTY_POLICY_VIEW` / `LOYALTY_POLICY_MANAGE` | Xem / Sửa chính sách điểm và hạng |
+| Điểm | `LOYALTY_ADJUST` | Điều chỉnh điểm và tính lại điểm cho đơn (mặc định tắt) |
+| Report | `REPORT_VIEW` | Xem Report |
+| Report | `DATA_EXPORT` | Export CSV |
+| Thùng rác | `TRASH_VIEW` / `TRASH_RESTORE` | Xem / Khôi phục từ thùng rác |
+
+**Luôn chỉ `ADMIN` (không bật được cho Quản lý):** tài khoản đăng nhập và vai trò (`/api/v1/auth/accounts/**`), phân quyền (`/api/v1/auth/roles/**`), tab tài khoản trong thùng rác, ghi nhận số dư điểm ban đầu (`POST /api/v1/quan-tri/thanh-vien/mo-dau`), liên kết/khóa tài khoản qua hồ sơ nhân sự và khách hàng, khôi phục hồ sơ nhân sự của Quản trị viên.
+
+Bảng endpoint → quyền. "KH hoặc" = endpoint dùng chung: khách hàng vẫn dùng được (chỉ dữ liệu của mình, logic sở hữu không đổi), nhân viên nội bộ cần quyền.
+
+| Endpoint | Quyền |
+| :--- | :--- |
+| `GET /api/v1/orders`, `GET /api/v1/orders/{id}` | KH hoặc `ORDER_VIEW` |
+| `PATCH /api/v1/orders/{id}/status` | `ORDER_UPDATE_STATUS` |
+| `POST /api/v1/orders/{id}/cancel` | KH hoặc `ORDER_CANCEL` |
+| `POST /api/v1/orders/pos/draft`, `POST /api/v1/orders/pos/{orderId}/quote`, `GET /api/v1/orders/pos/drafts` | `POS_USE` |
+| `GET /api/v1/products/pos-lookup`, `GET /api/v1/products/pos-search` | `POS_USE` |
+| `POST /api/v1/payments/calculate` | KH hoặc `POS_USE` hoặc `ORDER_COLLECT_CASH` |
+| `POST /api/v1/payments/process` | KH hoặc (đơn `POS-*`: `POS_USE`; đơn khác: `ORDER_COLLECT_CASH`, kiểm tra trong service) |
+| `GET /api/v1/users/customers` | `CUSTOMER_VIEW` |
+| `GET /api/v1/users/customers/{id}` | KH hoặc `CUSTOMER_VIEW` |
+| `POST /api/v1/users/customers` | `CUSTOMER_CREATE` |
+| `PUT/PATCH /api/v1/users/customers/{id}` | KH hoặc `CUSTOMER_EDIT` |
+| `DELETE /api/v1/users/customers/{id}` | `CUSTOMER_DELETE` |
+| `GET /api/v1/thanh-vien/khach-hang/{customerId}` | `CUSTOMER_VIEW` |
+| `GET /api/v1/quan-tri/thanh-vien/khach-hang/{customerId}/lich-su` | `CUSTOMER_VIEW` |
+| `GET /api/v1/users/employees`, `GET /api/v1/users/employees/{id}` | `EMPLOYEE_VIEW` |
+| `POST /api/v1/users/employees` | `EMPLOYEE_CREATE` |
+| `PUT/PATCH /api/v1/users/employees/{id}` | `EMPLOYEE_EDIT` |
+| `DELETE /api/v1/users/employees/{id}` | `EMPLOYEE_DELETE` |
+| `POST /api/v1/products`, `PUT/PATCH /api/v1/products/{id}` | `PRODUCT_EDIT` |
+| `DELETE /api/v1/products/{id}`, `DELETE /api/v1/products/variants/{variantId}` | `PRODUCT_DELETE` |
+| `POST /api/v1/products/{productId}/variants`, `PUT/PATCH /api/v1/products/variants/{variantId}` | `PRODUCT_EDIT` |
+| `POST /api/v1/products/{id}/image`, `DELETE /api/v1/products/{id}/image` | `PRODUCT_EDIT` |
+| `GET /api/v1/products/variants/{skuId}/barcode`, `GET .../barcode/image` | `PRODUCT_VIEW` |
+| `GET /api/v1/products/variants/scan-lookup` | `INVENTORY_VIEW` |
+| `GET /api/v1/products`, `GET /api/v1/products/{id}` (công khai; xem sản phẩm chưa Publish) | `PRODUCT_VIEW` |
+| `POST /api/v1/admin/products/drafts`, `PUT/DELETE /api/v1/admin/products/drafts/{draftId}`, `POST .../drafts/{draftId}/images` | `PRODUCT_EDIT` |
+| `GET /api/v1/admin/products/drafts`, `GET .../drafts/{draftId}`, `GET .../drafts/{draftId}/images/{fileName}`, `GET /api/v1/admin/products/{productId}/ai-sync` | `PRODUCT_VIEW` |
+| `POST .../drafts/{draftId}/publish`, `POST /api/v1/admin/products/{productId}/unpublish`, `POST .../{productId}/ai-sync/retry` | `PRODUCT_PUBLISH` |
+| `POST /api/v1/admin/products/import-url`, `POST /api/v1/admin/csv/products/import`, `GET /api/v1/admin/csv/products/template` | `PRODUCT_IMPORT` |
+| `POST /api/v1/categories`, `PUT/PATCH/DELETE /api/v1/categories/{id}` | `CATEGORY_MANAGE` |
+| `GET /api/v1/admin/reviews`, `PATCH /api/v1/admin/reviews/{reviewId}/visibility` | `REVIEW_MODERATE` |
+| `GET /api/v1/inventory/**` (tồn kho, phiếu nhập, phiếu xuất, kiểm kê) | `INVENTORY_VIEW` |
+| `POST /api/v1/inventory/import-receipts`, `POST /api/v1/inventory/export-receipts` | `INVENTORY_RECEIPT_CREATE` |
+| `POST /api/v1/inventory/stocktakes` | `STOCKTAKE_CREATE` |
+| `GET /api/v1/khuyen-mai`, `GET /api/v1/khuyen-mai/{id}` | `PROMOTION_VIEW` |
+| `POST /api/v1/khuyen-mai`, `PUT /api/v1/khuyen-mai/{id}`, `POST /api/v1/khuyen-mai/{id}/codes` | `PROMOTION_MANAGE` |
+| `GET /api/v1/thanh-vien/chinh-sach`, `GET /api/v1/thanh-vien/chinh-sach/hang` | `LOYALTY_POLICY_VIEW` |
+| `POST /api/v1/thanh-vien/chinh-sach`, `PUT .../chinh-sach/{policyId}`, `PUT .../chinh-sach/hang/{tierId}` | `LOYALTY_POLICY_MANAGE` |
+| `POST /api/v1/quan-tri/thanh-vien/khach-hang/{customerId}/dieu-chinh`, `GET/POST /api/v1/quan-tri/thanh-vien/don-hang/{orderId}/tinh-lai-diem` | `LOYALTY_ADJUST` (controller và service) |
+| `GET /api/v1/analytics/**` (revenue, top-products, inventory-movement, overview) | `REPORT_VIEW` |
+| `GET /api/v1/admin/csv/products` | `DATA_EXPORT` và `PRODUCT_VIEW` |
+| `GET /api/v1/admin/csv/stock` | `DATA_EXPORT` và `INVENTORY_VIEW` |
+| `GET /api/v1/admin/csv/orders` | `DATA_EXPORT` và `ORDER_VIEW` |
+| `GET /api/v1/admin/csv/customers` | `DATA_EXPORT` và `CUSTOMER_VIEW` |
+| `GET /api/v1/admin/trash/{products,variants,categories,customers,employees}` | `TRASH_VIEW` |
+| `POST /api/v1/admin/trash/{products,variants,categories,customers,employees}/{id}/restore` | `TRASH_RESTORE` (hồ sơ nhân sự của Quản trị viên: chỉ `ADMIN`) |
+
+Tầng URL (`SecurityConfig`) vẫn là cổng vai trò bên ngoài: `/api/v1/analytics/**`, `/api/v1/quan-tri/**`, `/api/v1/users/employees/**` chỉ cho `ADMIN`/`STAFF`; `/api/v1/auth/accounts/**` và `/api/v1/auth/roles/**` chỉ `ADMIN`.
+
+---
+
+## 16. Xem phân quyền của vai trò
+
+- **Endpoint:** `GET /api/v1/auth/roles/{role}/permissions` (`role` = `STAFF` hoặc `ADMIN`)
+- **Quyền hạn:** `ADMIN`
+- **Mô tả:** Trả danh mục quyền theo nhóm cùng trạng thái bật. Với `ADMIN`: mọi quyền bật, `editable = false`.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy phân quyền thành công",
+  "result": {
+    "role": "STAFF",
+    "editable": true,
+    "enabled": ["ORDER_VIEW", "ORDER_UPDATE_STATUS", "..."],
+    "groups": [
+      {
+        "code": "ORDERS",
+        "label": "Đơn hàng",
+        "permissions": [
+          { "code": "ORDER_VIEW", "label": "Xem đơn hàng", "enabled": true },
+          { "code": "POS_USE", "label": "Bán tại quầy (POS)", "enabled": true }
+        ]
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-11-08T10:37:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `role` không hợp lệ hoặc là `CUSTOMER` (`INVALID_REQUEST`).
+- **HTTP 403 Forbidden:** Không phải `ADMIN`.
+
+---
+
+## 17. Lưu phân quyền của Quản lý
+
+- **Endpoint:** `PUT /api/v1/auth/roles/STAFF/permissions`
+- **Quyền hạn:** `ADMIN`
+- **Mô tả:** Thay toàn bộ bộ quyền đang bật của Quản lý (gửi **đủ** danh sách sau khi lưu, không phải phần thay đổi). Mã trùng được gộp; mã không có trong danh mục bị từ chối và không ghi gì. Có thay đổi thì ghi một dòng nhật ký (`nhat_ky_phan_quyen`: người lưu, thời điểm, bộ quyền trước và sau); không đổi gì thì không ghi. Có hiệu lực ở request kế tiếp của mọi tài khoản Quản lý.
+
+### Request Body
+```json
+{
+  "permissions": ["ORDER_VIEW", "ORDER_UPDATE_STATUS", "CUSTOMER_VIEW"]
+}
+```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `permissions` | String[] | Có | Mã quyền thuộc danh mục ở mục 15; tối đa 200 phần tử |
+
+### Response Thành công (HTTP 200 OK)
+Giống mục 16 (bộ quyền sau khi lưu), `message` = `"Đã lưu phân quyền"`.
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Thiếu `permissions`, có mã không hợp lệ (`INVALID_REQUEST`, thông báo liệt kê mã), hoặc `role` khác `STAFF` (`ADMIN` luôn toàn quyền, không chỉnh được).
+- **HTTP 403 Forbidden:** Không phải `ADMIN`.
+
+---
+
+## 18. Nhật ký phân quyền
+
+- **Endpoint:** `GET /api/v1/auth/roles/STAFF/permissions/audit`
+- **Quyền hạn:** `ADMIN`
+- **Mô tả:** 50 lần lưu gần nhất, mới nhất trước, kèm quyền được bật thêm và tắt bớt.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy nhật ký phân quyền thành công",
+  "result": [
+    {
+      "id": 4,
+      "actorAccountId": 2,
+      "actorUsername": "chapter5_admin",
+      "changedAt": "2026-11-08T13:34:13",
+      "added": [],
+      "removed": ["CUSTOMER_DELETE", "INVENTORY_VIEW"]
+    }
+  ],
+  "errors": null,
+  "timestamp": "2026-11-08T13:35:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 403 Forbidden:** Không phải `ADMIN`.

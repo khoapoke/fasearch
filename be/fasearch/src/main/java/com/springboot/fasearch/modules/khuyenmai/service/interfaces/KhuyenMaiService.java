@@ -14,7 +14,11 @@ public interface KhuyenMaiService {
     CampaignResponse create(CampaignCreateRequest request);
     CampaignResponse update(Long id, CampaignUpdateRequest request);
     CampaignResponse get(Long id);
-    PageResponse<CampaignResponse> list(String status, String type, String query, PageRequest page);
+    PageResponse<CampaignResponse> list(String status, String effectiveState, String type, String query, PageRequest page);
+
+    default PageResponse<CampaignResponse> list(String status, String type, String query, PageRequest page) {
+        return list(status, null, type, query, page);
+    }
     CodeResponse createCode(Long id, CodeCreateRequest request);
     java.util.List<PublicOfferRes> listPublicOffers();
 }

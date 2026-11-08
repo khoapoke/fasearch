@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.product.dto.request.CategoryReq;
@@ -12,8 +13,8 @@ import com.springboot.fasearch.modules.product.dto.response.CategoryRes;
 import com.springboot.fasearch.modules.product.entity.Category;
 import com.springboot.fasearch.modules.product.mapper.CategoryMapper;
 import com.springboot.fasearch.modules.product.repository.CategoryRepository;
-import com.springboot.fasearch.modules.product.repository.ProductRepository;
 import com.springboot.fasearch.modules.product.service.interfaces.CategoryService;
+import com.springboot.fasearch.modules.trash.service.impl.DeleteGuards;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final ProductRepository productRepository;
     private final CategoryMapper categoryMapper;
+    private final DeleteGuards deleteGuards;
+    private final SoftDeleteRecorder softDeleteRecorder;
 
     @Override
     @Transactional(readOnly = true)
@@ -62,7 +64,7 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryRes createCategory(CategoryReq req) {
         String trimmedName = req.getCategoryName().trim();
 
-        if (categoryRepository.existsByCategoryName(trimmedName)) {
+        if (categoryRepository.existsLiveName(trimmedName, null)) {
             throw new AppException(ErrorCode.CATEGORY_NAME_ALREADY_EXISTS);
         }
 
@@ -83,10 +85,8 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
 
         String newName = req.getCategoryName().trim();
-        if (!newName.equalsIgnoreCase(category.getCategoryName())) {
-            if (categoryRepository.existsByCategoryName(newName)) {
-                throw new AppException(ErrorCode.CATEGORY_NAME_ALREADY_EXISTS);
-            }
+        if (categoryRepository.existsLiveName(newName, id)) {
+            throw new AppException(ErrorCode.CATEGORY_NAME_ALREADY_EXISTS);
         }
 
         category.setCategoryName(newName);
@@ -98,19 +98,17 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public void deleteCategory(Long id) {
+    public void deleteCategory(Long id, String reason) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        long productCount = productRepository.countByCategory_IdAndIsDeletedFalse(id);
-        if (productCount > 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST,
-                    "Không thể xóa danh mục đang có " + productCount + " sản phẩm tham chiếu. Vui lòng di chuyển hoặc xóa sản phẩm trước.");
-        }
+        // A category keeps its FK on every product, including soft-deleted products, so the
+        // guard counts all products that still reference it and not only the live ones.
+        deleteGuards.assertCategoryDeletable(id);
 
-        category.setIsDeleted(true);
+        softDeleteRecorder.mark(category, reason);
         categoryRepository.save(category);
 
-        log.info("Soft deleted category ID: {}", id);
+        log.info("Soft deleted category ID: {} (moved to trash)", id);
     }
 }

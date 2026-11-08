@@ -49,6 +49,10 @@ public class Order {
     @Column(name = "ma_don", unique = true, length = 50)
     private String orderCode;
 
+    /** Accent-insensitive text maintained by the database; read-only from the application. */
+    @Column(name = "search_text", columnDefinition = "TEXT", insertable = false, updatable = false)
+    private String searchText;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ma_kh")
     private Customer customer;

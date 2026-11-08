@@ -35,9 +35,11 @@ public interface ProductService {
 
     ProductDetailRes getProductById(Long id);
 
+    java.util.List<ProductRes> getRelatedProducts(Long id, int limit);
+
     ProductDetailRes createProduct(ProductCreateReq req);
 
     ProductDetailRes updateProduct(Long id, ProductUpdateReq req);
 
-    void deleteProduct(Long id);
+    void deleteProduct(Long id, String reason);
 }

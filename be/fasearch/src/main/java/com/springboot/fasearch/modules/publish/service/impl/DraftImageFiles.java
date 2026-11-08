@@ -29,53 +29,53 @@ final class DraftImageFiles {
         try {
             Files.createDirectories(root);
         } catch (IOException e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot prepare image directory");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không chuẩn bị được thư mục ảnh.");
         }
         return root;
     }
 
     static String store(MultipartFile file, Path root) {
         if (file == null || file.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Image file is required");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Cần chọn tệp ảnh.");
         }
         String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(java.util.Locale.ROOT);
         if (!ALLOWED_TYPES.contains(contentType)) {
-            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Only PNG, JPG, JPEG images are accepted");
+            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Chỉ chấp nhận ảnh PNG, JPG, JPEG.");
         }
         if (file.getSize() > MAX_SIZE) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Image exceeds 5MB");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Ảnh vượt quá 5MB.");
         }
         String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
         int dot = original.lastIndexOf('.');
         if (dot < 0) {
-            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Image file needs an extension");
+            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Tệp ảnh cần có phần mở rộng.");
         }
         String ext = original.substring(dot).toLowerCase(java.util.Locale.ROOT);
         if (!ext.matches("\\.(png|jpg|jpeg)")) {
-            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Unsupported image extension");
+            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Phần mở rộng ảnh không được hỗ trợ.");
         }
         if ((contentType.equals("image/png") && !ext.equals(".png"))
                 || ((contentType.equals("image/jpeg") || contentType.equals("image/jpg"))
                         && !(ext.equals(".jpg") || ext.equals(".jpeg")))) {
-            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "MIME type and extension do not match");
+            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Loại MIME và phần mở rộng của tệp không khớp.");
         }
         try {
             BufferedImage image = ImageIO.read(file.getInputStream());
             if (image == null || image.getWidth() < 1 || image.getHeight() < 1) {
-                throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Image is unreadable");
+                throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Không đọc được ảnh.");
             }
         } catch (IOException e) {
-            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Image is unreadable");
+            throw new AppException(ErrorCode.INVALID_IMAGE_FILE, "Không đọc được ảnh.");
         }
         String fileName = UUID.randomUUID() + ext;
         Path target = root.resolve(fileName).normalize();
         if (!target.startsWith(root)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid image path");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đường dẫn ảnh không hợp lệ.");
         }
         try {
             Files.write(target, file.getBytes());
         } catch (IOException e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot store image");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không lưu được ảnh.");
         }
         return fileName;
     }

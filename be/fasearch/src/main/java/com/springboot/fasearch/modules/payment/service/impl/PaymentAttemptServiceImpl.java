@@ -68,10 +68,10 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
         }
         if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.RETURNED
                 || order.getStatus() == OrderStatus.COMPLETED) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Order is not payable");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng không thể thanh toán.");
         }
         if (order.getTotalAmount() == null || order.getTotalAmount().signum() <= 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Zero-due orders require local settlement");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn không còn phải thu cần được ghi nhận thu nội bộ.");
         }
         PaymentProvider provider = request.getProvider();
         String key = request.getIdempotencyKey().strip();
@@ -114,7 +114,7 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
             return null;
         }
         if (!existing.getOrder().getId().equals(order.getId())) {
-            throw new AppException(ErrorCode.DATA_CONFLICT, "Idempotency key belongs to another order");
+            throw new AppException(ErrorCode.DATA_CONFLICT, "Khóa thanh toán đã thuộc về đơn hàng khác.");
         }
         return attemptRepository
                 .findFirstByProviderAndOrder_IdAndIdempotencyKeyStartingWithOrderByIdDesc(
@@ -149,7 +149,7 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
     public PaymentAttemptRes get(Long id) {
         Customer customer = currentCustomer();
         PaymentAttempt attempt = attemptRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Payment attempt not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lần thanh toán."));
         if (attempt.getOrder().getCustomer() == null
                 || !attempt.getOrder().getCustomer().getId().equals(customer.getId())) {
             throw new AppException(ErrorCode.FORBIDDEN);
@@ -161,7 +161,7 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
     @Transactional
     public void attachProviderSession(Long id, String reference, String checkoutUrl) {
         PaymentAttempt attempt = attemptRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Payment attempt not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lần thanh toán."));
         attempt.setProviderReference(reference);
         attempt.setProviderSessionId(reference);
         attempt.setProviderCheckoutUrl(checkoutUrl);
@@ -174,16 +174,16 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
     public void recordProviderEvent(PaymentEventCommand command) {
         PaymentAttempt attempt = attemptRepository.findByProviderAndProviderReferenceForUpdate(
                 command.provider(), command.providerReference())
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Payment attempt not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lần thanh toán."));
         if (command.amount() == null || command.amount().compareTo(attempt.getAmount()) != 0
                 || command.currency() == null || !command.currency().equalsIgnoreCase(attempt.getCurrency())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Provider amount/currency mismatch");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Số tiền hoặc tiền tệ từ nhà cung cấp không khớp.");
         }
         PaymentEvent existing = eventRepository.findByProviderAndProviderEventId(
                 command.provider(), command.providerEventId()).orElse(null);
         if (existing != null) {
             if (existing.getPayloadSha256().equals(command.payloadSha256())) return;
-            throw new AppException(ErrorCode.DATA_CONFLICT, "Provider event payload changed");
+            throw new AppException(ErrorCode.DATA_CONFLICT, "Dữ liệu sự kiện từ nhà cung cấp đã thay đổi.");
         }
         if (command.outcome() == com.springboot.fasearch.modules.payment.entity.ProviderEventOutcome.SUCCESS) {
             settleVerifiedSuccess(attempt, command);
@@ -222,7 +222,7 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
             return;
         }
         if (attempt.getAmount() == null || attempt.getAmount().signum() <= 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Zero-due orders require local settlement");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn không còn phải thu cần được ghi nhận thu nội bộ.");
         }
         if (invoiceRepository.findByOrderId(order.getId()).isPresent()) {
             attempt.setStatus(PaymentAttemptStatus.SETTLED);
@@ -247,7 +247,7 @@ public class PaymentAttemptServiceImpl implements PaymentAttemptService {
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_PROVIDER_NOT_CONFIGURED));
         BigDecimal totalAmount = order.getTotalAmount() == null ? BigDecimal.ZERO : order.getTotalAmount();
         if (totalAmount.signum() <= 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Zero-due orders require local settlement");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn không còn phải thu cần được ghi nhận thu nội bộ.");
         }
         invoiceRepository.lockInvoiceCodeGeneration(0x4641534541524348L);
         String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));

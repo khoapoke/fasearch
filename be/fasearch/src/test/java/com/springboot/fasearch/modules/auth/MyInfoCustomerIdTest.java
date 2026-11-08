@@ -30,6 +30,7 @@ class MyInfoCustomerIdTest {
     @Mock private AccountRepository accountRepository;
     @Mock private UserRepository userRepository;
     @Mock private AccountMapper accountMapper;
+    @Mock private com.springboot.fasearch.security.RolePermissionResolver rolePermissionResolver;
     @InjectMocks private AuthServiceImpl authService;
 
     @Test

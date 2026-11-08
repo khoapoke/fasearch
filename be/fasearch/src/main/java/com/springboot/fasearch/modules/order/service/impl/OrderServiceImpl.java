@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.springboot.fasearch.common.enums.OrderStatus;
 import com.springboot.fasearch.common.enums.PaymentStatus;
 import com.springboot.fasearch.common.enums.RoleType;
+import com.springboot.fasearch.common.search.SearchTextNormalizer;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.entity.Inventory;
@@ -54,9 +55,13 @@ import com.springboot.fasearch.modules.order.repository.CartItemRepository;
 import com.springboot.fasearch.modules.order.repository.CartRepository;
 import com.springboot.fasearch.modules.order.repository.CheckoutIdempotencyRepository;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;
+import com.springboot.fasearch.modules.order.repository.OrderSpecifications;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.springboot.fasearch.modules.payment.repository.InvoiceRepository;
+import com.springboot.fasearch.modules.payment.service.impl.CancelledOrderStripeExpiry;
+import com.springboot.fasearch.modules.payment.entity.Invoice;
 import com.springboot.fasearch.modules.order.service.interfaces.OrderService;
-import com.springboot.fasearch.modules.product.entity.Product;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
 import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
 import com.springboot.fasearch.modules.user.entity.Customer;
@@ -65,9 +70,13 @@ import com.springboot.fasearch.modules.user.repository.EmployeeRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 import com.springboot.fasearch.shared.PageResponse;
 
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
@@ -84,6 +93,8 @@ public class OrderServiceImpl implements OrderService {
     private final com.springboot.fasearch.modules.order.service.interfaces.ShippingService shippingService;
     private final LoyaltyService loyaltyService;
     private final CheckoutIdempotencyRepository checkoutIdempotencyRepository;
+    private final CancelledOrderStripeExpiry cancelledOrderStripeExpiry;
+    private final OrderItemHistoryBuilder orderItemHistoryBuilder;
 
     private Customer getCurrentCustomer() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -136,27 +147,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderDetailRes mapToOrderDetailRes(Order order) {
-        List<OrderItemRes> items = new ArrayList<>();
+        // Names come from the native history snapshot, never from variant/product proxies:
+        // a legacy soft-deleted SKU must not break an old order document.
+        List<OrderItemRes> items = orderItemHistoryBuilder.build(order.getDetails());
         BigDecimal calculatedSubTotal = BigDecimal.ZERO;
-
         for (OrderDetail detail : order.getDetails()) {
-            ProductVariant variant = detail.getVariant();
-            Product product = variant.getProduct();
-            BigDecimal lineTotal = detail.getUnitPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
-            calculatedSubTotal = calculatedSubTotal.add(lineTotal);
-
-            items.add(OrderItemRes.builder()
-                    .skuId(variant.getId())
-                    .productName(product != null ? product.getProductName() : null)
-                    .color(variant.getColor())
-                    .size(variant.getSize())
-                    .imageUrl(product != null ? product.getImageUrl() : null)
-                    .quantity(detail.getQuantity())
-                    .unitPrice(detail.getUnitPrice())
-                    .totalPrice(lineTotal)
-                    .discountAmount(detail.getDiscountAmount())
-                    .pointsDiscountAmount(detail.getPointsDiscountAmount())
-                    .build());
+            BigDecimal unitPrice = detail.getUnitPrice() == null ? BigDecimal.ZERO : detail.getUnitPrice();
+            int quantity = detail.getQuantity() == null ? 0 : detail.getQuantity();
+            calculatedSubTotal = calculatedSubTotal.add(unitPrice.multiply(BigDecimal.valueOf(quantity)));
         }
 
         OrderCustomerRes customerRes = null;
@@ -191,9 +189,21 @@ public class OrderServiceImpl implements OrderService {
                 .voucherCampaignName(order.getVoucherCampaignName())
                 .voucherCampaignVersion(order.getVoucherCampaignVersion())
                 .shippingFee(order.getShippingFee())
-                .totalAmount(order.getTotalAmount())
+                .totalAmount(orderTotalAmount(order))
                 .createdAt(order.getOrderDate())
                 .build();
+    }
+
+    private void fillPaidPayment(Order order, OrderDetailRes res) {
+        if (order == null || res == null) {
+            return;
+        }
+        invoiceRepository.findByOrderId(order.getId()).ifPresent(invoice -> {
+            if (invoice.getStatus() == PaymentStatus.PAID) {
+                res.setPaymentStatus(invoice.getStatus());
+                res.setPaymentMethod(invoice.getPaymentMethodCode());
+            }
+        });
     }
 
     @Override
@@ -206,10 +216,10 @@ public class OrderServiceImpl implements OrderService {
         String checkoutKey = req.getCheckoutKey() == null ? null : req.getCheckoutKey().strip();
         int redeemedPoints = LoyaltyService.parsePoints(req.getRedeemedPoints());
         if (checkoutKey != null && (checkoutKey.isBlank() || checkoutKey.length() > 100)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "checkoutKey must contain 1-100 characters");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "checkoutKey phải có từ 1 đến 100 ký tự.");
         }
         if (((req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) || redeemedPoints > 0) && checkoutKey == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "checkoutKey is required for checkout benefits");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Cần checkoutKey cho ưu đãi khi thanh toán.");
         }
         String payloadHash = checkoutKey == null ? null : checkoutPayloadHash(req);
         if (checkoutKey != null) {
@@ -296,7 +306,7 @@ public class OrderServiceImpl implements OrderService {
                 ? (req.getShippingFee() != null ? req.getShippingFee() : BigDecimal.ZERO) : deliveryQuote.getShippingFee();
         if (benefit.campaign() != null && "FREE_SHIP".equals(benefit.campaign().getDiscountType())) shippingFee = BigDecimal.ZERO;
         if (deliveryQuote != null && req.getShippingFee() != null && req.getShippingFee().compareTo(shippingFee) != 0)
-            throw new AppException(ErrorCode.QUOTE_CHANGED, "Shipping fee changed; request a fresh quote");
+            throw new AppException(ErrorCode.QUOTE_CHANGED, "Phí vận chuyển đã thay đổi; hãy yêu cầu báo giá mới.");
         BigDecimal discountAmount = benefit.discount();
         BigDecimal totalAmount = subTotal.subtract(discountAmount).subtract(benefit.loyaltyQuote().pointsDiscount())
                 .add(shippingFee).setScale(2, java.math.RoundingMode.HALF_UP);
@@ -368,6 +378,24 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    private BigDecimal orderTotalAmount(Order order) {
+        if (order.getTotalAmount() == null) {
+            log.warn("Order totalAmount is null, returning ZERO for orderId={}", order.getId());
+            return BigDecimal.ZERO;
+        }
+        return order.getTotalAmount();
+    }
+
+    private BigDecimal orderSubTotal(Order order) {
+        if (order.getTotalAmount() == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal shipping = order.getShippingFee() == null ? BigDecimal.ZERO : order.getShippingFee();
+        BigDecimal discount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+        BigDecimal points = order.getPointsDiscount() == null ? BigDecimal.ZERO : order.getPointsDiscount();
+        return order.getTotalAmount().subtract(shipping).add(discount).add(points);
+    }
+
     private OrderRes toOrderRes(Order order, boolean replayed) {
         BigDecimal shipping = order.getShippingFee() == null ? BigDecimal.ZERO : order.getShippingFee();
         BigDecimal discount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
@@ -377,8 +405,7 @@ public class OrderServiceImpl implements OrderService {
                 .deliveryAddress(order.getDeliveryAddress())
                 .deliveryLatitude(order.getDeliveryLatitude()).deliveryLongitude(order.getDeliveryLongitude())
                 .distanceKm(order.getDistanceKm()).shippingMethod(order.getShippingMethod())
-                .subTotal(order.getTotalAmount().subtract(shipping).add(discount).add(
-                        order.getPointsDiscount() == null ? BigDecimal.ZERO : order.getPointsDiscount()))
+                .subTotal(orderSubTotal(order))
                 .discountAmount(discount).redeemedPoints(order.getRedeemedPoints())
                 .pointsDiscount(order.getPointsDiscount()).loyaltyPolicyId(order.getLoyaltyPolicyId())
                 .loyaltyPolicyVersion(order.getLoyaltyPolicyVersion())
@@ -386,7 +413,7 @@ public class OrderServiceImpl implements OrderService {
                 .earnedPoints(order.getEarnedPoints()).voucherId(order.getVoucherId()).voucherCode(order.getVoucherCode())
                 .voucherCampaignName(order.getVoucherCampaignName())
                 .voucherCampaignVersion(order.getVoucherCampaignVersion()).shippingFee(shipping)
-                .totalAmount(order.getTotalAmount()).createdAt(order.getOrderDate()).replayed(replayed).build();
+                .totalAmount(orderTotalAmount(order)).createdAt(order.getOrderDate()).replayed(replayed).build();
     }
 
     private String checkoutPayloadHash(CheckoutReq request) {
@@ -421,7 +448,8 @@ public class OrderServiceImpl implements OrderService {
             String orderCode,
             String customerPhone,
             LocalDate startDate,
-            LocalDate endDate) {
+            LocalDate endDate,
+            String keyword) {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
@@ -434,47 +462,26 @@ public class OrderServiceImpl implements OrderService {
                         .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND))
                 : null;
 
-        Specification<Order> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            // 1. Phân quyền dữ liệu: CUSTOMER chỉ xem đơn của chính mình
-            if (isCust && currentCustomer != null) {
-                predicates.add(cb.equal(root.get("customer").get("id"), currentCustomer.getId()));
-            } else {
-                // ADMIN / STAFF có thể lọc theo số điện thoại khách hàng
-                if (customerPhone != null && !customerPhone.isBlank()) {
-                    predicates.add(cb.like(root.join("customer").get("phoneNumber"), "%" + customerPhone.trim() + "%"));
-                }
-            }
-
-            // 2. Lọc theo mã đơn hàng
-            if (orderCode != null && !orderCode.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("orderCode")), "%" + orderCode.trim().toLowerCase() + "%"));
-            }
-
-            // 3. Lọc theo trạng thái
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
-
-            // 4. Lọc theo khoảng ngày đặt hàng
-            if (startDate != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("orderDate"), startDate.atStartOfDay()));
-            }
-            if (endDate != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("orderDate"), endDate.atTime(LocalTime.MAX)));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Long customerId = isCust && currentCustomer != null ? currentCustomer.getId() : null;
+        Specification<Order> spec = OrderSpecifications.list(customerId, status, orderCode, customerPhone,
+                startDate, endDate, keyword);
 
         Page<Order> page = orderRepository.findAll(spec, pageable);
 
+        // ONE batched invoice lookup for the page (no N+1). Additive only: payment fields stay null when no PAID invoice.
+        java.util.Map<Long, Invoice> paidByOrder = new java.util.HashMap<>();
+        if (!page.getContent().isEmpty()) {
+            java.util.List<Long> orderIds = page.getContent().stream().map(Order::getId).toList();
+            for (Invoice invoice : invoiceRepository.findByOrderIds(orderIds)) {
+                if (invoice.getStatus() == PaymentStatus.PAID && invoice.getOrder() != null) {
+                    paidByOrder.put(invoice.getOrder().getId(), invoice);
+                }
+            }
+        }
+
         List<OrderRes> content = page.getContent().stream().map(order -> {
-            BigDecimal subTotal = order.getTotalAmount()
-                    .subtract(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
-                    .add(order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO)
-                    .add(order.getPointsDiscount() != null ? order.getPointsDiscount() : BigDecimal.ZERO);
+            BigDecimal subTotal = orderSubTotal(order);
+            Invoice paid = paidByOrder.get(order.getId());
 
             return OrderRes.builder()
                     .orderId(order.getId())
@@ -498,7 +505,9 @@ public class OrderServiceImpl implements OrderService {
                     .voucherCampaignName(order.getVoucherCampaignName())
                     .voucherCampaignVersion(order.getVoucherCampaignVersion())
                     .shippingFee(order.getShippingFee())
-                    .totalAmount(order.getTotalAmount())
+                    .totalAmount(orderTotalAmount(order))
+                    .paymentStatus(paid == null ? null : paid.getStatus())
+                    .paymentMethod(paid == null ? null : paid.getPaymentMethodCode())
                     .createdAt(order.getOrderDate())
                     .build();
         }).toList();
@@ -533,7 +542,9 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        return mapToOrderDetailRes(order);
+        OrderDetailRes res = mapToOrderDetailRes(order);
+        fillPaidPayment(order, res);
+        return res;
     }
 
     @Override
@@ -598,7 +609,7 @@ public class OrderServiceImpl implements OrderService {
         if (targetStatus == OrderStatus.COMPLETED) {
             if (order.getLoyaltyQuoteFingerprint() != null
                     && !invoiceRepository.existsByOrderIdAndStatus(order.getId(), PaymentStatus.PAID)) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "S2 orders must be settled through an invoice before completion");
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn S2 phải được thu qua hóa đơn trước khi hoàn tất.");
             }
             checkoutBenefitService.requireConsumed(order.getId());
             loyaltyService.requireConsumed(order);
@@ -621,7 +632,9 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(targetStatus);
         Order savedOrder = orderRepository.save(order);
 
-        return mapToOrderDetailRes(savedOrder);
+        OrderDetailRes detailRes = mapToOrderDetailRes(savedOrder);
+        fillPaidPayment(savedOrder, detailRes);
+        return detailRes;
     }
 
     @Override
@@ -648,18 +661,18 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn hàng đã hoàn trả, không thể hủy");
         }
         if (invoiceRepository.existsByOrderIdAndStatus(id, PaymentStatus.PAID)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Paid orders cannot be cancelled or released as unpaid");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn đã thu tiền không thể hủy hoặc đưa về trạng thái chưa thu.");
         }
         if (currentStatus == OrderStatus.SHIPPING
                 && (order.getVoucherCode() != null || (order.getRedeemedPoints() != null && order.getRedeemedPoints() > 0))) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "S2 financial holds remain committed after handoff");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Các khoản giữ tài chính S2 vẫn được cam kết sau khi bàn giao.");
         }
 
         // 2. Chỉ giải phóng giữ hàng/ưu đãi trước khi bàn giao vận chuyển.
         if (order.getVoucherCode() != null && currentStatus != OrderStatus.DRAFT
                 && currentStatus != OrderStatus.PENDING && currentStatus != OrderStatus.CONFIRMED
                 && currentStatus != OrderStatus.PACKING) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher order can no longer be cancelled after handoff");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đơn có Voucher không thể hủy sau khi bàn giao.");
         }
 
         // 3. Phân quyền và điều kiện hủy theo vai trò
@@ -720,7 +733,26 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
 
-        return mapToOrderDetailRes(savedOrder);
+        // Expire open Stripe sessions AFTER the order transaction commits, so a Stripe failure
+        // cannot roll back the cancellation and no HTTP call holds a DB transaction open.
+        // VNPay has no equivalent and is left untouched. Already-settled attempts are left for REVIEW.
+        final Long cancelledOrderId = savedOrder.getId();
+        if (cancelledOrderStripeExpiry != null) {
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        cancelledOrderStripeExpiry.expireAfterCommit(cancelledOrderId);
+                    }
+                });
+            } else {
+                cancelledOrderStripeExpiry.expireAfterCommit(cancelledOrderId);
+            }
+        }
+
+        OrderDetailRes cancelledRes = mapToOrderDetailRes(savedOrder);
+        fillPaidPayment(savedOrder, cancelledRes);
+        return cancelledRes;
     }
 
     @Override

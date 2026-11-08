@@ -7,7 +7,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 1. Tạo bản nháp sản phẩm
 
 - **Endpoint:** `POST /api/v1/admin/products/drafts`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
 - **Mô tả:** Tạo bản nháp sản phẩm mới, hoặc bản nháp chỉnh sửa của sản phẩm đã có khi gửi `productId` (mỗi sản phẩm chỉ có một bản nháp mở).
 
 ### Request Body
@@ -93,7 +93,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 2. Cập nhật bản nháp
 
 - **Endpoint:** `PUT /api/v1/admin/products/drafts/{draftId}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
 - **Mô tả:** Cập nhật các trường được gửi lên của bản nháp (khóa lạc quan theo `expectedVersion`); `variants` gửi lên sẽ thay toàn bộ danh sách biến thể.
 
 ### Request Body
@@ -133,7 +133,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc bản nháp đã đóng (`Draft is closed`).
+- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc bản nháp đã đóng (`Draft đã đóng`).
 - **HTTP 404 Not Found:** Không tìm thấy bản nháp.
 - **HTTP 409 Conflict:** Bản nháp đã bị phiên khác thay đổi, tải lại rồi thử lại (`DATA_CONFLICT`).
 
@@ -142,7 +142,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 3. Xem chi tiết bản nháp
 
 - **Endpoint:** `GET /api/v1/admin/products/drafts/{draftId}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_VIEW`
 - **Mô tả:** Lấy bản nháp theo ID.
 
 ### Response Thành công (HTTP 200 OK)
@@ -178,7 +178,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 4. Xem danh sách bản nháp
 
 - **Endpoint:** `GET /api/v1/admin/products/drafts`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_VIEW`
 - **Mô tả:** Danh sách bản nháp có phân trang, lọc theo sản phẩm.
 
 ### Query Params
@@ -217,7 +217,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 5. Xóa bản nháp
 
 - **Endpoint:** `DELETE /api/v1/admin/products/drafts/{draftId}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
 - **Mô tả:** Xóa bản nháp đang mở (bản nháp đã xuất bản hoặc đã đóng không xóa được).
 
 ### Response Thành công (HTTP 200 OK)
@@ -241,7 +241,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 6. Tải ảnh cho bản nháp
 
 - **Endpoint:** `POST /api/v1/admin/products/drafts/{draftId}/images`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
 - **Mô tả:** Tải ảnh lên (`multipart/form-data`, field `file`) và trả tham chiếu ảnh để gán vào `imageUrl` của bản nháp (mục 2).
 
 ### Request Body
@@ -270,7 +270,7 @@ Module `publish` quản lý quy trình đưa sản phẩm lên cửa hàng theo 
 ## 7. Xem ảnh của bản nháp
 
 - **Endpoint:** `GET /api/v1/admin/products/drafts/{draftId}/images/{fileName}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_VIEW`
 - **Mô tả:** Trả file ảnh của bản nháp (`image/png` hoặc `image/jpeg`, `Cache-Control: private, no-store`), không bọc `ApiResponse`.
 
 ### Response Thành công (HTTP 200 OK)
@@ -284,7 +284,7 @@ Nội dung nhị phân ảnh.
 ## 8. Xuất bản bản nháp
 
 - **Endpoint:** `POST /api/v1/admin/products/drafts/{draftId}/publish`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_PUBLISH`
 - **Mô tả:** Tạo / cập nhật sản phẩm từ bản nháp và đưa vào hàng đợi đồng bộ AI. Bản nháp phải đủ tên, danh mục, giá, ảnh chính và ít nhất một SKU.
 
 ### Request Body
@@ -327,7 +327,7 @@ Nội dung nhị phân ảnh.
 ## 9. Gỡ xuất bản sản phẩm
 
 - **Endpoint:** `POST /api/v1/admin/products/{productId}/unpublish`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_PUBLISH`
 - **Mô tả:** Gỡ sản phẩm đã xuất bản khỏi cửa hàng và khỏi chỉ mục tìm kiếm AI.
 
 ### Request Body
@@ -369,7 +369,7 @@ Nội dung nhị phân ảnh.
 ## 10. Xem trạng thái đồng bộ AI
 
 - **Endpoint:** `GET /api/v1/admin/products/{productId}/ai-sync`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_VIEW`
 - **Mô tả:** Trạng thái đồng bộ sản phẩm sang dịch vụ tìm kiếm AI.
 
 ### Response Thành công (HTTP 200 OK)
@@ -401,7 +401,7 @@ Nội dung nhị phân ảnh.
 ## 11. Thử đồng bộ AI lại
 
 - **Endpoint:** `POST /api/v1/admin/products/{productId}/ai-sync/retry`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_PUBLISH`
 - **Mô tả:** Đưa bản ghi đồng bộ AI đang lỗi về `PENDING` để chạy lại; bản ghi đã `READY` được giữ nguyên.
 
 ### Response Thành công (HTTP 200 OK)
@@ -431,7 +431,7 @@ Nội dung nhị phân ảnh.
 ## 12. Nhập bản nháp từ URL
 
 - **Endpoint:** `POST /api/v1/admin/products/import-url`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_IMPORT`
 - **Mô tả:** Server tải trang sản phẩm từ URL `https` thuộc danh sách tên miền cho phép, đọc dữ liệu và tạo bản nháp (cùng dạng `result` như mục 1). Danh mục của nguồn phải ánh xạ được sang danh mục sẵn có.
 
 ### Request Body

@@ -29,7 +29,8 @@ public interface OrderService {
             String orderCode,
             String customerPhone,
             LocalDate startDate,
-            LocalDate endDate);
+            LocalDate endDate,
+            String keyword);
 
     OrderDetailRes getOrderById(Long id);
 

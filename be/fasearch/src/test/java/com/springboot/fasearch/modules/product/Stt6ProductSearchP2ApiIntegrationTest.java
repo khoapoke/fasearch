@@ -260,14 +260,14 @@ class Stt6ProductSearchP2ApiIntegrationTest {
     }
 
     @Test
-    void deleteCategoryWithReferencedProducts_returns400() throws Exception {
+    void deleteCategoryWithReferencedProducts_returns409() throws Exception {
         String token = adminToken();
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Category cat = categoryRepository.saveAndFlush(Category.builder().categoryName("P2Cat " + suffix).isDeleted(false).build());
         productRepository.saveAndFlush(Product.builder().productName("P2Prod " + suffix).category(cat).price(new java.math.BigDecimal("100.00")).publicationStatus(com.springboot.fasearch.modules.publish.entity.PublicationStatus.DRAFT).status(com.springboot.fasearch.common.enums.ProductStatus.ACTIVE).isDeleted(false).build());
 
         int status = httpStatus("DELETE", "/api/v1/categories/" + cat.getId(), token, null);
-        assertThat(status).isEqualTo(400);
+        assertThat(status).isEqualTo(409);
     }
 
     @Test

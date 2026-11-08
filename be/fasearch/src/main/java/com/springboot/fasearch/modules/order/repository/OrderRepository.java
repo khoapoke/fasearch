@@ -28,6 +28,10 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     Page<Order> findByCustomerId(Long customerId, Pageable pageable);
 
+    /** One query for a CSV batch: the customer is fetched with the order. */
+    @Query("select o from Order o left join fetch o.customer where o.id in :ids")
+    List<Order> findExportRowsByIdIn(@Param("ids") java.util.Collection<Long> ids);
+
     List<Order> findByStatusOrderByOrderDateDesc(OrderStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

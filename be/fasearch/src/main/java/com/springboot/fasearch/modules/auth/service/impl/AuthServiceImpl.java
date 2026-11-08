@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import com.springboot.fasearch.common.enums.AccountStatus;
 import com.springboot.fasearch.common.enums.RoleType;
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
 import com.springboot.fasearch.config.JwtConfig;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
@@ -30,9 +31,12 @@ import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 import com.springboot.fasearch.modules.auth.repository.RoleRepository;
 import com.springboot.fasearch.modules.auth.service.interfaces.AuthService;
 import com.springboot.fasearch.modules.auth.service.interfaces.EmailTokenService;
+import com.springboot.fasearch.modules.trash.service.impl.DeleteGuards;
 import com.springboot.fasearch.modules.user.entity.Customer;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
 import com.springboot.fasearch.security.JwtProvider;
+import com.springboot.fasearch.security.RolePermissionResolver;
+import com.springboot.fasearch.security.SecurityUtils;
 import com.springboot.fasearch.shared.PageResponse;
 
 import jakarta.persistence.criteria.Predicate;
@@ -52,6 +56,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtConfig jwtConfig;
     private final AccountMapper accountMapper;
     private final EmailTokenService emailTokenService;
+    private final DeleteGuards deleteGuards;
+    private final SoftDeleteRecorder softDeleteRecorder;
+    private final RolePermissionResolver rolePermissionResolver;
 
     @Value("${email.verification-required:false}")
     private boolean verificationRequired;
@@ -193,6 +200,7 @@ public class AuthServiceImpl implements AuthService {
         // đoán/hay dùng id tài khoản (hai id khác nhau).
         res.setCustomerId(userRepository.findByAccount_Username(username)
                 .map(com.springboot.fasearch.modules.user.entity.Customer::getId).orElse(null));
+        res.setPermissions(RolePermissionResolver.codes(rolePermissionResolver.permissionsOf(account)));
         return res;
     }
 
@@ -265,6 +273,19 @@ public class AuthServiceImpl implements AuthService {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // Tự bảo vệ ở BE (không chỉ ở BFF): Quản trị viên không tự đổi vai trò hay trạng thái của chính mình,
+        // để không tự khóa mình hoặc tự hạ quyền làm hệ thống mất Quản trị viên đang hoạt động.
+        boolean self = SecurityUtils.getCurrentUsername().map(account.getUsername()::equals).orElse(false);
+        if (self) {
+            boolean roleChange = req.getRole() != null
+                    && (account.getRole() == null || req.getRole() != account.getRole().getName());
+            boolean statusChange = req.getStatus() != null && req.getStatus() != account.getStatus();
+            if (roleChange || statusChange) {
+                throw new AppException(ErrorCode.ACCESS_DENIED,
+                        "Không thể đổi vai trò hoặc trạng thái của chính tài khoản đang đăng nhập.");
+            }
+        }
+
         if (StringUtils.hasText(req.getEmail()) && !req.getEmail().equals(account.getEmail())) {
             if (accountRepository.existsByEmail(req.getEmail())) {
                 throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
@@ -277,6 +298,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (req.getRole() != null) {
+            if (req.getRole() != RoleType.STAFF && req.getRole() != RoleType.ADMIN) {
+                throw new AppException(ErrorCode.INVALID_REQUEST,
+                        "Chỉ được đổi vai trò giữa Nhân viên và Quản trị viên.");
+            }
             Role role = roleRepository.findByName(req.getRole())
                     .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
             account.setRole(role);
@@ -296,12 +321,21 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void deleteAccount(Long id) {
+    public void deleteAccount(Long id, String reason) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        account.setIsDeleted(true);
+        Long currentAccountId = SecurityUtils.getCurrentUsername()
+                .flatMap(accountRepository::findByUsername)
+                .map(Account::getId)
+                .orElse(null);
+        deleteGuards.assertAccountDeletable(id, currentAccountId);
+
+        softDeleteRecorder.mark(account, reason);
         account.setStatus(AccountStatus.DELETED);
+        // Token đã cấp trước khi xóa phải chết hẳn: bộ lọc JWT từ chối tài khoản không ACTIVE,
+        // và token_version tăng để token cũ cũng không sống lại nếu tài khoản được khôi phục rồi bật.
+        account.setTokenVersion(account.getTokenVersion() == null ? 1L : account.getTokenVersion() + 1);
         accountRepository.save(account);
 
         log.info("Soft deleted account ID [{}]", id);

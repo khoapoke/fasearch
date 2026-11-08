@@ -16,7 +16,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -49,7 +48,13 @@ class EmployeeAccountGuardTest {
     @Mock private EmployeeRepository employeeRepository;
     @Mock private AccountRepository accountRepository;
     @Mock private EmployeeMapper employeeMapper;
-    @InjectMocks private EmployeeServiceImpl service;
+    private EmployeeServiceImpl service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        service = new EmployeeServiceImpl(employeeRepository, accountRepository, employeeMapper,
+                new com.springboot.fasearch.common.softdelete.SoftDeleteRecorder(accountRepository));
+    }
 
     @AfterEach
     void tearDown() {
@@ -128,7 +133,7 @@ class EmployeeAccountGuardTest {
         Account account = Account.builder().id(5L).status(AccountStatus.ACTIVE).build();
         Employee employee = Employee.builder().id(1L).account(account).build();
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee));
-        AppException error = assertThrows(AppException.class, () -> service.deleteEmployee(1L));
+        AppException error = assertThrows(AppException.class, () -> service.deleteEmployee(1L, null));
         assertEquals(ErrorCode.ACCESS_DENIED, error.getErrorCode());
         assertEquals(AccountStatus.ACTIVE, account.getStatus());
         verify(accountRepository, never()).save(any());
@@ -140,7 +145,7 @@ class EmployeeAccountGuardTest {
         loginAs("STAFF");
         Employee unlinked = Employee.builder().id(2L).build();
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(unlinked));
-        service.deleteEmployee(2L);
+        service.deleteEmployee(2L, null);
         assertTrue(unlinked.getIsDeleted());
         verify(accountRepository, never()).save(any());
 
@@ -148,8 +153,74 @@ class EmployeeAccountGuardTest {
         Account account = Account.builder().id(5L).status(AccountStatus.ACTIVE).build();
         Employee linked = Employee.builder().id(1L).account(account).build();
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(linked));
-        service.deleteEmployee(1L);
+        service.deleteEmployee(1L, null);
         assertEquals(AccountStatus.LOCKED, account.getStatus());
+    }
+
+    private com.springboot.fasearch.modules.auth.entity.Role adminRole() {
+        return com.springboot.fasearch.modules.auth.entity.Role.builder()
+                .name(com.springboot.fasearch.common.enums.RoleType.ADMIN).build();
+    }
+
+    private com.springboot.fasearch.modules.auth.entity.Role staffRole() {
+        return com.springboot.fasearch.modules.auth.entity.Role.builder()
+                .name(com.springboot.fasearch.common.enums.RoleType.STAFF).build();
+    }
+
+    @Test
+    void staffDeniedPatchOnAdminLinkedProfile() {
+        loginAs("STAFF");
+        com.springboot.fasearch.modules.auth.entity.Account adminAccount = com.springboot.fasearch.modules.auth.entity.Account.builder()
+                .id(10L).role(adminRole()).build();
+        Employee adminLinked = Employee.builder().id(20L).account(adminAccount)
+                .phoneNumber("0900000010").cccd("012345678910").build();
+        when(employeeRepository.findById(20L)).thenReturn(Optional.of(adminLinked));
+        EmployeeUpdateReq req = EmployeeUpdateReq.builder().phoneNumber("0900000099").build();
+        AppException error = assertThrows(AppException.class, () -> service.updateEmployee(20L, req));
+        assertEquals(ErrorCode.ACCESS_DENIED, error.getErrorCode());
+        verify(employeeRepository, never()).save(any());
+    }
+
+    @Test
+    void staffAllowedPatchOnNonAdminProfile() {
+        loginAs("STAFF");
+        com.springboot.fasearch.modules.auth.entity.Account staffAccount = com.springboot.fasearch.modules.auth.entity.Account.builder()
+                .id(11L).role(staffRole()).build();
+        Employee staffLinked = Employee.builder().id(21L).account(staffAccount)
+                .phoneNumber("0900000011").cccd("012345678911").build();
+        when(employeeRepository.findById(21L)).thenReturn(Optional.of(staffLinked));
+        when(employeeRepository.save(staffLinked)).thenReturn(staffLinked);
+        EmployeeUpdateReq req = EmployeeUpdateReq.builder().address("Quận 1").build();
+        service.updateEmployee(21L, req);
+        verify(employeeRepository).save(staffLinked);
+    }
+
+    @Test
+    void adminAllowedPatchOnAdminLinkedProfile() {
+        loginAs("ADMIN");
+        com.springboot.fasearch.modules.auth.entity.Account adminAccount = com.springboot.fasearch.modules.auth.entity.Account.builder()
+                .id(12L).role(adminRole()).build();
+        Employee adminLinked = Employee.builder().id(22L).account(adminAccount)
+                .phoneNumber("0900000012").cccd("012345678912").build();
+        when(employeeRepository.findById(22L)).thenReturn(Optional.of(adminLinked));
+        when(employeeRepository.save(adminLinked)).thenReturn(adminLinked);
+        EmployeeUpdateReq req = EmployeeUpdateReq.builder().address("Quận 3").build();
+        service.updateEmployee(22L, req);
+        verify(employeeRepository).save(adminLinked);
+    }
+
+    @Test
+    void staffDeniedDeleteOnAdminLinkedProfile() {
+        loginAs("STAFF");
+        com.springboot.fasearch.modules.auth.entity.Account adminAccount = com.springboot.fasearch.modules.auth.entity.Account.builder()
+                .id(13L).status(AccountStatus.ACTIVE).role(adminRole()).build();
+        Employee adminLinked = Employee.builder().id(23L).account(adminAccount).build();
+        when(employeeRepository.findById(23L)).thenReturn(Optional.of(adminLinked));
+        AppException error = assertThrows(AppException.class, () -> service.deleteEmployee(23L, null));
+        assertEquals(ErrorCode.ACCESS_DENIED, error.getErrorCode());
+        assertEquals(AccountStatus.ACTIVE, adminAccount.getStatus());
+        verify(employeeRepository, never()).save(any());
+        verify(accountRepository, never()).save(any());
     }
 
     /** Role/account fields are not part of any profile request, so a profile edit cannot change a role. */

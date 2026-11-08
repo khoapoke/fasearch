@@ -7,7 +7,7 @@ Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức
 ## 1. Báo cáo Doanh thu (FR-52)
 
 - **Endpoint:** `GET /api/v1/analytics/revenue`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `REPORT_VIEW`
 - **Mô tả:** Thống kê tổng doanh thu thực thu (từ hóa đơn đã thanh toán), số đơn và giá trị đơn trung bình theo chu kỳ. Chi phí nhập (`totalCogs`) và lợi nhuận gộp (`grossProfit`) luôn là `null` vì chưa có lịch sử giá vốn; chưa tách được kênh POS / Online.
 
 ### Query Params
@@ -51,7 +51,7 @@ Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức
       "softDeletedProductsAttributed": 0,
       "channelNote": "Order rows carry no sales-channel column: channel is ALL only; POS/ONLINE split is not reported.",
       "cogsNote": "No cost history in schema: totalCogs/grossProfit are null, never estimated.",
-      "openingStockNote": "No warehouse/opening history in schema ..."
+      "openingStockNote": "totalImport = units on COMPLETED import receipts created in the month; totalDamaged = units on COMPLETED export receipts of type DAMAGED created in the month (totalSold counts paid invoice lines only, so damaged units are never counted twice). No month-end stock history exists in the schema: openingStock is null (Chưa đủ dữ liệu) and closingStock is the current available snapshot, not a recomputed close."
     }
   },
   "errors": null,
@@ -68,7 +68,7 @@ Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức
 ## 2. Báo cáo Hiệu quả Sản phẩm & Hàng tồn (FR-53)
 
 - **Endpoint:** `GET /api/v1/analytics/top-products`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `REPORT_VIEW`
 - **Mô tả:** Xếp hạng Top N sản phẩm bán chạy nhất hoặc danh sách sản phẩm bán chậm / tồn chậm luân chuyển trong khoảng thời gian phân tích.
 
 ### Query Params
@@ -121,8 +121,14 @@ Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức
 ## 3. Báo cáo Xuất - Nhập - Tồn kho (FR-54)
 
 - **Endpoint:** `GET /api/v1/analytics/inventory-movement`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
-- **Mô tả:** Báo cáo biến động tồn theo từng biến thể SKU trong một tháng. Hiện chỉ có `totalSold` và `closingStock` (tồn hiện tại); `openingStock`, `totalImport`, `totalDamaged` trả `null` vì chưa có lịch sử kho.
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `REPORT_VIEW`
+- **Mô tả:** Báo cáo biến động tồn theo từng biến thể SKU trong một tháng. Các cột trong response:
+  - `totalImport`: tổng số lượng trên các dòng phiếu nhập kho có trạng thái `COMPLETED`, ngày tạo phiếu trong tháng (0 nếu không có).
+  - `totalSold`: số lượng bán từ hóa đơn `PAID` trong tháng. Chỉ lấy từ hóa đơn, không lấy từ phiếu xuất, nên hàng hỏng không bị tính trùng với `totalDamaged`.
+  - `totalDamaged`: tổng số lượng trên các dòng phiếu xuất kho `COMPLETED` loại `DAMAGED` trong tháng (0 nếu không có). Phiếu xuất loại khác (`TRANSFER`, `OTHER`) không được tính vào báo cáo này.
+  - `closingStock`: tồn khả dụng hiện tại (`so_luong_kha_dung`), không phải tồn cuối của tháng được chọn.
+  - `openingStock`: luôn `null`. Hệ thống không lưu lịch sử tồn cuối tháng nên không suy ra được tồn đầu đúng; giao diện không hiển thị cột này.
+  - `totalImport` và `totalDamaged` được tính cho đúng các SKU của trang hiện tại (bộ lọc `sku` và phân trang được tôn trọng), mỗi chỉ số một truy vấn gộp cho cả trang.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -148,9 +154,9 @@ Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức
         "size": "L",
         "barcode": "893850123401",
         "openingStock": null,
-        "totalImport": null,
+        "totalImport": 5,
         "totalSold": 38,
-        "totalDamaged": null,
+        "totalDamaged": 3,
         "closingStock": 30
       }
     ],
@@ -167,4 +173,50 @@ Module `analytics` phục vụ quản trị viên và quản lý theo dõi sức
 
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** `year`, `month`, `page` hoặc `size` ngoài miền hợp lệ.
+- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
+
+---
+
+## 4. Báo cáo Tổng hợp (tab "Tổng hợp" của trang Báo cáo)
+
+- **Endpoint:** `GET /api/v1/analytics/overview`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `REPORT_VIEW`
+- **Mô tả:** Một lần gọi trả về KPI, doanh thu theo danh mục, đơn theo trạng thái, hóa đơn theo phương thức thanh toán và Top 10 khách hàng trong khoảng ngày. Tất cả tổng hợp bằng SQL; khoảng thời gian nửa mở `[startDate 00:00, endDate + 1 ngày 00:00)` theo giờ Việt Nam (cùng cách các báo cáo khác đang dùng).
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `startDate` | String | Có | Ngày bắt đầu `YYYY-MM-DD` |
+| `endDate` | String | Có | Ngày kết thúc `YYYY-MM-DD` (không quá 366 ngày so với `startDate`) |
+
+### Định nghĩa
+- **Doanh thu, số đơn, AOV (`kpi`):** hóa đơn `PAID`, chưa xóa, đơn chưa xóa và không phải `DRAFT`/`CANCELLED`, theo `ngay_lap` của hóa đơn; đúng như báo cáo doanh thu. AOV = doanh thu / số đơn, bằng 0 khi chưa có đơn.
+- **Khách mới (`newCustomers`):** số khách chưa xóa có đơn đầu tiên (không phải `DRAFT`/`CANCELLED`) được đặt trong khoảng ngày.
+- **`byCategory`:** giá trị dòng hàng của các hóa đơn đã thanh toán ở trên = `số lượng x đơn giá - giảm giá dòng - giảm bằng điểm`, nhóm theo danh mục sản phẩm (sản phẩm đã xóa vẫn tính; không có danh mục gom vào "Chưa phân loại"). Chưa gồm phí vận chuyển nên tổng nhỏ hơn hoặc bằng `kpi.revenue`. Sắp xếp giảm dần theo doanh thu.
+- **`byStatus`:** số đơn tạo trong khoảng ngày (theo `ngay_dat`), chưa xóa, không tính `DRAFT`, nhóm theo trạng thái đơn; `total` là tổng `tong_tien` của đơn.
+- **`byPayment`:** hóa đơn đã thanh toán (cùng điều kiện doanh thu) nhóm theo `payment_method_code`; mã trống là `OTHER`. Sắp xếp giảm dần theo doanh thu.
+- **`topCustomers`:** tối đa 10 khách theo tổng doanh thu hóa đơn đã thanh toán; chỉ gồm đơn có khách hàng (đơn bán tại quầy không có khách bị bỏ qua); `lastOrderAt` là thời điểm lập hóa đơn mới nhất trong khoảng; `deleted = true` khi khách đã xóa.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy báo cáo tổng hợp thành công",
+  "result": {
+    "kpi": { "revenue": 640000.00, "orders": 4, "averageOrderValue": 160000.00, "newCustomers": 2 },
+    "byCategory": [ { "categoryId": 3, "categoryName": "Áo", "revenue": 350000.00, "quantity": 4 } ],
+    "byStatus": [ { "status": "COMPLETED", "orders": 3, "total": 540000.00 } ],
+    "byPayment": [ { "method": "CASH", "invoices": 1, "revenue": 300000.00 } ],
+    "topCustomers": [
+      { "customerId": 12, "name": "Nguyễn An", "deleted": false, "orders": 2, "revenue": 400000.00, "lastOrderAt": "2026-11-03T23:35:00" }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-11-08T10:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Thiếu / sai `startDate`, `endDate`, `startDate` sau `endDate` hoặc khoảng dài hơn 366 ngày.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.

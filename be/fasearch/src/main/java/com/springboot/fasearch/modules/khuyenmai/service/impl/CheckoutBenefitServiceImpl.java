@@ -110,11 +110,11 @@ public class CheckoutBenefitServiceImpl implements CheckoutBenefitService {
         boolean hasFingerprint = quoteFingerprint != null && !quoteFingerprint.isBlank();
         boolean hasExpected = expectedMerchandiseAmountDue != null;
         if (requireExpectedAmount ? hasFingerprint != hasExpected : hasExpected) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Quote token and expected amount must be sent together");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Token báo giá và số tiền dự kiến phải được gửi cùng nhau.");
         }
         boolean hasVoucher = voucherCode != null && !voucherCode.isBlank();
         if ((hasVoucher || redeemedPoints > 0) && !hasFingerprint) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "A fresh quote is required for checkout benefits");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Cần báo giá mới cho ưu đãi khi thanh toán.");
         }
         Plan plan = plan(orderLines(orderLines), voucherCode, true);
         BigDecimal subtotal = subtotal(plan.lines());
@@ -159,7 +159,7 @@ public class CheckoutBenefitServiceImpl implements CheckoutBenefitService {
     public void requireConsumed(Long orderId) {
         VoucherUsage usage = usageRepository.findById(orderId).orElse(null);
         if (usage != null && !"CONSUMED".equals(usage.getStatus())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "COD must be settled before completing this order");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "COD phải được thu đủ trước khi hoàn tất đơn này.");
         }
     }
 
@@ -189,7 +189,7 @@ public class CheckoutBenefitServiceImpl implements CheckoutBenefitService {
         if (usage == null || !"HELD".equals(usage.getStatus())) return;
         MaGiamGia voucher = codeRepository.findByIdForUpdate(usage.getVoucherId())
                 .orElseThrow(() -> new AppException(ErrorCode.INTERNAL_SERVER_ERROR));
-        if (count(voucher.getHeld()) <= 0) throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Voucher hold counter underflow");
+        if (count(voucher.getHeld()) <= 0) throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Bộ đếm giữ Voucher bị âm.");
         voucher.setHeld(voucher.getHeld() - 1);
         if (consume) voucher.setUsed(count(voucher.getUsed()) + 1);
         codeRepository.save(voucher);
@@ -208,7 +208,7 @@ public class CheckoutBenefitServiceImpl implements CheckoutBenefitService {
         KhuyenMai campaign = null;
         String normalizedCode = rawCode == null || rawCode.isBlank() ? null : rawCode.strip().toUpperCase(Locale.ROOT);
         if (normalizedCode != null) {
-            if (normalizedCode.length() > 50) throw new AppException(ErrorCode.INVALID_REQUEST, "Voucher code must be at most 50 characters");
+            if (normalizedCode.length() > 50) throw new AppException(ErrorCode.INVALID_REQUEST, "Mã Voucher tối đa 50 ký tự.");
             voucher = (lock ? codeRepository.findByCodeForUpdate(normalizedCode) : codeRepository.findByCodeIgnoreCase(normalizedCode))
                     .orElseThrow(() -> new AppException(lock ? ErrorCode.QUOTE_CHANGED : ErrorCode.VOUCHER_UNKNOWN));
             campaign = (lock ? campaignRepository.findByIdForUpdate(voucher.getCampaignId())
@@ -258,7 +258,7 @@ public class CheckoutBenefitServiceImpl implements CheckoutBenefitService {
 
     private PricedLine line(ProductVariant variant, int quantity, BigDecimal unitPrice) {
         if (unitPrice == null || unitPrice.signum() < 0 || quantity <= 0) {
-            throw new AppException(ErrorCode.LOYALTY_STATE_CONFLICT, "Invalid persisted order line");
+            throw new AppException(ErrorCode.LOYALTY_STATE_CONFLICT, "Dòng đơn hàng đã lưu không hợp lệ.");
         }
         BigDecimal unit = money(unitPrice);
         return new PricedLine(variant.getId(), variant.getProduct().getId(), variant.getProduct().getProductName(),

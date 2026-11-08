@@ -43,7 +43,7 @@ public class VnpayCheckoutService {
             amountMinor = attempt.getAmount().multiply(BigDecimal.valueOf(100))
                     .setScale(0, RoundingMode.UNNECESSARY).longValueExact();
         } catch (ArithmeticException e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "VND amount must be a whole number");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Số tiền VND phải là số nguyên.");
         }
         String txnRef = "VNPAY" + attempt.getId() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         TreeMap<String, String> params = new TreeMap<>();
@@ -84,7 +84,7 @@ public class VnpayCheckoutService {
         if (!"sandbox".equalsIgnoreCase(environment) || tmnCode == null || tmnCode.isBlank()
                 || hashSecret == null || hashSecret.isBlank() || payUrl == null || payUrl.isBlank()
                 || returnUrl == null || returnUrl.isBlank()) {
-            throw new AppException(ErrorCode.PAYMENT_PROVIDER_NOT_CONFIGURED, "VNPAY sandbox is not configured");
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_NOT_CONFIGURED, "VNPay sandbox chưa được cấu hình.");
         }
     }
 

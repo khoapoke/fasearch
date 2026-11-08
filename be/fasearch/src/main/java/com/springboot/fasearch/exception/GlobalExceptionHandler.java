@@ -15,6 +15,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.springboot.fasearch.shared.ApiResponse;
@@ -32,11 +33,20 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setSuccess(false);
         apiResponse.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        apiResponse.setMessage("Something went wrong");
+        apiResponse.setMessage("Đã có lỗi xảy ra. Vui lòng thử lại.");
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
     }
     
+    @ExceptionHandler(value = MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException exception) {
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setSuccess(false);
+        response.setCode(HttpStatus.PAYLOAD_TOO_LARGE.value());
+        response.setMessage("Tệp vượt quá 5MB. Chọn tệp nhỏ hơn rồi thử lại.");
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(response);
+    }
+
     @ExceptionHandler(value = AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException exception) {
         ApiResponse<Void> response = new ApiResponse<>();
@@ -73,7 +83,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setSuccess(false);
         apiResponse.setCode(HttpStatus.BAD_REQUEST.value());
-        apiResponse.setMessage("Validation failed");
+        apiResponse.setMessage("Dữ liệu không hợp lệ.");
         apiResponse.setErrors(errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
@@ -85,7 +95,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = new ApiResponse<>();
         response.setSuccess(false);
         response.setCode(HttpStatus.METHOD_NOT_ALLOWED.value());
-        response.setMessage("Method " + exception.getMethod() + " is not supported for this endpoint");
+        response.setMessage("Phương thức " + exception.getMethod() + " không được hỗ trợ cho đường dẫn này.");
 
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
@@ -96,7 +106,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = new ApiResponse<>();
         response.setSuccess(false);
         response.setCode(HttpStatus.BAD_REQUEST.value());
-        response.setMessage("Invalid data access API usage");
+        response.setMessage("Yêu cầu truy cập dữ liệu không hợp lệ.");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -107,7 +117,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = new ApiResponse<>();
         response.setSuccess(false);
         response.setCode(HttpStatus.BAD_REQUEST.value());
-        response.setMessage("Parameter '" + exception.getParameterName() + "' is required");
+        response.setMessage("Thiếu tham số '" + exception.getParameterName() + "'.");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -118,7 +128,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = new ApiResponse<>();
         response.setSuccess(false);
         response.setCode(HttpStatus.BAD_REQUEST.value());
-        response.setMessage("Parameter '" + exception.getName() + "' has invalid type");
+        response.setMessage("Tham số '" + exception.getName() + "' sai định dạng.");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -129,7 +139,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = new ApiResponse<>();
         response.setSuccess(false);
         response.setCode(HttpStatus.BAD_REQUEST.value());
-        response.setMessage("Malformed JSON request body");
+        response.setMessage("Nội dung yêu cầu không đúng định dạng JSON.");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -140,7 +150,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = new ApiResponse<>();
         response.setSuccess(false);
         response.setCode(HttpStatus.NOT_FOUND.value());
-        response.setMessage("Resource not found: " + exception.getResourcePath());
+        response.setMessage("Không tìm thấy tài nguyên: " + exception.getResourcePath());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }

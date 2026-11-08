@@ -98,17 +98,27 @@ class AnalyticsServiceTest {
     }
 
     @Test
-    void inventoryMovementNullsUnknownHistory() {
+    void inventoryMovementFillsImportAndDamagedFromReceiptsAndKeepsOpeningNull() {
         when(repository.skuMovementInMonth(anyString(), org.mockito.ArgumentMatchers.isNull()))
-                .thenReturn(List.<Object[]>of(new Object[] { 7L, "Ao X", "Den", "M", "BC-7", 2L, 9L }));
+                .thenReturn(List.<Object[]>of(new Object[] { 7L, "Ao X", "Den", "M", "BC-7", 2L, 9L },
+                        new Object[] { 8L, "Ao Y", "Den", "L", "BC-8", 0L, 4L }));
+        when(repository.importedUnitsInRange(org.mockito.ArgumentMatchers.anyCollection(),
+                org.mockito.ArgumentMatchers.eq("2026-11-01 00:00:00"), org.mockito.ArgumentMatchers.eq("2026-12-01 00:00:00")))
+                .thenReturn(List.<Object[]>of(new Object[] { 7L, 5L }));
+        when(repository.damagedUnitsInRange(org.mockito.ArgumentMatchers.anyCollection(),
+                org.mockito.ArgumentMatchers.eq("2026-11-01 00:00:00"), org.mockito.ArgumentMatchers.eq("2026-12-01 00:00:00")))
+                .thenReturn(List.<Object[]>of(new Object[] { 7L, 3L }));
         var page = service.inventoryMovement(2026, 11, null, 0, 10);
-        assertEquals(1, page.getTotalElements());
+        assertEquals(2, page.getTotalElements());
         var row = page.getContent().get(0);
         assertNull(row.getOpeningStock());
-        assertNull(row.getTotalImport());
-        assertNull(row.getTotalDamaged());
+        assertEquals(5L, row.getTotalImport());
+        assertEquals(3L, row.getTotalDamaged());
         assertEquals(2, row.getTotalSold());
         assertEquals(9, row.getClosingStock());
+        var none = page.getContent().get(1);
+        assertEquals(0L, none.getTotalImport());
+        assertEquals(0L, none.getTotalDamaged());
     }
 
     @Test

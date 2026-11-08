@@ -9,6 +9,10 @@ import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.exception.FieldErrorDetail;
 import com.springboot.fasearch.modules.loyalty.dto.response.LedgerItemResponse;
+import com.springboot.fasearch.modules.loyalty.dto.request.PointsAdjustmentRequest;
+import com.springboot.fasearch.modules.loyalty.dto.response.AdminLedgerItemResponse;
+import com.springboot.fasearch.modules.loyalty.dto.response.EarnRecalcResponse;
+import com.springboot.fasearch.modules.loyalty.dto.response.PointsAdjustmentResponse;
 import com.springboot.fasearch.modules.loyalty.dto.request.LegacyOpeningRequest;
 import com.springboot.fasearch.modules.loyalty.dto.response.LegacyOpeningResponse;
 import com.springboot.fasearch.modules.loyalty.dto.response.CustomerLoyaltyPolicyRes;
@@ -28,6 +32,14 @@ public interface LoyaltyService {
     CustomerLoyaltyPolicyRes myPolicy();
     LoyaltyBalanceResponse customerBalance(Long customerId);
     PageResponse<LedgerItemResponse> myHistory(int page, int size);
+    /** Staff view of a customer's ledger with reason, note, actor and balance after each row. */
+    PageResponse<AdminLedgerItemResponse> customerHistory(Long customerId, int page, int size);
+    /** Manual +/- adjustment. Single permission check point: ADMIN only (O1 will map it to LOYALTY_ADJUST). */
+    PointsAdjustmentResponse adjustPoints(Long customerId, PointsAdjustmentRequest request);
+    /** Read-only preview of the EARN entry that {@link #recalculateEarn} would write. */
+    EarnRecalcResponse previewEarnRecalc(Long orderId);
+    /** Writes the missing EARN entry (key earn:{orderId}) through the normal earn code path. */
+    EarnRecalcResponse recalculateEarn(Long orderId);
     PageResponse<LoyaltyPolicyResponse> policies(int page, int size);
     LoyaltyPolicyResponse createPolicy(LoyaltyPolicyCreateRequest request);
     LoyaltyPolicyResponse updatePolicy(Long policyId, LoyaltyPolicyUpdateRequest request);
@@ -57,7 +69,7 @@ public interface LoyaltyService {
     }
 
     private static AppException invalidPoints(String reason) {
-        return new AppException(ErrorCode.INVALID_REQUEST, "Validation failed",
+        return new AppException(ErrorCode.INVALID_REQUEST, "Dữ liệu không hợp lệ.",
                 List.of(new FieldErrorDetail("redeemedPoints", reason)));
     }
 

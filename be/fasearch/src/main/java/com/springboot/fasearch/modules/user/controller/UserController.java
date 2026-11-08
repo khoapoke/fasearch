@@ -24,6 +24,7 @@ import com.springboot.fasearch.modules.user.dto.request.CustomerUpdateReq;
 import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
 import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 import com.springboot.fasearch.shared.ApiResponse;
+import com.springboot.fasearch.shared.DeleteReasonReq;
 import com.springboot.fasearch.shared.PageResponse;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -39,7 +40,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/customers")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_CUSTOMER_VIEW')")
     public ResponseEntity<ApiResponse<PageResponse<CustomerRes>>> getCustomers(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) String keyword,
@@ -52,7 +53,7 @@ public class UserController {
     }
 
     @GetMapping("/customers/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_CUSTOMER_VIEW')")
     public ResponseEntity<ApiResponse<CustomerRes>> getCustomer(@PathVariable Long id) {
         CustomerRes response = userService.getCustomerById(id);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
@@ -60,7 +61,7 @@ public class UserController {
     }
 
     @PostMapping("/customers")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_CUSTOMER_CREATE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CustomerRes> createCustomer(@Valid @RequestBody CustomerCreateReq req) {
         CustomerRes result = userService.createCustomer(req);
@@ -68,7 +69,7 @@ public class UserController {
     }
 
     @RequestMapping(value = "/customers/{id}", method = {RequestMethod.PATCH, RequestMethod.PUT})
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_CUSTOMER_EDIT')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CustomerRes> updateCustomer(
             @PathVariable Long id,
@@ -78,10 +79,11 @@ public class UserController {
     }
 
     @DeleteMapping("/customers/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_CUSTOMER_DELETE')")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Boolean> deleteCustomer(@PathVariable Long id) {
-        userService.deleteCustomer(id);
+    public ApiResponse<Boolean> deleteCustomer(@PathVariable Long id,
+            @Valid @RequestBody(required = false) DeleteReasonReq req) {
+        userService.deleteCustomer(id, req == null ? null : req.getReason());
         return ApiResponse.success(200, "Xóa khách hàng thành công", true);
     }
 }

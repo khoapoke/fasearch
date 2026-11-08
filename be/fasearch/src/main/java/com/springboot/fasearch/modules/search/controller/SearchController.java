@@ -57,7 +57,7 @@ public class SearchController {
     public ApiResponse<AiSearchRes> searchByImage(
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "image", required = false) MultipartFile image,
-            @RequestParam(value = "limit", defaultValue = "5") Integer limit
+            @RequestParam(value = "limit", defaultValue = "12") Integer limit
     ) {
         MultipartFile uploadFile = file != null ? file : image;
         if (uploadFile == null) {
@@ -74,7 +74,7 @@ public class SearchController {
             @RequestParam(value = "image", required = false) MultipartFile image,
             @RequestParam(value = "query", required = false) String query,
             @RequestParam(value = "textQuery", required = false) String textQuery,
-            @RequestParam(value = "limit", defaultValue = "5") Integer limit,
+            @RequestParam(value = "limit", defaultValue = "12") Integer limit,
             @RequestParam(value = "text_weight", defaultValue = "0.5") Float textWeight
     ) {
         MultipartFile uploadFile = file != null ? file : image;

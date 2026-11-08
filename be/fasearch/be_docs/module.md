@@ -72,7 +72,7 @@ S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; hi
 | :--- | :--- | :--- | :---: | :---: |
 | FR-18 | Tích điểm tự động S2 | Cộng earning theo policy version đã snapshot, từ `Invoice.totalActualPaid`; opening chỉ ghi nhận legacy balance, không grant lại — *Evidence @4e5369c5: `PaymentServiceImpl:370` → `LoyaltyServiceImpl#settleOrder:299` (`settleLegacyEarn:357`); policy `LoyaltyController#createPolicy/updatePolicy` `POST /api/v1/thanh-vien/chinh-sach`, `PUT .../{policyId}` (`loyalty/controller/LoyaltyController.java:78,85`); opening `AdminLoyaltyController#openLegacyBalance` `POST /api/v1/quan-tri/thanh-vien/mo-dau` (`:26`)* | `SYS` | X |
 | FR-19 | Hạng theo doanh số | Chọn ngưỡng cumulative paid sales đã cấu hình; giữ nguyên tierId/tierName/thresholdPoint legacy và biểu diễn thiếu lịch sử là unknown — *Evidence @4e5369c5: `LoyaltyServiceImpl#salesSummary:420` + `enrichCustomerProfile:412` (gắn `salesTier*` vào `CustomerRes`); ngưỡng cấu hình qua `LoyaltyController#salesTiers/updateSalesTier` `GET /api/v1/thanh-vien/chinh-sach/hang`, `PUT .../hang/{tierId}` (`:92,98`)* | `SYS` | X |
-| FR-20 | Đổi điểm khi quote/settle | Redeem chỉ sau once-only opening và enabled policy; giữ điểm atomically, cap theo remaining merchandise, giải phóng/tiêu thụ đúng một lần — *Evidence @4e5369c5: `CheckoutBenefitServiceImpl:72,121` → `LoyaltyServiceImpl#quote:211`/`quoteForCommit:217`/`holdOrder:263`/`releaseOrderHold:286`/`settleOrder:299`; vào qua `CartController#quote` `POST /api/v1/cart/quote` (`order/controller/CartController.java:45`) và `OrderController#checkout` `POST /api/v1/orders/checkout` (`:52`)* | `C` `S` | X |
+| FR-20 | Đổi điểm khi quote/settle | Redeem cần enabled policy; opening tự ghi một lần (trong giao dịch checkout, khóa dòng khách) khi đổi điểm lần đầu, hoặc ADMIN ghi tay; giữ điểm atomically, cap theo remaining merchandise, giải phóng/tiêu thụ đúng một lần — *Evidence @4e5369c5: `CheckoutBenefitServiceImpl:72,121` → `LoyaltyServiceImpl#quote:211`/`quoteForCommit:217`/`holdOrder:263`/`releaseOrderHold:286`/`settleOrder:299`; vào qua `CartController#quote` `POST /api/v1/cart/quote` (`order/controller/CartController.java:45`) và `OrderController#checkout` `POST /api/v1/orders/checkout` (`:52`)* | `C` `S` | X |
 
 ---
 
@@ -98,6 +98,9 @@ S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; hi
 | FR-NC1 | Tìm kiếm SP bằng mô tả tự nhiên | Tìm kiếm sản phẩm theo ngôn ngữ tự nhiên qua mô tả văn bản | `C` `S` | X |
 | FR-NC2 | Tìm kiếm SP bằng hình ảnh | Tìm kiếm sản phẩm bằng hình ảnh sản phẩm do người dùng tải lên | `C` `S` | X |
 | FR-NC3 | Tìm kiếm đa phương thức | Kết hợp cả mô tả văn bản và hình ảnh để tìm sản phẩm chính xác nhất | `C` `S` | X |
+| FR-NC4 | Xem đánh giá sản phẩm | Danh sách (lọc sao, sắp xếp, phân trang) và tổng quan đánh giá công khai: trung bình, phân bố sao, cảm nhận kích cỡ — *Evidence: `ReviewController` `GET /api/v1/reviews/products/{id}` + `/summary`* | `C` `S` | X |
+| FR-NC5 | Viết / sửa / xóa đánh giá | Khách có đơn `COMPLETED` chứa sản phẩm viết, sửa, xóa mềm đánh giá của mình (mỗi sản phẩm một đánh giá) — *Evidence: `ReviewController` `POST/PUT/DELETE /api/v1/reviews/products/{id}`, `GET .../me`; Flyway `V23`* | `C` | X |
+| FR-NC6 | Kiểm duyệt đánh giá | ADMIN / Quản lý ẩn hoặc hiện lại đánh giá vi phạm — *Evidence: `AdminReviewController` `GET /api/v1/admin/reviews`, `PATCH .../{id}/visibility`* | `A` `S` | X |
 
 ---
 

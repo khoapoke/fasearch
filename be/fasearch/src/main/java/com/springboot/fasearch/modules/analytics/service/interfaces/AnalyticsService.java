@@ -13,5 +13,7 @@ public interface AnalyticsService {
 
     java.util.List<TopProductRes> topProducts(String type, int limit, LocalDate startDate, LocalDate endDate);
 
+    com.springboot.fasearch.modules.analytics.dto.response.AnalyticsOverviewRes overview(LocalDate startDate, LocalDate endDate);
+
     PageResponse<InventoryMovementRes> inventoryMovement(int year, int month, Long skuId, int page, int size);
 }

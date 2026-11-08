@@ -17,5 +17,5 @@ public interface UserService {
 
     CustomerRes updateCustomer(Long id, CustomerUpdateReq req);
 
-    void deleteCustomer(Long id);
+    void deleteCustomer(Long id, String reason);
 }

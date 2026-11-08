@@ -13,6 +13,7 @@ import com.springboot.fasearch.common.enums.AccountStatus;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.common.enums.RoleType;
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
 import com.springboot.fasearch.modules.auth.entity.Account;
 import com.springboot.fasearch.security.SecurityUtils;
 import com.springboot.fasearch.modules.auth.repository.AccountRepository;
@@ -36,6 +37,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final AccountRepository accountRepository;
     private final EmployeeMapper employeeMapper;
+    private final SoftDeleteRecorder softDeleteRecorder;
 
     @Override
     @Transactional(readOnly = true)
@@ -106,6 +108,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.EMPLOYEE_NOT_FOUND));
 
+        // STAFF (Quản lý) may manage employee/manager PROFILE records, but must not modify
+        // the profile linked to an ADMIN login account (contact fields may be usable for recovery).
+        denyStaffOnAdminLinked(employee, "Không có quyền sửa hồ sơ của Quản trị viên hệ thống.");
+
         if (StringUtils.hasText(req.getPhoneNumber()) && !req.getPhoneNumber().equals(employee.getPhoneNumber())) {
             if (employeeRepository.findByPhoneNumber(req.getPhoneNumber()).isPresent()) {
                 throw new AppException(ErrorCode.PHONE_NUMBER_ALREADY_EXISTS);
@@ -142,11 +148,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional
-    public void deleteEmployee(Long id) {
+    public void deleteEmployee(Long id, String reason) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.EMPLOYEE_NOT_FOUND));
 
-        employee.setIsDeleted(true);
+        denyStaffOnAdminLinked(employee, "Không có quyền xóa hồ sơ của Quản trị viên hệ thống.");
+
+        softDeleteRecorder.mark(employee, reason);
 
         // Lock linked account upon employee resignation
         if (employee.getAccount() != null) {
@@ -160,6 +168,16 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         employeeRepository.save(employee);
         log.info("Soft deleted employee successfully with ID: {}", id);
+    }
+
+    private void denyStaffOnAdminLinked(Employee employee, String message) {
+        if (!SecurityUtils.hasRole(RoleType.STAFF.name())) {
+            return;
+        }
+        Account linked = employee.getAccount();
+        if (linked != null && linked.getRole() != null && linked.getRole().getName() == RoleType.ADMIN) {
+            throw new AppException(ErrorCode.ACCESS_DENIED, message);
+        }
     }
 
     // Linking/unlinking a login account to a profile (and the account lock on deletion) is reserved for ADMIN,

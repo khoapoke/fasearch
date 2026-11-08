@@ -30,6 +30,7 @@ public interface InventoryMapper {
     @Mapping(source = "variant.id", target = "skuId")
     @Mapping(source = "variant.product.id", target = "productId")
     @Mapping(source = "variant.product.productName", target = "productName")
+    @Mapping(source = "variant.product.status", target = "productStatus")
     @Mapping(source = "variant.color", target = "color")
     @Mapping(source = "variant.size", target = "size")
     @Mapping(source = "variant.barcode", target = "barcode")
@@ -43,11 +44,9 @@ public interface InventoryMapper {
 
     List<ImportReceiptRes> toImportReceiptResponseList(List<ImportReceipt> receipts);
 
+    // Tên/màu/cỡ/mã vạch do tầng service điền từ HistoryNameLookup (SQL gốc, không qua proxy
+    // @SQLRestriction) để chứng từ cũ vẫn đọc được khi SKU hoặc sản phẩm đã xóa mềm.
     @Mapping(source = "variant.id", target = "skuId")
-    @Mapping(source = "variant.product.productName", target = "productName")
-    @Mapping(source = "variant.color", target = "color")
-    @Mapping(source = "variant.size", target = "size")
-    @Mapping(source = "variant.barcode", target = "barcode")
     ImportReceiptItemRes toImportReceiptItemResponse(ImportReceiptDetail detail);
 
     List<ImportReceiptItemRes> toImportReceiptItemResponseList(List<ImportReceiptDetail> details);
@@ -63,11 +62,9 @@ public interface InventoryMapper {
 
     List<ExportReceiptRes> toExportReceiptResponseList(List<ExportReceipt> receipts);
 
+    // Tên/màu/cỡ/mã vạch do tầng service điền từ HistoryNameLookup (SQL gốc, không qua proxy
+    // @SQLRestriction) để chứng từ cũ vẫn đọc được khi SKU hoặc sản phẩm đã xóa mềm.
     @Mapping(source = "variant.id", target = "skuId")
-    @Mapping(source = "variant.product.productName", target = "productName")
-    @Mapping(source = "variant.color", target = "color")
-    @Mapping(source = "variant.size", target = "size")
-    @Mapping(source = "variant.barcode", target = "barcode")
     ExportReceiptItemRes toExportReceiptItemResponse(ExportReceiptDetail detail);
 
     List<ExportReceiptItemRes> toExportReceiptItemResponseList(List<ExportReceiptDetail> details);
@@ -83,11 +80,9 @@ public interface InventoryMapper {
 
     List<StocktakeRes> toStocktakeResponseList(List<Stocktake> stocktakes);
 
+    // Tên/màu/cỡ/mã vạch do tầng service điền từ HistoryNameLookup (SQL gốc, không qua proxy
+    // @SQLRestriction) để chứng từ cũ vẫn đọc được khi SKU hoặc sản phẩm đã xóa mềm.
     @Mapping(source = "variant.id", target = "skuId")
-    @Mapping(source = "variant.product.productName", target = "productName")
-    @Mapping(source = "variant.color", target = "color")
-    @Mapping(source = "variant.size", target = "size")
-    @Mapping(source = "variant.barcode", target = "barcode")
     StocktakeDiscrepancyRes toStocktakeDiscrepancyResponse(StocktakeDetail detail);
 
     List<StocktakeDiscrepancyRes> toStocktakeDiscrepancyResponseList(List<StocktakeDetail> details);

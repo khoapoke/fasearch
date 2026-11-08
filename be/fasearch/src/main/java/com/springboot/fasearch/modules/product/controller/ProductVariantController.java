@@ -13,15 +13,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.springboot.fasearch.modules.inventory.dto.response.StockRes;
 import com.springboot.fasearch.modules.product.dto.request.VariantCreateReq;
 import com.springboot.fasearch.modules.product.dto.request.VariantUpdateReq;
 import com.springboot.fasearch.modules.product.dto.response.BarcodeRes;
 import com.springboot.fasearch.modules.product.dto.response.VariantRes;
 import com.springboot.fasearch.modules.product.service.interfaces.ProductVariantService;
 import com.springboot.fasearch.shared.ApiResponse;
+import com.springboot.fasearch.shared.DeleteReasonReq;
 
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -55,7 +58,7 @@ public class ProductVariantController {
   
     @PostMapping("/{productId}/variants")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_EDIT')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<VariantRes> addVariant(
             @PathVariable Long productId,
@@ -67,7 +70,7 @@ public class ProductVariantController {
  
     @RequestMapping(value = "/variants/{variantId}", method = {RequestMethod.PATCH, RequestMethod.PUT})
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_EDIT')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<VariantRes> updateVariant(
             @PathVariable Long variantId,
@@ -79,17 +82,26 @@ public class ProductVariantController {
 
     @DeleteMapping("/variants/{variantId}")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_DELETE')")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Boolean> deleteVariant(@PathVariable Long variantId) {
-        productVariantService.deleteVariant(variantId);
+    public ApiResponse<Boolean> deleteVariant(@PathVariable Long variantId,
+            @Valid @RequestBody(required = false) DeleteReasonReq req) {
+        productVariantService.deleteVariant(variantId, req == null ? null : req.getReason());
         return ApiResponse.success(200, "Xóa biến thể thành công", true);
     }
 
 
+    @GetMapping("/variants/scan-lookup")
+    @SecurityRequirement(name = "BearerAuth")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<StockRes> scanLookup(@RequestParam String code) {
+        return ApiResponse.success(200, "Tra cứu mã quét thành công", productVariantService.scanLookup(code));
+    }
+
     @GetMapping("/variants/{skuId}/barcode")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<BarcodeRes> getBarcodeInfo(@PathVariable Long skuId) {
         BarcodeRes result = productVariantService.getBarcodeInfo(skuId);
@@ -99,7 +111,7 @@ public class ProductVariantController {
    
     @GetMapping(value = "/variants/{skuId}/barcode/image", produces = MediaType.IMAGE_PNG_VALUE)
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_VIEW')")
     public ResponseEntity<byte[]> getBarcodeImage(@PathVariable Long skuId) {
         byte[] imageBytes = productVariantService.getBarcodeImageBytes(skuId);
         return ResponseEntity.ok()

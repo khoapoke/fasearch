@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.springboot.fasearch.common.enums.ExportType;
 import com.springboot.fasearch.common.enums.ReceiptStatus;
+import com.springboot.fasearch.common.search.SearchTextNormalizer;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.inventory.dto.request.ExportReceiptCreateReq;
@@ -47,12 +48,14 @@ import com.springboot.fasearch.modules.inventory.repository.ExportReceiptReposit
 import com.springboot.fasearch.modules.inventory.repository.ImportReceiptDetailRepository;
 import com.springboot.fasearch.modules.inventory.repository.ImportReceiptRepository;
 import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
+import com.springboot.fasearch.modules.inventory.repository.InventorySpecifications;
 import com.springboot.fasearch.modules.inventory.repository.StocktakeDetailRepository;
 import com.springboot.fasearch.modules.inventory.repository.StocktakeRepository;
 import com.springboot.fasearch.modules.inventory.service.interfaces.InventoryService;
 import com.springboot.fasearch.modules.product.entity.ProductVariant;
 import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
 import com.springboot.fasearch.shared.PageResponse;
+import com.springboot.fasearch.shared.history.HistoryNameLookup;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -72,12 +75,13 @@ public class InventoryServiceImpl implements InventoryService {
     private final StocktakeDetailRepository stocktakeDetailRepository;
     private final ProductVariantRepository productVariantRepository;
     private final InventoryMapper inventoryMapper;
+    private final HistoryNameLookup historyNameLookup;
 
     @Override
     @Transactional(readOnly = true)
     public com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes getStockSummary(int limit) {
         if (limit < 1 || limit > 50) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid limit (1-50)");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Giới hạn không hợp lệ (1-50).");
         }
         long exceptionsTotal = inventoryRepository.countOutOfStock() + inventoryRepository.countLowStock();
         List<com.springboot.fasearch.modules.inventory.entity.Inventory> rows =
@@ -100,39 +104,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<StockRes> getStockList(Pageable pageable, String sku, String productName, String keyword) {
-        Specification<Inventory> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            Join<Inventory, ProductVariant> variantJoin = root.join("variant", JoinType.LEFT);
-            Join<Object, Object> productJoin = variantJoin.join("product", JoinType.LEFT);
-
-            if (sku != null && !sku.isBlank()) {
-                String cleanSku = sku.trim();
-                Predicate skuIdMatch = cb.disjunction();
-                if (cleanSku.matches("^\\d+$")) {
-                    try {
-                        skuIdMatch = cb.equal(variantJoin.get("id"), Long.parseLong(cleanSku));
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-                Predicate barcodeMatch = cb.like(cb.lower(variantJoin.get("barcode")), "%" + cleanSku.toLowerCase() + "%");
-                predicates.add(cb.or(skuIdMatch, barcodeMatch));
-            }
-
-            if (productName != null && !productName.isBlank()) {
-                predicates.add(cb.like(cb.lower(productJoin.get("productName")), "%" + productName.trim().toLowerCase() + "%"));
-            }
-
-            if (keyword != null && !keyword.isBlank()) {
-                String cleanKeyword = "%" + keyword.trim().toLowerCase() + "%";
-                Predicate nameMatch = cb.like(cb.lower(productJoin.get("productName")), cleanKeyword);
-                Predicate colorMatch = cb.like(cb.lower(variantJoin.get("color")), cleanKeyword);
-                Predicate sizeMatch = cb.like(cb.lower(variantJoin.get("size")), cleanKeyword);
-                Predicate barcodeMatch = cb.like(cb.lower(variantJoin.get("barcode")), cleanKeyword);
-                predicates.add(cb.or(nameMatch, colorMatch, sizeMatch, barcodeMatch));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Specification<Inventory> spec = InventorySpecifications.list(sku, productName, keyword);
 
         Page<Inventory> inventoryPage = inventoryRepository.findAll(spec, pageable);
         List<StockRes> content = inventoryMapper.toStockResponseList(inventoryPage.getContent());
@@ -243,7 +215,7 @@ public class InventoryServiceImpl implements InventoryService {
         savedReceipt.setTotalAmount(totalAmt);
         importReceiptRepository.save(savedReceipt);
 
-        return inventoryMapper.toImportReceiptDetailResponse(savedReceipt);
+        return importReceiptDetail(savedReceipt);
     }
 
     @Override
@@ -279,7 +251,7 @@ public class InventoryServiceImpl implements InventoryService {
         ImportReceipt receipt = importReceiptRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RECEIPT_NOT_FOUND));
 
-        return inventoryMapper.toImportReceiptDetailResponse(receipt);
+        return importReceiptDetail(receipt);
     }
 
     @Override
@@ -366,7 +338,7 @@ public class InventoryServiceImpl implements InventoryService {
         savedReceipt.setTotalQuantity(totalQty);
         exportReceiptRepository.save(savedReceipt);
 
-        return inventoryMapper.toExportReceiptDetailResponse(savedReceipt);
+        return exportReceiptDetail(savedReceipt);
     }
 
     @Override
@@ -402,7 +374,7 @@ public class InventoryServiceImpl implements InventoryService {
         ExportReceipt receipt = exportReceiptRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.EXPORT_RECEIPT_NOT_FOUND));
 
-        return inventoryMapper.toExportReceiptDetailResponse(receipt);
+        return exportReceiptDetail(receipt);
     }
 
     @Override
@@ -465,7 +437,7 @@ public class InventoryServiceImpl implements InventoryService {
         savedStocktake.setDetails(details);
         stocktakeRepository.save(savedStocktake);
 
-        return inventoryMapper.toStocktakeDetailResponse(savedStocktake);
+        return stocktakeDetail(savedStocktake);
     }
 
     @Override
@@ -501,6 +473,68 @@ public class InventoryServiceImpl implements InventoryService {
         Stocktake stocktake = stocktakeRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.STOCKTAKE_NOT_FOUND));
 
-        return inventoryMapper.toStocktakeDetailResponse(stocktake);
+        return stocktakeDetail(stocktake);
+    }
+
+    /* ------------------- Chứng từ cũ: tên hiển thị không qua proxy ------------------- */
+
+    private com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptDetailRes importReceiptDetail(
+            ImportReceipt receipt) {
+        var res = inventoryMapper.toImportReceiptDetailResponse(receipt);
+        if (res.getItems() == null || res.getItems().isEmpty()) {
+            return res;
+        }
+        var snapshots = historyNameLookup.bySkuIds(res.getItems().stream()
+                .map(com.springboot.fasearch.modules.inventory.dto.response.ImportReceiptItemRes::getSkuId)
+                .filter(java.util.Objects::nonNull)
+                .toList());
+        for (var item : res.getItems()) {
+            var name = historyNameLookup.of(snapshots, item.getSkuId());
+            item.setProductName(name.productName());
+            item.setColor(name.color());
+            item.setSize(name.size());
+            item.setBarcode(name.barcode());
+        }
+        return res;
+    }
+
+    private com.springboot.fasearch.modules.inventory.dto.response.ExportReceiptDetailRes exportReceiptDetail(
+            ExportReceipt receipt) {
+        var res = inventoryMapper.toExportReceiptDetailResponse(receipt);
+        if (res.getItems() == null || res.getItems().isEmpty()) {
+            return res;
+        }
+        var snapshots = historyNameLookup.bySkuIds(res.getItems().stream()
+                .map(com.springboot.fasearch.modules.inventory.dto.response.ExportReceiptItemRes::getSkuId)
+                .filter(java.util.Objects::nonNull)
+                .toList());
+        for (var item : res.getItems()) {
+            var name = historyNameLookup.of(snapshots, item.getSkuId());
+            item.setProductName(name.productName());
+            item.setColor(name.color());
+            item.setSize(name.size());
+            item.setBarcode(name.barcode());
+        }
+        return res;
+    }
+
+    private com.springboot.fasearch.modules.inventory.dto.response.StocktakeDetailRes stocktakeDetail(
+            Stocktake stocktake) {
+        var res = inventoryMapper.toStocktakeDetailResponse(stocktake);
+        if (res.getDiscrepancies() == null || res.getDiscrepancies().isEmpty()) {
+            return res;
+        }
+        var snapshots = historyNameLookup.bySkuIds(res.getDiscrepancies().stream()
+                .map(com.springboot.fasearch.modules.inventory.dto.response.StocktakeDiscrepancyRes::getSkuId)
+                .filter(java.util.Objects::nonNull)
+                .toList());
+        for (var item : res.getDiscrepancies()) {
+            var name = historyNameLookup.of(snapshots, item.getSkuId());
+            item.setProductName(name.productName());
+            item.setColor(name.color());
+            item.setSize(name.size());
+            item.setBarcode(name.barcode());
+        }
+        return res;
     }
 }

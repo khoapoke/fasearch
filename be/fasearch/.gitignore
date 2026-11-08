@@ -35,3 +35,5 @@ build/
 .env
 .env.*
 !.env.example
+# Runtime uploads (product images written by the app and tests)
+uploads/

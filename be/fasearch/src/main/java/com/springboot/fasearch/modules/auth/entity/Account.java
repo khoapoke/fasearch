@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.springboot.fasearch.common.enums.AccountStatus;
+import com.springboot.fasearch.common.softdelete.SoftDeletable;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,7 +33,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Account {
+public class Account implements SoftDeletable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,6 +68,16 @@ public class Account {
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @Column(name = "ngay_xoa")
+    private LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nguoi_xoa")
+    private Account deletedBy;
+
+    @Column(name = "ly_do_xoa", length = 255)
+    private String deleteReason;
 
     @Column(name = "token_version", nullable = false)
     @Builder.Default

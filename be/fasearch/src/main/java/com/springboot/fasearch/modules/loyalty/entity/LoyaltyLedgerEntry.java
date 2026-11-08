@@ -53,6 +53,17 @@ public class LoyaltyLedgerEntry {
     @Column(name = "source_key", nullable = false, length = 64)
     private String sourceKey;
 
+    /** Reason code for ADJUST rows and recalculated EARN rows; never shown to the customer. */
+    @Column(name = "ly_do", length = 30)
+    private String reasonCode;
+
+    /** Internal staff note; never shown to the customer. */
+    @Column(name = "ghi_chu", length = 500)
+    private String note;
+
+    @Column(name = "nguoi_thuc_hien", length = 100)
+    private String actor;
+
     @CreationTimestamp
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;

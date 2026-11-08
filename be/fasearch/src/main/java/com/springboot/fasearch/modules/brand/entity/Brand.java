@@ -37,6 +37,10 @@ public class Brand {
     @Column(name = "slug", length = 100, nullable = false, unique = true)
     private String slug;
 
+    /** Accent-insensitive text maintained by the database; read-only from the application. */
+    @Column(name = "search_text", columnDefinition = "TEXT", insertable = false, updatable = false)
+    private String searchText;
+
     @Column(name = "quoc_gia", length = 100)
     private String country;
 

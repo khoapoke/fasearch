@@ -44,7 +44,7 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @GetMapping("/stock")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<StockRes>> getStockList(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
@@ -61,7 +61,7 @@ public class InventoryController {
      * ADMIN and STAFF (operational read); no financial field is exposed here.
      */
     @GetMapping("/stock-summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes> getStockSummary(
             @RequestParam(defaultValue = "20") int limit) {
@@ -70,7 +70,7 @@ public class InventoryController {
     }
 
     @GetMapping("/stock/{skuId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<StockRes> getStockBySkuId(@PathVariable Long skuId) {
         StockRes result = inventoryService.getStockBySkuId(skuId);
@@ -78,7 +78,7 @@ public class InventoryController {
     }
 
     @PostMapping("/import-receipts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_RECEIPT_CREATE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ImportReceiptDetailRes> createImportReceipt(@Valid @RequestBody ImportReceiptCreateReq req) {
         ImportReceiptDetailRes result = inventoryService.createImportReceipt(req);
@@ -86,7 +86,7 @@ public class InventoryController {
     }
 
     @GetMapping("/import-receipts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<ImportReceiptRes>> getImportReceipts(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
@@ -98,7 +98,7 @@ public class InventoryController {
     }
 
     @GetMapping("/import-receipts/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ImportReceiptDetailRes> getImportReceiptById(@PathVariable Long id) {
         ImportReceiptDetailRes result = inventoryService.getImportReceiptById(id);
@@ -106,7 +106,7 @@ public class InventoryController {
     }
 
     @PostMapping("/export-receipts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_RECEIPT_CREATE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ExportReceiptDetailRes> createExportReceipt(@Valid @RequestBody ExportReceiptCreateReq req) {
         ExportReceiptDetailRes result = inventoryService.createExportReceipt(req);
@@ -114,7 +114,7 @@ public class InventoryController {
     }
 
     @GetMapping("/export-receipts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<ExportReceiptRes>> getExportReceipts(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
@@ -126,7 +126,7 @@ public class InventoryController {
     }
 
     @GetMapping("/export-receipts/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ExportReceiptDetailRes> getExportReceiptById(@PathVariable Long id) {
         ExportReceiptDetailRes result = inventoryService.getExportReceiptById(id);
@@ -134,7 +134,7 @@ public class InventoryController {
     }
 
     @PostMapping("/stocktakes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_STOCKTAKE_CREATE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<StocktakeDetailRes> createStocktake(@Valid @RequestBody StocktakeCreateReq req) {
         StocktakeDetailRes result = inventoryService.createStocktake(req);
@@ -142,7 +142,7 @@ public class InventoryController {
     }
 
     @GetMapping("/stocktakes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<StocktakeRes>> getStocktakes(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
@@ -154,7 +154,7 @@ public class InventoryController {
     }
 
     @GetMapping("/stocktakes/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_VIEW')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<StocktakeDetailRes> getStocktakeById(@PathVariable Long id) {
         StocktakeDetailRes result = inventoryService.getStocktakeById(id);

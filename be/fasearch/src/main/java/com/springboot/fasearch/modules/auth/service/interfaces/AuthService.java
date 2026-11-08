@@ -28,5 +28,5 @@ public interface AuthService {
 
     AccountInfoRes updateAccount(Long id, AccountUpdateReq req);
 
-    void deleteAccount(Long id);
+    void deleteAccount(Long id, String reason);
 }

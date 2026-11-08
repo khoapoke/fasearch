@@ -18,6 +18,12 @@ public interface UserRepository extends JpaRepository<Customer, Long>, JpaSpecif
 
     Optional<Customer> findByAccount_Username(String username);
 
+    java.util.List<Customer> findByAccount_IdIn(java.util.Collection<Long> accountIds);
+
+    /** One query for a CSV batch: the membership tier is fetched with the customer. */
+    @Query("select c from Customer c left join fetch c.membershipTier where c.id in :ids")
+    java.util.List<Customer> findExportRowsByIdIn(@Param("ids") java.util.Collection<Long> ids);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Customer c where c.id = :id")
     Optional<Customer> findByIdForUpdate(@Param("id") Long id);

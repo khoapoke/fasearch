@@ -60,28 +60,30 @@ public class OrderController {
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_ORDER_VIEW')")
     public ApiResponse<PageResponse<OrderRes>> getOrders(
             @ParameterObject @PageableDefault(page = 0, size = 10, sort = "orderDate", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String orderCode,
             @RequestParam(required = false) String customerPhone,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        PageResponse<OrderRes> result = orderService.getOrders(pageable, status, orderCode, customerPhone, startDate, endDate);
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String keyword) {
+        PageResponse<OrderRes> result = orderService.getOrders(pageable, status, orderCode, customerPhone,
+                startDate, endDate, keyword);
         return ApiResponse.success(200, "Lấy danh sách đơn hàng thành công", result);
     }
 
     @PostMapping("/pos/draft")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_POS_USE')")
     public ApiResponse<OrderDetailRes> createPosDraftOrder(@Valid @RequestBody PosDraftOrderReq req) {
         OrderDetailRes result = orderService.createPosDraftOrder(req);
         return ApiResponse.success(201, "Tạm lưu đơn hàng tại quầy POS thành công", result);
     }
 
     @PostMapping("/pos/{orderId}/quote")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_POS_USE')")
     public ResponseEntity<ApiResponse<CartQuoteResponse>> quotePosOrder(@PathVariable Long orderId,
             @Valid @RequestBody CartQuoteRequest req) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(
@@ -90,7 +92,7 @@ public class OrderController {
 
     @GetMapping("/pos/drafts")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_POS_USE')")
     public ApiResponse<List<OrderDetailRes>> getPosDraftOrders() {
         List<OrderDetailRes> result = orderService.getPosDraftOrders();
         return ApiResponse.success(200, "Lấy danh sách đơn tạm tại quầy POS thành công", result);
@@ -114,7 +116,7 @@ public class OrderController {
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_ORDER_VIEW')")
     public ApiResponse<OrderDetailRes> getOrderById(@PathVariable Long id) {
         OrderDetailRes result = orderService.getOrderById(id);
         return ApiResponse.success(200, "Lấy chi tiết đơn hàng thành công", result);
@@ -122,7 +124,7 @@ public class OrderController {
 
     @PatchMapping("/{id}/status")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_ORDER_UPDATE_STATUS')")
     public ApiResponse<OrderDetailRes> updateOrderStatus(
             @PathVariable Long id,
             @Valid @RequestBody OrderStatusUpdateReq req) {
@@ -132,7 +134,7 @@ public class OrderController {
 
     @PostMapping("/{id}/cancel")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_ORDER_CANCEL')")
     public ApiResponse<OrderDetailRes> cancelOrder(
             @PathVariable Long id,
             @Valid @RequestBody OrderCancelReq req) {

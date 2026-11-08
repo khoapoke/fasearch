@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -30,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final AccountRepository accountRepository;
+    private final RolePermissionResolver rolePermissionResolver;
 
     @Override
     protected void doFilterInternal(
@@ -61,14 +62,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                List<SimpleGrantedAuthority> authorities = List.of();
-                if (account.getRole() != null && account.getRole().getName() != null) {
-                    // Đảm bảo prefix ROLE_ để hasRole('ADMIN') hoặc hasAuthority('ROLE_ADMIN') đều nhận diện đúng
-                    // trong spring security chỉ nhận role theo đúng định dạng ROLE_ADMIN, ROLE_STAFF,v.v
-                    String role = account.getRole().getName().name();
-                    String roleAuthority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-                    authorities = List.of(new SimpleGrantedAuthority(roleAuthority));
-                }
+                // ROLE_<vai trò> + PERM_<mã quyền> theo vai trò và phân quyền HIỆN TẠI trong DB (đọc mỗi request):
+                // ADMIN có mọi quyền, Quản lý có quyền đang bật, khách hàng không có PERM_*. Đổi phân quyền có hiệu lực
+                // ngay request kế tiếp, không cần đăng nhập lại.
+                List<GrantedAuthority> authorities = rolePermissionResolver.authoritiesOf(account);
 
                 UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
                         username,

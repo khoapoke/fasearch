@@ -7,6 +7,8 @@ import java.util.List;
 import org.hibernate.annotations.SQLRestriction;
 
 import com.springboot.fasearch.common.enums.ProductStatus;
+import com.springboot.fasearch.common.softdelete.SoftDeletable;
+import com.springboot.fasearch.modules.auth.entity.Account;
 import com.springboot.fasearch.modules.publish.entity.PublicationStatus;
 import com.springboot.fasearch.modules.brand.entity.Brand;
 
@@ -39,7 +41,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Product {
+public class Product implements SoftDeletable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +61,10 @@ public class Product {
 
     @Column(name = "model_code", length = 100)
     private String modelCode;
+
+    /** Accent-insensitive text maintained by the database; read-only from the application. */
+    @Column(name = "search_text", columnDefinition = "TEXT", insertable = false, updatable = false)
+    private String searchText;
 
     @Column(name = "chat_lieu", length = 100)
     private String material;
@@ -83,6 +89,16 @@ public class Product {
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @Column(name = "ngay_xoa")
+    private java.time.LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nguoi_xoa")
+    private Account deletedBy;
+
+    @Column(name = "ly_do_xoa", length = 255)
+    private String deleteReason;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "publication_status", length = 20, nullable = false)

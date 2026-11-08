@@ -44,28 +44,28 @@ final class UrlImport {
         try {
             uri = new URI(url);
         } catch (Exception e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "URL is malformed");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "URL không đúng định dạng.");
         }
         if (!"https".equalsIgnoreCase(uri.getScheme())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Only https URLs are accepted");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Chỉ chấp nhận URL https.");
         }
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
         boolean allowed = ALLOWED_SUFFIXES.stream()
                 .anyMatch(suffix -> host.equals(suffix) || host.endsWith("." + suffix));
         if (!allowed) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "URL host is not allowlisted");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Máy chủ của URL không nằm trong danh sách cho phép.");
         }
         try {
             for (InetAddress address : InetAddress.getAllByName(host)) {
                 if (address.isLoopbackAddress() || address.isLinkLocalAddress() || address.isSiteLocalAddress()
                         || address.isMulticastAddress() || address.getHostAddress().startsWith("169.254.")) {
-                    throw new AppException(ErrorCode.INVALID_REQUEST, "URL resolves to a non-public address");
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "URL trỏ tới địa chỉ không công khai.");
                 }
             }
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot resolve URL host");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không phân giải được máy chủ của URL.");
         }
         byte[] body = fetchBytes(url);
         String sha = sha256Hex(body);
@@ -73,15 +73,15 @@ final class UrlImport {
         try {
             parsed = JSON.readValue(body, Object.class);
         } catch (Exception e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "URL did not return JSON");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "URL không trả về JSON.");
         }
         if (!(parsed instanceof Map)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "URL JSON must be a product object");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "JSON của URL phải là một đối tượng sản phẩm.");
         }
         @SuppressWarnings("unchecked")
         Map<String, Object> product = (Map<String, Object>) parsed;
         if (product.get("id") == null && product.get("variants") == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "URL JSON is not a product record");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "JSON của URL không phải bản ghi sản phẩm.");
         }
         return new Parsed("VN_FEED", product, sha);
     }
@@ -96,23 +96,23 @@ final class UrlImport {
             connection.setRequestProperty("User-Agent", "FaSearch-AdminImport/1.0 (academic demo)");
             int status = connection.getResponseCode();
             if (status < 200 || status >= 300) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "URL fetch failed with status " + status);
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Tải URL thất bại với mã trạng thái " + status);
             }
             String contentType = connection.getContentType() == null ? "" : connection.getContentType();
             if (!contentType.contains("json") && !contentType.contains("javascript")) {
-                throw new AppException(ErrorCode.INVALID_REQUEST, "URL must serve JSON, got: " + contentType);
+                throw new AppException(ErrorCode.INVALID_REQUEST, "URL phải trả về JSON, nhận được: " + contentType);
             }
             try (java.io.InputStream in = connection.getInputStream()) {
                 byte[] data = in.readNBytes(2 * 1024 * 1024 + 1);
                 if (data.length > 2 * 1024 * 1024) {
-                    throw new AppException(ErrorCode.INVALID_REQUEST, "URL response exceeds 2MB");
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "Phản hồi của URL vượt quá 2MB.");
                 }
                 return data;
             }
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "URL fetch failed");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Tải URL thất bại.");
         }
     }
 
@@ -137,11 +137,11 @@ final class UrlImport {
             name = t.strip();
         }
         if (name == null || name.length() > 255) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Feed product has no usable name");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Sản phẩm từ nguồn không có tên hợp lệ.");
         }
         Object variantsRaw = product.get("variants");
         if (!(variantsRaw instanceof List<?> variantList) || variantList.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Feed product has no variants");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Sản phẩm từ nguồn không có biến thể.");
         }
         String colorKey = null;
         String sizeKey = null;
@@ -214,10 +214,10 @@ final class UrlImport {
             }
         }
         if (price == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Feed product has no usable price");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Sản phẩm từ nguồn không có giá hợp lệ.");
         }
         if (imageUrl == null || imageUrl.isBlank()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Feed product has no usable image");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Sản phẩm từ nguồn không có ảnh hợp lệ.");
         }
         AdminDraftCreateReq req = new AdminDraftCreateReq();
         req.setProductName(name);

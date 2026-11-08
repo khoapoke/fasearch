@@ -380,7 +380,7 @@ class PromotionsCheckoutApiIntegrationTest {
         assertThat(initialBalance.cacheControl()).contains("no-store");
         JsonNode initial = result(initialBalance);
         assertThat(initial.get("openingRecorded").asBoolean()).isFalse();
-        assertThat(initial.get("availablePoints").isNull()).isTrue();
+        assertThat(initial.get("availablePoints").asInt()).isEqualTo(1000);
         assertThat(initial.get("salesTierStatus").asText()).isEqualTo("HISTORY_UNKNOWN");
         assertThat(result(call("GET", "/api/v1/thanh-vien/lich-su", null, customerToken)).get("content")).isEmpty();
         assertThat(call("GET", "/api/v1/thanh-vien/lich-su", null, staffToken).status()).isEqualTo(403);
@@ -396,9 +396,10 @@ class PromotionsCheckoutApiIntegrationTest {
         JsonNode policy = result(createdPolicy);
         long policyId = policy.get("policyId").asLong();
         assertThat(policy.get("status").asText()).isEqualTo("DISABLED");
+        // Legacy points no longer need a manual opening: the preview reaches the policy check (policy is DISABLED here).
         Resp quoteBeforeOpening = call("POST", "/api/v1/cart/quote", "{\"redeemedPoints\":1}", customerToken);
         assertThat(quoteBeforeOpening.status()).isEqualTo(409);
-        assertThat(json(quoteBeforeOpening).get("code").asInt()).isEqualTo(4201);
+        assertThat(json(quoteBeforeOpening).get("code").asInt()).isEqualTo(4203);
 
         Resp opened = call("POST", "/api/v1/quan-tri/thanh-vien/mo-dau",
                 "{\"customerId\":" + customerId + "}", adminToken);

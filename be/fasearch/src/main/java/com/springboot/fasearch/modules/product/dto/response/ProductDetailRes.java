@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.springboot.fasearch.common.enums.ProductStatus;
+import com.springboot.fasearch.modules.publish.entity.PublicationStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,7 @@ public class ProductDetailRes {
     private BigDecimal price;
     private String imageUrl;
     private ProductStatus status;
+    private PublicationStatus publicationStatus;
     private Long brandId;
     private String brandName;
     private String brandSlug;

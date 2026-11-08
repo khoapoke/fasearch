@@ -29,6 +29,7 @@ import com.springboot.fasearch.modules.product.dto.response.ProductRes;
 import com.springboot.fasearch.modules.product.service.interfaces.ProductService;
 import com.springboot.fasearch.modules.product.service.interfaces.ProductVariantService;
 import com.springboot.fasearch.shared.ApiResponse;
+import com.springboot.fasearch.shared.DeleteReasonReq;
 import com.springboot.fasearch.shared.PageResponse;
 
 
@@ -63,7 +64,7 @@ public class ProductController {
     
     @GetMapping("/pos-lookup")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_POS_USE')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PosProductRes> posLookup(@RequestParam String barcode) {
         PosProductRes result = productVariantService.posLookup(barcode);
@@ -73,11 +74,18 @@ public class ProductController {
     
     @GetMapping("/pos-search")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_POS_USE')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<List<PosProductRes>> posSearch(@RequestParam String keyword) {
         List<PosProductRes> result = productVariantService.posSearch(keyword);
         return ApiResponse.success(200, "Tìm kiếm POS thành công", result);
+    }
+
+    @GetMapping("/{id}/related")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<java.util.List<ProductRes>> getRelatedProducts(@PathVariable Long id,
+            @RequestParam(defaultValue = "8") @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(12) int limit) {
+        return ApiResponse.success(200, "Lấy sản phẩm liên quan thành công", productService.getRelatedProducts(id, limit));
     }
 
     @GetMapping("/{id}")
@@ -89,7 +97,7 @@ public class ProductController {
 
     @PostMapping
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_EDIT')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ProductDetailRes> createProduct(@Valid @RequestBody ProductCreateReq req) {
         ProductDetailRes result = productService.createProduct(req);
@@ -98,7 +106,7 @@ public class ProductController {
 
     @RequestMapping(value = "/{id}", method = {RequestMethod.PATCH, RequestMethod.PUT})
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_EDIT')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ProductDetailRes> updateProduct(
             @PathVariable Long id,
@@ -109,10 +117,11 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAuthority('PERM_PRODUCT_DELETE')")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Boolean> deleteProduct(@PathVariable Long id) {
-        productService.deleteProduct(id);
+    public ApiResponse<Boolean> deleteProduct(@PathVariable Long id,
+            @Valid @RequestBody(required = false) DeleteReasonReq req) {
+        productService.deleteProduct(id, req == null ? null : req.getReason());
         return ApiResponse.success(200, "Xóa sản phẩm thành công", true);
     }
 }

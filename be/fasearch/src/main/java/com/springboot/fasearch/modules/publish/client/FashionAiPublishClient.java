@@ -51,10 +51,10 @@ public class FashionAiPublishClient {
                     .body(new ParameterizedTypeReference<IndexedPoint>() {});
         } catch (RestClientResponseException e) {
             throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE,
-                    "AI index responded with error (" + e.getStatusCode() + ")");
+                    "Dịch vụ chỉ mục AI trả về lỗi (" + e.getStatusCode() + ")");
         } catch (Exception e) {
             throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE,
-                    "Cannot reach AI index service");
+                    "Không kết nối được tới dịch vụ chỉ mục AI.");
         }
     }
 
@@ -66,10 +66,10 @@ public class FashionAiPublishClient {
                     .toBodilessEntity();
         } catch (RestClientResponseException e) {
             throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE,
-                    "AI index responded with error (" + e.getStatusCode() + ")");
+                    "Dịch vụ chỉ mục AI trả về lỗi (" + e.getStatusCode() + ")");
         } catch (Exception e) {
             throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE,
-                    "Cannot reach AI index service");
+                    "Không kết nối được tới dịch vụ chỉ mục AI.");
         }
     }
 }

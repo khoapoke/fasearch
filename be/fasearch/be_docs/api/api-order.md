@@ -277,7 +277,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Điểm âm / phân số / tràn số; voucher đã tạm dừng, chưa bắt đầu, hết hạn hoặc không áp dụng cho giỏ (`VOUCHER_PAUSED`, `VOUCHER_NOT_STARTED`, `VOUCHER_EXPIRED`, `VOUCHER_NOT_APPLICABLE`); giỏ rỗng (`CART_EMPTY`).
 - **HTTP 404 Not Found:** Mã voucher không tồn tại (`VOUCHER_UNKNOWN`).
-- **HTTP 409 Conflict:** Hết lượt voucher (`4105 VOUCHER_EXHAUSTED`); chưa mở đầu điểm / chính sách chưa có hoặc đang tắt / vượt số điểm cho phép (`4201`, `4202`, `4203`, `4204 INSUFFICIENT_POINTS`, kèm mức tối đa trong `errors`).
+- **HTTP 409 Conflict:** Hết lượt voucher (`4105 VOUCHER_EXHAUSTED`); chính sách chưa có hoặc đang tắt / vượt số điểm cho phép (`4202`, `4203`, `4204 INSUFFICIENT_POINTS`, kèm mức tối đa trong `errors`).
 
 ---
 
@@ -364,15 +364,15 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Giỏ rỗng (`CART_EMPTY`), thiếu địa chỉ / `checkoutKey`, tọa độ sai, voucher không hợp lệ, không đủ tồn kho (`INSUFFICIENT_STOCK`).
 - **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
-- **HTTP 409 Conflict:** Giá / giỏ / voucher / chính sách / phí ship đã đổi sau quote (`4107 QUOTE_CHANGED`); cùng `checkoutKey` nhưng dữ liệu khác (`4108 IDEMPOTENCY_CONFLICT`); lỗi điểm `4201` - `4208`.
+- **HTTP 409 Conflict:** Giá / giỏ / voucher / chính sách / phí ship đã đổi sau quote (`4107 QUOTE_CHANGED`); cùng `checkoutKey` nhưng dữ liệu khác (`4108 IDEMPOTENCY_CONFLICT`); lỗi điểm `4202` - `4208`.
 
 ---
 
 ## 8. Xem danh sách đơn hàng (FR-36)
 
 - **Endpoint:** `GET /api/v1/orders`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ thấy đơn của mình)
-- **Mô tả:** Lấy danh sách đơn hàng có phân trang và bộ lọc.
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ thấy đơn của mình) — Quản lý cần quyền `ORDER_VIEW`
+- **Mô tả:** Lấy danh sách đơn hàng có phân trang và bộ lọc. `keyword` tìm đồng thời theo mã đơn, tên khách và số điện thoại, không phân biệt hoa/thường và dấu tiếng Việt (kể cả `đ`), tối đa 100 ký tự; `%` và `_` do người dùng nhập được hiểu là ký tự thường. Khách hàng vẫn chỉ thấy đơn của chính mình khi dùng bất kỳ bộ lọc nào.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -381,10 +381,11 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 | `size` | Integer | Không | Số bản ghi/trang (mặc định: `10`) |
 | `sort` | String | Không | Tiêu chí sắp xếp (mặc định `orderDate,desc`) |
 | `status` | String | Không | `DRAFT`, `PENDING`, `CONFIRMED`, `PACKING`, `SHIPPING`, `COMPLETED`, `CANCELLED`, `RETURNED` |
-| `orderCode` | String | Không | Tìm theo mã đơn hàng |
-| `customerPhone` | String | Không | Tìm theo SĐT khách hàng |
-| `startDate` | String | Không | Từ ngày đặt `yyyy-MM-dd` |
-| `endDate` | String | Không | Đến ngày đặt `yyyy-MM-dd` |
+| `orderCode` | String | Không | Tìm theo mã đơn hàng (không phân biệt hoa/thường) |
+| `customerPhone` | String | Không | Tìm theo SĐT khách hàng (chỉ ADMIN/STAFF) |
+| `keyword` | String | Không | Tìm theo mã đơn, tên khách hoặc SĐT; tối đa 100 ký tự |
+| `startDate` | String | Không | Từ ngày đặt `yyyy-MM-dd`, tính từ 00:00 ngày đó (giờ Việt Nam) |
+| `endDate` | String | Không | Đến ngày đặt `yyyy-MM-dd`, gồm cả ngày đó; điều kiện nửa mở `< endDate + 1 ngày 00:00` |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -408,6 +409,8 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
         "earnedPoints": null,
         "shippingFee": 30000.00,
         "totalAmount": 595000.00,
+        "paymentStatus": null,
+        "paymentMethod": null,
         "createdAt": "2026-10-25T15:30:00"
       }
     ],
@@ -422,6 +425,8 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 }
 ```
 
+- `paymentStatus` / `paymentMethod`: trạng thái và phương thức thanh toán từ hóa đơn `PAID` (`null` khi chưa thanh toán); danh sách điền bằng MỘT truy vấn hóa đơn cho cả trang (không N+1). Chỉ cộng thêm, không đổi hành vi lọc/phân trang.
+
 ### Response Lỗi thường gặp
 - **HTTP 401 Unauthorized:** Chưa đăng nhập.
 
@@ -430,8 +435,8 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ## 9. Xem chi tiết đơn hàng (FR-36)
 
 - **Endpoint:** `GET /api/v1/orders/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ xem đơn của mình)
-- **Mô tả:** Lấy chi tiết đơn hàng gồm danh sách dòng hàng, voucher và điểm đã áp dụng.
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ xem đơn của mình) — Quản lý cần quyền `ORDER_VIEW`
+- **Mô tả:** Lấy chi tiết đơn hàng gồm danh sách dòng hàng, voucher, điểm và trạng thái thanh toán (từ hóa đơn PAID, null khi chưa thanh toán).
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -480,7 +485,9 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
     "deliveryLatitude": null,
     "deliveryLongitude": null,
     "distanceKm": null,
-    "shippingMethod": null
+    "shippingMethod": null,
+    "paymentStatus": null,
+    "paymentMethod": null
   },
   "errors": null,
   "timestamp": "2026-10-25T15:30:00"
@@ -496,7 +503,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ## 10. Cập nhật trạng thái đơn hàng (FR-37)
 
 - **Endpoint:** `PATCH /api/v1/orders/{id}/status`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `ORDER_UPDATE_STATUS`
 - **Mô tả:** Chuyển trạng thái tuần tự `PENDING` → `CONFIRMED` → `PACKING` → `SHIPPING` → `COMPLETED`; đơn đã hủy / hoàn tất / trả lại không đổi được. Đơn có voucher / điểm phải đã lập hóa đơn trước khi `COMPLETED`.
 
 ### Request Body
@@ -546,8 +553,8 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ## 11. Hủy đơn hàng (FR-38)
 
 - **Endpoint:** `POST /api/v1/orders/{id}/cancel`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ hủy đơn của mình khi `PENDING` / `CONFIRMED`)
-- **Mô tả:** Hủy đơn chưa thanh toán, hoàn trả tồn kho, voucher và điểm giữ chỗ trong cùng transaction (FR-40). Đơn đã `PAID`, đã hoàn tất, hoặc đã bàn giao với voucher / điểm thì không hủy được.
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ hủy đơn của mình khi `PENDING` / `CONFIRMED`) — Quản lý cần quyền `ORDER_CANCEL`
+- **Mô tả:** Hủy đơn chưa thanh toán, hoàn trả tồn kho, voucher và điểm giữ chỗ trong cùng transaction (FR-40). Đơn đã `PAID`, đã hoàn tất, hoặc đã bàn giao với voucher / điểm thì không hủy được. Sau khi commit, mọi Stripe Checkout Session còn mở của đơn được hết hạn (`EXPIRED`); session đã thanh toán trước đó giữ nguyên để webhook chuyển sang `REVIEW_REQUIRED`, không bao giờ ghi đè `SETTLED`.
 
 ### Request Body
 ```json
@@ -572,11 +579,13 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
     "status": "CANCELLED",
     "customer": { "customerId": 1, "fullName": "Nguyễn Văn A", "phoneNumber": "0987654321" },
     "deliveryAddress": "Số 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM",
-    "note": "[CUSTOMER] Hủy đơn: Khách hàng đổi ý muốn chọn size khác (2026-10-28 15:30:00)",
+    "note": "[HỦY ĐƠN - KHÁCH HÀNG]: Khách hàng đổi ý muốn chọn size khác",
     "items": [],
     "subTotal": 630000.00,
     "shippingFee": 30000.00,
     "totalAmount": 660000.00,
+    "paymentStatus": null,
+    "paymentMethod": null,
     "createdAt": "2026-10-28T15:20:00"
   },
   "errors": null,
@@ -586,6 +595,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Thiếu lý do, đơn đã hủy / hoàn tất / hoàn trả / đã thanh toán hoặc không còn hủy được theo trạng thái.
+- **Ghi chú:** `note` ghi `[HỦY ĐƠN - KHÁCH HÀNG]: <lý do>` cho khách và `[HỦY ĐƠN - NHÂN VIÊN <username>]: <lý do>` cho ADMIN/STAFF. Đơn hủy nhưng tiền đã về trước đó chuyển sang `REVIEW_REQUIRED` để đối soát, không tự hoàn tiền.
 - **HTTP 403 Forbidden:** `CUSTOMER` hủy đơn của người khác.
 - **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
 
@@ -594,7 +604,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ## 12. Lưu tạm đơn hàng POS (FR-39)
 
 - **Endpoint:** `POST /api/v1/orders/pos/draft`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `POS_USE`
 - **Mô tả:** Thu ngân tạm lưu đơn đang tính dở để phục vụ khách khác. Đơn có trạng thái `DRAFT`, không tạm giữ tồn kho (chỉ kiểm tra tồn khả dụng lúc lưu).
 
 ### Request Body
@@ -664,7 +674,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ## 13. Lấy danh sách đơn tạm tại quầy POS (FR-39)
 
 - **Endpoint:** `GET /api/v1/orders/pos/drafts`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `ORDER_VIEW`
 - **Mô tả:** Lấy các đơn `DRAFT` đang tạm lưu để mở lại.
 
 ### Response Thành công (HTTP 200 OK)
@@ -702,7 +712,7 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 ## 14. Báo giá đơn tạm POS (FR-47)
 
 - **Endpoint:** `POST /api/v1/orders/pos/{orderId}/quote`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `POS_USE`
 - **Mô tả:** Báo giá voucher / điểm cho đơn `DRAFT` theo các dòng hàng và khách hàng đã gắn. Cùng dạng `result` như mục 6, thêm `orderId`; chỉ đọc, không giữ voucher / điểm / tồn kho. Đơn không gắn khách hàng không dùng được điểm.
 
 ### Request Body
@@ -764,4 +774,46 @@ Module `order` và `cart` xử lý toàn bộ quy trình mua hàng đa kênh (Om
 - **HTTP 400 Bad Request:** Voucher không hợp lệ hoặc điểm sai định dạng.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 - **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
-- **HTTP 409 Conflict:** Đơn không còn ở trạng thái `DRAFT` (`4107 QUOTE_CHANGED`); lỗi điểm `4201` - `4204`.
+- **HTTP 409 Conflict:** Đơn không còn ở trạng thái `DRAFT` (`4107 QUOTE_CHANGED`); lỗi điểm `4202` - `4204`.
+
+---
+
+## 15. Xuất CSV đơn hàng (FR-36)
+
+- **Endpoint:** `GET /api/v1/admin/csv/orders`
+- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `DATA_EXPORT` và `ORDER_VIEW`
+- **Mô tả:** Xuất CSV toàn bộ đơn hàng khớp bộ lọc của `GET /api/v1/orders` (mục 8), **mỗi dòng một đơn**, không chỉ trang hiện tại. Chỉ ADMIN/STAFF; đơn đã xóa mềm không được xuất. Tệp UTF-8 **có BOM**, phân tách bằng **dấu phẩy**, CRLF, quote RFC 4180; header tiếng Việt. Tối đa **50.000 dòng**.
+
+> Tệp chứa **dữ liệu cá nhân** của khách hàng (tên, số điện thoại, địa chỉ giao hàng). Không lưu tệp trên máy chủ; FE hiển thị xác nhận trước khi tải và tên tệp không chứa dữ liệu cá nhân.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `status` | String | Không | `PENDING`, `CONFIRMED`, `PACKING`, `SHIPPING`, `COMPLETED`, `CANCELLED`, `RETURNED` |
+| `orderCode` | String | Không | Mã đơn, tối đa 50 ký tự |
+| `customerPhone` | String | Không | Một phần số điện thoại, tối đa 20 ký tự |
+| `keyword` | String | Không | Mã đơn, tên khách hoặc số điện thoại; tối đa 100 ký tự |
+| `startDate` | Date | Không | `YYYY-MM-DD`, tính từ 00:00 ngày đó |
+| `endDate` | Date | Không | `YYYY-MM-DD`, gồm cả ngày đó; điều kiện nửa mở `< endDate + 1 ngày 00:00` |
+
+### Response Thành công (HTTP 200 OK)
+- `Content-Type: text/csv; charset=UTF-8`
+- `Content-Disposition: attachment; filename="don-hang-YYYY-MM-DD.csv"`
+- `Cache-Control: no-store`
+
+| Cột |
+| :--- |
+| `Mã đơn`, `Ngày tạo`, `Trạng thái`, `Trạng thái thanh toán`, `Phương thức thanh toán` |
+| `Tên khách hàng`, `Số điện thoại`, `Địa chỉ giao hàng` |
+| `Tạm tính`, `Giảm giá`, `Giảm giá điểm`, `Phí vận chuyển`, `Tổng cộng` |
+| `Mã voucher`, `Điểm nhận`, `Điểm dùng` |
+
+- `Ngày tạo` theo `dd/MM/yyyy HH:mm` (giờ Việt Nam); tiền là số nguyên, **không** dấu phân cách nghìn; trạng thái và phương thức thanh toán bằng nhãn tiếng Việt.
+- `Trạng thái thanh toán` = `Đã thanh toán` khi có hóa đơn `PAID`, ngược lại `Chưa thanh toán` (cùng quy tắc với danh sách đơn).
+- Ô văn bản bắt đầu bằng `=`, `+`, `-`, `@`, tab hoặc CR được thêm tiền tố `'`; ô số giữ nguyên dạng số.
+- Dòng được ghi theo lô 500, sắp xếp theo mã đơn tăng dần; mỗi lô đọc khách hàng và hóa đơn bằng một truy vấn, không N+1.
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** Bộ lọc sai kiểu/độ dài hoặc tập dữ liệu vượt 50.000 dòng.
+- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.

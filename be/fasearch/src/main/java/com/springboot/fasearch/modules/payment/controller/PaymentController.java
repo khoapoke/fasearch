@@ -42,7 +42,7 @@ public class PaymentController {
 
     @PostMapping("/calculate")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_POS_USE') or hasAuthority('PERM_ORDER_COLLECT_CASH')")
     public ResponseEntity<ApiResponse<PaymentCalculationRes>> calculatePayment(@Valid @RequestBody PaymentCalculateReq req) {
         PaymentCalculationRes result = paymentService.calculatePayment(req);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
@@ -50,7 +50,7 @@ public class PaymentController {
     }
 
     @PostMapping("/process")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_POS_USE') or hasAuthority('PERM_ORDER_COLLECT_CASH')")
     public ResponseEntity<ApiResponse<InvoiceRes>> processPayment(@Valid @RequestBody PaymentProcessReq req) {
         var result = paymentService.processPayment(req);
         int code = result.replayed() ? 200 : 201;

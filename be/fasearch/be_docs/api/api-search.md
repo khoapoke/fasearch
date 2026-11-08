@@ -16,14 +16,14 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 ```json
 {
   "query": "áo sơ mi trắng cổ bẻ công sở",
-  "limit": 5
+  "limit": 12
 }
 ```
 
 | Trường | Kiểu dữ liệu | Bắt buộc | Mặc định | Mô tả |
 | :--- | :--- | :---: | :---: | :--- |
 | `query` | `String` | **Có** | - | Từ khóa hoặc câu mô tả trang phục cần tìm |
-| `limit` | `Integer` | Không | `5` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
+| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -37,14 +37,13 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
       {
         "id": "c71e280d-8df5-46aa-b2b9-1f486a43875f",
         "score": 0.8254,
-        "imagePath": "/dataset/test/shirt1.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/shirt1.jpg",
-        "fileName": "shirt1.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
+        "productId": 2313,
+        "productName": "Áo thun Davies cổ tròn",
+        "brandName": "Davies",
+        "price": 199000.00,
+        "imageUrl": "/api/v1/products/images/davies-2313.jpg",
+        "colors": ["Trắng", "Đen"],
+        "status": "ACTIVE"
       }
     ]
   },
@@ -52,6 +51,29 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
   "timestamp": "2026-10-30T00:30:00"
 }
 ```
+
+### Quy tắc kết quả (sản phẩm đang bán thật)
+
+Sau khi AI trả về các điểm vector gần nhất, Backend đối chiếu **một truy vấn gộp** với danh mục sản phẩm (không N+1) và chỉ giữ sản phẩm thỏa **đồng thời**:
+
+- chưa xóa mềm (`da_xoa = false`), `publication_status = PUBLISHED`, `trang_thai = ACTIVE`;
+- có ít nhất một biến thể (chưa xóa mềm) với tồn kho khả dụng `so_luong_kha_dung > 0`.
+
+Các bước xử lý: lấy dư từ AI `min(24, 3 × limit)` (trần của AI service là 24) điểm → bỏ điểm không có `product_id` hợp lệ → gộp trùng theo `productId` (giữ điểm cao nhất) → lọc theo điều kiện trên → sắp theo điểm giảm dần → cắt về `limit`. Vì vậy `total` là số kết quả thực sự trả về (có thể ít hơn `limit` nếu không đủ sản phẩm đang bán khớp).
+
+| Trường `items[]` | Kiểu | Mô tả |
+| :--- | :--- | :--- |
+| `id` | `String` | Mã điểm vector trong index AI (khóa ổn định cho UI, không hiển thị) |
+| `score` | `Double` | Độ tương đồng thô (không phải xác suất) |
+| `productId` | `Long` | Mã sản phẩm đang bán (`/san-pham/{productId}`) |
+| `productName` | `String` | Tên sản phẩm |
+| `brandName` | `String` | Thương hiệu (bỏ qua khi sản phẩm chưa gắn hãng) |
+| `price` | `BigDecimal` | Giá bán hiện hành |
+| `imageUrl` | `String` | Ảnh chính theo catalog `/api/v1/products/images/{file}` |
+| `colors` | `String[]` | Màu còn hàng (đã loại giá trị placeholder `Default Title`) |
+| `status` | `String` | `ACTIVE` |
+
+> Các trường kỹ thuật của index AI (`imagePath`, `fullImageUrl`, `fileName`, `catalog`) **không còn** nằm trong phản hồi.
 
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Câu tìm kiếm trống (`INVALID_REQUEST`), `limit` ngoài khoảng `1` - `24`.
@@ -70,7 +92,7 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 | Tham số | Kiểu | Bắt buộc | Mặc định | Mô tả |
 | :--- | :--- | :---: | :---: | :--- |
 | `file` *(hoặc `image`)* | `MultipartFile` | **Có** | - | File ảnh binary định dạng `.png`, `.jpg`, `.jpeg`, `.webp` (tối đa 10MB) |
-| `limit` | `Integer` | Không | `5` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
+| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -79,31 +101,29 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
   "code": 200,
   "message": "Tìm kiếm theo hình ảnh thành công",
   "result": {
-    "total": 5,
+    "total": 2,
     "items": [
       {
         "id": "3dc85696-a348-427b-b6ba-191dc2fa3736",
         "score": 0.5345,
-        "imagePath": "/dataset/test/shirt1.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/shirt1.jpg",
-        "fileName": "shirt1.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
+        "productId": 2313,
+        "productName": "Áo thun Davies cổ tròn",
+        "brandName": "Davies",
+        "price": 199000.00,
+        "imageUrl": "/api/v1/products/images/davies-2313.jpg",
+        "colors": ["Trắng", "Đen"],
+        "status": "ACTIVE"
       },
       {
         "id": "aa360090-9cd3-40f4-a740-8a7cab80d045",
         "score": 0.5059,
-        "imagePath": "/dataset/test/shirt2.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/shirt2.jpg",
-        "fileName": "shirt2.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
+        "productId": 1204,
+        "productName": "Áo sơ mi Oxford kẻ sọc",
+        "brandName": "Routine",
+        "price": 350000.00,
+        "imageUrl": "/api/v1/products/images/routine-1204.jpg",
+        "colors": ["Xanh"],
+        "status": "ACTIVE"
       }
     ]
   },
@@ -131,7 +151,7 @@ $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alph
 | :--- | :--- | :---: | :---: | :--- |
 | `file` *(hoặc `image`)* | `MultipartFile` | **Có** | - | File ảnh gốc binary (`.png`, `.jpg`, `.jpeg`, `.webp`, tối đa 10MB) |
 | `query` *(hoặc `textQuery`)* | `String` | **Có** | - | Văn bản bổ sung hoặc yêu cầu thay đổi thuộc tính |
-| `limit` | `Integer` | Không | `5` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
+| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
 | `text_weight` *(hoặc `textWeight`)* | `Float` | Không | `0.5` | Trọng số chữ ($0.0 \le text\_weight \le 1.0$), `0.5` là cân bằng 50% ảnh + 50% chữ |
 
 ### Response Thành công (HTTP 200 OK)
@@ -141,67 +161,29 @@ $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alph
   "code": 200,
   "message": "Tìm kiếm đa phương thức kết hợp thành công",
   "result": {
-    "total": 5,
+    "total": 2,
     "items": [
       {
         "id": "3dc85696-a348-427b-b6ba-191dc2fa3736",
         "score": 0.5345,
-        "imagePath": "/dataset/test/shirt1.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/shirt1.jpg",
-        "fileName": "shirt1.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
+        "productId": 2313,
+        "productName": "Áo thun Davies cổ tròn",
+        "brandName": "Davies",
+        "price": 199000.00,
+        "imageUrl": "/api/v1/products/images/davies-2313.jpg",
+        "colors": ["Trắng", "Đen"],
+        "status": "ACTIVE"
       },
       {
         "id": "aa360090-9cd3-40f4-a740-8a7cab80d045",
         "score": 0.5059,
-        "imagePath": "/dataset/test/shirt2.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/shirt2.jpg",
-        "fileName": "shirt2.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
-      },
-      {
-        "id": "f3cacb10-c392-47d1-82df-59733ce9f0b8",
-        "score": 0.4974,
-        "imagePath": "/dataset/test/dress1.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/dress1.jpg",
-        "fileName": "dress1.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
-      },
-      {
-        "id": "bb67d142-5952-4b31-aab9-04506838b6a2",
-        "score": 0.4878,
-        "imagePath": "/dataset/test/bag1.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/bag1.jpg",
-        "fileName": "bag1.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
-      },
-      {
-        "id": "283ba4f2-9da3-45ad-b200-289c20940b71",
-        "score": 0.4807,
-        "imagePath": "/dataset/test/dress2.jpg",
-        "fullImageUrl": "http://localhost:8000/dataset/test/dress2.jpg",
-        "fileName": "dress2.jpg",
-        "catalog": "FASHION_PRODUCT",
-        "productId": null,
-        "productName": null,
-        "price": null,
-        "status": null
+        "productId": 1204,
+        "productName": "Áo sơ mi Oxford kẻ sọc",
+        "brandName": "Routine",
+        "price": 350000.00,
+        "imageUrl": "/api/v1/products/images/routine-1204.jpg",
+        "colors": ["Xanh"],
+        "status": "ACTIVE"
       }
     ]
   },
@@ -216,11 +198,11 @@ $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alph
 
 ---
 
-## 4. Xem ảnh dataset kết quả tìm kiếm
+## 4. Xem ảnh dataset (chỉ dùng gỡ lỗi)
 
 - **Endpoint:** `GET /api/v1/search/images/{fileName}`
 - **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
-- **Mô tả:** Backend tải ảnh sản phẩm từ AI Service và trả lại cho trình duyệt (`Cache-Control: private, max-age=3600`), không bọc `ApiResponse`.
+- **Mô tả:** Chỉ phục vụ gỡ lỗi index AI; giao diện khách **không** dùng (kết quả tìm kiếm trả ảnh catalog ở `imageUrl`). Backend tải ảnh dataset từ AI Service và trả lại cho trình duyệt (`Cache-Control: private, max-age=3600`), không bọc `ApiResponse`.
 
 ### Response Thành công (HTTP 200 OK)
 Nội dung nhị phân ảnh.
@@ -453,11 +435,6 @@ Nội dung nhị phân ảnh.
 
 ---
 
-## 11. Quy chuẩn URL hiển thị ảnh tĩnh (Static Full Image URL)
+## 11. Quy chuẩn ảnh kết quả tìm kiếm
 
-URL hiển thị ảnh sản phẩm được Spring Boot tự động chuẩn hóa dựa trên `base-url` của AI Service:
-$$\text{FullImageUrl} = \text{base-url} + \text{image\_path}$$
-
-- Khi `imagePath = "/dataset/test/shirt1.jpg"`:
-  👉 `fullImageUrl = "http://localhost:8000/dataset/test/shirt1.jpg"`
-- Frontend có thể bind trực tiếp thuộc tính `fullImageUrl` vào thẻ `<img>` mà không cần xử lý thêm chuỗi URL.
+Ảnh trong kết quả là **ảnh chính của sản phẩm trong catalog** (`imageUrl = /api/v1/products/images/{file}`), cùng nguồn với danh sách sản phẩm. Frontend phục vụ qua BFF cùng origin `/api/catalog/product-images/{file}` và hiển thị bằng đúng thẻ sản phẩm của catalog (giá, màu, yêu thích, liên kết `/san-pham/{productId}`).

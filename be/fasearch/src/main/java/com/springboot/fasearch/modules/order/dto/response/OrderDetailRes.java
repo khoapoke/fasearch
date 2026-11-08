@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.springboot.fasearch.common.enums.OrderStatus;
+import com.springboot.fasearch.common.enums.PaymentMethodType;
+import com.springboot.fasearch.common.enums.PaymentStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,6 +42,8 @@ public class OrderDetailRes {
     private Long voucherCampaignVersion;
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
+    private PaymentStatus paymentStatus;
+    private PaymentMethodType paymentMethod;
     private LocalDateTime createdAt;
     private Double deliveryLatitude;
     private Double deliveryLongitude;

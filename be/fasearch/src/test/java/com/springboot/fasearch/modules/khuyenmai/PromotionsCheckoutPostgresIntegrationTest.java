@@ -191,7 +191,7 @@ class PromotionsCheckoutPostgresIntegrationTest {
 
         try {
             SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                    "khachhang1", null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+                    "khachhang1", null, com.springboot.fasearch.security.TestAuthorities.forRole("CUSTOMER")));
             paymentService.processPayment(PaymentProcessReq.builder().orderId(order.getId())
                     .paymentMethodCode(PaymentMethodType.CASH).amountPaid(quote.getMerchandiseAmountDue()).build());
             throw new AssertionError("customer must not collect voucher COD");
@@ -291,7 +291,7 @@ class PromotionsCheckoutPostgresIntegrationTest {
             var mutation = pool.submit(() -> {
                 mutationStarted.countDown();
                 SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                        account.getUsername(), null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+                        account.getUsername(), null, com.springboot.fasearch.security.TestAuthorities.forRole("CUSTOMER")));
                 try {
                     cartService.updateItemQuantity(fixture.variant().getId(), CartItemUpdateReq.builder().quantity(2).build());
                     return "UPDATED";
@@ -337,7 +337,7 @@ class PromotionsCheckoutPostgresIntegrationTest {
 
         try {
             SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                    "nhanvien1", null, List.of(new SimpleGrantedAuthority("ROLE_STAFF"))));
+                    "nhanvien1", null, com.springboot.fasearch.security.TestAuthorities.forRole("STAFF")));
             var payment = paymentService.processPayment(PaymentProcessReq.builder().orderId(order.getId())
                     .paymentMethodCode(PaymentMethodType.CASH).amountPaid(quote.getMerchandiseAmountDue()).build());
             assertThat(payment.replayed()).isFalse();
@@ -415,6 +415,108 @@ class PromotionsCheckoutPostgresIntegrationTest {
     }
 
     @Test
+    void firstRedemptionOpensLegacyPointsAutomaticallyWithoutDoubleCountingTheLedger() {
+        Customer customer = loyaltyCustomer(20);
+        // Ledger rows can exist before any opening (settleOrder appends EARN regardless).
+        loyaltyLedgerRepository.saveAndFlush(LoyaltyLedgerEntry.builder().customer(customer)
+                .type(LoyaltyEntryType.EARN).points(8).sourceKey("earn:seed-" + customer.getId())
+                .occurredAt(java.time.LocalDateTime.now()).build());
+        createEnabledPolicy("25.00", "10.00");
+        Fixture fixture = fixture(3);
+
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), customer.getId(), null, 5);
+        assertThat(quote.getAvailablePoints()).isEqualTo(20);
+        assertThat(quote.getAllowedRedeemedPoints()).isGreaterThanOrEqualTo(5);
+        assertThat(loyaltyLedgerRepository.existsByCustomer_IdAndType(customer.getId(), LoyaltyEntryType.OPENING))
+                .as("preview never writes the ledger").isFalse();
+        assertThat(loyaltyService.customerBalance(customer.getId()).getAvailablePoints()).isEqualTo(20);
+
+        Order first = loyaltyOrder("AUTO-OPEN-A", customer, fixture.variant(), quote.getMerchandiseAmountDue());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> prepareLoyaltyHold(tx, first.getId(), customer, quote, 5));
+
+        var opening = loyaltyLedgerRepository.findByCustomer_IdAndSourceKey(customer.getId(), "opening:" + customer.getId());
+        assertThat(opening).isPresent();
+        assertThat(opening.get().getType()).isEqualTo(LoyaltyEntryType.OPENING);
+        assertThat(opening.get().getPoints()).as("balance 20 minus the 8 already earned in the ledger").isEqualTo(12);
+        assertThat(userRepository.findById(customer.getId()).orElseThrow().getHeldPoints()).isEqualTo(5);
+
+        CartQuoteResponse again = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), customer.getId(), null, 3);
+        Order second = loyaltyOrder("AUTO-OPEN-B", customer, fixture.variant(), again.getMerchandiseAmountDue());
+        tx.executeWithoutResult(status -> prepareLoyaltyHold(tx, second.getId(), customer, again, 3));
+        var entries = loyaltyLedgerRepository.findByCustomer_IdOrderByOccurredAtDescIdDesc(
+                customer.getId(), PageRequest.of(0, 20)).getContent();
+        assertThat(entries.stream().filter(entry -> entry.getType() == LoyaltyEntryType.OPENING)).hasSize(1);
+
+        assertThatThrownBy(() -> loyaltyService.openLegacyBalance(adminOpening(customer)))
+                .isInstanceOfSatisfying(AppException.class, error ->
+                        assertThat(error.getErrorCode()).isEqualTo(ErrorCode.OPENING_ALREADY_RECORDED));
+    }
+
+    @Test
+    void adminOpeningSubtractsLedgerRowsThatAlreadyExist() {
+        Customer customer = loyaltyCustomer(30);
+        loyaltyLedgerRepository.saveAndFlush(LoyaltyLedgerEntry.builder().customer(customer)
+                .type(LoyaltyEntryType.EARN).points(30).sourceKey("earn:seed-" + customer.getId())
+                .occurredAt(java.time.LocalDateTime.now()).build());
+        assertThat(loyaltyService.openLegacyBalance(adminOpening(customer)).getOpeningPoints()).isZero();
+    }
+
+    @Test
+    void autoOpeningRollsBackWithAFailedCheckoutTransaction() {
+        Customer customer = loyaltyCustomer(10);
+        createEnabledPolicy("25.00", "10.00");
+        Fixture fixture = fixture(1);
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), customer.getId(), null, 4);
+        Order order = loyaltyOrder("AUTO-OPEN-ROLLBACK", customer, fixture.variant(), quote.getMerchandiseAmountDue());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> {
+            prepareLoyaltyHold(tx, order.getId(), customer, quote, 4);
+            throw new IllegalStateException("force late transaction rollback");
+        })).isInstanceOf(IllegalStateException.class);
+        assertThat(loyaltyLedgerRepository.findByCustomer_IdOrderByOccurredAtDescIdDesc(
+                customer.getId(), PageRequest.of(0, 20)).getContent()).isEmpty();
+        assertThat(userRepository.findById(customer.getId()).orElseThrow().getHeldPoints()).isZero();
+    }
+
+    @Test
+    void concurrentFirstRedemptionsCreateExactlyOneOpening() throws Exception {
+        Customer customer = loyaltyCustomer(5);
+        createEnabledPolicy("25.00", "10.00");
+        Fixture fixture = fixture(1);
+        CartQuoteResponse quote = benefits.quote(List.of(CartItem.builder()
+                .variant(fixture.variant()).quantity(1).build()), customer.getId(), null, 5);
+        Order first = loyaltyOrder("OPEN-RACE-A", customer, fixture.variant(), quote.getMerchandiseAmountDue());
+        Order second = loyaltyOrder("OPEN-RACE-B", customer, fixture.variant(), quote.getMerchandiseAmountDue());
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        CountDownLatch start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var a = pool.submit(() -> holdPoints(tx, start, first, customer, quote));
+            var b = pool.submit(() -> holdPoints(tx, start, second, customer, quote));
+            start.countDown();
+            assertThat(List.of(a.get(20, TimeUnit.SECONDS), b.get(20, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder("HELD", ErrorCode.INSUFFICIENT_POINTS.name());
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(loyaltyLedgerRepository.findByCustomer_IdOrderByOccurredAtDescIdDesc(
+                customer.getId(), PageRequest.of(0, 20)).getContent().stream()
+                .filter(entry -> entry.getType() == LoyaltyEntryType.OPENING)).hasSize(1);
+    }
+
+    private static LegacyOpeningRequest adminOpening(Customer customer) {
+        LegacyOpeningRequest request = new LegacyOpeningRequest();
+        request.setCustomerId(customer.getId());
+        return request;
+    }
+
+    @Test
     void concurrentLegacySettlementsKeepEveryAwardAndOrderKeyedLedgerEntry() throws Exception {
         Customer customer = loyaltyCustomer(0);
         LegacyOpeningRequest opening = new LegacyOpeningRequest();
@@ -479,7 +581,7 @@ class PromotionsCheckoutPostgresIntegrationTest {
         long paymentsBefore = paymentRepository.count();
         try {
             SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                    "nhanvien1", null, List.of(new SimpleGrantedAuthority("ROLE_STAFF"))));
+                    "nhanvien1", null, com.springboot.fasearch.security.TestAuthorities.forRole("STAFF")));
             assertThatThrownBy(() -> paymentService.processPayment(PaymentProcessReq.builder()
                     .orderId(order.getId()).paymentMethodCode(PaymentMethodType.CASH)
                     .amountPaid(new BigDecimal("1000000.00")).build()))
@@ -579,7 +681,7 @@ class PromotionsCheckoutPostgresIntegrationTest {
         try {
             start.await(10, TimeUnit.SECONDS);
             SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-                    "nhanvien1", null, List.of(new SimpleGrantedAuthority("ROLE_STAFF"))));
+                    "nhanvien1", null, com.springboot.fasearch.security.TestAuthorities.forRole("STAFF")));
             paymentService.processPayment(PaymentProcessReq.builder().orderId(orderId)
                     .paymentMethodCode(PaymentMethodType.CASH).amountPaid(amount).build());
             return "PAID";

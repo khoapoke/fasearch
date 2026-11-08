@@ -12,6 +12,15 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     boolean existsByCategoryName(String categoryName);
 
+    /**
+     * True when another live category already has this name, ignoring case and surrounding
+     * spaces. Vietnamese diacritics stay significant. {@code excludeId} skips the category being renamed.
+     */
+    @Query("select count(c) > 0 from Category c where lower(trim(c.categoryName)) = lower(trim(:name)) "
+            + "and (:excludeId is null or c.id <> :excludeId)")
+    boolean existsLiveName(@org.springframework.data.repository.query.Param("name") String name,
+            @org.springframework.data.repository.query.Param("excludeId") Long excludeId);
+
     Optional<Category> findByCategoryName(String categoryName);
 
     /**

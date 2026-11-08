@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.modules.analytics.dto.response.AnalyticsOverviewRes;
 import com.springboot.fasearch.modules.analytics.dto.response.InventoryMovementRes;
 import com.springboot.fasearch.modules.analytics.dto.response.RevenueReportRes;
 import com.springboot.fasearch.modules.analytics.dto.response.TopProductRes;
@@ -25,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 /** Admin-only read-only reports over existing paid snapshots. No writes, no schema change. */
 @RestController
 @RequestMapping("/api/v1/analytics")
-@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+@PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
 @RequiredArgsConstructor
 public class AdminAnalyticsController {
 
@@ -39,7 +40,7 @@ public class AdminAnalyticsController {
             @RequestParam(defaultValue = "ALL") String channel) {
         if (!"ALL".equalsIgnoreCase(channel)) {
             throw new AppException(ErrorCode.INVALID_REQUEST,
-                    "Channel split is not available: order rows carry no sales-channel column");
+                    "Không có số liệu theo kênh bán: dữ liệu đơn hàng không có cột kênh bán.");
         }
         return ApiResponse.success(200, "Lấy báo cáo doanh thu thành công",
                 analyticsService.revenue(period, startDate, endDate));
@@ -55,6 +56,16 @@ public class AdminAnalyticsController {
                 analyticsService.topProducts(type, limit, startDate, endDate));
     }
 
+    /** Aggregates for the "Tổng hợp" report tab (KPI, category, status, payment method, top customers). */
+    @GetMapping("/overview")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
+    public ApiResponse<AnalyticsOverviewRes> overview(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ApiResponse.success(200, "Lấy báo cáo tổng hợp thành công",
+                analyticsService.overview(startDate, endDate));
+    }
+
     @GetMapping("/inventory-movement")
     public ApiResponse<PageResponse<InventoryMovementRes>> inventoryMovement(
             @RequestParam int year,
@@ -63,7 +74,7 @@ public class AdminAnalyticsController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         if (year < 2000 || year > 2100) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid year");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Năm không hợp lệ.");
         }
         return ApiResponse.success(200, "Lấy báo cáo xuất - nhập - tồn thành công",
                 analyticsService.inventoryMovement(year, month, sku, page, size));

@@ -29,4 +29,10 @@ public class VariantRes {
     /** True when size is the provider placeholder for missing size data (not a real choice). */
     @Builder.Default
     private boolean sizeIsSentinel = false;
+
+    /**
+     * Tồn khả dụng theo SKU cho storefront (so_luong_kha_dung = physical - reserved).
+     * Null khi chưa có dòng tồn kho; FE coi như chưa rõ và không hiện số.
+     */
+    private Integer availableStock;
 }
