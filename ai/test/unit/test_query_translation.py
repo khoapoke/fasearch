@@ -227,9 +227,9 @@ def test_multimodal_response_has_translation_fields(client, seeded):
 
 def test_vietnamese_search_service_uses_english_for_clip(client, seeded, fake_processor):
     """Service phải encode bản dịch (FakeProcessor hash text -> seed khác)."""
-    from src.services.search_service import search_service
+    from src.services.search_service import SearchService
 
-    search_service.search_by_text("áo thun đen", limit=3)
+    SearchService().search_by_text("áo thun đen", limit=3)
     assert fake_processor.calls and fake_processor.calls[-1]["has_text"] is True
     # Bản dịch "t-shirt black" khác hẳn query gốc -> CLIP nhận text Anh
     assert translate_for_search("áo thun đen") == "t-shirt black"

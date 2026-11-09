@@ -88,8 +88,6 @@ def mem_repo(monkeypatch):
     default_repo = ImageRepository(collection_name=default_name, client=client)
     default_repo.ensure_collection_exists()
     monkeypatch.setitem(registry, default_name, default_repo)
-    monkeypatch.setattr(search_service_module.search_service, "repo", default_repo)
-    monkeypatch.setattr(search_service_module.search_service, "collection_name", default_name)
     return default_repo
 
 

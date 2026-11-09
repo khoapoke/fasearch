@@ -323,27 +323,15 @@ class PointService:
         return success_count, skipped_count
 
 
-# Instance mặc định dùng collection_name từ database.yaml làm fallback
-point_service = PointService()
-
-# Tương thích ngược cho các module đang gọi dạng hàm
-create_point = point_service.create_point
-delete_point = point_service.delete_point
-update_point_payload = point_service.update_point_payload
-clear_all_points = point_service.clear_all_points
-batch_create_from_directory = point_service.batch_create_from_directory
-scan_directory_images = PointService.scan_directory_images
-_extract_image_vector = PointService.extract_image_vector
-
-
 if __name__ == "__main__":
     test_img_path = r"dataset/test/images/1855.jpg"
     sys_path = to_system_path(test_img_path)
     web_path = to_web_path(test_img_path)
 
-    print(f"Collection : {point_service.collection_name}")
+    srv = PointService(auto_create_collection=False)
+    print(f"Collection : {srv.collection_name}")
     print(f"System path: {sys_path}")
     print(f"Web path   : {web_path}")
 
-    point_sev = PointService(collection_name="test")
+    point_sev = PointService(collection_name="test", auto_create_collection=False)
     print(f"Custom collection: {point_sev.collection_name}")

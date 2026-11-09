@@ -11,7 +11,7 @@ from src.schemas.evaluation import (
     QueryEvaluationResult,
     BenchmarkSummary,
 )
-from src.services.search_service import SearchService, search_by_text
+from src.services.search_service import SearchService
 from src.utils.metrics import (
     calculate_average_precision,
     calculate_precision_recall_at_k,
@@ -207,65 +207,4 @@ class EvaluationService:
         )
 
 
-# =========================================================================
-# BACKWARD COMPATIBILITY: Module-level Singletons & Functions
-# =========================================================================
-evaluation_service = EvaluationService()
 
-
-def evaluate_query(
-    query_text: str,
-    target_article_type: str,
-    k_list: Optional[List[int]] = None,
-    limit: int = 10,
-    ground_truth: Optional[Dict[str, Dict[str, str]]] = None,
-    available_images: Optional[Set[str]] = None,
-    csv_path: Optional[Union[str, Path]] = None,
-) -> QueryEvaluationResult:
-    """Hàm module-level tương thích ngược cho scripts/run_benchmark.py."""
-    return evaluation_service.evaluate_query(
-        query_text=query_text,
-        target_article_type=target_article_type,
-        k_list=k_list,
-        limit=limit,
-        ground_truth=ground_truth,
-        csv_path=csv_path,
-    )
-
-
-def run_full_benchmark(
-    test_cases: Optional[List[Dict[str, str]]] = None,
-    k_list: Optional[List[int]] = None,
-    csv_path: Optional[Union[str, Path]] = None,
-) -> BenchmarkSummary:
-    """Hàm module-level tương thích ngược cho scripts/run_benchmark.py."""
-    return evaluation_service.run_full_benchmark(test_cases=test_cases, k_list=k_list, csv_path=csv_path)
-
-
-__all__ = [
-    # Class & Singleton
-    "EvaluationService",
-    "evaluation_service",
-    "DEFAULT_BENCHMARK_CASES",
-    "CORE_SEARCH_BENCHMARK_CASES",
-    "FULL_SEARCH_BENCHMARK_CASES",
-    "get_benchmark_cases",
-    # Re-exported CSV & Ground truth helpers
-    "load_ground_truth",
-    "get_available_test_images",
-    "get_available_article_types",
-    "TEST_DATASET_DIR",
-    "STYLES_CSV_PATH",
-    "TEST_IMAGES_DIR",
-    # Re-exported metric math functions
-    "calculate_precision_recall_at_k",
-    "calculate_average_precision",
-    "calculate_reciprocal_rank",
-    "calculate_map",
-    "calculate_mrr",
-    "calculate_mean_metrics_at_k",
-    "calculate_mean_latency",
-    # Module-level benchmark runners
-    "evaluate_query",
-    "run_full_benchmark",
-]

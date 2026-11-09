@@ -204,11 +204,4 @@ class SearchService:
         return _format_results(results)
 
 
-# Instance mặc định dùng collection_name từ database.yaml
-search_service = SearchService()
 
-# Tương thích ngược với các lời gọi hàm module-level
-search_by_text = search_service.search_by_text
-search_by_image = search_service.search_by_image
-search_multimodal = search_service.search_multimodal
-search_by_image_text = search_multimodal
