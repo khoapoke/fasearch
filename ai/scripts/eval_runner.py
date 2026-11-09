@@ -167,15 +167,32 @@ def run_evaluation(queries_path, qrels_path, results_path, output_path, k):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="STT6 offline search evaluation runner")
-    parser.add_argument("--queries", required=True, help="Path to queries JSON file")
-    parser.add_argument("--qrels", required=True, help="Path to qrels JSON file")
-    parser.add_argument("--results", default=None, help="Path to retrieval results JSON file")
-    parser.add_argument("--output", required=True, help="Path to output report JSON file")
-    parser.add_argument("--k", type=int, default=10, help="K for Precision@K and Recall@K")
-    args = parser.parse_args()
+    # =========================================================================
+    # CẤU HÌNH ĐÁNH GIÁ OFFLINE (CHỈNH SỬA TRỰC TIẾP TẠI ĐÂY NẾU CHẠY KHÔNG CLI)
+    # =========================================================================
+    queries_path = "queries.json"
+    qrels_path = "qrels.json"
+    results_path = None
+    output_path = "eval_results.json"
+    k = 10
 
-    run_evaluation(args.queries, args.qrels, args.results, args.output, args.k)
+    # Nếu người dùng có truyền tham số CLI thì ưu tiên lấy theo CLI
+    if len(sys.argv) > 1:
+        parser = argparse.ArgumentParser(description="STT6 offline search evaluation runner")
+        parser.add_argument("--queries", default=queries_path, help="Path to queries JSON file")
+        parser.add_argument("--qrels", default=qrels_path, help="Path to qrels JSON file")
+        parser.add_argument("--results", default=results_path, help="Path to retrieval results JSON file")
+        parser.add_argument("--output", default=output_path, help="Path to output report JSON file")
+        parser.add_argument("--k", type=int, default=k, help="K for Precision@K and Recall@K")
+        args = parser.parse_args()
+
+        queries_path = args.queries
+        qrels_path = args.qrels
+        results_path = args.results
+        output_path = args.output
+        k = args.k
+
+    run_evaluation(queries_path, qrels_path, results_path, output_path, k)
 
 
 if __name__ == "__main__":

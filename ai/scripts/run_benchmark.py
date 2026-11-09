@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 # Đảm bảo đường dẫn gốc dự án nằm trong sys.path
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -17,29 +18,10 @@ if hasattr(sys.stdout, "reconfigure"):
 import torch
 from src.core.config import settings
 from src.repositories import get_image_repository
-from src.services.point_service import batch_create_from_directory
-from src.services.evaluation_service import (
-    run_full_benchmark,
-    get_available_test_images,
-    DEFAULT_BENCHMARK_CASES,
-)
-
-
-def ensure_test_data_seeded():
-    """Kiểm tra và tự động nạp 10 ảnh test vào Qdrant nếu Database chưa có dữ liệu."""
-    repo = get_image_repository()
-    try:
-        count = repo.count_points()
-    except Exception as e:
-        print(f"\n[!] Khong the ket noi den Qdrant: {e}")
-        print("[!] Hay dam bao Docker Qdrant dang chay: docker-compose up -d\n")
-        sys.exit(1)
-
-    if count == 0:
-        print("\n[*] Qdrant hien chua co du lieu. Dang tu dong nap 10 anh test vao Qdrant...")
-        target_test_dir = ROOT_DIR / "dataset" / "test" / "images"
-        batch_create_from_directory(target_dir=target_test_dir, batch_size=10)
-        print("[*] Da nap xong du lieu test vao Qdrant!\n")
+from src.services.point_service import PointService
+from src.services.evaluation_service import EvaluationService
+from src.utils.csv_helpers import get_available_test_images
+from test.benchmarks.search_cases import DEFAULT_BENCHMARK_CASES
 
 
 def print_separator(char="=", length=92):
@@ -55,18 +37,45 @@ def safe_str(text: str, max_len: int = 30) -> str:
     return text
 
 
-def main():
+def ensure_test_data_seeded(collection_name: str) -> None:
+    """Kiểm tra và tự động nạp 10 ảnh test vào Qdrant nếu Database chưa có dữ liệu."""
+    repo = get_image_repository(collection_name)
+    try:
+        count = repo.count_points()
+    except Exception as e:
+        print(f"\n[!] Khong the ket noi den Qdrant: {e}")
+        print("[!] Hay dam bao Docker Qdrant dang chay: docker-compose up -d\n")
+        sys.exit(1)
+
+    if count == 0:
+        print("\n[*] Qdrant hien chua co du lieu. Dang tu dong nap 10 anh test vao Qdrant...")
+        target_test_dir = ROOT_DIR / "dataset" / "test" / "images"
+        PointService(collection_name=collection_name).batch_create_from_directory(
+            target_dir=target_test_dir, batch_size=10
+        )
+        print("[*] Da nap xong du lieu test vao Qdrant!\n")
+
+
+def run_benchmark(
+    test_cases: Optional[List[dict]] = None,
+    k_list: Optional[List[int]] = None,
+) -> None:
+    """Hàm chạy kiểm thử benchmark và in báo cáo ra console."""
+    test_cases = test_cases or DEFAULT_BENCHMARK_CASES
+    k_list = k_list or [1, 3, 5, 10]
+    eval_service = EvaluationService()
+    repo = get_image_repository(eval_service.collection_name)
+
     print_separator("=")
     print("      FASHION AI SEARCH ENGINE - BENCHMARK REPORT (Precision@K & Recall@K)")
     print_separator("=")
 
-    # 1. Thong tin phan cung & He thong
+    # 1. Thông tin phần cứng & hệ thống
     is_cuda = torch.cuda.is_available()
     device_name = torch.cuda.get_device_name(0) if is_cuda else "CPU"
-    repo = get_image_repository()
-    
-    # 2. Dam bao da co du lieu test
-    ensure_test_data_seeded()
+
+    # 2. Đảm bảo đã có dữ liệu test
+    ensure_test_data_seeded(eval_service.collection_name)
     total_db_points = repo.count_points()
     avail_images = get_available_test_images()
 
@@ -77,12 +86,11 @@ def main():
     print(f"[*] So anh tap Test    : {len(avail_images)} anh trong dataset/test/images/")
     print_separator("-")
 
-    # 3. Chay Benchmark
-    k_list = [1, 3, 5, 10]
-    print(f"[*] Dang thuc thi {len(DEFAULT_BENCHMARK_CASES)} kich ban kiem thu o cac moc K = {k_list}...")
-    summary = run_full_benchmark(k_list=k_list)
+    # 3. Chạy Benchmark qua EvaluationService
+    print(f"[*] Dang thuc thi {len(test_cases)} kich ban kiem thu o cac moc K = {k_list}...")
+    summary = eval_service.run_full_benchmark(test_cases=test_cases, k_list=k_list)
 
-    # 4. Bang chi tiet tung cau truy van
+    # 4. Bảng chi tiết từng câu truy vấn
     print("\n" + "=" * 92)
     print("                      CHI TIET TUNG CAU TRUY VAN (PER-QUERY BREAKDOWN)")
     print("=" * 92)
@@ -111,7 +119,7 @@ def main():
         )
         print(row)
 
-    # 5. Chi tiet cac ket qua Hit / Miss cho tung Query
+    # 5. Chi tiết các kết quả Hit / Miss cho từng Query
     print("\n" + "-" * 92)
     print("                      DANH SACH RETRIEVED ITEMS & GROUND TRUTH MATCH")
     print("-" * 92)
@@ -123,7 +131,7 @@ def main():
             disp = safe_str(item.display_name or "N/A", 40)
             print(f"   {rank}. {status_tag} Score: {item.score:.4f} | File: {item.file_name} | Type: {type_tag} | {disp}")
 
-    # 6. Bang KPI tong ket toan he thong
+    # 6. Bảng KPI tổng kết toàn hệ thống
     print("\n" + "=" * 92)
     print("                    TONG KET KPI HE THONG (GLOBAL BENCHMARK KPI)")
     print("=" * 92)
@@ -138,6 +146,19 @@ def main():
     print(f"  * Mean Reciprocal Rank (MRR) : {summary.mrr_score * 100:>6.2f}%")
     print(f"  * Thoi gian phan hoi trung binh: {summary.avg_latency_ms:>5.1f} ms / query")
     print("=" * 92)
+
+
+def main():
+    # =========================================================================
+    # CẤU HÌNH BENCHMARK (CHỈNH SỬA TRỰC TIẾP TẠI ĐÂY)
+    # =========================================================================
+    # Danh sách các mốc K để đo Precision@K và Recall@K
+    k_list = [1, 3, 5, 10]
+
+    # Bộ ca kiểm thử sử dụng (DEFAULT_BENCHMARK_CASES gồm 143 ca kiểm thử)
+    test_cases = DEFAULT_BENCHMARK_CASES
+
+    run_benchmark(test_cases=test_cases, k_list=k_list)
 
 
 if __name__ == "__main__":
