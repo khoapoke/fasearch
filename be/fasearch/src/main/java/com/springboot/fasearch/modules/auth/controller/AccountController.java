@@ -24,6 +24,7 @@ import com.springboot.fasearch.modules.auth.dto.request.AccountUpdateReq;
 import com.springboot.fasearch.modules.auth.dto.response.AccountInfoRes;
 import com.springboot.fasearch.modules.auth.service.interfaces.AuthService;
 import com.springboot.fasearch.shared.ApiResponse;
+import com.springboot.fasearch.shared.DeleteReasonReq;
 import com.springboot.fasearch.shared.PageResponse;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -72,8 +73,9 @@ public class AccountController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Boolean> deleteAccount(@PathVariable Long id) {
-        authService.deleteAccount(id);
+    public ApiResponse<Boolean> deleteAccount(@PathVariable Long id,
+            @Valid @RequestBody(required = false) DeleteReasonReq req) {
+        authService.deleteAccount(id, req == null ? null : req.getReason());
         return ApiResponse.success(200, "Xóa tài khoản thành công", true);
     }
 }

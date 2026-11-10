@@ -18,4 +18,6 @@ public class AuthRes {
     private Long expiresIn;
     private String username;
     private String role;
+    @Builder.Default
+    private boolean emailVerified = false;
 }

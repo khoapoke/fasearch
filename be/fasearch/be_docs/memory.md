@@ -10,12 +10,22 @@
 
 ## 1. CURRENT CONTEXT
 
+- **Category merge (2026-11-10):** V34 merges normalized active duplicates, moves product/draft references, adds active-name index, and rejects conflicting category restores; see `today/cat-merge/REPORT.md`. FR-21 remains X.
+
+- **BE test fixes (2026-11-10):** ProductReportIntegrationTest accepts an explicitly configured DEMO_TEST_DB_NAME without a lane-specific prefix. ReturnIntegrationTest reads product-level analytics columns and seeds completion one day inside the window; expired/future/unknown completion rejection remains covered. Product code unchanged. Evidence: `fasearch/.agent/tasks/admin-polish-20261107/today/fix-betests/READY.md`.
+
+- **Report fix (2026-11-10):** FR-53 now groups live SKUs per product ID before ranking/slow filtering; DTO unchanged. Product quantity/revenue net refunds, stock summed once per SKU; inventory movement remains per SKU. Evidence: `fasearch/.agent/tasks/admin-polish-20261107/today/fix-report/READY.md`.
+
+- **Active task:** `admin-polish` round 3 R1F — independent-review fixes, V31 (V28 unchanged); candidate 3211/18181 on disposable dev DB. Previous ADM-2 — permissions V27, loyalty ADJUST V26, analytics overview, Barcode scan; full suite 639/639.
+- **Previous task:** `admin-benefits-reports-completion` (BE lane) — candidate `18156` / DB `fasearch_admin_benefits_reports_20261103` (V20) / read-only analytics LIVE; S1 benefits endpoints verified. Contract: `.agent/tasks/admin-benefits-reports-completion/live/be/CONTRACT.md`.
+- **Previous task:** `customer-catalog-detail-r5` (BE lane) — candidate `18154` / DB `fasearch_catalog_detail_r5_20261103` (V20) / taxonomy repaired to 12 canonical buckets / with-counts + sentinel flags live; AI 8024 read-only reuse. Contract: `.agent/tasks/customer-catalog-detail-r5/live/be/CONTRACT.md`.
+- **Previous task:** `customer-storefront-refinement-r3` (BE lane) — candidate `18150` / AI `8022` / DB `fasearch_storefront_r3_20261102` / index `storefront_r3_v1`. Catalog expanded from verified first-party VN + global feeds (1,259 published products), real CLIP index, brand filter and search proxies verified. Contract: `.agent/tasks/customer-storefront-refinement-r3/live/be/CONTRACT.md`.
 - **Completed Tasks:**
   - Module `search` (100% COMPLETED: FR-NC1, FR-NC2, FR-NC3):
     - `FR-NC1`: Text Search (`POST /api/v1/search/text`) querying CLIP vector embeddings in Qdrant via FastAPI AI Service.
     - `FR-NC2`: Image Search (`POST /api/v1/search/image`) uploading reference image binary and retrieving visually similar products.
     - `FR-NC3`: Multimodal Search (`POST /api/v1/search/multimodal`) combining reference image and modifying text query with configurable `text_weight`.
-  - Module `payment` (100% COMPLETED: FR-42, FR-43):
+  - Module `payment` S1 baseline (FR-42, FR-43 historically completed; S2 loyalty settlement replacement is active):
     - `FR-42`: Order payment calculation (`POST /api/v1/payments/calculate`).
     - `FR-43`: Payment processing & Invoice generation (`GET /api/v1/payments/methods`, `POST /api/v1/payments/process`, Flyway migration `V9`).
   - Module `order` / `cart` (100% COMPLETED: FR-35A -> FR-41):
@@ -31,9 +41,8 @@
   - Module `product` & `category`: `FR-21` -> `FR-28` (Category CRUD, Product search, create, update, delete, Variant CRUD, Barcode export, POS lookup).
   - Module `auth`: `FR-01`..`FR-08` (Login, Register, MyInfo, List/Search accounts, Create internal account, Partial update account, Soft delete/lock account, RBAC).
   - Module `user`: `FR-10`..`FR-13` (Customer CRUD & soft delete), `FR-15`..`FR-17` (Employee CRUD, partial update, soft delete with account lock).
-- **In-progress Task:** Module 5 (`search`) is 100% completed. Ready to proceed to Module 9 (`promotion`: FR-44 to FR-47).
-- **Next Immediate Actions:**
-  1. Follow AGENTS.md 3-step process to clarify database schema, voucher lifecycle (`VoucherStatus`: `UPCOMING`, `ACTIVE`, `EXPIRED`, `DISABLED`), and API specifications for `FR-44` (Promotion list & filtering).
+- **Active Task:** Brand catalog / AI mapping / sandbox payments on `codex/brand-catalog-payments-be` (base `9b2e32ca`). Added additive V14 brand schema, brand read API/logo serving, product brand/model fields and exact brand filter; added deterministic guarded brand importer (`scripts/import_brand_catalog.py`) with seed-only stock default and explicit `--update-stock` guard. Added V15 payment-attempt/event skeleton, Stripe/VNPAY signature verifiers, focused unit tests. No candidate runtime/DB/index yet; external provider E2E and credentials remain pending.
+- **Next Immediate Actions:** run focused build/tests, publish exact pins/progress, then build candidate DB/AI index when FE manifest arrives; no provider PAID claims or public IPN exposure.
 - **Technical Gotchas & Constraints:**
   - AI Search (`POST /api/v1/search/**`): Public endpoints in `PUBLIC_ENDPOINTS` (`/api/v1/search/**`); callers do not require authentication.
   - Integration with FastAPI AI Server (`ai-service.base-url: http://localhost:8000`) using Spring 6 `RestClient` in `FashionAiClient`.
@@ -41,7 +50,8 @@
   - Resilient product enrichment: safely tolerates `product_id == null` in test datasets, while enriching with `Product` data (`productName`, `price`, `status`) when a valid `product_id` matches the database.
   - Image file validation: checks non-empty, supported extensions (`.png`, `.jpg`, `.jpeg`, `.webp`), and size limit ($\le 10\text{MB}$).
   - Connection resilience: catches connection refusals / timeouts and throws `AI_SERVICE_UNAVAILABLE` (503).
-  - Payment processing (`POST /api/v1/payments/process`): Checks order existence and terminal states (`CANCELLED`, `RETURNED`), rejects already paid orders (`ORDER_ALREADY_PAID`), enforces customer ownership, verifies payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`), calculates cash change for cash payments, auto-generates invoice code `HD-YYYYMMDD-XXX`, persists `Invoice` & `Payment`, awards customer loyalty points (100,000 VNĐ = 1 pt), and handles omnichannel inventory deduction for POS draft orders (`OrderStatus.DRAFT` -> `OrderStatus.COMPLETED`).
+  - Loyalty gotcha: historical S1 payment code had a fixed-rate award, and historical preview docs used a fixed point conversion. These are not S2 defaults. For orders with an S2 policy snapshot, one settlement authority uses immutable policy version and `Invoice.totalActualPaid`; no second legacy award runs. Pre-S2 non-voucher point calculation remains display-only; pre-S2 orders receive no retroactive S2 earning/redemption. Unknown invoice coverage remains null, not zero.
+  - Promotions-checkout S1 uses the isolated candidate contract revision 2 (SHA-256 `734e0db49016c427efb1ec242214cb097c876565445b149bb651614a943aae82`), migration V10, DB `fasearch_promotions_checkout_20261030` on PG55440, and loopback BE18124 only. Exact source/JAR/data pins and retained synthetic fixtures are in the shared `live/be/BE-HANDOFF-S1.md`; no parent DB or BE18122 changes.
   - Do NOT add `@Operation` annotations to Controllers unless explicitly requested.
   - Do NOT run `git commit` unless explicitly instructed by the user.
 
@@ -49,78 +59,42 @@
 
 ## 2. RECENT 5 SESSIONS (ROLLING LOGS)
 
-### [Session 26] Implemented Module 5 (AI Search: FR-NC1, FR-NC2, FR-NC3) (2026-10-30)
-- **Done:**
-  - Configured `ai-service.base-url`, `api-prefix`, and `timeout-seconds` in `application.yaml`.
-  - Added AI search error codes in `ErrorCode.java`: `AI_SERVICE_UNAVAILABLE` (503), `INVALID_IMAGE_FILE` (400).
-  - Created DTOs in `modules.search.dto`:
-    - `ai/AiApiResponse.java`, `ai/AiSearchData.java`, `ai/AiSearchResultItem.java`, `ai/AiTextSearchReq.java` for FastAPI communication.
-    - `request/TextSearchReq.java` (validated `@NotBlank query`, `@Min(1) @Max(24) limit`).
-    - `response/ProductSearchItemRes.java` (`id`, `score`, `imagePath`, `fullImageUrl`, `fileName`, `catalog`, `productId`, `productName`, `price`, `status`) and `response/AiSearchRes.java`.
-  - Created `FashionAiClient` using Spring 6 `RestClient`: implements `searchByText`, `searchByImage`, `searchMultimodal` with robust error wrapping into `AI_SERVICE_UNAVAILABLE`.
-  - Created `SearchService` & `SearchServiceImpl`: validates input text & image files (`.png`, `.jpg`, `.jpeg`, `.webp`, $\le 10\text{MB}$), generates `fullImageUrl`, and enriches product details from `ProductRepository` when `productId` is present.
-  - Created `SearchController` with:
-    - `POST /api/v1/search/text` (FR-NC1)
-    - `POST /api/v1/search/image` (FR-NC2)
-    - `POST /api/v1/search/multimodal` (FR-NC3)
-    - No `@Operation` Swagger annotations, all responses wrapped in `ApiResponse<AiSearchRes>`.
-  - Updated `SecurityConfig`: added `/api/v1/search/**` to `PUBLIC_ENDPOINTS`.
-  - Updated `be_docs/module.md` marking `FR-NC1`, `FR-NC2`, `FR-NC3` as completed (`X`). Module 5 is 100% completed.
-- **Build Status:** `BUILD SUCCESS` (185 source files, 0 errors, 0 warnings).
+### [Session CAT-MERGE] Gộp danh mục trùng (2026-11-10)
+- V34 chọn danh mục theo số sản phẩm đang hoạt động rồi ID; chuyển sản phẩm và bản nháp, xóa mềm bản trùng và tạo chỉ mục tên hoạt động. Khôi phục trùng chuẩn hóa trả lỗi trùng tên. Test tích hợp PostgreSQL 16 cô lập và chi tiết áp dụng tại `today/cat-merge/REPORT.md`.
 
-### [Session 25] Implemented FR-43 (Process Payment & Generate Invoice) in Payment Module (2026-10-29)
-- **Done:**
-  - Created Flyway migration `V9__refactor_invoice_and_payment_tables.sql`: added `ma_hd`, `ma_nv`, `tien_khach_dua`, `tien_thua`, `ghi_chu` to `hoa_don`; added `ma_giao_dich`, `ghi_chu`, `da_xoa` to `thanh_toan`; widened `thue_vat` to `DECIMAL(15, 2)`; seeded 4 active payment methods (`CASH`, `BANK_TRANSFER`, `VNPAY_QR`, `MOMO`).
-  - Added payment error codes in `ErrorCode.java`: `INVOICE_NOT_FOUND` (404), `ORDER_ALREADY_PAID` (400), `PAYMENT_METHOD_NOT_FOUND` (404), `PAYMENT_AMOUNT_INSUFFICIENT` (400).
-  - Created JPA Entities with Hibernate 6 `@SQLRestriction("da_xoa = false")`: `PaymentMethod`, `Invoice`, `Payment`.
-  - Created Spring Data JPA repositories in `modules.payment.repository`: `PaymentMethodRepository`, `InvoiceRepository`, `PaymentRepository`.
-  - Created DTOs in `modules.payment.dto`: `PaymentMethodRes`, `PaymentProcessReq`, `InvoiceRes`.
-  - Implemented `getPaymentMethods()` and `processPayment(PaymentProcessReq)` in `PaymentServiceImpl`:
-    - Validates order existence, prevents payment on cancelled/returned orders, checks for duplicate payment (`ORDER_ALREADY_PAID`).
-    - Validates customer ownership (403 `FORBIDDEN` if customer accesses foreign order).
-    - Tracks cashier/admin in `invoice.employee` for internal staff checkout.
-    - Validates cash payment amount sufficiency and computes `cashChange = cashReceived - totalAmount`.
-    - Handles Omnichannel stock deduction for POS draft orders (`order.status == DRAFT`): deducts `physicalStock` and `availableStock` atomically in `ton_kho`, sets order status to `COMPLETED`.
-    - Updates online order status from `PENDING` to `CONFIRMED`.
-    - Auto-generates unique invoice code `HD-YYYYMMDD-XXX`.
-    - Persists `Invoice` and `Payment` records with `PaymentStatus.PAID`.
-    - Accrues customer loyalty points (1 point per 100,000 VNĐ paid) if customer is present.
-  - Updated `PaymentController`: Added `GET /api/v1/payments/methods` (HTTP 200) and `POST /api/v1/payments/process` (HTTP 201), no `@Operation` annotations.
-  - Updated `SecurityConfig`: Added `/api/v1/payments/methods` to `PUBLIC_ENDPOINTS` and authorized `POST /api/v1/payments/process` for `ADMIN`, `STAFF`, `CUSTOMER`.
-  - Updated `be_docs/module.md` marking `FR-43` as completed (`X`). Module 8 is now 100% completed.
-- **Build Status:** `BUILD SUCCESS` (174 source files, 0 errors, 0 warnings).
+### [Session FIX-BETESTS] Sửa fixture và hợp đồng test BE (2026-11-10)
+- Product report bỏ ràng buộc tên DB `it_fix_report_*`; vẫn bắt buộc DEMO_TEST_DB_NAME tường minh, không fallback vào DB ứng dụng.
+- Product report rollback fixture bằng @Transactional để không cộng nhầm dữ liệu tháng 03/2001 vào AnalyticsOverviewIntegrationTest.
+- Return analytics chọn theo product ID, kiểm tra net quantity ở cột 3, revenue ở cột 4 và every-SKU-zero ở cột 7. Giữ kiểm tra movement theo SKU, category, damaged, invoice/count/refund.
+- Fixture xác nhận trigger có completed_at, sau đó đặt một ngày trước theo đồng hồ PostgreSQL; test cửa sổ vẫn từ chối 8 ngày trước, tương lai và NULL, chấp nhận một ngày trước. Không nới window/guard trong product code.
+- Chỉ chạy bốn lớp được yêu cầu trên DB tạm `it_fixbe_*` ở Postgres dùng chung; snapshot source riêng tránh target thay đổi giữa các lane. Build BE qua locked-build.sh/daemon. Kết quả và giới hạn điều tra thời gian ghi ở `today/fix-betests/READY.md`. FR-53 đã X, không thay đổi tiến độ.
 
-### [Session 24] Implemented FR-42 (Order Payment Calculation) in Payment Module (2026-10-29)
-- **Done:**
-  - Created DTOs in `modules.payment.dto`: `PaymentCalculateReq` and `PaymentCalculationRes`.
-  - Created `PaymentService` & `PaymentServiceImpl`:
-    - `POST /api/v1/payments/calculate`: Validates order existence and terminal states (`CANCELLED`, `RETURNED`); enforces customer ownership isolation (returns 403 `FORBIDDEN` if foreign order accessed by `CUSTOMER`); computes line item subtotal from `order.getDetails()`; computes voucher discount; computes point redemption discount (1 point = 1,000 VNĐ, verified against `customer.accumulatePoint`); calculates net product total, adds delivery `shippingFee`, and computes 8% VAT.
-  - Created `PaymentController` with `POST /api/v1/payments/calculate`, protected by `@PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")`, returning `ApiResponse<PaymentCalculationRes>` with HTTP 200 OK.
-  - Updated `SecurityConfig` authorizing `POST /api/v1/payments/calculate` for `ADMIN`, `STAFF`, `CUSTOMER`.
-  - Updated `be_docs/module.md` marking `FR-42` as completed (`X`).
-- **Build Status:** `BUILD SUCCESS` (165 source files, 0 errors, 0 warnings).
+### [Session FIX-REPORT] Tổng hợp theo sản phẩm (2026-11-10)
+- FR-53: one row per product across non-deleted SKUs, summed net quantity/revenue and available stock; SLOW_MOVING requires every SKU net quantity zero. Same DTO and REPORT_VIEW. Inventory movement query unchanged.
+- ProductReportIntegrationTest uses a throwaway it_fix_report_* PostgreSQL with no web server, tests one/two selling SKUs, refunds, deleted SKUs, date boundary and no stock multiplication. FE adapter test preserves product totals and distinct IDs with identical names.
+- Table, bars, help text and CSV use net sales/revenue and available-stock labels. Docs/index/tracker updated; Control ReturnService clock_timestamp() preserved. Build/UI/SQL evidence and final results: `today/fix-report/READY.md`.
 
-### [Session 23] Implemented FR-41 (Shipping Fee Calculation) & Verified FR-40 in Order Module (2026-10-28)
-- **Done:**
-  - Created DTOs: `ShippingFeeCalcReq` and `ShippingFeeRes`.
-  - Updated `OrderService` & `OrderServiceImpl`: `POST /api/v1/orders/calculate-shipping-fee`: Calculates real-time delivery fee based on destination location (TP.HCM 25,000 VNĐ; major cities 30,000 VNĐ; other provinces 35,000 VNĐ) and package weight (>2,000g surcharge). Returns `ShippingFeeRes` with estimated delivery days.
-  - Updated `OrderController`: Added `POST /calculate-shipping-fee` returning `ApiResponse<ShippingFeeRes>` with HTTP 200 OK.
-  - Updated `SecurityConfig`: Added `/api/v1/orders/calculate-shipping-fee` to `PUBLIC_ENDPOINTS`.
-  - Verified and closed `FR-40` (Automated stock reservation on checkout, deduction on completion, and restoration on cancellation).
-  - Updated `be_docs/module.md` marking both `FR-40` and `FR-41` as completed (`X`). Module 7 is now 100% completed.
-- **Build Status:** `BUILD SUCCESS` (160 source files, 0 errors, 0 warnings).
+### [Session R3-DOCS] Tài liệu round 3 (2026-11-10)
+- Đổi/trả: khách gửi yêu cầu trên đơn của mình; quản trị duyệt, nhận hàng và hoàn tiền theo RETURN_VIEW, RETURN_PROCESS, RETURN_REFUND. Báo cáo trừ khoản hoàn.
+- Đơn hàng hỗ trợ chọn nhiều đơn để cập nhật trạng thái và in hóa đơn/phiếu giao hàng. Thông báo gồm tùy chọn email, cảnh báo yêu thích và chuông quản trị theo quyền; nhật ký hoạt động có lọc và Export CSV.
+- V28–V29 bổ sung đổi/trả và thông báo; V31–V32 sửa hai luồng, V33 bổ sung nhật ký. Tư vấn size chưa thấy trong trang sản phẩm hiện tại.
+- Kiểm tra mapping API bằng `/tmp/fasearch-doc-coverage.py`; kết quả và các phần chưa hoàn thành nằm trong `r3-docs/READY.md`.
 
-### [Session 22] Implemented FR-39 (POS Draft Orders) in Order Module (2026-10-28)
-- **Done:**
-  - Added `DRAFT` status to `OrderStatus` enum.
-  - Updated `Order` entity to make `customer` nullable (allowing POS walk-in customers).
-  - Created DTOs: `PosDraftItemReq` and `PosDraftOrderReq`.
-  - Updated `OrderRepository` with `findByStatusOrderByOrderDateDesc(OrderStatus.DRAFT)`.
-  - Updated `OrderService` & `OrderServiceImpl`: `POST /api/v1/orders/pos/draft` (draft order creation) and `GET /api/v1/orders/pos/drafts` (list active drafts).
-  - Enhanced `mapToOrderDetailRes` to safely handle nullable customer.
-  - Added guard preventing `DRAFT` orders from transitioning via online order pipeline and skipping reserved stock release on cancellation.
-  - Updated `OrderController`: Added `POST /api/v1/orders/pos/draft` (HTTP 201) and `GET /api/v1/orders/pos/drafts` (HTTP 200).
-  - Updated `SecurityConfig`: Configured `/api/v1/orders/pos/**` for `ADMIN` and `STAFF`.
-  - Updated `be_docs/module.md` marking FR-39 as completed (`X`).
-  - Updated `be_docs/api/api-order.md` with complete request/response documentation.
-- **Build Status:** `BUILD SUCCESS` (158 source files, 0 errors, 0 warnings).
+### [Session R3-N1] Thông báo đơn hàng, yêu thích và chuông quản trị (2026-11-09)
+- Module `notification`, V29: transactional SQL signal/outbox captures order/return/stock/Publish price transitions. AFTER_COMMIT listeners wake a bounded background worker; 5s recovery poll; SKIP LOCKED and unique event keys. Snapshot survives restart and disappears on rollback. Delivery retry 3 times; dry-run default never invokes Brevo.
+- Brevo send overload carries stable UUID idempotencyKey, handles accepted-key duplicates. first_attempt_at commits before HTTP; after 10 minutes stop ambiguous automatic retries rather than exceed provider dedupe window. Old five-argument auth emails keep their API. Publish version set before SKU operations can flush price early.
+- CUSTOMER own preference controls order/return emails, checked again before send. Favorite stock/price alerts opt in separately; rate allowance shared per account/product, max one queued email/24h. Removed favorites/inactive accounts skipped. Admin bell filters count/list/read markers by ORDER_VIEW / RETURN_VIEW / INVENTORY_VIEW; existing permissions reused, matrix includes PERM_ANY.
+- FE account opt-out, favorite toggles, 30s bell with read markers, keyboard dismissal and exact return deep links. BFF origin/JSON/body/path guards. Docs: api/api-notification.md and indices/auth/tracker. Evidence and READY: `fasearch/.agent/tasks/admin-polish-20261107/r3-n1/`.
+- Dev V29 was applied by a shared build while being completed: only dev DB synchronized SQL function STABLE->VOLATILE and first_attempt_at, checksum final -2067723326. Historical scripts/results in dev-v29-sync.txt; fresh test DB runs current V29 unchanged. Native TCP pg-tcp.sh works in sandbox; socket mounts do not.
+- Live test orders 93/94, returns 7/8: opt-out suppresses confirmed; eight expected DRY_RUN mails incl return and favorite, zero SENT. Product 51 stock fixtures exported then restored exactly via completed import, reserved stock preserved. Price Publish tested only in throwaway DB with AI client mocked; never Publish/Unpublish on live shared AI. Snapshots/screens and final checks are in N1 READY.
+- Targeted Maven tests run from a clean /tmp/n1-test-source snapshot under flock to prevent shared target/classes/build races; create/drop it_n1_* DB. Never run full suite on shared Postgres. No servers launched manually, no Git mutation.
+
+- F-LINK-01 (Control finding, fixed): the seeder quoted vouchers but omitted voucherCode/fingerprint/expectedMerchandiseAmountDue at checkout, so the 6 planned voucher orders settled full-price. Fixed run_order to send all three + assert persisted voucherCode/discount>0 from GET detail before proceeding. Added 3 supplemental API journeys (2 voucher-paid COMPLETED + 1 voucher-cancelled): idx 60 id 78 (voucher 457,000, invoice HD-20261103-037 PAID 4,113,000, usage CONSUMED, stock deducted, ledger EARN), idx 61 id 79 (voucher 95,000, invoice HD-20261103-038 PAID 855,000, CONSUMED, EARN 34), idx 62 id 80 (voucher hold RELEASED on pre-handoff cancel, no invoice). 63 new orders, 44 paid total. Checkout-key idempotency verified live (burned-key reuse with different inputs -> 409; identical replay returns the same order flagged replayed=true and the seeder refuses to drive it). Manual idx 60/61 recording from direct verification after trailing tooling crashes (column names su_dung_voucher, manifest status flag); no data rewritten.
+
+### [Session R3-R1F] Sửa review trả hàng (2026-11-09)
+- V31 bổ sung CANCELLED/cancel_reason, order_return_refund_attempt và chỉ mục; không sửa V28. APPROVED chưa nhận hàng có thể CANCEL qua decision/RETURN_PROCESS, bắt buộc lý do, không đổi kho/tiền/điểm, trả lại quota.
+- Mọi phương thức ngoài Stripe hoàn thủ công có chứng từ. Stripe đối soát toàn bộ metadata, failed/canceled mới được khóa returnKey+attemptNumber mới; pending/unknown giữ đối soát, succeeded mới REFUNDED. Lưu lần thử khi provider lỗi, không ghi điểm/hóa đơn.
+- Khóa/tính/kiểm tra khách, điểm, trạng thái trước Stripe; sau chỉ ghi kết quả. Hoàn redeemed trước reverse, giữ held. Số dư 0/reverse10/redeemed20 -> 10, thiếu0.
+- API khách bỏ actor/refundActor/refundNote/lịch sử nội bộ; giữ lý do từ chối/hủy. FE picker tiếng Việt, lỗi chứng từ thực, parse status note, nhãn phương thức. Đơn trả hết hàng giữ phí ship: RETURNED/PAID, nhãn đã hoàn một phần + đã hoàn/đã trả, cả khi thiếu RETURN_VIEW.
+- Báo cáo bỏ full-refund khỏi count/AOV, units net; Hỏng loại TRA-% không trừ thêm kho bán. Tier filter và CSV net, REFUNDED ghi Đã hoàn tiền. Admin return list 3 query/page, không detail mỗi dòng.
+- Targeted 242/242 BE trên DB it_r1f_* tạo/drop, gồm PermissionMatrixTest; FE439/439 + tsc/eslint. Handoff/evidence: `.agent/tasks/admin-polish-20261107/r3-r1f/READY.md`. Không sửa notification/orders.tsx/print/admin bell; shared OrderService chỉ fillPaidPayment, test constructor được bổ sung mock publisher theo N1.

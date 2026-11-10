@@ -29,4 +29,15 @@ public class CustomerRes {
     private Integer accumulatePoint;
     private Long tierId;
     private String tierName;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private java.math.BigDecimal cumulativePaidSales;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private Long salesTierId;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private String salesTierName;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private String salesTierStatus;
+    private Double deliveryLatitude;
+    private Double deliveryLongitude;
+
 }

@@ -49,6 +49,10 @@ public class Order {
     @Column(name = "ma_don", unique = true, length = 50)
     private String orderCode;
 
+    /** Accent-insensitive text maintained by the database; read-only from the application. */
+    @Column(name = "search_text", columnDefinition = "TEXT", insertable = false, updatable = false)
+    private String searchText;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ma_kh")
     private Customer customer;
@@ -76,9 +80,47 @@ public class Order {
     @Column(name = "ma_voucher")
     private Long voucherId;
 
+    @Column(name = "ma_code_voucher", length = 50)
+    private String voucherCode;
+
+    @Column(name = "ten_ctkm_snapshot", length = 255)
+    private String voucherCampaignName;
+
+    @Column(name = "phien_ban_km")
+    private Long voucherCampaignVersion;
+
+    @Column(name = "loai_giam_snapshot", length = 50)
+    private String voucherDiscountType;
+
+    @Column(name = "gia_tri_giam_snapshot", precision = 15, scale = 2)
+    private BigDecimal voucherDiscountValue;
+
     @Column(name = "tien_giam", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Column(name = "redeemed_points", nullable = false)
+    @Builder.Default
+    private Integer redeemedPoints = 0;
+
+    @Column(name = "points_discount", precision = 15, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal pointsDiscount = BigDecimal.ZERO;
+
+    @Column(name = "loyalty_policy_id")
+    private Long loyaltyPolicyId;
+
+    @Column(name = "loyalty_policy_version")
+    private Long loyaltyPolicyVersion;
+
+    @Column(name = "redeem_currency_per_point_snapshot", precision = 19, scale = 2)
+    private BigDecimal redeemCurrencyPerPointSnapshot;
+
+    @Column(name = "earned_points")
+    private Integer earnedPoints;
+
+    @Column(name = "loyalty_quote_fingerprint", length = 64)
+    private String loyaltyQuoteFingerprint;
 
     @Column(name = "tong_tien", precision = 15, scale = 2)
     @Builder.Default
@@ -87,6 +129,9 @@ public class Order {
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
     private String note;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
@@ -94,4 +139,13 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderDetail> details = new ArrayList<>();
+    @Column(name = "delivery_latitude")
+    private Double deliveryLatitude;
+    @Column(name = "delivery_longitude")
+    private Double deliveryLongitude;
+    @Column(name = "distance_km")
+    private Double distanceKm;
+    @Column(name = "shipping_method")
+    private String shippingMethod;
+
 }

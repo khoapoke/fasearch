@@ -11,11 +11,11 @@ public interface UserService {
 
     CustomerRes getCustomerById(Long id);
 
-    PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId);
+    PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId, Long salesTierId);
 
     CustomerRes createCustomer(CustomerCreateReq req);
 
     CustomerRes updateCustomer(Long id, CustomerUpdateReq req);
 
-    void deleteCustomer(Long id);
+    void deleteCustomer(Long id, String reason);
 }

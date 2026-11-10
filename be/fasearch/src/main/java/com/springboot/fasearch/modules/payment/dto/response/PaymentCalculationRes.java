@@ -16,6 +16,7 @@ import lombok.Setter;
 public class PaymentCalculationRes {
 
     private BigDecimal subTotal;
+    private Integer redeemedPoints;
     private BigDecimal voucherDiscount;
     private BigDecimal pointDiscount;
     private BigDecimal shippingFee;

@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 
 import com.springboot.fasearch.common.enums.OrderStatus;
 import com.springboot.fasearch.modules.order.dto.request.CheckoutReq;
+import com.springboot.fasearch.modules.khuyenmai.dto.request.CartQuoteRequest;
+import com.springboot.fasearch.modules.khuyenmai.dto.response.CartQuoteResponse;
 import com.springboot.fasearch.modules.order.dto.request.OrderCancelReq;
 import com.springboot.fasearch.modules.order.dto.request.OrderStatusUpdateReq;
 import com.springboot.fasearch.modules.order.dto.request.PosDraftOrderReq;
@@ -27,7 +29,8 @@ public interface OrderService {
             String orderCode,
             String customerPhone,
             LocalDate startDate,
-            LocalDate endDate);
+            LocalDate endDate,
+            String keyword);
 
     OrderDetailRes getOrderById(Long id);
 
@@ -36,6 +39,8 @@ public interface OrderService {
     OrderDetailRes cancelOrder(Long id, OrderCancelReq req);
 
     OrderDetailRes createPosDraftOrder(PosDraftOrderReq req);
+
+    CartQuoteResponse quotePosOrder(Long orderId, CartQuoteRequest req);
 
     List<OrderDetailRes> getPosDraftOrders();
 

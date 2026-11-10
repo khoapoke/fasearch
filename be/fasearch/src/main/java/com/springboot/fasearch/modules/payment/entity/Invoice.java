@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLRestriction;
 
+import com.springboot.fasearch.common.enums.PaymentMethodType;
 import com.springboot.fasearch.common.enums.PaymentStatus;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.user.entity.Employee;
@@ -63,6 +64,10 @@ public class Invoice {
     @Column(name = "tien_thua", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal cashChange = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method_code", length = 30)
+    private PaymentMethodType paymentMethodCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "trang_thai", length = 50)

@@ -10,20 +10,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.springboot.fasearch.common.enums.AccountStatus;
 import com.springboot.fasearch.common.enums.RoleType;
+import com.springboot.fasearch.common.search.SearchTextNormalizer;
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.user.dto.request.CustomerCreateReq;
 import com.springboot.fasearch.modules.user.dto.request.CustomerUpdateReq;
 import com.springboot.fasearch.modules.user.dto.response.CustomerRes;
 import com.springboot.fasearch.modules.user.entity.Customer;
+import com.springboot.fasearch.modules.user.entity.MembershipTier;
 import com.springboot.fasearch.modules.user.mapper.UserMapper;
+import com.springboot.fasearch.modules.user.repository.CustomerSpecifications;
 import com.springboot.fasearch.modules.user.repository.MembershipTierRepository;
 import com.springboot.fasearch.modules.user.repository.UserRepository;
+import com.springboot.fasearch.modules.loyalty.service.interfaces.LoyaltyService;
+import com.springboot.fasearch.modules.trash.service.impl.DeleteGuards;
+import com.springboot.fasearch.modules.auth.entity.Account;
+import com.springboot.fasearch.modules.auth.repository.AccountRepository;
+import com.springboot.fasearch.modules.payment.entity.Invoice;
+import com.springboot.fasearch.common.enums.PaymentStatus;
 import com.springboot.fasearch.modules.user.service.interfaces.UserService;
 import com.springboot.fasearch.security.SecurityUtils;
 import com.springboot.fasearch.shared.PageResponse;
 
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,8 +47,12 @@ import lombok.extern.slf4j.Slf4j;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final MembershipTierRepository membershipTierRepository;
     private final UserMapper userMapper;
+    private final LoyaltyService loyaltyService;
+    private final DeleteGuards deleteGuards;
+    private final SoftDeleteRecorder softDeleteRecorder;
 
     @Override
     @Transactional(readOnly = true)
@@ -46,33 +63,23 @@ public class UserServiceImpl implements UserService {
         // RBAC check: Customers can only view their own profile
         verifyCustomerOwnership(customer, id, "access");
 
-        return userMapper.toCustomerResponse(customer);
+        CustomerRes response = userMapper.toCustomerResponse(customer);
+        loyaltyService.enrichCustomerProfile(response, customer);
+        return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId) {
-        Specification<Customer> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (StringUtils.hasText(keyword)) {
-                String searchKeyword = "%" + keyword.trim().toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("firstName")), searchKeyword),
-                        cb.like(cb.lower(root.get("lastName")), searchKeyword),
-                        cb.like(cb.lower(root.get("phoneNumber")), searchKeyword)
-                ));
-            }
-
-            if (tierId != null) {
-                predicates.add(cb.equal(root.get("membershipTier").get("id"), tierId));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+    public PageResponse<CustomerRes> getCustomers(Pageable pageable, String keyword, Long tierId, Long salesTierId) {
+        Specification<Customer> spec = CustomerSpecifications.list(
+                keyword, tierId, salesTierId, membershipTierRepository);
 
         Page<Customer> customerPage = userRepository.findAll(spec, pageable);
-        Page<CustomerRes> responsePage = customerPage.map(userMapper::toCustomerResponse);
+        Page<CustomerRes> responsePage = customerPage.map(customer -> {
+            CustomerRes response = userMapper.toCustomerResponse(customer);
+            loyaltyService.enrichCustomerProfile(response, customer);
+            return response;
+        });
 
         return PageResponse.from(responsePage);
     }
@@ -86,6 +93,7 @@ public class UserServiceImpl implements UserService {
 
         Customer customer = userMapper.toCustomer(req);
         customer.setAccumulatePoint(0);
+        customer.setSalesHistoryComplete(true);
         customer.setIsDeleted(false);
 
         // Assign default membership tier (thresholdPoint = 0)
@@ -101,7 +109,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public CustomerRes updateCustomer(Long id, CustomerUpdateReq req) {
-        Customer customer = userRepository.findById(id)
+        Customer customer = userRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
 
         // RBAC check: Customers can only update their own profile
@@ -114,6 +122,14 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        com.springboot.fasearch.modules.order.service.impl.ShippingServiceImpl.validateCoordinates(
+                req.getDeliveryLatitude(), req.getDeliveryLongitude());
+        // An edited address without a new pin must not retain a stale location.
+        if (req.getAddress() != null && !java.util.Objects.equals(req.getAddress(), customer.getAddress())
+                && req.getDeliveryLatitude() == null) {
+            customer.setDeliveryLatitude(null);
+            customer.setDeliveryLongitude(null);
+        }
         // Partial update: ignore null fields
         userMapper.updateCustomerFromReq(req, customer);
 
@@ -125,14 +141,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void deleteCustomer(Long id) {
+    public void deleteCustomer(Long id, String reason) {
         Customer customer = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
 
-        customer.setIsDeleted(true);
+        deleteGuards.assertCustomerDeletable(id);
+
+        // Hồ sơ còn tài khoản đăng nhập liên kết: nếu tài khoản vẫn ACTIVE thì phiên đăng nhập sống
+        // lâu hơn hồ sơ (mọi lời gọi của khách trả CUSTOMER_NOT_FOUND nhưng thông tin đăng nhập vẫn dùng được).
+        // Khóa tài khoản là việc quản trị tài khoản, nên STAFF (Quản lý) bị từ chối và ADMIN khóa
+        // tài khoản trong cùng transaction; khôi phục hồ sơ không tự mở khóa.
+        if (customer.getAccount() != null) {
+            if (!SecurityUtils.hasRole(RoleType.ADMIN.name())) {
+                throw new AppException(ErrorCode.ACCESS_DENIED,
+                        "Hồ sơ này có tài khoản đăng nhập liên kết; chỉ Quản trị viên hệ thống được xóa.");
+            }
+            Account account = customer.getAccount();
+            account.setStatus(AccountStatus.LOCKED);
+            account.setTokenVersion(account.getTokenVersion() == null ? 1L : account.getTokenVersion() + 1);
+            accountRepository.save(account);
+            log.info("Locked linked account ID [{}] for deleted customer ID [{}]", account.getId(), id);
+        }
+
+        softDeleteRecorder.mark(customer, reason);
         userRepository.save(customer);
 
-        log.info("Soft deleted customer successfully with ID: {}", id);
+        log.info("Soft deleted customer successfully with ID: {} (moved to trash)", id);
     }
 
     private void verifyCustomerOwnership(Customer customer, Long customerId, String action) {

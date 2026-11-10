@@ -18,6 +18,7 @@ import com.springboot.fasearch.modules.product.dto.request.CategoryReq;
 import com.springboot.fasearch.modules.product.dto.response.CategoryRes;
 import com.springboot.fasearch.modules.product.service.interfaces.CategoryService;
 import com.springboot.fasearch.shared.ApiResponse;
+import com.springboot.fasearch.shared.DeleteReasonReq;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -29,6 +30,13 @@ import lombok.RequiredArgsConstructor;
 public class CategoryController {
 
     private final CategoryService categoryService;
+
+    @GetMapping("/with-counts")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<CategoryRes>> getCategoriesWithCounts() {
+        List<CategoryRes> result = categoryService.getCategoriesWithCounts();
+        return ApiResponse.success(200, "Lấy danh mục kèm số lượng thành công", result);
+    }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -46,7 +54,7 @@ public class CategoryController {
 
     @PostMapping
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATEGORY_MANAGE')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CategoryRes> createCategory(@Valid @RequestBody CategoryReq req) {
         CategoryRes result = categoryService.createCategory(req);
@@ -55,7 +63,7 @@ public class CategoryController {
 
     @RequestMapping(value = "/{id}", method = {RequestMethod.PATCH, RequestMethod.PUT})
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATEGORY_MANAGE')")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CategoryRes> updateCategory(
             @PathVariable Long id,
@@ -66,10 +74,11 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @SecurityRequirement(name = "BearerAuth")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATEGORY_MANAGE')")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Boolean> deleteCategory(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
+    public ApiResponse<Boolean> deleteCategory(@PathVariable Long id,
+            @Valid @RequestBody(required = false) DeleteReasonReq req) {
+        categoryService.deleteCategory(id, req == null ? null : req.getReason());
         return ApiResponse.success(200, "Xóa danh mục thành công", true);
     }
 }

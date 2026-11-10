@@ -5,8 +5,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.modules.inventory.dto.response.StockRes;
+import com.springboot.fasearch.modules.inventory.entity.Inventory;
+import com.springboot.fasearch.modules.inventory.repository.InventoryRepository;
 import com.springboot.fasearch.modules.product.dto.request.VariantCreateReq;
 import com.springboot.fasearch.modules.product.dto.request.VariantUpdateReq;
 import com.springboot.fasearch.modules.product.dto.response.BarcodeRes;
@@ -19,6 +23,7 @@ import com.springboot.fasearch.modules.product.repository.ProductRepository;
 import com.springboot.fasearch.modules.product.repository.ProductVariantRepository;
 import com.springboot.fasearch.modules.product.service.interfaces.BarcodeService;
 import com.springboot.fasearch.modules.product.service.interfaces.ProductVariantService;
+import com.springboot.fasearch.modules.trash.service.impl.DeleteGuards;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +35,9 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     private final ProductVariantRepository productVariantRepository;
     private final ProductMapper productMapper;
     private final BarcodeService barcodeService;
+    private final DeleteGuards deleteGuards;
+    private final SoftDeleteRecorder softDeleteRecorder;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -68,7 +76,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 throw new AppException(ErrorCode.BARCODE_ALREADY_EXISTS);
             }
         } else {
-            barcode = String.format("SP%04d-%s-%s", productId, color.toUpperCase(), size.toUpperCase());
+            barcode = maVachTuDong(productId, color, size);
             if (productVariantRepository.existsByBarcode(barcode)) {
                 barcode = barcode + "-" + (System.currentTimeMillis() % 10000);
             }
@@ -121,11 +129,12 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     @Override
     @Transactional
-    public void deleteVariant(Long variantId) {
+    public void deleteVariant(Long variantId, String reason) {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND));
 
-        variant.setIsDeleted(true);
+        deleteGuards.assertVariantDeletable(variantId);
+        softDeleteRecorder.mark(variant, reason);
         productVariantRepository.save(variant);
     }
 
@@ -137,10 +146,9 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
         Product product = variant.getProduct();
         String barcode = variant.getBarcode();
-        if (barcode == null || barcode.isBlank()) {
-            barcode = String.format("SP%04d-%s-%s", product.getId(),
-                    variant.getColor() != null ? variant.getColor().toUpperCase() : "DEF",
-                    variant.getSize() != null ? variant.getSize().toUpperCase() : "STD");
+        // Mã vạch cũ có thể chứa ký tự tiếng Việt (Code128 không mã hoá được) -> sinh lại ASCII.
+        if (barcode == null || barcode.isBlank() || !asciiOnly(barcode)) {
+            barcode = maVachTuDong(product.getId(), variant.getColor(), variant.getSize());
             variant.setBarcode(barcode);
             productVariantRepository.save(variant);
         }
@@ -159,6 +167,36 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 .build();
     }
 
+    /**
+     * Mã vạch tự sinh: chỉ dùng ASCII vì Code128 không mã hoá được ký tự tiếng Việt
+     * (ví dụ "Đen" từng làm bộ sinh mã vạch ném lỗi 500). Bỏ dấu, chỉ giữ A-Z0-9.
+     */
+    private static String maVachTuDong(Long productId, String color, String size) {
+        return String.format("SP%04d-%s-%s", productId, asciiHoa(color, "DEF"), asciiHoa(size, "STD"));
+    }
+
+    private static String asciiHoa(String value, String macDinh) {
+        if (value == null || value.isBlank()) {
+            return macDinh;
+        }
+        String khongDau = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd')
+                .replace('Đ', 'D')
+                .toUpperCase(java.util.Locale.ROOT)
+                .replaceAll("[^A-Z0-9]+", "");
+        return khongDau.isEmpty() ? macDinh : khongDau;
+    }
+
+    private static boolean asciiOnly(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) > 127) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public byte[] getBarcodeImageBytes(Long skuId) {
@@ -166,13 +204,42 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 .orElseThrow(() -> new AppException(ErrorCode.VARIANT_NOT_FOUND));
 
         String barcode = variant.getBarcode();
-        if (barcode == null || barcode.isBlank()) {
-            barcode = String.format("SP%04d-%s-%s", variant.getProduct().getId(),
-                    variant.getColor() != null ? variant.getColor().toUpperCase() : "DEF",
-                    variant.getSize() != null ? variant.getSize().toUpperCase() : "STD");
+        if (barcode == null || barcode.isBlank() || !asciiOnly(barcode)) {
+            barcode = maVachTuDong(variant.getProduct().getId(), variant.getColor(), variant.getSize());
         }
 
         return barcodeService.generateBarcodePngBytes(barcode, 300, 100);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StockRes scanLookup(String code) {
+        if (code == null || code.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Mã quét không được để trống");
+        }
+        String clean = code.trim();
+        ProductVariant variant = productVariantRepository.findByBarcodeIgnoreCase(clean).orElse(null);
+        if (variant == null && clean.matches("^[1-9]\\d{0,17}$")) {
+            variant = productVariantRepository.findById(Long.parseLong(clean)).orElse(null);
+        }
+        if (variant == null || variant.getProduct() == null) {
+            throw new AppException(ErrorCode.VARIANT_NOT_FOUND);
+        }
+        Product product = variant.getProduct();
+        Inventory inv = inventoryRepository.findByVariantId(variant.getId()).orElse(null);
+        return StockRes.builder()
+                .skuId(variant.getId())
+                .productId(product.getId())
+                .productName(product.getProductName())
+                .color(variant.getColor())
+                .size(variant.getSize())
+                .barcode(variant.getBarcode())
+                .productStatus(product.getStatus())
+                .physicalStock(inv == null ? 0 : inv.getPhysicalStock())
+                .reservedStock(inv == null ? 0 : inv.getReservedStock())
+                .availableStock(inv == null ? 0 : inv.getAvailableStock())
+                .minThreshold(inv == null ? null : inv.getMinThreshold())
+                .build();
     }
 
     @Override

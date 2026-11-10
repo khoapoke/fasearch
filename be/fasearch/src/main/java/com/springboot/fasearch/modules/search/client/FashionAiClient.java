@@ -22,6 +22,11 @@ import com.springboot.fasearch.modules.search.dto.ai.AiTextSearchReq;
 @Component
 public class FashionAiClient {
 
+    /** Tên file ảnh hợp lệ: không dấu /, không .., phần mở rộng ảnh cho phép. */
+    private static final java.util.regex.Pattern SAFE_IMAGE_NAME =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9_-]{1,64}\\.(jpg|jpeg|png|webp)$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
     private final RestClient restClient;
     private final String baseUrl;
 
@@ -117,5 +122,52 @@ public class FashionAiClient {
                     "Không thể kết nối đến máy chủ AI tìm kiếm (Port 8000). Vui lòng kiểm tra lại dịch vụ AI");
         }
     }
-}
 
+    /**
+     * Tải bytes ảnh dataset theo tên file (index chỉ trả file_name, không có image_path).
+     *
+     * <p>Chỉ chấp nhận tên file an toàn trong một thư mục: chặn path traversal và
+     * không cho phép proxy tuỳ ý sang đường dẫn khác của AI service.
+     */
+    public DatasetImage fetchDatasetImage(String fileName) {
+        if (fileName == null || !SAFE_IMAGE_NAME.matcher(fileName).matches()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Tên file ảnh không hợp lệ");
+        }
+        try {
+            byte[] bytes = restClient.get()
+                    .uri("/dataset/images/{fileName}", fileName)
+                    .retrieve()
+                    .body(byte[].class);
+            if (bytes == null || bytes.length == 0) {
+                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ảnh");
+            }
+            return new DatasetImage(bytes, contentTypeOf(fileName));
+        } catch (AppException e) {
+            throw e;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ảnh");
+            }
+            throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE,
+                    "Máy chủ AI phản hồi lỗi (" + e.getStatusCode() + ")");
+        } catch (Exception e) {
+            throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE,
+                    "Không thể kết nối đến máy chủ AI tìm kiếm");
+        }
+    }
+
+    /** Ảnh dataset đã tải: bytes + content-type suy ra từ phần mở rộng. */
+    public record DatasetImage(byte[] bytes, String contentType) {
+    }
+
+    private static String contentTypeOf(String fileName) {
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".png")) {
+            return "image/png";
+        }
+        if (lower.endsWith(".webp")) {
+            return "image/webp";
+        }
+        return "image/jpeg";
+    }
+}

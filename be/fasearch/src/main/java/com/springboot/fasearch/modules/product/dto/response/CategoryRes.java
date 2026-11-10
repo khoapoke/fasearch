@@ -15,4 +15,7 @@ public class CategoryRes {
 
     private Long id;
     private String categoryName;
+
+    /** Published-product count; only set by the with-counts endpoint, null elsewhere. */
+    private Long productCount;
 }

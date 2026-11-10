@@ -11,9 +11,11 @@ public interface CategoryService {
 
     CategoryRes getCategoryById(Long id);
 
+    List<CategoryRes> getCategoriesWithCounts();
+
     CategoryRes createCategory(CategoryReq req);
 
     CategoryRes updateCategory(Long id, CategoryReq req);
 
-    void deleteCategory(Long id);
+    void deleteCategory(Long id, String reason);
 }

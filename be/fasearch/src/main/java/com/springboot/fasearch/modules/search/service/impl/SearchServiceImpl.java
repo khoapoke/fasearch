@@ -1,16 +1,18 @@
 package com.springboot.fasearch.modules.search.service.impl;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.springboot.fasearch.common.enums.ProductStatus;
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
 import com.springboot.fasearch.modules.product.entity.Product;
@@ -30,8 +32,19 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
 
+    /** AI service chỉ nhận limit <= 24 (max_search_limit). */
+    private static final int AI_MAX_LIMIT = 24;
+    /** Lấy dư từ AI để sau khi lọc sản phẩm không còn bán vẫn đủ số kết quả. */
+    private static final int OVERFETCH_FACTOR = 3;
+    /** Giá trị placeholder của biến thể, không phải màu thật (khớp ProductMapper). */
+    private static final String SENTINEL_COLOR = "Default Title";
+
     private final FashionAiClient fashionAiClient;
     private final ProductRepository productRepository;
+
+    private static int aiFetchLimit(int limit) {
+        return Math.min(AI_MAX_LIMIT, limit * OVERFETCH_FACTOR);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -40,13 +53,13 @@ public class SearchServiceImpl implements SearchService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Nội dung tìm kiếm không được để trống");
         }
 
-        int limit = req.getLimit() != null ? req.getLimit() : 5;
+        int limit = req.getLimit() != null ? req.getLimit() : 12;
         if (limit < 1 || limit > 24) {
-            limit = 5;
+            limit = 12;
         }
 
-        AiApiResponse<AiSearchData> aiResponse = fashionAiClient.searchByText(req.getQuery().trim(), limit);
-        return mapToAiSearchRes(aiResponse);
+        AiApiResponse<AiSearchData> aiResponse = fashionAiClient.searchByText(req.getQuery().trim(), aiFetchLimit(limit));
+        return toLiveSearchRes(aiResponse, limit);
     }
 
     @Override
@@ -54,9 +67,9 @@ public class SearchServiceImpl implements SearchService {
     public AiSearchRes searchByImage(MultipartFile file, Integer limit) {
         validateImageFile(file);
 
-        int lim = (limit != null && limit >= 1 && limit <= 24) ? limit : 5;
-        AiApiResponse<AiSearchData> aiResponse = fashionAiClient.searchByImage(file, lim);
-        return mapToAiSearchRes(aiResponse);
+        int lim = (limit != null && limit >= 1 && limit <= 24) ? limit : 12;
+        AiApiResponse<AiSearchData> aiResponse = fashionAiClient.searchByImage(file, aiFetchLimit(lim));
+        return toLiveSearchRes(aiResponse, lim);
     }
 
     @Override
@@ -68,11 +81,11 @@ public class SearchServiceImpl implements SearchService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Câu mô tả bổ sung không được để trống");
         }
 
-        int lim = (limit != null && limit >= 1 && limit <= 24) ? limit : 5;
+        int lim = (limit != null && limit >= 1 && limit <= 24) ? limit : 12;
         float weight = (textWeight != null && textWeight >= 0.0f && textWeight <= 1.0f) ? textWeight : 0.5f;
 
-        AiApiResponse<AiSearchData> aiResponse = fashionAiClient.searchMultimodal(file, query.trim(), lim, weight);
-        return mapToAiSearchRes(aiResponse);
+        AiApiResponse<AiSearchData> aiResponse = fashionAiClient.searchMultimodal(file, query.trim(), aiFetchLimit(lim), weight);
+        return toLiveSearchRes(aiResponse, lim);
     }
 
     private void validateImageFile(MultipartFile file) {
@@ -96,72 +109,87 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
-    private AiSearchRes mapToAiSearchRes(AiApiResponse<AiSearchData> aiResponse) {
+    /**
+     * Làm giàu kết quả vector từ danh mục đang bán (một truy vấn gộp, không N+1): chỉ giữ sản phẩm
+     * PUBLISHED + ACTIVE + chưa xóa mềm + còn tồn kho khả dụng; gộp trùng theo productId (giữ điểm cao nhất,
+     * thứ tự theo điểm); cắt về {@code limit}.
+     */
+    private AiSearchRes toLiveSearchRes(AiApiResponse<AiSearchData> aiResponse, int limit) {
         if (aiResponse == null || aiResponse.getData() == null || aiResponse.getData().getResults() == null) {
-            return AiSearchRes.builder()
-                    .total(0)
-                    .items(Collections.emptyList())
-                    .build();
+            return AiSearchRes.builder().total(0).items(Collections.emptyList()).build();
         }
 
-        List<AiSearchResultItem> results = aiResponse.getData().getResults();
-        List<ProductSearchItemRes> items = new ArrayList<>();
-
-        for (AiSearchResultItem item : results) {
-            items.add(mapToProductSearchItemRes(item));
+        Map<Long, AiSearchResultItem> best = new LinkedHashMap<>();
+        for (AiSearchResultItem hit : aiResponse.getData().getResults()) {
+            Long pid = parseProductId(hit.getProductId());
+            if (pid == null) {
+                continue;
+            }
+            AiSearchResultItem prev = best.get(pid);
+            if (prev == null || hit.getScore() > prev.getScore()) {
+                best.put(pid, hit);
+            }
+        }
+        if (best.isEmpty()) {
+            return AiSearchRes.builder().total(0).items(Collections.emptyList()).build();
         }
 
-        return AiSearchRes.builder()
-                .total(aiResponse.getData().getTotal() > 0 ? aiResponse.getData().getTotal() : items.size())
-                .items(items)
-                .build();
-    }
-
-    private ProductSearchItemRes mapToProductSearchItemRes(AiSearchResultItem item) {
-        Long prodId = null;
-        String prodName = null;
-        BigDecimal price = null;
-        ProductStatus status = null;
-
-        // Nếu AI trả về product_id hợp lệ, tra cứu làm giàu dữ liệu từ cơ sở dữ liệu
-        if (item.getProductId() != null && !item.getProductId().isBlank() && !item.getProductId().equalsIgnoreCase("null")) {
-            try {
-                prodId = Long.parseLong(item.getProductId());
-                Optional<Product> prodOpt = productRepository.findById(prodId);
-                if (prodOpt.isPresent()) {
-                    Product p = prodOpt.get();
-                    prodName = p.getProductName();
-                    price = p.getPrice();
-                    status = p.getStatus();
+        Map<Long, Product> live = new HashMap<>();
+        for (Product p : productRepository.findLiveInStockByIdIn(best.keySet())) {
+            live.put(p.getId(), p);
+        }
+        Map<Long, Set<String>> colors = new HashMap<>();
+        if (!live.isEmpty()) {
+            for (Object[] row : productRepository.findInStockColorsByProductIdIn(live.keySet())) {
+                String color = row[1] == null ? null : row[1].toString().trim();
+                if (color == null || color.isEmpty() || SENTINEL_COLOR.equalsIgnoreCase(color)) {
+                    continue;
                 }
-            } catch (NumberFormatException ignored) {
-                // Giữ nguyên prodId null nếu format không phải số
+                colors.computeIfAbsent((Long) row[0], k -> new LinkedHashSet<>()).add(color);
             }
         }
 
-        return ProductSearchItemRes.builder()
-                .id(item.getId())
-                .score(item.getScore())
-                .imagePath(item.getImagePath())
-                .fullImageUrl(buildFullImageUrl(item.getImagePath()))
-                .fileName(item.getFileName())
-                .catalog(item.getCatalog())
-                .productId(prodId)
-                .productName(prodName)
-                .price(price)
-                .status(status)
-                .build();
+        List<ProductSearchItemRes> items = new ArrayList<>();
+        best.values().stream()
+                .sorted((a, b) -> Double.compare(b.getScore(), a.getScore()))
+                .forEach(hit -> {
+                    if (items.size() >= limit) {
+                        return;
+                    }
+                    Product p = live.get(parseProductId(hit.getProductId()));
+                    if (p == null) {
+                        return;
+                    }
+                    items.add(ProductSearchItemRes.builder()
+                            .id(hit.getId())
+                            .score(hit.getScore())
+                            .productId(p.getId())
+                            .productName(p.getProductName())
+                            .brandName(p.getBrand() != null ? p.getBrand().getName() : null)
+                            .price(p.getPrice())
+                            .imageUrl(p.getImageUrl())
+                            .colors(new ArrayList<>(colors.getOrDefault(p.getId(), Collections.emptySet())))
+                            .status(p.getStatus())
+                            .build());
+                });
+
+        return AiSearchRes.builder().total(items.size()).items(items).build();
     }
 
-    private String buildFullImageUrl(String imagePath) {
-        if (imagePath == null || imagePath.isBlank()) {
-            return "";
+    private static Long parseProductId(String raw) {
+        if (raw == null || raw.isBlank() || raw.equalsIgnoreCase("null")) {
+            return null;
         }
-        String base = fashionAiClient.getBaseUrl();
-        if (imagePath.startsWith("/")) {
-            return base + imagePath;
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
         }
-        return base + "/" + imagePath;
+    }
+
+    @Override
+    public com.springboot.fasearch.modules.search.client.FashionAiClient.DatasetImage downloadDatasetImage(
+            String fileName) {
+        return fashionAiClient.fetchDatasetImage(fileName);
     }
 }
-

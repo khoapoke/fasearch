@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 
 import org.hibernate.annotations.SQLRestriction;
 
+import com.springboot.fasearch.common.softdelete.SoftDeletable;
+import com.springboot.fasearch.modules.auth.entity.Account;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,7 +30,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ProductVariant {
+public class ProductVariant implements SoftDeletable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,6 +50,10 @@ public class ProductVariant {
     @Column(name = "ma_vach", length = 100, unique = true)
     private String barcode;
 
+    /** Accent-insensitive text maintained by the database; read-only from the application. */
+    @Column(name = "search_text", columnDefinition = "TEXT", insertable = false, updatable = false)
+    private String searchText;
+
     @Column(name = "gia_phu_thu", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal additionalPrice = BigDecimal.ZERO;
@@ -54,4 +61,14 @@ public class ProductVariant {
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @Column(name = "ngay_xoa")
+    private java.time.LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nguoi_xoa")
+    private Account deletedBy;
+
+    @Column(name = "ly_do_xoa", length = 255)
+    private String deleteReason;
 }

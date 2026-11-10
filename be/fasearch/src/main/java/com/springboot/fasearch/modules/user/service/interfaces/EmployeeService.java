@@ -17,5 +17,5 @@ public interface EmployeeService {
 
     EmployeeRes updateEmployee(Long id, EmployeeUpdateReq req);
 
-    void deleteEmployee(Long id);
+    void deleteEmployee(Long id, String reason);
 }

@@ -1,6 +1,8 @@
 package com.springboot.fasearch.modules.payment.dto.request;
 
-import jakarta.validation.constraints.Min;
+import java.math.BigDecimal;
+
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +22,6 @@ public class PaymentCalculateReq {
 
     private String voucherCode;
 
-    @Min(value = 0, message = "Điểm quy đổi phải lớn hơn hoặc bằng 0")
-    private Integer redeemedPoints;
+    @DecimalMin(value = "0", message = "Redeemed points must be non-negative")
+    private BigDecimal redeemedPoints;
 }

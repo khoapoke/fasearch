@@ -1,16 +1,20 @@
 package com.springboot.fasearch.security;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.springboot.fasearch.common.enums.AccountStatus;
+import com.springboot.fasearch.modules.auth.entity.Account;
+import com.springboot.fasearch.modules.auth.repository.AccountRepository;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,6 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final AccountRepository accountRepository;
+    private final RolePermissionResolver rolePermissionResolver;
 
     @Override
     protected void doFilterInternal(
@@ -36,16 +42,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtProvider.validateToken(token)) {
             String username = jwtProvider.extractUsername(token);
-            String role = jwtProvider.extractRole(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                List<SimpleGrantedAuthority> authorities = Collections.emptyList();
-                if (StringUtils.hasText(role)) {
-                    // Đảm bảo prefix ROLE_ để hasRole('ADMIN') hoặc hasAuthority('ROLE_ADMIN') đều nhận diện đúng
-                    // trong spring security chỉ nhận role theo đúng định dạng ROLE_ADMIN, ROLE_STAFF,v.v
-                    String roleAuthority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-                    authorities = List.of(new SimpleGrantedAuthority(roleAuthority));
+                // Chữ ký token hợp lệ chưa đủ: quyền phải lấy theo trạng thái và vai trò HIỆN TẠI trong DB,
+                // nếu không token cũ vẫn giữ quyền sau khi tài khoản bị khóa/ngừng hoạt động/bị hạ vai trò.
+                Optional<Account> currentAccount = accountRepository.findByUsername(username);
+                if (currentAccount.isEmpty()
+                        || Boolean.TRUE.equals(currentAccount.get().getIsDeleted())
+                        || currentAccount.get().getStatus() != AccountStatus.ACTIVE) {
+                    filterChain.doFilter(request, response);
+                    return;
                 }
+
+                Account account = currentAccount.get();
+                Long tokenVersion = jwtProvider.extractTokenVersion(token);
+                Long currentVersion = account.getTokenVersion() == null ? 0L : account.getTokenVersion();
+                if (tokenVersion == null || !tokenVersion.equals(currentVersion)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                // ROLE_<vai trò> + PERM_<mã quyền> theo vai trò và phân quyền HIỆN TẠI trong DB (đọc mỗi request):
+                // ADMIN có mọi quyền, Quản lý có quyền đang bật, khách hàng không có PERM_*. Đổi phân quyền có hiệu lực
+                // ngay request kế tiếp, không cần đăng nhập lại.
+                List<GrantedAuthority> authorities = rolePermissionResolver.authoritiesOf(account);
 
                 UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
                         username,

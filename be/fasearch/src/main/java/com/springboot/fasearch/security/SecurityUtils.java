@@ -38,4 +38,15 @@ public final class SecurityUtils {
         return authentication.getAuthorities().stream()
                 .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(targetRole));
     }
+
+    /** Quyền nghiệp vụ hiệu lực của request hiện tại (ADMIN luôn có; xem {@link Permission}). */
+    public static boolean hasPermission(Permission permission) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || permission == null) {
+            return false;
+        }
+        String target = permission.authority();
+        return authentication.getAuthorities().stream()
+                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(target));
+    }
 }

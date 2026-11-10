@@ -22,6 +22,6 @@ public class TextSearchReq {
     @Min(value = 1, message = "Số lượng kết quả tối thiểu là 1")
     @Max(value = 24, message = "Số lượng kết quả tối đa là 24")
     @Builder.Default
-    private Integer limit = 5;
+    private Integer limit = 12;
 }
 

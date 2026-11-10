@@ -12,4 +12,6 @@ import com.springboot.fasearch.modules.order.entity.OrderDetailId;
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, OrderDetailId> {
 
     List<OrderDetail> findById_OrderId(Long orderId);
+
+    boolean existsById_SkuId(Long skuId);
 }

@@ -2,7 +2,9 @@ package com.springboot.fasearch.modules.payment.controller;
 
 import java.util.List;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,17 +42,19 @@ public class PaymentController {
 
     @PostMapping("/calculate")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
-    public ApiResponse<PaymentCalculationRes> calculatePayment(@Valid @RequestBody PaymentCalculateReq req) {
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_POS_USE') or hasAuthority('PERM_ORDER_COLLECT_CASH')")
+    public ResponseEntity<ApiResponse<PaymentCalculationRes>> calculatePayment(@Valid @RequestBody PaymentCalculateReq req) {
         PaymentCalculationRes result = paymentService.calculatePayment(req);
-        return ApiResponse.success(200, "Tính toán hóa đơn thành công", result);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(200, "Tính toán hóa đơn thành công", result));
     }
 
     @PostMapping("/process")
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CUSTOMER')")
-    public ApiResponse<InvoiceRes> processPayment(@Valid @RequestBody PaymentProcessReq req) {
-        InvoiceRes result = paymentService.processPayment(req);
-        return ApiResponse.success(201, "Thanh toán và xuất hóa đơn thành công", result);
+    @PreAuthorize("hasRole('CUSTOMER') or hasAuthority('PERM_POS_USE') or hasAuthority('PERM_ORDER_COLLECT_CASH')")
+    public ResponseEntity<ApiResponse<InvoiceRes>> processPayment(@Valid @RequestBody PaymentProcessReq req) {
+        var result = paymentService.processPayment(req);
+        int code = result.replayed() ? 200 : 201;
+        return ResponseEntity.status(code).cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(code, "Thanh toán và xuất hóa đơn thành công", result.receipt()));
     }
 }

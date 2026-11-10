@@ -1,157 +1,294 @@
 # TÀI LIỆU API: MODULE PROMOTION (KHUYẾN MÃI & MÃ GIẢM GIÁ)
 
-Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi, giảm giá phần trăm hoặc theo số tiền cố định, phát hành voucher và kiểm tra điều kiện áp dụng mã giảm giá khi tạo đơn hàng.
+Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giảm phần trăm, giảm số tiền cố định hoặc miễn phí vận chuyển `FREE_SHIP`), phát hành mã voucher và công bố ưu đãi cho khách hàng. Việc kiểm tra mã giảm giá (FR-47) được thực hiện khi báo giá giỏ hàng `POST /api/v1/cart/quote` và khi đặt hàng, xem [api-order.md](./api-order.md).
 
 ---
 
-## 1. Xem danh sách chương trình khuyến mãi (FR-44)
+## 1. Xem danh sách ưu đãi công khai (FR-44)
 
 - **Endpoint:** `GET /api/v1/promotions`
-- **Quyền hạn:** `PUBLIC`, `CUSTOMER`, `STAFF`, `ADMIN`
-- **Mô tả:** Lấy danh sách các đợt khuyến mãi đang chạy hoặc sắp diễn ra.
-- **Query Parameters:**
-  - `page`: Số trang (mặc định: `0`).
-  - `size`: Số bản ghi/trang (mặc định: `10`).
-  - `status`: Lọc theo trạng thái (`UPCOMING`, `ACTIVE`, `EXPIRED`, `DISABLED`).
+- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Mô tả:** Trả các ưu đãi đang hiệu lực, còn lượt mã (tối đa một mã khả dụng cho mỗi chương trình), gồm cả mã `FREE_SHIP`. Không trả chương trình tạm dừng, hết hạn, hết lượt hay số liệu quản trị.
 
 ### Response Thành công (HTTP 200 OK)
 ```json
 {
   "success": true,
   "code": 200,
-  "message": "Lấy danh sách khuyến mãi thành công",
-  "result": {
-    "content": [
-      {
-        "promotionId": 1,
-        "promotionName": "Chào Hè Sôi Động 2026",
-        "discountType": "PERCENTAGE",
-        "discountValue": 10.00,
-        "startDate": "2026-05-01T00:00:00",
-        "endDate": "2026-06-30T23:59:59",
-        "status": "ACTIVE",
-        "termsCondition": "Áp dụng cho hóa đơn từ 500,000 VND trở lên"
-      }
-    ],
-    "pageNumber": 0,
-    "pageSize": 10,
-    "totalElements": 1,
-    "totalPages": 1,
-    "isLast": true
-  },
-  "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
+  "message": "Lấy danh sách ưu đãi công khai thành công",
+  "result": [
+    {
+      "campaignId": 1,
+      "title": "Ưu đãi chào mừng",
+      "discountType": "PHAN_TRAM",
+      "discountValue": 10.00,
+      "conditionText": "Áp dụng cho mọi đơn hàng",
+      "startAt": "2026-11-01T04:26:53",
+      "endAt": "2026-12-02T04:26:53",
+      "code": "WELCOME2026"
+    }
+  ],
+  "timestamp": "2026-11-02T11:30:00"
 }
 ```
 
 ---
 
-## 2. Thêm mới chương trình khuyến mãi & Mã Voucher (FR-45)
+## 2. Xem danh sách chương trình khuyến mãi (FR-44)
 
-- **Endpoint:** `POST /api/v1/promotions`
-- **Quyền hạn:** `ADMIN`
-- **Mô tả:** Khởi tạo chiến dịch ưu đãi mới và tự động sinh danh sách mã voucher phát hành kèm số lượng giới hạn.
+- **Endpoint:** `GET /api/v1/khuyen-mai`
+- **Quyền hạn:** `PROMOTION_VIEW` (`hasAuthority('PERM_PROMOTION_VIEW')`)
+- **Mô tả:** Danh sách chương trình khuyến mãi có phân trang và bộ lọc.
+
+### Query Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `page` | Integer | Không | Số trang (mặc định: `0`) |
+| `size` | Integer | Không | Số bản ghi/trang, `1` - `100` (mặc định: `20`) |
+| `trangThai` | String | Không | Trạng thái lưu: `HOAT_DONG`, `TAM_DUNG` |
+| `hieuLuc` | String | Không | Trạng thái hiệu lực tại thời điểm gọi, tính từ ngày bắt đầu/kết thúc và trạng thái lưu: `DANG_CHAY`, `TAM_DUNG`, `DA_KET_THUC` (quá `ngayKetThuc`), `CHUA_BAT_DAU` (trước `ngayBatDau`). Ưu tiên: `DA_KET_THUC`, `CHUA_BAT_DAU`, `TAM_DUNG`, `DANG_CHAY`. Lọc ở máy chủ nên đúng trên mọi trang; kết hợp được với `trangThai`. |
+| `loai` | String | Không | Loại giảm: `PHAN_TRAM`, `SO_TIEN`, `FREE_SHIP` |
+| `q` | String | Không | Tìm theo tên chương trình (tối đa 100 ký tự) |
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách thành công",
+  "result": {
+    "content": [
+      {
+        "maKm": 2,
+        "tenCtkm": "Siêu Sale Black Friday 2026",
+        "loaiGiam": "SO_TIEN",
+        "giaTriGiam": 100000.00,
+        "ngayBatDau": "2026-11-20T00:00:00",
+        "ngayKetThuc": "2026-11-30T23:59:59",
+        "dieuKienApDung": "Áp dụng cho toàn bộ sản phẩm áo sơ mi",
+        "trangThai": "HOAT_DONG",
+        "phienBan": 1,
+        "maSpApDung": [101, 102],
+        "codes": []
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true
+  },
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Controller/service ghi đè theo trường hợp: "Trang, kích thước hoặc giới hạn tìm kiếm không hợp lệ.", "Bộ lọc trạng thái hiệu lực của chiến dịch không được hỗ trợ.", "Bộ lọc trạng thái chiến dịch không được hỗ trợ." hoặc "Loại giảm giá không được hỗ trợ."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+
+---
+
+## 3. Xem chi tiết chương trình khuyến mãi (FR-44)
+
+- **Endpoint:** `GET /api/v1/khuyen-mai/{id}`
+- **Quyền hạn:** `PROMOTION_VIEW` (`hasAuthority('PERM_PROMOTION_VIEW')`)
+- **Mô tả:** Chi tiết chương trình kèm danh sách mã voucher đã phát hành. `id` là Long, bắt buộc.
+
+### Response Thành công (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy chi tiết thành công",
+  "result": {
+    "maKm": 2,
+    "tenCtkm": "Siêu Sale Black Friday 2026",
+    "loaiGiam": "SO_TIEN",
+    "giaTriGiam": 100000.00,
+    "ngayBatDau": "2026-11-20T00:00:00",
+    "ngayKetThuc": "2026-11-30T23:59:59",
+    "dieuKienApDung": "Áp dụng cho toàn bộ sản phẩm áo sơ mi",
+    "trangThai": "HOAT_DONG",
+    "phienBan": 1,
+    "maSpApDung": [101, 102],
+    "codes": [
+      {
+        "maVoucher": 5,
+        "maKm": 2,
+        "maCode": "BF2026",
+        "soLuongPhatHanh": 500,
+        "daSuDung": 18,
+        "soLuongGiuCho": 0,
+        "trangThai": "ACTIVE"
+      }
+    ]
+  },
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — thông điệp mặc định: "Không tìm thấy tài nguyên." Service trả: "Không tìm thấy chiến dịch."
+
+---
+
+## 4. Thêm mới chương trình khuyến mãi (FR-45)
+
+- **Endpoint:** `POST /api/v1/khuyen-mai`
+- **Quyền hạn:** `PROMOTION_MANAGE` (`hasAuthority('PERM_PROMOTION_MANAGE')`)
+- **Mô tả:** Khởi tạo chương trình ưu đãi ở trạng thái `TAM_DUNG`; bật bằng cách cập nhật sang `HOAT_DONG` (mục 5). Loại `FREE_SHIP` miễn toàn bộ phí vận chuyển, không giảm tiền hàng và không dùng chung với voucher giảm giá khác; `giaTriGiam` chỉ cần là số dương (quy ước `1`).
 
 ### Request Body
 ```json
 {
-  "promotionName": "Siêu Sale Black Friday 2026",
-  "discountType": "FIXED_AMOUNT",
-  "discountValue": 100000.00,
-  "startDate": "2026-11-20T00:00:00",
-  "endDate": "2026-11-30T23:59:59",
-  "termsCondition": "Áp dụng cho toàn bộ sản phẩm áo sơ mi",
-  "voucher": {
-    "voucherCode": "BF2026",
-    "totalIssuance": 500
-  }
+  "tenCtkm": "Siêu Sale Black Friday 2026",
+  "loaiGiam": "SO_TIEN",
+  "giaTriGiam": 100000.00,
+  "ngayBatDau": "2026-11-20T00:00:00",
+  "ngayKetThuc": "2026-11-30T23:59:59",
+  "dieuKienApDung": "Áp dụng cho toàn bộ sản phẩm áo sơ mi",
+  "maSpApDung": [101, 102]
 }
 ```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `tenCtkm` | String | Có | Tên chương trình, tối đa 255 ký tự |
+| `loaiGiam` | String | Có | `PHAN_TRAM` (`<= 100`), `SO_TIEN`, `FREE_SHIP` |
+| `giaTriGiam` | Number | Có | Mức giảm, `>= 0.01` |
+| `ngayBatDau` | String | Có | Thời điểm bắt đầu `yyyy-MM-ddTHH:mm:ss` |
+| `ngayKetThuc` | String | Có | Thời điểm kết thúc, không trước `ngayBatDau` |
+| `dieuKienApDung` | String | Không | Mô tả điều kiện, tối đa 1000 ký tự |
+| `maSpApDung` | Array<Long> | Không | ID sản phẩm áp dụng, các phần tử không null; bỏ trống là áp dụng toàn bộ |
 
 ### Response Thành công (HTTP 201 Created)
 ```json
 {
   "success": true,
   "code": 201,
-  "message": "Tạo chương trình khuyến mãi thành công",
+  "message": "Tạo chương trình thành công",
   "result": {
-    "promotionId": 2,
-    "promotionName": "Siêu Sale Black Friday 2026",
-    "voucherCode": "BF2026",
-    "totalIssuance": 500,
-    "usedCount": 0,
-    "status": "UPCOMING"
+    "maKm": 2,
+    "tenCtkm": "Siêu Sale Black Friday 2026",
+    "loaiGiam": "SO_TIEN",
+    "giaTriGiam": 100000.00,
+    "ngayBatDau": "2026-11-20T00:00:00",
+    "ngayKetThuc": "2026-11-30T23:59:59",
+    "dieuKienApDung": "Áp dụng cho toàn bộ sản phẩm áo sơ mi",
+    "trangThai": "TAM_DUNG",
+    "phienBan": 0,
+    "maSpApDung": [101, 102],
+    "codes": []
   },
-  "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
+  "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
----
-
-## 3. Sửa & Tạm dừng chương trình khuyến mãi (FR-46)
-
-### 3.1. Cập nhật thông tin khuyến mãi
-- **Endpoint:** `PUT /api/v1/promotions/{id}`
-- **Quyền hạn:** `ADMIN`
-- **Mô tả:** Thay đổi điều kiện áp dụng, thời gian diễn ra hoặc giá trị chiết khấu.
-
-### 3.2. Tạm dừng / Kích hoạt lại khuyến mãi
-- **Endpoint:** `PATCH /api/v1/promotions/{id}/status`
-- **Quyền hạn:** `ADMIN`
-- **Request Body:**
-```json
-{
-  "status": "DISABLED",
-  "reason": "Hết ngân sách khuyến mãi đợt 1"
-}
-```
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Lỗi kiểm tra DTO trả "Dữ liệu không hợp lệ." cùng `errors`. Service có thể trả: "Khoảng thời gian chiến dịch không hợp lệ.", "Loại giảm giá không được hỗ trợ.", "Giá trị giảm giá không hợp lệ." hoặc "Có sản phẩm không tồn tại trong phạm vi chiến dịch."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
 
 ---
 
-## 4. Xác thực mã giảm giá (Voucher Validation) (FR-47)
+## 5. Sửa & Tạm dừng chương trình khuyến mãi (FR-46)
 
-- **Endpoint:** `POST /api/v1/promotions/validate-voucher`
-- **Quyền hạn:** `CUSTOMER`, `STAFF`, `SYSTEM`
-- **Mô tả:** Kiểm tra voucher có hợp lệ hay không trước khi áp dụng vào đơn hàng (kiểm tra hạn dùng, số lượt còn lại và giá trị đơn hàng tối thiểu).
+- **Endpoint:** `PUT /api/v1/khuyen-mai/{id}`
+- **Quyền hạn:** `PROMOTION_MANAGE` (`hasAuthority('PERM_PROMOTION_MANAGE')`)
+- **Mô tả:** `id` là Long, bắt buộc. Cập nhật điều kiện, thời gian, mức giảm hoặc chuyển trạng thái `HOAT_DONG` / `TAM_DUNG`. Phải gửi đúng `phienBan` hiện hành (khóa lạc quan); chỉ các trường được gửi lên mới đổi.
 
 ### Request Body
 ```json
 {
-  "voucherCode": "BF2026",
-  "orderTotalAmount": 600000.00
+  "phienBan": 0,
+  "trangThai": "HOAT_DONG",
+  "ngayKetThuc": "2026-12-05T23:59:59"
 }
 ```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `phienBan` | Long | Có | Phiên bản hiện hành của chương trình, `>= 0` |
+| `tenCtkm` | String | Không | Tên chương trình, tối đa 255 ký tự |
+| `loaiGiam` | String | Không | `PHAN_TRAM`, `SO_TIEN`, `FREE_SHIP` |
+| `giaTriGiam` | Number | Không | Mức giảm, `>= 0.01` |
+| `ngayBatDau` | String | Không | Thời điểm bắt đầu |
+| `ngayKetThuc` | String | Không | Thời điểm kết thúc |
+| `dieuKienApDung` | String | Không | Mô tả điều kiện, tối đa 1000 ký tự |
+| `maSpApDung` | Array<Long> | Không | ID sản phẩm áp dụng, các phần tử không null |
+| `trangThai` | String | Không | `HOAT_DONG`, `TAM_DUNG` |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
 {
   "success": true,
   "code": 200,
-  "message": "Mã voucher hợp lệ",
+  "message": "Cập nhật thành công",
   "result": {
-    "voucherCode": "BF2026",
-    "isValid": true,
-    "discountType": "FIXED_AMOUNT",
-    "discountAmount": 100000.00,
-    "remainingUses": 482
+    "maKm": 2,
+    "tenCtkm": "Siêu Sale Black Friday 2026",
+    "loaiGiam": "SO_TIEN",
+    "giaTriGiam": 100000.00,
+    "ngayBatDau": "2026-11-20T00:00:00",
+    "ngayKetThuc": "2026-12-05T23:59:59",
+    "dieuKienApDung": "Áp dụng cho toàn bộ sản phẩm áo sơ mi",
+    "trangThai": "HOAT_DONG",
+    "phienBan": 1,
+    "maSpApDung": [101, 102],
+    "codes": []
   },
-  "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
+  "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
-### Response Khi Voucher không hợp lệ (HTTP 400 Bad Request)
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Lỗi kiểm tra DTO trả "Dữ liệu không hợp lệ." cùng `errors`. Service có thể trả: "Khoảng thời gian chiến dịch không hợp lệ.", "Loại giảm giá không được hỗ trợ.", "Giá trị giảm giá không hợp lệ.", "Có sản phẩm không tồn tại trong phạm vi chiến dịch.", "Trạng thái chiến dịch không được hỗ trợ." hoặc "Tên chiến dịch không được để trống."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — thông điệp mặc định: "Không tìm thấy tài nguyên." Service trả: "Không tìm thấy chiến dịch."
+- **HTTP 409 Conflict:** `4109 CAMPAIGN_VERSION_CHANGED` — "Chiến dịch đã được cập nhật. Tải lại trước khi lưu."
+
+---
+
+## 6. Phát hành mã voucher (FR-45)
+
+- **Endpoint:** `POST /api/v1/khuyen-mai/{id}/codes`
+- **Quyền hạn:** `PROMOTION_MANAGE` (`hasAuthority('PERM_PROMOTION_MANAGE')`)
+- **Mô tả:** `id` là Long, bắt buộc. Phát hành một mã voucher cho chương trình; mã được chuẩn hóa chữ hoa và phải duy nhất toàn hệ thống.
+
+### Request Body
 ```json
 {
-  "success": false,
-  "code": 400,
-  "message": "Mã voucher đã hết lượt sử dụng hoặc chưa đến thời gian áp dụng",
-  "result": {
-    "voucherCode": "BF2026",
-    "isValid": false
-  },
-  "errors": null,
-  "timestamp": "2026-10-25T15:30:00"
+  "maCode": "BF2026",
+  "soLuongPhatHanh": 500
 }
 ```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `maCode` | String | Có | Mã voucher, tối đa 50 ký tự |
+| `soLuongPhatHanh` | Integer | Không | Số lượt sử dụng tối đa (`>= 1`) |
+
+### Response Thành công (HTTP 201 Created)
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "Phát hành mã thành công",
+  "result": {
+    "maVoucher": 5,
+    "maKm": 2,
+    "maCode": "BF2026",
+    "soLuongPhatHanh": 500,
+    "daSuDung": 0,
+    "soLuongGiuCho": 0,
+    "trangThai": "ACTIVE"
+  },
+  "timestamp": "2026-11-05T09:00:00"
+}
+```
+
+### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Lỗi kiểm tra DTO trả "Dữ liệu không hợp lệ." cùng `errors`. Service có thể trả: "Mã phải có từ 1 đến 50 ký tự."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — thông điệp mặc định: "Không tìm thấy tài nguyên." Service trả: "Không tìm thấy chiến dịch."
+- **HTTP 409 Conflict:** `409 DATA_CONFLICT` — thông điệp mặc định: "Dữ liệu bị xung đột." Service trả: "Mã Voucher đã tồn tại."
