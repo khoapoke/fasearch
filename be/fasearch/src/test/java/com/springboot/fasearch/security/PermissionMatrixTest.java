@@ -49,10 +49,11 @@ import org.springframework.web.bind.annotation.RestController;
  */
 class PermissionMatrixTest {
 
-    enum Kind { PERM_ALL, SHARED_ANY, ADMIN_ONLY, CUSTOMER_ONLY, OPEN }
+    enum Kind { PERM_ALL, PERM_ANY, SHARED_ANY, ADMIN_ONLY, CUSTOMER_ONLY, OPEN }
 
     record Rule(Kind kind, Set<Permission> perms) {
         static Rule all(Permission... p) { return new Rule(Kind.PERM_ALL, EnumSet.copyOf(Arrays.asList(p))); }
+        static Rule any(Permission... p) { return new Rule(Kind.PERM_ANY, EnumSet.copyOf(Arrays.asList(p))); }
         static Rule shared(Permission... p) { return new Rule(Kind.SHARED_ANY, EnumSet.copyOf(Arrays.asList(p))); }
         static Rule admin() { return new Rule(Kind.ADMIN_ONLY, EnumSet.noneOf(Permission.class)); }
         static Rule customer() { return new Rule(Kind.CUSTOMER_ONLY, EnumSet.noneOf(Permission.class)); }
@@ -84,6 +85,28 @@ class PermissionMatrixTest {
         put("POST /api/v1/payments/process", Rule.shared(Permission.POS_USE, Permission.ORDER_COLLECT_CASH));
         put("POST /api/v1/orders/checkout", Rule.customer());
         put("POST /api/v1/orders/calculate-shipping-fee", Rule.customer());
+
+        put("GET /api/v1/returns/orders/{orderId}", Rule.customer());
+        put("POST /api/v1/returns", Rule.customer());
+        put("GET /api/v1/returns/{id}", Rule.customer());
+        put("GET /api/v1/returns/{id}/photos/{position}", Rule.customer());
+        put("GET /api/v1/admin/returns", Rule.all(Permission.RETURN_VIEW));
+        put("GET /api/v1/admin/returns/{id}", Rule.all(Permission.RETURN_VIEW));
+        put("GET /api/v1/admin/returns/{id}/photos/{position}", Rule.all(Permission.RETURN_VIEW));
+        put("POST /api/v1/admin/returns/{id}/decision", Rule.all(Permission.RETURN_PROCESS));
+        put("POST /api/v1/admin/returns/{id}/receive", Rule.all(Permission.RETURN_PROCESS));
+        put("POST /api/v1/admin/returns/{id}/refund", Rule.all(Permission.RETURN_REFUND));
+
+        put("GET /api/v1/notifications/preferences", Rule.customer());
+        put("PUT /api/v1/notifications/preferences", Rule.customer());
+        put("GET /api/v1/notifications/favorites", Rule.customer());
+        put("PUT /api/v1/notifications/favorites/{productId}", Rule.customer());
+        put("GET /api/v1/admin/notifications", Rule.any(Permission.ORDER_VIEW, Permission.RETURN_VIEW, Permission.INVENTORY_VIEW));
+        put("POST /api/v1/admin/notifications/{id}/read", Rule.any(Permission.ORDER_VIEW, Permission.RETURN_VIEW, Permission.INVENTORY_VIEW));
+
+        put("GET /api/v1/admin/audit", Rule.all(Permission.AUDIT_VIEW));
+        put("GET /api/v1/admin/audit/{id}", Rule.all(Permission.AUDIT_VIEW));
+        put("GET /api/v1/admin/audit/export", Rule.all(Permission.AUDIT_VIEW, Permission.DATA_EXPORT));
 
         // ---- Khách hàng
         put("GET /api/v1/users/customers", Rule.all(Permission.CUSTOMER_VIEW));
@@ -285,11 +308,11 @@ class PermissionMatrixTest {
         return endpoints.stream().filter(e -> TABLE.containsKey(e.key())).map(e -> DynamicTest.dynamicTest(e.key(), () -> {
             Rule rule = TABLE.get(e.key());
             switch (rule.kind()) {
-                case PERM_ALL, SHARED_ANY -> {
+                case PERM_ALL, PERM_ANY, SHARED_ANY -> {
                     assertTrue(granted(e, TestAuthorities.admin()), "ADMIN");
                     assertFalse(granted(e, TestAuthorities.staff(Set.of())), "Quản lý không quyền nào");
                     boolean defaultsCover = Permission.staffDefaults().containsAll(rule.perms())
-                            || (rule.kind() == Kind.SHARED_ANY
+                            || (rule.kind() != Kind.PERM_ALL
                                     && rule.perms().stream().anyMatch(Permission.staffDefaults()::contains));
                     assertEquals(defaultsCover, granted(e, TestAuthorities.staffDefaults()), "Quản lý mặc định (V27)");
                     if (rule.kind() == Kind.PERM_ALL) {
@@ -304,7 +327,7 @@ class PermissionMatrixTest {
                         }
                         assertFalse(granted(e, TestAuthorities.staffAllExcept(rule.perms().toArray(Permission[]::new))),
                                 "Quản lý thiếu mọi quyền " + rule.perms());
-                        assertTrue(granted(e, TestAuthorities.customer()), "khách hàng (không có quyền nào) vẫn dùng được");
+                        assertEquals(rule.kind() == Kind.SHARED_ANY, granted(e, TestAuthorities.customer()), "khách hàng chỉ dùng endpoint dùng chung");
                     }
                 }
                 case ADMIN_ONLY -> {
@@ -329,7 +352,8 @@ class PermissionMatrixTest {
     /** Seed V27 phải khớp đúng Permission.staffDefaults(): Quản lý giữ nguyên phạm vi cũ, quyền mới mặc định tắt. */
     @Test
     void v27SeedMatchesStaffDefaults() throws Exception {
-        String sql = Files.readString(Path.of("src/main/resources/db/migration/V27__role_permissions.sql"));
+        String sql = Files.readString(Path.of("src/main/resources/db/migration/V27__role_permissions.sql"))
+                + Files.readString(Path.of("src/main/resources/db/migration/V28__order_returns.sql"));
         Matcher m = Pattern.compile("\\('([A-Z_]+)'\\)").matcher(sql);
         Set<String> seeded = new TreeSet<>();
         while (m.find()) {
@@ -338,5 +362,6 @@ class PermissionMatrixTest {
         Set<String> expected = Permission.staffDefaults().stream().map(Enum::name).collect(Collectors.toCollection(TreeSet::new));
         assertEquals(expected, seeded);
         assertFalse(seeded.contains(Permission.LOYALTY_ADJUST.name()));
+        assertFalse(seeded.contains(Permission.RETURN_REFUND.name()));
     }
 }

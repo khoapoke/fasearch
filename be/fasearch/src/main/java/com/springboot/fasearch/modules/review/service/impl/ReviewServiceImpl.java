@@ -43,7 +43,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ReviewServiceImpl implements ReviewService {
-    private static final int MIN_FIT_SAMPLES = 3;
+    private static final int MIN_FIT_SAMPLES = 5;
 
     private final ProductReviewRepository reviewRepository;
     private final ProductRepository productRepository;

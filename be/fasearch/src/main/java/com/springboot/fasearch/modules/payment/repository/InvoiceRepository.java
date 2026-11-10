@@ -20,6 +20,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     @Query("SELECT i FROM Invoice i WHERE i.order.id IN :orderIds")
     List<Invoice> findByOrderIds(@Param("orderIds") Collection<Long> orderIds);
 
+    @Query(value="select order_id,sum(refund_amount) from order_return where order_id in (:ids) and status='REFUNDED' group by order_id",nativeQuery=true)
+    List<Object[]> refundedByOrderIds(@Param("ids") Collection<Long> ids);
+
     boolean existsByOrderIdAndStatus(Long orderId, PaymentStatus status);
 
     Optional<Invoice> findByInvoiceCode(String invoiceCode);
@@ -31,13 +34,20 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long>, JpaSpec
     @Query(value = "SELECT pg_advisory_xact_lock(:key)", nativeQuery = true)
     void lockInvoiceCodeGeneration(@Param("key") long key);
 
-    @Query("select coalesce(sum(i.totalActualPaid), 0) from Invoice i where i.order.customer.id = :customerId and i.status = :status")
+    @Query(value = "select coalesce(sum(i.tong_tien_thuc_tra - coalesce((select sum(r.refund_amount) "
+            + "from order_return r where r.order_id=i.ma_don_hang and r.status='REFUNDED'),0)),0) "
+            + "from hoa_don i join don_hang d on d.ma_don_hang=i.ma_don_hang "
+            + "where d.ma_kh=:customerId and (i.trang_thai=:#{#status.name()} or (:#{#status.name()}='PAID' and i.trang_thai='REFUNDED')) and i.da_xoa=false and d.da_xoa=false",
+            nativeQuery = true)
     BigDecimal sumActualPaidByCustomerAndStatus(@Param("customerId") Long customerId,
             @Param("status") PaymentStatus status);
 
     /** Total paid per customer, one grouped query per export batch (no per-row query). */
-    @Query("select i.order.customer.id, coalesce(sum(i.totalActualPaid), 0) from Invoice i "
-            + "where i.order.customer.id in :customerIds and i.status = :status group by i.order.customer.id")
+    @Query(value = "select d.ma_kh, coalesce(sum(i.tong_tien_thuc_tra - coalesce((select sum(r.refund_amount) "
+            + "from order_return r where r.order_id=i.ma_don_hang and r.status='REFUNDED'),0)),0) "
+            + "from hoa_don i join don_hang d on d.ma_don_hang=i.ma_don_hang "
+            + "where d.ma_kh in (:customerIds) and (i.trang_thai=:#{#status.name()} or (:#{#status.name()}='PAID' and i.trang_thai='REFUNDED')) and i.da_xoa=false and d.da_xoa=false "
+            + "group by d.ma_kh", nativeQuery = true)
     List<Object[]> sumActualPaidByCustomerIdsAndStatus(@Param("customerIds") Collection<Long> customerIds,
             @Param("status") PaymentStatus status);
 }

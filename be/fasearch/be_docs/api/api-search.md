@@ -9,7 +9,7 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 ## 1. Tìm kiếm bằng văn bản / mô tả tự nhiên (FR-NC1)
 
 - **Endpoint:** `POST /api/v1/search/text`
-- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Quyền hạn:** `PUBLIC` (permitAll; không có `@PreAuthorize`)
 - **Mô tả:** Người dùng nhập câu lệnh mô tả (ví dụ: *"áo sơ mi trắng cổ bẻ công sở"*), hệ thống trích xuất vector đặc trưng CLIP và truy vấn các sản phẩm có độ tương đồng cosine cao nhất từ vector database Qdrant.
 
 ### Request Body (JSON)
@@ -23,7 +23,7 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
 | Trường | Kiểu dữ liệu | Bắt buộc | Mặc định | Mô tả |
 | :--- | :--- | :---: | :---: | :--- |
 | `query` | `String` | **Có** | - | Từ khóa hoặc câu mô tả trang phục cần tìm |
-| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
+| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa (1–24); null dùng 12 |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -47,10 +47,11 @@ Toàn bộ API được phục vụ thông qua Spring Boot Backend đóng vai tr
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-30T00:30:00"
 }
 ```
+
+> `ApiResponse` bỏ các trường null: `errors` không xuất hiện khi thành công; `result` cũng không xuất hiện khi giá trị null. Các trường null trong `items[]` được bỏ.
 
 ### Quy tắc kết quả (sản phẩm đang bán thật)
 
@@ -64,7 +65,7 @@ Các bước xử lý: lấy dư từ AI `min(24, 3 × limit)` (trần của AI 
 | Trường `items[]` | Kiểu | Mô tả |
 | :--- | :--- | :--- |
 | `id` | `String` | Mã điểm vector trong index AI (khóa ổn định cho UI, không hiển thị) |
-| `score` | `Double` | Độ tương đồng thô (không phải xác suất) |
+| `score` | `double` | Độ tương đồng thô (không phải xác suất) |
 | `productId` | `Long` | Mã sản phẩm đang bán (`/san-pham/{productId}`) |
 | `productName` | `String` | Tên sản phẩm |
 | `brandName` | `String` | Thương hiệu (bỏ qua khi sản phẩm chưa gắn hãng) |
@@ -76,23 +77,24 @@ Các bước xử lý: lấy dư từ AI `min(24, 3 × limit)` (trần của AI 
 > Các trường kỹ thuật của index AI (`imagePath`, `fullImageUrl`, `fileName`, `catalog`) **không còn** nằm trong phản hồi.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Câu tìm kiếm trống (`INVALID_REQUEST`), `limit` ngoài khoảng `1` - `24`.
-- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
+- **HTTP 400:** Kiểm tra DTO thất bại: `code: 400`, `message: "Dữ liệu không hợp lệ."`, chi tiết nằm trong `errors` (query trống hoặc limit ngoài 1–24). Service cũng có thể ném `INVALID_REQUEST` (400, thông điệp chuẩn: "Dữ liệu yêu cầu không hợp lệ."); thông điệp thực tế cho query trống: "Nội dung tìm kiếm không được để trống".
+- **HTTP 503:** `AI_SERVICE_UNAVAILABLE` (503, thông điệp chuẩn: "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau"); client thay thông điệp bằng chi tiết lỗi hoặc lỗi kết nối.
 
 ---
 
 ## 2. Tìm kiếm sản phẩm bằng hình ảnh (FR-NC2)
 
 - **Endpoint:** `POST /api/v1/search/image`
-- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Quyền hạn:** `PUBLIC` (permitAll; không có `@PreAuthorize`)
 - **Mô tả:** Khách hàng hoặc nhân viên tải ảnh một trang phục mẫu (chụp trực tiếp hoặc tải từ internet), hệ thống AI phân tích đặc trưng thị giác (CLIP Image Embeddings) để gợi ý các sản phẩm có kiểu dáng, màu sắc tương tự.
 - **Content-Type:** `multipart/form-data`
 
 ### Request Parameters (Form-Data)
 | Tham số | Kiểu | Bắt buộc | Mặc định | Mô tả |
 | :--- | :--- | :---: | :---: | :--- |
-| `file` *(hoặc `image`)* | `MultipartFile` | **Có** | - | File ảnh binary định dạng `.png`, `.jpg`, `.jpeg`, `.webp` (tối đa 10MB) |
-| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
+| `file` | `MultipartFile` | Không | - | Ưu tiên khi cả hai được gửi; phải có `file` hoặc `image`. File ảnh binary định dạng `.png`, `.jpg`, `.jpeg`, `.webp` (tối đa 10MB theo service; multipart mặc định 5MB/file) |
+| `image` | `MultipartFile` | Không | - | Ảnh thay thế khi không có `file` |
+| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa; ngoài khoảng 1–24 dùng 12 |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -127,21 +129,21 @@ Các bước xử lý: lấy dư từ AI `min(24, 3 × limit)` (trần của AI 
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-30T00:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Chưa chọn file, file rỗng hoặc sai định dạng `.png, .jpg, .jpeg, .webp` (`INVALID_IMAGE_FILE`), dung lượng vượt 10MB.
-- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
+- **HTTP 400:** `INVALID_REQUEST` (400, thông điệp chuẩn: "Dữ liệu yêu cầu không hợp lệ.") khi thiếu, rỗng, thiếu tên, quá 10MB hoặc không đọc được file; thông điệp thực tế mô tả nguyên nhân. `INVALID_IMAGE_FILE` (400): "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp".
+- **HTTP 413:** Vượt giới hạn multipart cấu hình (mặc định 5MB/file, 6MB/request): "Tệp vượt quá 5MB. Chọn tệp nhỏ hơn rồi thử lại."
+- **HTTP 503:** `AI_SERVICE_UNAVAILABLE` (503, thông điệp chuẩn: "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau"); client thay bằng chi tiết lỗi hoặc lỗi kết nối.
 
 ---
 
 ## 3. Tìm kiếm đa phương thức kết hợp (FR-NC3)
 
 - **Endpoint:** `POST /api/v1/search/multimodal`
-- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Quyền hạn:** `PUBLIC` (permitAll; không có `@PreAuthorize`)
 - **Mô tả:** Kết hợp đồng thời cả **Hình ảnh mẫu gốc** và **Mô tả văn bản bổ sung** để điều hướng tìm kiếm (ví dụ: tải ảnh chiếc áo nhưng nhập thêm *"màu đỏ, phong cách vintage"*). Vector truy vấn được tổng hợp theo trọng số:
 $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alpha) \cdot \mathbf{v}_{\text{image}}$$
 - **Content-Type:** `multipart/form-data`
@@ -149,10 +151,12 @@ $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alph
 ### Request Parameters (Form-Data)
 | Tham số | Kiểu | Bắt buộc | Mặc định | Mô tả |
 | :--- | :--- | :---: | :---: | :--- |
-| `file` *(hoặc `image`)* | `MultipartFile` | **Có** | - | File ảnh gốc binary (`.png`, `.jpg`, `.jpeg`, `.webp`, tối đa 10MB) |
-| `query` *(hoặc `textQuery`)* | `String` | **Có** | - | Văn bản bổ sung hoặc yêu cầu thay đổi thuộc tính |
-| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa ($1 \le limit \le 24$) |
-| `text_weight` *(hoặc `textWeight`)* | `Float` | Không | `0.5` | Trọng số chữ ($0.0 \le text\_weight \le 1.0$), `0.5` là cân bằng 50% ảnh + 50% chữ |
+| `file` | `MultipartFile` | Không | - | Ưu tiên khi cả hai được gửi; phải có `file` hoặc `image`. File ảnh gốc binary (`.png`, `.jpg`, `.jpeg`, `.webp`, tối đa 10MB theo service; multipart mặc định 5MB/file) |
+| `image` | `MultipartFile` | Không | - | Ảnh thay thế khi không có `file` |
+| `query` | `String` | Không | - | Ưu tiên khi được gửi; phải có `query` hoặc `textQuery` không trống |
+| `textQuery` | `String` | Không | - | Văn bản thay thế khi không có `query` |
+| `limit` | `Integer` | Không | `12` | Số lượng kết quả tối đa; ngoài khoảng 1–24 dùng 12 |
+| `text_weight` | `Float` | Không | `0.5` | Trọng số chữ ($0.0 \le text\_weight \le 1.0$), ngoài khoảng dùng `0.5` (cân bằng 50% ảnh + 50% chữ) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -187,36 +191,42 @@ $$\mathbf{v}_{\text{query}} = \alpha \cdot \mathbf{v}_{\text{text}} + (1 - \alph
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-30T00:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Chưa chọn file, file rỗng hoặc sai định dạng `.png, .jpg, .jpeg, .webp` (`INVALID_IMAGE_FILE`), dung lượng vượt 10MB.
-- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
+- **HTTP 400:** `INVALID_REQUEST` (400, thông điệp chuẩn: "Dữ liệu yêu cầu không hợp lệ.") khi thiếu ảnh hoặc mô tả, ảnh rỗng, thiếu tên, quá 10MB hoặc không đọc được; thông điệp thực tế mô tả nguyên nhân. `INVALID_IMAGE_FILE` (400): "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp".
+- **HTTP 413:** Vượt giới hạn multipart cấu hình (mặc định 5MB/file, 6MB/request): "Tệp vượt quá 5MB. Chọn tệp nhỏ hơn rồi thử lại."
+- **HTTP 503:** `AI_SERVICE_UNAVAILABLE` (503, thông điệp chuẩn: "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau"); client thay bằng chi tiết lỗi hoặc lỗi kết nối.
 
 ---
 
 ## 4. Xem ảnh dataset (chỉ dùng gỡ lỗi)
 
 - **Endpoint:** `GET /api/v1/search/images/{fileName}`
-- **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
+- **Quyền hạn:** `PUBLIC` (permitAll; không có `@PreAuthorize`)
 - **Mô tả:** Chỉ phục vụ gỡ lỗi index AI; giao diện khách **không** dùng (kết quả tìm kiếm trả ảnh catalog ở `imageUrl`). Backend tải ảnh dataset từ AI Service và trả lại cho trình duyệt (`Cache-Control: private, max-age=3600`), không bọc `ApiResponse`.
+
+### Request Parameters
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `fileName` | String | Có | Tên đường dẫn gồm 1–64 chữ ASCII, số, `_` hoặc `-`, theo sau bởi `.jpg`, `.jpeg`, `.png` hoặc `.webp` |
 
 ### Response Thành công (HTTP 200 OK)
 Nội dung nhị phân ảnh.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Tên file hoặc phần mở rộng không hợp lệ.
-- **HTTP 503 Service Unavailable:** Dịch vụ AI chưa bật hoặc mất kết nối (`AI_SERVICE_UNAVAILABLE`).
+- **HTTP 400:** `INVALID_REQUEST` (400, thông điệp chuẩn: "Dữ liệu yêu cầu không hợp lệ."); thực tế: "Tên file ảnh không hợp lệ".
+- **HTTP 404:** `RESOURCE_NOT_FOUND` (404, thông điệp chuẩn: "Không tìm thấy tài nguyên."); thực tế: "Không tìm thấy ảnh".
+- **HTTP 503:** `AI_SERVICE_UNAVAILABLE` (503, thông điệp chuẩn: "Dịch vụ tìm kiếm AI hiện không khả dụng. Vui lòng thử lại sau"); client thay bằng chi tiết lỗi hoặc lỗi kết nối.
 
 ---
 
 ## 5. Ghi nhận lịch sử tìm kiếm
 
 - **Endpoint:** `POST /api/v1/account/search-history`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (tài khoản đang đăng nhập)
+- **Quyền hạn:** `AUTHENTICATED` (mọi tài khoản đã xác thực; không có `@PreAuthorize` hoặc mã quyền riêng)
 - **Mô tả:** Ghi nhận một lượt tìm kiếm sau khi có kết quả thực tế.
 
 ### Request Body
@@ -234,8 +244,8 @@ Nội dung nhị phân ảnh.
 | :--- | :--- | :---: | :--- |
 | `mode` | String | Có | `TEXT`, `IMAGE`, `MULTIMODAL` |
 | `query` | String | Không | Từ khóa tìm kiếm, tối đa 500 ký tự |
-| `resultCount` | Integer | Không | Số kết quả (mặc định 0) |
-| `resultRefs` | String | Không | Mảng JSON tham chiếu an toàn (tối đa 24 phần tử, 4096 ký tự; không chứa data URL, đường dẫn nội bộ hay bí mật) |
+| `resultCount` | Integer | Không | Bắt buộc và không âm khi `status = SUCCESS`; nếu không có ở trạng thái khác thì mặc định 0 |
+| `resultRefs` | String | Không | Mảng JSON tham chiếu an toàn (tối đa 24 chuỗi không rỗng, mỗi chuỗi tối đa 256 ký tự, toàn bộ tối đa 4096 ký tự; không chứa data URL, đường dẫn nội bộ hay bí mật) |
 | `status` | String | Có | `SUCCESS`, `FAILED`, `CANCELLED` |
 
 ### Response Thành công (HTTP 201 Created)
@@ -253,28 +263,28 @@ Nội dung nhị phân ảnh.
     "status": "SUCCESS",
     "occurredAt": "2026-11-05T09:00:00"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Thiếu `mode` / `status`, `resultRefs` không phải mảng JSON hợp lệ hoặc chứa nội dung không an toàn.
-- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+- **HTTP 400:** Kiểm tra DTO thất bại: "Dữ liệu không hợp lệ." và chi tiết `errors`. `INVALID_REQUEST` (400, thông điệp chuẩn: "Dữ liệu yêu cầu không hợp lệ.") khi kết quả SUCCESS không hợp lệ hoặc `resultRefs` không hợp lệ/không an toàn; service thay thông điệp bằng lý do cụ thể.
+- **HTTP 401:** `UNAUTHENTICATED` (401): "Bạn cần đăng nhập để truy cập tài nguyên này."
+- **HTTP 404:** `USER_NOT_FOUND` (404): "Không tìm thấy người dùng."
 
 ---
 
 ## 6. Xem lịch sử tìm kiếm
 
 - **Endpoint:** `GET /api/v1/account/search-history`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ lịch sử của chính mình)
+- **Quyền hạn:** `AUTHENTICATED` (mọi tài khoản đã xác thực; không có `@PreAuthorize`; chỉ lịch sử của chính mình)
 - **Mô tả:** Lịch sử tìm kiếm của tài khoản hiện tại, mới nhất trước.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `page` | Integer | Không | Số trang (mặc định: `0`) |
-| `size` | Integer | Không | Số bản ghi/trang, tối đa `100` (mặc định: `20`) |
+| `page` | Integer | Không | Số trang (mặc định: `0`; số âm được đưa về 0) |
+| `size` | Integer | Không | Số bản ghi/trang, được giới hạn trong `1`–`100` (mặc định: `20`) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -300,21 +310,26 @@ Nội dung nhị phân ảnh.
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+- **HTTP 401:** `UNAUTHENTICATED` (401): "Bạn cần đăng nhập để truy cập tài nguyên này."
+- **HTTP 404:** `USER_NOT_FOUND` (404): "Không tìm thấy người dùng."
 
 ---
 
 ## 7. Xóa một mục lịch sử tìm kiếm
 
 - **Endpoint:** `DELETE /api/v1/account/search-history/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ mục của chính mình)
+- **Quyền hạn:** `AUTHENTICATED` (mọi tài khoản đã xác thực; không có `@PreAuthorize`; chỉ mục của chính mình)
 - **Mô tả:** Xóa mềm một mục lịch sử.
+
+### Request Parameters
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | Mã trong đường dẫn |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -322,21 +337,20 @@ Nội dung nhị phân ảnh.
   "success": true,
   "code": 200,
   "message": "Xóa lịch sử tìm kiếm thành công",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Mục không tồn tại hoặc không thuộc tài khoản hiện tại.
+- **HTTP 401:** `UNAUTHENTICATED` (401): "Bạn cần đăng nhập để truy cập tài nguyên này."
+- **HTTP 404:** `USER_NOT_FOUND` (404): "Không tìm thấy người dùng."; `RESOURCE_NOT_FOUND` (404, thông điệp chuẩn: "Không tìm thấy tài nguyên."); thực tế: "Lịch sử tìm kiếm không tồn tại".
 
 ---
 
 ## 8. Thêm sản phẩm yêu thích
 
 - **Endpoint:** `POST /api/v1/account/favorites`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (tài khoản đang đăng nhập)
+- **Quyền hạn:** `AUTHENTICATED` (mọi tài khoản đã xác thực; không có `@PreAuthorize` hoặc mã quyền riêng)
 - **Mô tả:** Thêm sản phẩm vào danh sách yêu thích; đã yêu thích thì trả lại mục cũ.
 
 ### Query Params
@@ -357,22 +371,27 @@ Nội dung nhị phân ảnh.
     "price": 350000.00,
     "createdAt": "2026-11-05T09:00:00"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Thiếu `productId`.
-- **HTTP 404 Not Found:** Sản phẩm không tồn tại hoặc không khả dụng (`PRODUCT_NOT_FOUND`).
+- **HTTP 400:** Thiếu tham số: "Thiếu tham số 'productId'."
+- **HTTP 401:** `UNAUTHENTICATED` (401): "Bạn cần đăng nhập để truy cập tài nguyên này."
+- **HTTP 404:** `USER_NOT_FOUND` (404): "Không tìm thấy người dùng."; `PRODUCT_NOT_FOUND` (404, thông điệp chuẩn: "Không tìm thấy sản phẩm."); thực tế: "Sản phẩm không tồn tại" hoặc "Sản phẩm không khả dụng". `RESOURCE_NOT_FOUND` (404, thông điệp chuẩn: "Không tìm thấy tài nguyên."); thực tế: "Yêu thích không tồn tại".
 
 ---
 
 ## 9. Xóa sản phẩm yêu thích
 
 - **Endpoint:** `DELETE /api/v1/account/favorites/{productId}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ mục của chính mình)
+- **Quyền hạn:** `AUTHENTICATED` (mọi tài khoản đã xác thực; không có `@PreAuthorize`; chỉ mục của chính mình)
 - **Mô tả:** Xóa mềm sản phẩm khỏi danh sách yêu thích.
+
+### Request Parameters
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `productId` | Long | Có | Mã trong đường dẫn |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -380,28 +399,27 @@ Nội dung nhị phân ảnh.
   "success": true,
   "code": 200,
   "message": "Xóa yêu thích thành công",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Sản phẩm chưa có trong danh sách yêu thích.
+- **HTTP 401:** `UNAUTHENTICATED` (401): "Bạn cần đăng nhập để truy cập tài nguyên này."
+- **HTTP 404:** `USER_NOT_FOUND` (404): "Không tìm thấy người dùng."; `RESOURCE_NOT_FOUND` (404, thông điệp chuẩn: "Không tìm thấy tài nguyên."); thực tế: "Yêu thích không tồn tại".
 
 ---
 
 ## 10. Xem danh sách sản phẩm yêu thích
 
 - **Endpoint:** `GET /api/v1/account/favorites`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (chỉ danh sách của chính mình)
+- **Quyền hạn:** `AUTHENTICATED` (mọi tài khoản đã xác thực; không có `@PreAuthorize`; chỉ danh sách của chính mình)
 - **Mô tả:** Danh sách yêu thích của tài khoản hiện tại, mới nhất trước.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `page` | Integer | Không | Số trang (mặc định: `0`) |
-| `size` | Integer | Không | Số bản ghi/trang, tối đa `100` (mặc định: `20`) |
+| `page` | Integer | Không | Số trang (mặc định: `0`; số âm được đưa về 0) |
+| `size` | Integer | Không | Số bản ghi/trang, được giới hạn trong `1`–`100` (mặc định: `20`) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -425,13 +443,13 @@ Nội dung nhị phân ảnh.
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 401 Unauthorized:** Chưa đăng nhập.
+- **HTTP 401:** `UNAUTHENTICATED` (401): "Bạn cần đăng nhập để truy cập tài nguyên này."
+- **HTTP 404:** `USER_NOT_FOUND` (404): "Không tìm thấy người dùng."
 
 ---
 

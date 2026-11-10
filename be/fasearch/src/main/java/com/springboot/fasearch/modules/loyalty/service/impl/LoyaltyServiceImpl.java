@@ -460,8 +460,8 @@ public class LoyaltyServiceImpl implements LoyaltyService {
 
     private static int balanceEffect(LoyaltyLedgerEntry entry) {
         return switch (entry.getType()) {
-            case EARN, ADJUST -> entry.getPoints();
-            case REDEEM -> -entry.getPoints();
+            case EARN, ADJUST, RETURN_REDEEM -> entry.getPoints();
+            case REDEEM, RETURN_REVERSE -> -entry.getPoints();
             default -> 0;
         };
     }
@@ -636,6 +636,52 @@ public class LoyaltyServiceImpl implements LoyaltyService {
         if (hold == null || hold.getStatus() != LoyaltyHoldStatus.CONSUMED) {
             throw new AppException(ErrorCode.LOYALTY_STATE_CONFLICT);
         }
+    }
+
+    public record ReturnSettlement(Customer customer, int balance, int shortfall,
+            LoyaltyLedgerEntry reverseEntry, LoyaltyLedgerEntry redeemEntry) {}
+
+    /** Acquire the customer lock and validate every point/ledger calculation before provider I/O. */
+    @Transactional
+    public ReturnSettlement prepareReturn(Order order, Long returnId, int reverse, int redeemed) {
+        if (order.getCustomer() == null) return new ReturnSettlement(null, 0, 0, null, null);
+        Customer customer = customerRepository.findByIdForUpdate(order.getCustomer().getId())
+                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+        String key = "return-reverse:" + returnId;
+        if (ledgerRepository.findByCustomer_IdAndSourceKey(customer.getId(), key).isPresent())
+            throw new AppException(ErrorCode.LOYALTY_STATE_CONFLICT);
+        int balance = customer.getAccumulatePoint() == null ? 0 : customer.getAccumulatePoint();
+        int held = customer.getHeldPoints() == null ? 0 : customer.getHeldPoints();
+        if (balance < 0 || held < 0 || held > balance || reverse < 0 || redeemed < 0)
+            throw new AppException(ErrorCode.LOYALTY_STATE_CONFLICT);
+        long credited = (long) balance + redeemed;
+        int deduction = (int) Math.min(reverse, Math.max(0L, credited - held));
+        int next = Math.toIntExact(credited - deduction);
+        String actor = currentActor();
+        LoyaltyLedgerEntry reverseEntry = LoyaltyLedgerEntry.builder().customer(customer)
+                .type(LoyaltyEntryType.RETURN_REVERSE).points(deduction).orderId(order.getId()).sourceKey(key)
+                .reasonCode("HOAN_DON").note("Thu hồi điểm đơn trả; thiếu " + (reverse - deduction) + " điểm")
+                .actor(actor).occurredAt(LocalDateTime.now()).build();
+        LoyaltyLedgerEntry redeemEntry = redeemed == 0 ? null : LoyaltyLedgerEntry.builder().customer(customer)
+                .type(LoyaltyEntryType.RETURN_REDEEM).points(redeemed).orderId(order.getId())
+                .sourceKey("return-redeem:" + returnId).reasonCode("HOAN_DON").note("Hoàn điểm đã đổi")
+                .actor(actor).occurredAt(LocalDateTime.now()).build();
+        return new ReturnSettlement(customer, next, reverse - deduction, reverseEntry, redeemEntry);
+    }
+
+    /** Only final writes. The plan holds the locked, validated customer and immutable ledger rows. */
+    @Transactional
+    public int applyReturn(ReturnSettlement plan) {
+        if (plan.customer() == null) return 0;
+        plan.customer().setAccumulatePoint(plan.balance());
+        if (plan.redeemEntry() != null) ledgerRepository.save(plan.redeemEntry());
+        ledgerRepository.save(plan.reverseEntry());
+        return plan.shortfall();
+    }
+
+    @Transactional
+    public int settleReturn(Order order, Long returnId, int reverse, int redeemed) {
+        return applyReturn(prepareReturn(order, returnId, reverse, redeemed));
     }
 
     private void appendLedger(Customer customer, LoyaltyEntryType type, int points, Long orderId, String sourceKey) {

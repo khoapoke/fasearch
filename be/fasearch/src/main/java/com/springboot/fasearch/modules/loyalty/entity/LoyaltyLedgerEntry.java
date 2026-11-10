@@ -41,7 +41,7 @@ public class LoyaltyLedgerEntry {
     private Customer customer;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "entry_type", nullable = false, length = 10)
+    @Column(name = "entry_type", nullable = false, length = 20)
     private LoyaltyEntryType type;
 
     @Column(nullable = false)
@@ -61,7 +61,7 @@ public class LoyaltyLedgerEntry {
     @Column(name = "ghi_chu", length = 500)
     private String note;
 
-    @Column(name = "nguoi_thuc_hien", length = 100)
+    @Column(name = "nguoi_thuc_hien", length = 200)
     private String actor;
 
     @CreationTimestamp

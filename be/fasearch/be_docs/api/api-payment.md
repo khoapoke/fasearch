@@ -2,12 +2,14 @@
 
 Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuyến mãi, điểm thưởng), tiếp nhận thanh toán tiền mặt tại quầy / khi nhận hàng, thanh toán trực tuyến qua cổng Stripe (test) và VNPAY (sandbox) và xuất hóa đơn bán lẻ.
 
+Các ví dụ `ApiResponse` bỏ qua các trường envelope có giá trị `null` (bao gồm `errors`). Các thông báo lỗi dưới đây là thông báo mặc định trong `ErrorCode.java`; service có thể thay bằng thông báo cụ thể khi ném lỗi.
+
 ---
 
 ## 1. Tính toán giá trị thanh toán (FR-42)
 
 - **Endpoint:** `POST /api/v1/payments/calculate`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ tính đơn của mình) — Quản lý cần quyền `POS_USE` hoặc `ORDER_COLLECT_CASH`
+- **Quyền hạn:** `CUSTOMER` hoặc authority `PERM_POS_USE` hoặc `PERM_ORDER_COLLECT_CASH`; khách chỉ tính đơn của mình, nhân viên cần `POS_USE` cho đơn POS và `ORDER_COLLECT_CASH` cho đơn khác
 - **Mô tả:** Xem trước số tiền thực trả của đơn hàng sau voucher, điểm và phí vận chuyển kèm VAT. Chỉ để hiển thị: không sửa đơn, không giữ điểm/voucher.
 
 ### Request Body
@@ -23,7 +25,7 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 | :--- | :--- | :---: | :--- |
 | `orderId` | Long | Có | ID đơn hàng |
 | `voucherCode` | String | Không | Mã giảm giá |
-| `redeemedPoints` | Number | Không | Số điểm muốn dùng (`>= 0`, số nguyên) |
+| `redeemedPoints` | BigDecimal (Number) | Không | Số điểm muốn dùng (`>= 0`, số nguyên) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -40,16 +42,18 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
     "taxVat": 47600.00,
     "finalAmount": 595000.00
   },
-  "errors": null,
   "timestamp": "2026-10-31T12:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Đơn đã hủy / đã hoàn trả, điểm sai định dạng hoặc vượt số dư.
-- **HTTP 403 Forbidden:** `CUSTOMER` tính đơn của người khác.
-- **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
-- **HTTP 409 Conflict:** Điểm gửi lên không khớp snapshot của đơn (`4107 QUOTE_CHANGED`).
+- **`400 INVALID_REQUEST`:** Dữ liệu yêu cầu không hợp lệ.
+- **`401 UNAUTHENTICATED`:** Bạn cần đăng nhập để truy cập tài nguyên này.
+- **`403 FORBIDDEN`:** Bạn không có quyền truy cập.
+- **`403 ACCESS_DENIED`:** Bạn không có quyền truy cập tài nguyên này.
+- **`404 ORDER_NOT_FOUND`:** Không tìm thấy đơn hàng.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`4107 QUOTE_CHANGED`:** Báo giá giỏ hàng đã thay đổi. Tải lại và xác nhận.
 
 ---
 
@@ -81,7 +85,6 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
       "note": null
     }
   ],
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -93,8 +96,8 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 ## 3. Thực hiện thanh toán & Xuất hóa đơn (FR-43)
 
 - **Endpoint:** `POST /api/v1/payments/process`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (khách hàng chỉ thanh toán đơn của mình) — Quản lý cần quyền `POS_USE` (đơn `POS-*`) hoặc `ORDER_COLLECT_CASH` (đơn khác)`
-- **Mô tả:** Thu tiền mặt, lập hóa đơn `hoa_don`, trừ tồn kho và chuyển đơn sang đã thanh toán. Chỉ nhận `CASH`; phương thức khác phải đi qua cổng thanh toán (mục 4 - 10). Gửi lại request POS y hệt trả lại hóa đơn cũ với HTTP 200.
+- **Quyền hạn:** `CUSTOMER` hoặc authority `PERM_POS_USE` hoặc `PERM_ORDER_COLLECT_CASH`; khách chỉ thanh toán đơn của mình, nhân viên cần `POS_USE` cho đơn POS và `ORDER_COLLECT_CASH` cho đơn khác
+- **Mô tả:** Thu tiền mặt và lập hóa đơn `hoa_don`; đơn POS DRAFT được trừ tồn kho và chuyển `COMPLETED`, đơn `PENDING` chuyển `CONFIRMED`. Chỉ nhận `CASH`; phương thức khác phải đi qua cổng thanh toán (mục 4 - 10). Gửi lại request POS y hệt trả lại hóa đơn cũ với HTTP 200.
 
 ### Request Body
 ```json
@@ -113,11 +116,11 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 | :--- | :--- | :---: | :--- |
 | `orderId` | Long | Có | ID đơn hàng |
 | `paymentMethodCode` | String | Có | Mã phương thức (`CASH`) |
-| `amountPaid` | Number | Có | Số tiền khách đưa (`>= 0`) |
+| `amountPaid` | BigDecimal (Number) | Có | Số tiền khách đưa (`>= 0`) |
 | `note` | String | Không | Ghi chú |
 | `voucherCode` | String | Không | Chỉ đơn POS (`POS-...`), tối đa 50 ký tự |
-| `redeemedPoints` | Number | Không | Chỉ đơn POS, số nguyên `>= 0` |
-| `quoteFingerprint` | String | Không | Chỉ đơn POS, lấy từ `POST /api/v1/orders/pos/{orderId}/quote` |
+| `redeemedPoints` | BigDecimal (Number) | Không | Chỉ đơn POS, số nguyên `>= 0` |
+| `quoteFingerprint` | String | Không | Chỉ đơn POS, tối đa 64 ký tự, lấy từ `POST /api/v1/orders/pos/{orderId}/quote` |
 
 ### Response Thành công (HTTP 201 Created)
 ```json
@@ -145,7 +148,6 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
     "note": "Khách đưa 600.000đ",
     "issuedAt": "2026-10-31T12:05:00"
   },
-  "errors": null,
   "timestamp": "2026-10-31T12:05:00"
 }
 ```
@@ -153,10 +155,26 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 - Các trường điểm (`redeemedPoints` ... `earnedPoints`) là `null` với đơn không có snapshot loyalty. `totalActualPaid` là cơ sở tích điểm / xét hạng, không phải `cashReceived`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Đơn đã thanh toán (`ORDER_ALREADY_PAID`), thiếu tiền (`PAYMENT_AMOUNT_INSUFFICIENT`), phương thức không phải tiền mặt, đơn không ở trạng thái thanh toán được, thiếu tồn kho (`INSUFFICIENT_STOCK`).
-- **HTTP 403 Forbidden:** `CUSTOMER` thanh toán đơn của người khác, đơn POS hoặc đơn có voucher COD.
-- **HTTP 404 Not Found:** Không tìm thấy đơn hàng hoặc phương thức thanh toán.
-- **HTTP 409 Conflict:** Fingerprint / điểm đã đổi (`4107 QUOTE_CHANGED`) hoặc gửi lại với dữ liệu tài chính khác (`4108 IDEMPOTENCY_CONFLICT`).
+- **`400 INVALID_REQUEST`:** Dữ liệu yêu cầu không hợp lệ.
+- **`400 ORDER_ALREADY_PAID`:** Đơn hàng đã thanh toán.
+- **`400 PAYMENT_AMOUNT_INSUFFICIENT`:** Số tiền thanh toán không đủ để trả tổng hóa đơn.
+- **`400 INSUFFICIENT_STOCK`:** Không đủ tồn kho cho SKU đã chọn.
+- **`400 CART_EMPTY`:** Giỏ hàng đang trống.
+- **`401 UNAUTHENTICATED`:** Bạn cần đăng nhập để truy cập tài nguyên này.
+- **`403 FORBIDDEN`:** Bạn không có quyền truy cập.
+- **`403 ACCESS_DENIED`:** Bạn không có quyền truy cập tài nguyên này.
+- **`404 ORDER_NOT_FOUND`:** Không tìm thấy đơn hàng.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`404 PAYMENT_METHOD_NOT_FOUND`:** Không tìm thấy phương thức thanh toán.
+- **`404 INVENTORY_NOT_FOUND`:** Không tìm thấy bản ghi kho.
+- **`4107 QUOTE_CHANGED`:** Báo giá giỏ hàng đã thay đổi. Tải lại và xác nhận.
+- **`4108 IDEMPOTENCY_CONFLICT`:** Khóa đặt hàng đã được dùng với dữ liệu khác.
+- **`4105 VOUCHER_EXHAUSTED`:** Voucher đã hết lượt sử dụng.
+- **`4202 LOYALTY_POLICY_UNAVAILABLE`:** Chưa cấu hình chính sách điểm.
+- **`4203 LOYALTY_POLICY_DISABLED`:** Chính sách đổi điểm đang tắt.
+- **`4204 INSUFFICIENT_POINTS`:** Số điểm yêu cầu vượt quá mức cho phép hiện tại.
+- **`4208 LOYALTY_STATE_CONFLICT`:** Trạng thái điểm đã thay đổi. Tải lại và thử lại.
+- **`500 INTERNAL_SERVER_ERROR`:** Đã xảy ra lỗi. Vui lòng thử lại sau.
 
 ---
 
@@ -199,7 +217,6 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
     "createdAt": "2026-11-05T09:00:00",
     "expiresAt": null
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -207,10 +224,13 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 - `status`: `CREATED`, `PENDING`, `SETTLEMENT_PENDING`, `SETTLED`, `FAILED`, `CANCELLED`, `EXPIRED`, `REVIEW_REQUIRED`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, đơn không thanh toán được / có tiền phải trả bằng 0, đơn đã có hóa đơn (`ORDER_ALREADY_PAID`).
-- **HTTP 403 Forbidden:** Đơn của người khác hoặc không phải `CUSTOMER`.
-- **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
-- **HTTP 409 Conflict:** `idempotencyKey` đã thuộc đơn hàng khác (`DATA_CONFLICT`).
+- **`400 INVALID_REQUEST`:** Dữ liệu yêu cầu không hợp lệ.
+- **`400 ORDER_ALREADY_PAID`:** Đơn hàng đã thanh toán.
+- **`401 UNAUTHENTICATED`:** Bạn cần đăng nhập để truy cập tài nguyên này.
+- **`403 FORBIDDEN`:** Bạn không có quyền truy cập.
+- **`404 ORDER_NOT_FOUND`:** Không tìm thấy đơn hàng.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`409 DATA_CONFLICT`:** Dữ liệu bị xung đột.
 
 ---
 
@@ -219,6 +239,12 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 - **Endpoint:** `GET /api/v1/payments/attempts/{id}`
 - **Quyền hạn:** `CUSTOMER` (chỉ lượt thanh toán của mình)
 - **Mô tả:** Xem trạng thái một lượt thanh toán, cùng dạng `result` như mục 4.
+
+### Request Parameters
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | ID payment attempt trong đường dẫn |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -238,14 +264,17 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
     "createdAt": "2026-11-05T09:00:00",
     "expiresAt": null
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 403 Forbidden:** Lượt thanh toán của người khác.
-- **HTTP 404 Not Found:** Không tìm thấy payment attempt.
+- **`401 UNAUTHENTICATED`:** Bạn cần đăng nhập để truy cập tài nguyên này.
+- **`403 FORBIDDEN`:** Bạn không có quyền truy cập.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`404 RESOURCE_NOT_FOUND`:** Không tìm thấy tài nguyên.
+
+Khi không tìm thấy attempt, service ghi đè thông báo thành `Không tìm thấy lần thanh toán.`
 
 ---
 
@@ -278,7 +307,6 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
     "attemptId": 21,
     "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1B2c3..."
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -286,11 +314,17 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 - Lượt đang mở trả lại `checkoutUrl` đã lưu với message `Stripe Checkout đã tồn tại`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Đơn đã thanh toán, không thanh toán được hoặc Stripe từ chối (`PAYMENT_PROVIDER_REJECTED`).
-- **HTTP 403 Forbidden:** Đơn của người khác hoặc không phải `CUSTOMER`.
-- **HTTP 404 Not Found:** Không tìm thấy đơn hàng.
-- **HTTP 409 Conflict:** `idempotencyKey` đã thuộc đơn hàng khác.
-- **HTTP 503 Service Unavailable:** Stripe chưa cấu hình hoặc không khả dụng (`PAYMENT_PROVIDER_NOT_CONFIGURED`, `PAYMENT_PROVIDER_UNAVAILABLE`).
+- **`400 INVALID_REQUEST`:** Dữ liệu yêu cầu không hợp lệ.
+- **`400 ORDER_ALREADY_PAID`:** Đơn hàng đã thanh toán.
+- **`401 UNAUTHENTICATED`:** Bạn cần đăng nhập để truy cập tài nguyên này.
+- **`403 FORBIDDEN`:** Bạn không có quyền truy cập.
+- **`404 ORDER_NOT_FOUND`:** Không tìm thấy đơn hàng.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`409 DATA_CONFLICT`:** Dữ liệu bị xung đột.
+- **`404 RESOURCE_NOT_FOUND`:** Không tìm thấy tài nguyên.
+- **`400 PAYMENT_PROVIDER_REJECTED`:** Nhà cung cấp thanh toán đã từ chối yêu cầu.
+- **`503 PAYMENT_PROVIDER_NOT_CONFIGURED`:** Nhà cung cấp thanh toán chưa được cấu hình.
+- **`503 PAYMENT_PROVIDER_UNAVAILABLE`:** Nhà cung cấp thanh toán hiện không khả dụng.
 
 ---
 
@@ -301,7 +335,7 @@ Module `payment` xử lý tính tiền tổng thể hóa đơn (kết hợp khuy
 - **Mô tả:** Nhận sự kiện Stripe đã ký (HMAC-SHA256, lệch giờ tối đa 300 giây). Chỉ xử lý `checkout.session.completed` (khi `payment_status = paid`), `async_payment_succeeded`, `async_payment_failed`, `expired`; kiểm tra khớp số tiền / tiền tệ. `PAID` chỉ được ghi nhận từ sự kiện đã xác thực này, không từ trang redirect.
 
 ### Request Body
-Payload sự kiện Stripe nguyên bản (raw JSON).
+Payload sự kiện Stripe nguyên bản (raw JSON), bắt buộc. Header `Stripe-Signature` kiểu String không bắt buộc ở binding nhưng cần hợp lệ để xác thực.
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -313,9 +347,16 @@ Payload sự kiện Stripe nguyên bản (raw JSON).
 - Loại sự kiện không xử lý trả `{ "received": true, "ignored": true }`. Response không bọc `ApiResponse`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Sai chữ ký, thiếu cấu hình secret, payload thiếu trường hoặc số tiền / tiền tệ không khớp.
-- **HTTP 404 Not Found:** Không tìm thấy payment attempt theo phiên Stripe.
-- **HTTP 409 Conflict:** Cùng event id nhưng payload đã thay đổi.
+- **`400 INVALID_REQUEST`:** Dữ liệu yêu cầu không hợp lệ.
+- **`404 RESOURCE_NOT_FOUND`:** Không tìm thấy tài nguyên.
+- **`404 ORDER_NOT_FOUND`:** Không tìm thấy đơn hàng.
+- **`409 DATA_CONFLICT`:** Dữ liệu bị xung đột.
+- **`503 PAYMENT_PROVIDER_NOT_CONFIGURED`:** Nhà cung cấp thanh toán chưa được cấu hình.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`500 INTERNAL_SERVER_ERROR`:** Đã xảy ra lỗi. Vui lòng thử lại sau.
+- **`4208 LOYALTY_STATE_CONFLICT`:** Trạng thái điểm đã thay đổi. Tải lại và thử lại.
+
+Ví dụ thông báo ghi đè: `Chữ ký Stripe không hợp lệ.`, `Sự kiện Stripe chưa đầy đủ.`, `Sự kiện Stripe không đúng định dạng.`, `Số tiền hoặc tiền tệ từ nhà cung cấp không khớp.`, `Dữ liệu sự kiện từ nhà cung cấp đã thay đổi.`
 
 ---
 
@@ -348,7 +389,6 @@ Payload sự kiện Stripe nguyên bản (raw JSON).
     "attemptId": 22,
     "checkoutUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=59500000&vnp_TxnRef=VNPAY2220261105090000&..."
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -356,11 +396,15 @@ Payload sự kiện Stripe nguyên bản (raw JSON).
 - Lượt đang mở trả lại `checkoutUrl` đã lưu với message `VNPAY checkout đã tồn tại`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Đơn đã thanh toán hoặc không thanh toán được.
-- **HTTP 403 Forbidden:** Đơn của người khác hoặc không phải `CUSTOMER`.
-- **HTTP 404 Not Found:** Không tìm thấy đơn hàng.
-- **HTTP 409 Conflict:** `idempotencyKey` đã thuộc đơn hàng khác.
-- **HTTP 503 Service Unavailable:** VNPAY chưa cấu hình (`PAYMENT_PROVIDER_NOT_CONFIGURED`).
+- **`400 INVALID_REQUEST`:** Dữ liệu yêu cầu không hợp lệ.
+- **`400 ORDER_ALREADY_PAID`:** Đơn hàng đã thanh toán.
+- **`401 UNAUTHENTICATED`:** Bạn cần đăng nhập để truy cập tài nguyên này.
+- **`403 FORBIDDEN`:** Bạn không có quyền truy cập.
+- **`404 ORDER_NOT_FOUND`:** Không tìm thấy đơn hàng.
+- **`404 CUSTOMER_NOT_FOUND`:** Không tìm thấy khách hàng.
+- **`409 DATA_CONFLICT`:** Dữ liệu bị xung đột.
+- **`404 RESOURCE_NOT_FOUND`:** Không tìm thấy tài nguyên.
+- **`503 PAYMENT_PROVIDER_NOT_CONFIGURED`:** Nhà cung cấp thanh toán chưa được cấu hình.
 
 ---
 
@@ -369,6 +413,17 @@ Payload sự kiện Stripe nguyên bản (raw JSON).
 - **Endpoint:** `GET /api/v1/payments/vnpay/return`
 - **Quyền hạn:** `PUBLIC` (trình duyệt khách quay về từ VNPAY, kèm các tham số `vnp_*`)
 - **Mô tả:** Chỉ kiểm tra chữ ký để hiển thị kết quả cho khách, **không** ghi nhận thanh toán.
+
+### Request Parameters
+
+Toàn bộ query, kể cả các tham số `vnp_*` khác, được nhận dưới dạng `Map<String, String>`; không có tham số riêng nào được khai báo bắt buộc ở controller.
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `vnp_SecureHash` | String | Không | Chữ ký để kiểm tra tính hợp lệ |
+| `vnp_ResponseCode` | String | Không | Mã kết quả |
+| `vnp_TransactionStatus` | String | Không | Trạng thái giao dịch |
+| `vnp_TxnRef` | String | Không | Mã tham chiếu giao dịch |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -389,7 +444,22 @@ Payload sự kiện Stripe nguyên bản (raw JSON).
 
 - **Endpoint:** `GET /api/v1/payments/vnpay/ipn`
 - **Quyền hạn:** `PUBLIC` (Server-to-Server từ VNPAY, xác thực `vnp_SecureHash` HMAC-SHA512 và `vnp_TmnCode`)
-- **Mô tả:** Nhận kết quả giao dịch, kiểm tra chữ ký / merchant / số tiền, rồi ghi nhận thanh toán. Thành công khi `vnp_ResponseCode` và `vnp_TransactionStatus` đều `00`; sự kiện chống trùng theo `{txnRef}:{vnp_TransactionNo}`.
+- **Mô tả:** Nhận kết quả giao dịch, kiểm tra chữ ký / merchant / số tiền, rồi ghi nhận thanh toán. Thành công khi `vnp_ResponseCode` và `vnp_TransactionStatus` đều `00`; sự kiện chống trùng theo `{txnRef}:{vnp_TransactionNo}` (nếu thiếu transaction number thì dùng `vnp_ResponseCode`).
+
+### Request Parameters
+
+Toàn bộ query, kể cả các tham số `vnp_*` khác, được nhận dưới dạng `Map<String, String>`; không có tham số riêng nào được khai báo bắt buộc ở controller.
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `vnp_SecureHash` | String | Không | Chữ ký để kiểm tra tính hợp lệ |
+| `vnp_ResponseCode` | String | Không | Mã kết quả |
+| `vnp_TransactionStatus` | String | Không | Trạng thái giao dịch |
+| `vnp_TxnRef` | String | Không | Mã tham chiếu giao dịch |
+| `vnp_TmnCode` | String | Không | Mã merchant; phải khớp cấu hình |
+| `vnp_Amount` | String | Không | Số tiền nguyên nhân 100 |
+| `vnp_CurrCode` | String | Không | Tiền tệ; phải là `VND` |
+| `vnp_TransactionNo` | String | Không | Mã giao dịch, dùng tạo event ID; nếu thiếu dùng `vnp_ResponseCode` |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -400,11 +470,13 @@ Payload sự kiện Stripe nguyên bản (raw JSON).
 ```
 
 ### Response Lỗi thường gặp
-Luôn trả HTTP 200, `RspCode` cho biết kết quả:
+Các nhánh kiểm tra sau trả HTTP 200, `RspCode` cho biết kết quả:
 - **`97`:** Sai chữ ký.
 - **`99`:** Sai merchant (`vnp_TmnCode`).
 - **`01`:** Không tìm thấy giao dịch theo `vnp_TxnRef`.
 - **`04`:** Sai số tiền hoặc tiền tệ.
+
+Sau khi vượt các kiểm tra trên, xử lý sự kiện vẫn có thể ném lỗi `400 INVALID_REQUEST` — Dữ liệu yêu cầu không hợp lệ.; `404 RESOURCE_NOT_FOUND` — Không tìm thấy tài nguyên.; `404 ORDER_NOT_FOUND` — Không tìm thấy đơn hàng.; `404 CUSTOMER_NOT_FOUND` — Không tìm thấy khách hàng.; `409 DATA_CONFLICT` — Dữ liệu bị xung đột.; `4208 LOYALTY_STATE_CONFLICT` — Trạng thái điểm đã thay đổi. Tải lại và thử lại.; `503 PAYMENT_PROVIDER_NOT_CONFIGURED` — Nhà cung cấp thanh toán chưa được cấu hình.; hoặc `500 INTERNAL_SERVER_ERROR` — Đã xảy ra lỗi. Vui lòng thử lại sau.
 
 ---
 
@@ -416,8 +488,8 @@ FE gửi một `idempotencyKey` cố định cho mỗi đơn / cổng; server x�
 | :--- | :--- |
 | Chưa có | Tạo lượt `CREATED` mới |
 | `CREATED`, `PENDING`, `SETTLEMENT_PENDING` | Trả lại đúng lượt đó (cùng `checkoutUrl`) |
-| `SETTLED`, `REVIEW_REQUIRED` | Trả lại lượt đó (HTTP 201, không tạo phiên mới) |
-| `FAILED`, `CANCELLED`, `EXPIRED` | Tạo lượt mới với khóa nội bộ `<khóa>~r<n>` và phiên Stripe / `TxnRef` VNPAY mới |
+| `SETTLED`, `REVIEW_REQUIRED` | Trả lại lượt đó; endpoint checkout tạo phiên nếu lượt chưa có `checkoutUrl` |
+| `FAILED`, `CANCELLED`, `EXPIRED` | Nếu chưa có hóa đơn, tạo lượt mới với khóa nội bộ `<khóa rút ngắn>~r<n>` và phiên Stripe / `TxnRef` VNPAY mới |
 
-- Đơn đã có hóa đơn → `400 ORDER_ALREADY_PAID`; khóa thuộc đơn khác → `409 DATA_CONFLICT`. Response không đổi, khóa nội bộ không lộ ra ngoài.
+- Khi thử lại lượt đã kết thúc, đơn đã có hóa đơn → `400 ORDER_ALREADY_PAID`; khóa cùng provider thuộc đơn khác → `409 DATA_CONFLICT`. Kiểm tra khả năng thanh toán của đơn chạy trước khi tìm lượt cũ. Response không đổi, khóa nội bộ không lộ ra ngoài.
 - Thanh toán muộn sau khi lượt `CANCELLED` / `EXPIRED` chuyển sang `REVIEW_REQUIRED`, không tự hoàn tiền hay xử lý đơn.

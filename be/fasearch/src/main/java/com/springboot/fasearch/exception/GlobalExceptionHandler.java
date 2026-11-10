@@ -28,6 +28,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.sql.SQLException sqlException
+                    && "23505".equals(sqlException.getSQLState())
+                    && sqlException.getMessage() != null
+                    && sqlException.getMessage().contains("uq_danh_muc_active_name")) {
+                return handleAppException(new AppException(ErrorCode.CATEGORY_NAME_ALREADY_EXISTS));
+            }
+        }
         log.error("Unhandled runtime exception: ", exception);
 
         ApiResponse<Void> apiResponse = new ApiResponse<>();

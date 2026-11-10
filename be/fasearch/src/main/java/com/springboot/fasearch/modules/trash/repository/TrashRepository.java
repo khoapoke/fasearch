@@ -351,8 +351,8 @@ public interface TrashRepository extends Repository<Category, Long> {
     @Query(value = """
             select count(*) from danh_muc c
             where c.da_xoa = false and c.ma_danh_muc <> :categoryId
-              and lower(trim(c.ten_danh_muc)) =
-                  (select lower(trim(t.ten_danh_muc)) from danh_muc t where t.ma_danh_muc = :categoryId)
+              and lower(btrim(regexp_replace(c.ten_danh_muc, '\\s+', ' ', 'g'))) =
+                  (select lower(btrim(regexp_replace(t.ten_danh_muc, '\\s+', ' ', 'g'))) from danh_muc t where t.ma_danh_muc = :categoryId)
             """, nativeQuery = true)
     long countCategoryNameConflicts(@Param("categoryId") Long categoryId);
 

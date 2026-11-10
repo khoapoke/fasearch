@@ -27,9 +27,9 @@ Module `shipping` tính phí vận chuyển theo khoảng cách từ kho đến 
 | `province` | String | Có | Tỉnh / Thành phố |
 | `district` | String | Có | Quận / Huyện |
 | `totalWeightGram` | Integer | Có | Tổng trọng lượng đơn hàng (gram, `>= 1`) |
-| `deliveryLatitude` | Number | Không | Vĩ độ giao hàng `[-90, 90]`, gửi cùng `deliveryLongitude` |
-| `deliveryLongitude` | Number | Không | Kinh độ giao hàng `[-180, 180]`, gửi cùng `deliveryLatitude` |
-| `voucherCode` | String | Không | Mã giảm giá `FREE_SHIP`, tối đa 50 ký tự |
+| `deliveryLatitude` | Double | Không | Vĩ độ giao hàng `[-90, 90]`, gửi cùng `deliveryLongitude` |
+| `deliveryLongitude` | Double | Không | Kinh độ giao hàng `[-180, 180]`, gửi cùng `deliveryLatitude` |
+| `voucherCode` | String | Không | Mã voucher, tối đa 50 ký tự; chỉ loại `FREE_SHIP` miễn phí vận chuyển |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -47,7 +47,6 @@ Module `shipping` tính phí vận chuyển theo khoảng cách từ kho đến 
     "method": "estimate",
     "estimatedDays": "1 - 3 ngày"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -55,9 +54,11 @@ Module `shipping` tính phí vận chuyển theo khoảng cách từ kho đến 
 - `method`: `google` (khoảng cách đường đi từ Google Routes), `estimate` (ước tính theo đường chim bay × hệ số đường đi, khi Google lỗi hoặc chưa cấu hình), `flat` (không có tọa độ; `distanceKm` là `null`). `fee` và `distance_km` là alias của `shippingFee` và `distanceKm`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Thiếu trường bắt buộc, tọa độ lệch cặp hoặc ngoài miền hợp lệ.
-- **HTTP 401 Unauthorized:** Chưa đăng nhập.
-- **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — "Dữ liệu yêu cầu không hợp lệ." (tọa độ lệch cặp; thông báo thực tế có thể chi tiết hơn); xác thực body trả mã `400`, thông báo "Dữ liệu không hợp lệ." và thông tin trường. Khi gửi voucher: `400 CART_EMPTY` — "Giỏ hàng đang trống."; `4102 VOUCHER_PAUSED` — "Voucher đang tạm dừng."; `4103 VOUCHER_NOT_STARTED` — "Voucher chưa đến thời gian sử dụng."; `4104 VOUCHER_EXPIRED` — "Voucher đã hết hạn."; `4106 VOUCHER_NOT_APPLICABLE` — "Voucher không áp dụng cho giỏ hàng này.".
+- **HTTP 401 Unauthorized:** `401 UNAUTHENTICATED` — "Bạn cần đăng nhập để truy cập tài nguyên này.".
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này.".
+- **HTTP 404 Not Found:** Khi gửi voucher: `404 CUSTOMER_NOT_FOUND` — "Không tìm thấy khách hàng."; `4101 VOUCHER_UNKNOWN` — "Không tìm thấy mã Voucher.".
+- **HTTP 409 Conflict:** Khi gửi voucher: `4105 VOUCHER_EXHAUSTED` — "Voucher đã hết lượt sử dụng."; `4208 LOYALTY_STATE_CONFLICT` — "Trạng thái điểm đã thay đổi. Tải lại và thử lại.".
 
 ---
 
@@ -84,16 +85,16 @@ Module `shipping` tính phí vận chuyển theo khoảng cách từ kho đến 
       "label": "140 Lê Trọng Tấn, Tây Thạnh, Tân Phú, Thành phố Hồ Chí Minh"
     }
   ],
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** `input` trống hoặc quá dài.
-- **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
-- **HTTP 429 Too Many Requests:** Vượt 20 yêu cầu/phút (`4303 MAPS_RATE_LIMITED`).
-- **HTTP 503 Service Unavailable:** Chưa bật tìm địa chỉ (`4301 MAPS_NOT_CONFIGURED`) hoặc Google đang bận (`4302 MAPS_UNAVAILABLE`); FE cho khách chọn ghim trên bản đồ.
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — "Dữ liệu yêu cầu không hợp lệ." (`input` trống hoặc quá dài); thiếu `input` trả mã `400` với thông báo "Thiếu tham số 'input'.".
+- **HTTP 401 Unauthorized:** `401 UNAUTHENTICATED` — "Bạn cần đăng nhập để truy cập tài nguyên này.".
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này.".
+- **HTTP 429 Too Many Requests:** `4303 MAPS_RATE_LIMITED` — "Vui lòng chờ trước khi tìm địa chỉ tiếp".
+- **HTTP 503 Service Unavailable:** `4301 MAPS_NOT_CONFIGURED` — "Chưa bật tìm địa chỉ; hãy chọn ghim trên bản đồ"; `4302 MAPS_UNAVAILABLE` — "Tìm địa chỉ đang bận; hãy chọn ghim trên bản đồ".
 
 ---
 
@@ -106,8 +107,8 @@ Module `shipping` tính phí vận chuyển theo khoảng cách từ kho đến 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `placeId` | String | Không | ID địa điểm từ mục 2 (tối đa 255 ký tự) |
-| `address` | String | Không | Địa chỉ dạng chuỗi (tối đa 255 ký tự); phải có `placeId` hoặc `address` |
+| `placeId` | String | Không | ID địa điểm từ mục 2; ưu tiên sử dụng khi khác `null` |
+| `address` | String | Không | Địa chỉ dạng chuỗi; ít nhất một trong hai tham số phải không trống và dài tối đa 255 ký tự |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -121,14 +122,14 @@ Module `shipping` tính phí vận chuyển theo khoảng cách từ kho đến 
     "formattedAddress": "140 Lê Trọng Tấn, Tây Thạnh, Tân Phú, Thành phố Hồ Chí Minh, Việt Nam",
     "placeId": "ChIJ8Wv3pLwndTERgdbQh3x4qJQ"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Thiếu cả `placeId` và `address`, hoặc giá trị quá dài.
-- **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
-- **HTTP 404 Not Found:** Không tìm thấy tọa độ cho địa chỉ.
-- **HTTP 429 Too Many Requests:** Vượt 20 yêu cầu/phút (`4303 MAPS_RATE_LIMITED`).
-- **HTTP 503 Service Unavailable:** Chưa bật tìm địa chỉ (`4301 MAPS_NOT_CONFIGURED`) hoặc Google đang bận (`4302 MAPS_UNAVAILABLE`).
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — "Dữ liệu yêu cầu không hợp lệ." (cả hai tham số đều thiếu, trống hoặc quá dài).
+- **HTTP 401 Unauthorized:** `401 UNAUTHENTICATED` — "Bạn cần đăng nhập để truy cập tài nguyên này.".
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này.".
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — "Không tìm thấy tài nguyên.".
+- **HTTP 429 Too Many Requests:** `4303 MAPS_RATE_LIMITED` — "Vui lòng chờ trước khi tìm địa chỉ tiếp".
+- **HTTP 503 Service Unavailable:** `4301 MAPS_NOT_CONFIGURED` — "Chưa bật tìm địa chỉ; hãy chọn ghim trên bản đồ"; `4302 MAPS_UNAVAILABLE` — "Tìm địa chỉ đang bận; hãy chọn ghim trên bản đồ".

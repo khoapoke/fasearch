@@ -82,6 +82,99 @@ public class StripeCheckoutService {
         }
     }
 
+    RestClient refundClient() { return expireClient(); }
+
+    public record RefundAttempt(int number, String refundId, String status, String idempotencyKey) {}
+
+    public String refundSession(String sessionId, java.math.BigDecimal amount,
+            java.math.BigDecimal paid, String returnKey) {
+        return refundSession(sessionId, amount, paid, returnKey, attempt -> {});
+    }
+
+    /** Reconcile ALL matching metadata, including legacy refunds without attempt_number.
+     * Only terminal failed/canceled refunds permit a new key; pending/unknown must reconcile. */
+    public String refundSession(String sessionId, java.math.BigDecimal amount,
+            java.math.BigDecimal paid, String returnKey, java.util.function.Consumer<RefundAttempt> record) {
+        requireConfigured();
+        int nextAttempt = 1;
+        boolean posting = false;
+        try {
+            RestClient client = refundClient();
+            String auth = "Bearer " + secretKey;
+            JsonNode session = OBJECT_MAPPER.readTree(client.get().uri("/v1/checkout/sessions/{id}", sessionId)
+                    .header("Authorization", auth).retrieve().body(String.class));
+            String intent = session.path("payment_intent").asText("");
+            if (session.path("livemode").asBoolean(true) || !"paid".equals(session.path("payment_status").asText())
+                    || !"vnd".equals(session.path("currency").asText()) || intent.isBlank()
+                    || session.path("amount_total").asLong(-1) != paid.longValueExact())
+                throw new AppException(ErrorCode.PAYMENT_PROVIDER_REJECTED, "Phiên Stripe không khớp thanh toán của đơn.");
+            String after = "";
+            String succeeded = null;
+            boolean pending = false;
+            do {
+                final String cursor = after;
+                JsonNode page = OBJECT_MAPPER.readTree(client.get().uri(b -> {
+                    b.path("/v1/refunds").queryParam("payment_intent", intent).queryParam("limit", 100);
+                    if (!cursor.isEmpty()) b.queryParam("starting_after", cursor);
+                    return b.build();
+                }).header("Authorization", auth).retrieve().body(String.class));
+                for (JsonNode refund : page.path("data")) {
+                    after = refund.path("id").asText();
+                    if (!returnKey.equals(refund.path("metadata").path("return_key").asText())) continue;
+                    validateRefund(refund, amount, intent);
+                    int number = Math.max(1, refund.path("metadata").path("attempt_number").asInt(1));
+                    String status = refund.path("status").asText();
+                    record.accept(new RefundAttempt(number, after, status, refundKey(returnKey, number)));
+                    if ("succeeded".equals(status)) succeeded = after;
+                    else if ("failed".equals(status) || "canceled".equals(status)) nextAttempt = Math.max(nextAttempt, number + 1);
+                    else pending = true;
+                }
+                if (!page.path("has_more").asBoolean(false)) break;
+                if (cursor.equals(after)) throw new IllegalStateException("Invalid Stripe cursor");
+            } while (true);
+            if (succeeded != null) return succeeded;
+            if (pending) throw new AppException(ErrorCode.PAYMENT_PROVIDER_REJECTED,
+                    "Stripe chưa hoàn tiền thành công. Giữ nguyên yêu cầu để đối soát lại.");
+            MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+            form.add("payment_intent", intent);
+            form.add("amount", amount.setScale(0, RoundingMode.UNNECESSARY).toPlainString());
+            form.add("metadata[return_key]", returnKey);
+            form.add("metadata[attempt_number]", Integer.toString(nextAttempt));
+            posting = true;
+            JsonNode refund = OBJECT_MAPPER.readTree(client.post().uri("/v1/refunds")
+                    .header("Authorization", auth).header("Idempotency-Key", refundKey(returnKey, nextAttempt))
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED).body(form).retrieve().body(String.class));
+            validateRefund(refund, amount, intent);
+            String status = refund.path("status").asText();
+            record.accept(new RefundAttempt(nextAttempt, refund.path("id").asText(), status, refundKey(returnKey, nextAttempt)));
+            posting = false;
+            if ("failed".equals(status) || "canceled".equals(status))
+                throw new AppException(ErrorCode.PAYMENT_PROVIDER_REJECTED, "Stripe từ chối hoàn tiền, thử lại");
+            if (!"succeeded".equals(status)) throw new AppException(ErrorCode.PAYMENT_PROVIDER_REJECTED,
+                    "Stripe chưa hoàn tiền thành công. Giữ nguyên yêu cầu để đối soát lại.");
+            return refund.path("id").asText();
+        } catch (AppException e) { throw e;
+        } catch (RestClientResponseException e) {
+            if (posting) record.accept(new RefundAttempt(nextAttempt, null, "unknown", refundKey(returnKey, nextAttempt)));
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_REJECTED, "Stripe từ chối hoàn tiền, thử lại");
+        } catch (Exception e) {
+            if (posting) record.accept(new RefundAttempt(nextAttempt, null, "unknown", refundKey(returnKey, nextAttempt)));
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE,
+                    "Chưa xác nhận được hoàn tiền Stripe. Thử lại cùng yêu cầu để đối soát, không tạo yêu cầu mới.");
+        }
+    }
+
+    private static String refundKey(String returnKey, int attempt) {
+        return "fasearch-return-" + returnKey + "-" + attempt;
+    }
+
+    private static void validateRefund(JsonNode refund, java.math.BigDecimal amount, String intent) {
+        if (refund.path("id").asText().isBlank() || !"vnd".equals(refund.path("currency").asText())
+                || !intent.equals(refund.path("payment_intent").asText())
+                || refund.path("amount").asLong(-1) != amount.longValueExact())
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_REJECTED, "Thông tin hoàn tiền Stripe không khớp yêu cầu.");
+    }
+
     public StripeSession createSession(PaymentAttemptRes attempt) {
         requireConfigured();
         long amount;

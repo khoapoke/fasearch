@@ -129,6 +129,9 @@ public class Order {
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
     private String note;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
     @Column(name = "da_xoa", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;

@@ -77,6 +77,26 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryMapper inventoryMapper;
     private final HistoryNameLookup historyNameLookup;
 
+    /** Receiving returned goods: damaged units never enter sellable stock. Caller serialises by order. */
+    @Transactional
+    public void receiveReturn(Long returnId, Long skuId, int quantity, int restock) {
+        if (quantity < 1 || restock < 0 || restock > quantity)
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Số lượng nhập lại không hợp lệ.");
+        Inventory stock = inventoryRepository.findForReturn(skuId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+        stock.setPhysicalStock(Math.addExact(stock.getPhysicalStock(), restock));
+        stock.setAvailableStock(Math.addExact(stock.getAvailableStock(), restock));
+        int damaged = quantity - restock;
+        if (damaged > 0) {
+            ExportReceipt receipt = ExportReceipt.builder().receiptCode("TRA-" + returnId + "-" + skuId)
+                    .exportType(ExportType.DAMAGED).status(ReceiptStatus.COMPLETED).totalQuantity(damaged)
+                    .note("Hàng trả hỏng từ yêu cầu #" + returnId + "; không nhập kho bán").build();
+            receipt.getDetails().add(ExportReceiptDetail.builder().receipt(receipt).variant(stock.getVariant())
+                    .quantity(damaged).reason("Hàng trả hỏng; không trừ thêm kho bán").build());
+            exportReceiptRepository.save(receipt);
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public com.springboot.fasearch.modules.inventory.dto.response.StockSummaryRes getStockSummary(int limit) {

@@ -174,30 +174,24 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         if (!List.of("BEST_SELLER", "SLOW_MOVING").contains(normalized)) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Loại không được hỗ trợ.");
         }
-        record Row(Long skuId, Long productId, String name, String category, String color, String size,
-                String barcode, long qty, BigDecimal revenue, boolean softDeleted, long stock) {
+        record Row(Long productId, String name, String category, long qty, BigDecimal revenue,
+                boolean softDeleted, long stock, boolean everySkuZero) {
         }
         List<Row> rows = new ArrayList<>();
-        long softDeleted = 0;
         for (Object[] r : repository.productSalesInRange(stamp(startDate, false), stamp(endDate, true))) {
-            boolean deleted = ((Number) r[9]).longValue() > 0;
-            if (deleted) {
-                softDeleted++;
+            Row row = new Row(((Number) r[0]).longValue(), (String) r[1], (String) r[2],
+                    ((Number) r[3]).longValue(), new BigDecimal(r[4].toString()),
+                    ((Number) r[5]).longValue() > 0, ((Number) r[6]).longValue(), (Boolean) r[7]);
+            if (!normalized.equals("SLOW_MOVING") || row.everySkuZero()) {
+                rows.add(row);
             }
-            rows.add(new Row(((Number) r[0]).longValue(), ((Number) r[1]).longValue(), (String) r[2],
-                    (String) r[3], (String) r[4], (String) r[5], (String) r[6],
-                    ((Number) r[7]).longValue(), new BigDecimal(r[8].toString()), deleted,
-                    ((Number) r[10]).longValue()));
         }
         rows.sort(normalized.equals("SLOW_MOVING")
-                ? Comparator.comparingLong(Row::qty).thenComparing(Row::skuId)
-                : Comparator.comparingLong(Row::qty).reversed().thenComparing(Row::skuId));
+                ? Comparator.comparingLong(Row::qty).thenComparing(Row::productId)
+                : Comparator.comparingLong(Row::qty).reversed().thenComparing(Row::productId));
         List<TopProductRes> result = new ArrayList<>();
         int rank = 1;
         for (Row row : rows.subList(0, Math.min(limit, rows.size()))) {
-            if (normalized.equals("SLOW_MOVING") && row.qty() > 0) {
-                continue;
-            }
             result.add(TopProductRes.builder().rank(rank++).productId(row.productId()).productName(row.name())
                     .categoryName(row.category()).totalQuantitySold(row.qty()).totalRevenue(row.revenue())
                     .currentInventory(row.stock()).softDeleted(row.softDeleted()).build());

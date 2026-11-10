@@ -209,10 +209,13 @@ public class CsvExportServiceImpl implements CsvExportService {
             Map<Long, Order> full = byId(orderRepository.findExportRowsByIdIn(ids), Order::getId);
             Map<Long, Invoice> paidByOrder = new HashMap<>();
             for (Invoice invoice : invoiceRepository.findByOrderIds(ids)) {
-                if (invoice.getStatus() == PaymentStatus.PAID && invoice.getOrder() != null) {
+                if ((invoice.getStatus() == PaymentStatus.PAID || invoice.getStatus() == PaymentStatus.REFUNDED) && invoice.getOrder() != null) {
                     paidByOrder.put(invoice.getOrder().getId(), invoice);
                 }
             }
+            Map<Long, BigDecimal> refundedByOrder = new HashMap<>();
+            for(Object[] refund : invoiceRepository.refundedByOrderIds(ids))
+                refundedByOrder.put(((Number)refund[0]).longValue(),(BigDecimal)refund[1]);
             for (Order row : batch) {
                 Order order = full.getOrDefault(row.getId(), row);
                 Customer customer = order.getCustomer();
@@ -225,7 +228,7 @@ public class CsvExportServiceImpl implements CsvExportService {
                         order.getOrderCode(),
                         order.getOrderDate(),
                         CsvLabels.orderStatus(order.getStatus()),
-                        paid == null ? "Chưa thanh toán" : CsvLabels.paymentStatus(paid.getStatus()),
+                        paid == null ? "Chưa thanh toán" : paid.getStatus()==PaymentStatus.REFUNDED ? "Đã hoàn tiền" : refundedByOrder.getOrDefault(order.getId(),BigDecimal.ZERO).signum()>0 ? "Đã hoàn một phần" : CsvLabels.paymentStatus(paid.getStatus()),
                         paid == null ? null : CsvLabels.paymentMethod(paid.getPaymentMethodCode()),
                         fullName(customer),
                         customer == null ? null : customer.getPhoneNumber(),
@@ -234,7 +237,7 @@ public class CsvExportServiceImpl implements CsvExportService {
                         discount,
                         points,
                         shipping,
-                        totalAmount,
+                        (paid == null ? totalAmount : paid.getTotalActualPaid()).subtract(refundedByOrder.getOrDefault(order.getId(),BigDecimal.ZERO)),
                         order.getVoucherCode(),
                         order.getEarnedPoints(),
                         order.getRedeemedPoints());

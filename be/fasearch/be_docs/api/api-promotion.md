@@ -28,7 +28,6 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
       "code": "WELCOME2026"
     }
   ],
-  "errors": null,
   "timestamp": "2026-11-02T11:30:00"
 }
 ```
@@ -38,7 +37,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 ## 2. Xem danh sách chương trình khuyến mãi (FR-44)
 
 - **Endpoint:** `GET /api/v1/khuyen-mai`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_VIEW`
+- **Quyền hạn:** `PROMOTION_VIEW` (`hasAuthority('PERM_PROMOTION_VIEW')`)
 - **Mô tả:** Danh sách chương trình khuyến mãi có phân trang và bộ lọc.
 
 ### Query Params
@@ -79,22 +78,21 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** `page` / `size` / `q` ngoài miền cho phép hoặc `trangThai` hoặc `hieuLuc` không hỗ trợ.
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Controller/service ghi đè theo trường hợp: "Trang, kích thước hoặc giới hạn tìm kiếm không hợp lệ.", "Bộ lọc trạng thái hiệu lực của chiến dịch không được hỗ trợ.", "Bộ lọc trạng thái chiến dịch không được hỗ trợ." hoặc "Loại giảm giá không được hỗ trợ."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
 
 ---
 
 ## 3. Xem chi tiết chương trình khuyến mãi (FR-44)
 
 - **Endpoint:** `GET /api/v1/khuyen-mai/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_VIEW`
-- **Mô tả:** Chi tiết chương trình kèm danh sách mã voucher đã phát hành.
+- **Quyền hạn:** `PROMOTION_VIEW` (`hasAuthority('PERM_PROMOTION_VIEW')`)
+- **Mô tả:** Chi tiết chương trình kèm danh sách mã voucher đã phát hành. `id` là Long, bắt buộc.
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -125,21 +123,20 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy chương trình (`RESOURCE_NOT_FOUND`).
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — thông điệp mặc định: "Không tìm thấy tài nguyên." Service trả: "Không tìm thấy chiến dịch."
 
 ---
 
 ## 4. Thêm mới chương trình khuyến mãi (FR-45)
 
 - **Endpoint:** `POST /api/v1/khuyen-mai`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_MANAGE`
+- **Quyền hạn:** `PROMOTION_MANAGE` (`hasAuthority('PERM_PROMOTION_MANAGE')`)
 - **Mô tả:** Khởi tạo chương trình ưu đãi ở trạng thái `TAM_DUNG`; bật bằng cách cập nhật sang `HOAT_DONG` (mục 5). Loại `FREE_SHIP` miễn toàn bộ phí vận chuyển, không giảm tiền hàng và không dùng chung với voucher giảm giá khác; `giaTriGiam` chỉ cần là số dương (quy ước `1`).
 
 ### Request Body
@@ -163,7 +160,7 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 | `ngayBatDau` | String | Có | Thời điểm bắt đầu `yyyy-MM-ddTHH:mm:ss` |
 | `ngayKetThuc` | String | Có | Thời điểm kết thúc, không trước `ngayBatDau` |
 | `dieuKienApDung` | String | Không | Mô tả điều kiện, tối đa 1000 ký tự |
-| `maSpApDung` | Array | Không | ID sản phẩm áp dụng; bỏ trống là áp dụng toàn bộ |
+| `maSpApDung` | Array<Long> | Không | ID sản phẩm áp dụng, các phần tử không null; bỏ trống là áp dụng toàn bộ |
 
 ### Response Thành công (HTTP 201 Created)
 ```json
@@ -184,22 +181,21 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
     "maSpApDung": [101, 102],
     "codes": []
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, loại giảm không hỗ trợ, mức giảm sai, khoảng thời gian sai hoặc có sản phẩm không tồn tại.
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Lỗi kiểm tra DTO trả "Dữ liệu không hợp lệ." cùng `errors`. Service có thể trả: "Khoảng thời gian chiến dịch không hợp lệ.", "Loại giảm giá không được hỗ trợ.", "Giá trị giảm giá không hợp lệ." hoặc "Có sản phẩm không tồn tại trong phạm vi chiến dịch."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
 
 ---
 
 ## 5. Sửa & Tạm dừng chương trình khuyến mãi (FR-46)
 
 - **Endpoint:** `PUT /api/v1/khuyen-mai/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_MANAGE`
-- **Mô tả:** Cập nhật điều kiện, thời gian, mức giảm hoặc chuyển trạng thái `HOAT_DONG` / `TAM_DUNG`. Phải gửi đúng `phienBan` hiện hành (khóa lạc quan); chỉ các trường được gửi lên mới đổi.
+- **Quyền hạn:** `PROMOTION_MANAGE` (`hasAuthority('PERM_PROMOTION_MANAGE')`)
+- **Mô tả:** `id` là Long, bắt buộc. Cập nhật điều kiện, thời gian, mức giảm hoặc chuyển trạng thái `HOAT_DONG` / `TAM_DUNG`. Phải gửi đúng `phienBan` hiện hành (khóa lạc quan); chỉ các trường được gửi lên mới đổi.
 
 ### Request Body
 ```json
@@ -212,14 +208,14 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
 
 | Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `phienBan` | Long | Có | Phiên bản hiện hành của chương trình |
+| `phienBan` | Long | Có | Phiên bản hiện hành của chương trình, `>= 0` |
 | `tenCtkm` | String | Không | Tên chương trình, tối đa 255 ký tự |
 | `loaiGiam` | String | Không | `PHAN_TRAM`, `SO_TIEN`, `FREE_SHIP` |
 | `giaTriGiam` | Number | Không | Mức giảm, `>= 0.01` |
 | `ngayBatDau` | String | Không | Thời điểm bắt đầu |
 | `ngayKetThuc` | String | Không | Thời điểm kết thúc |
 | `dieuKienApDung` | String | Không | Mô tả điều kiện, tối đa 1000 ký tự |
-| `maSpApDung` | Array | Không | ID sản phẩm áp dụng |
+| `maSpApDung` | Array<Long> | Không | ID sản phẩm áp dụng, các phần tử không null |
 | `trangThai` | String | Không | `HOAT_DONG`, `TAM_DUNG` |
 
 ### Response Thành công (HTTP 200 OK)
@@ -241,24 +237,23 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
     "maSpApDung": [101, 102],
     "codes": []
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc trạng thái không hỗ trợ.
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy chương trình (`RESOURCE_NOT_FOUND`).
-- **HTTP 409 Conflict:** Phiên bản đã đổi, tải lại trước khi lưu (`4109 CAMPAIGN_VERSION_CHANGED`).
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Lỗi kiểm tra DTO trả "Dữ liệu không hợp lệ." cùng `errors`. Service có thể trả: "Khoảng thời gian chiến dịch không hợp lệ.", "Loại giảm giá không được hỗ trợ.", "Giá trị giảm giá không hợp lệ.", "Có sản phẩm không tồn tại trong phạm vi chiến dịch.", "Trạng thái chiến dịch không được hỗ trợ." hoặc "Tên chiến dịch không được để trống."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — thông điệp mặc định: "Không tìm thấy tài nguyên." Service trả: "Không tìm thấy chiến dịch."
+- **HTTP 409 Conflict:** `4109 CAMPAIGN_VERSION_CHANGED` — "Chiến dịch đã được cập nhật. Tải lại trước khi lưu."
 
 ---
 
 ## 6. Phát hành mã voucher (FR-45)
 
 - **Endpoint:** `POST /api/v1/khuyen-mai/{id}/codes`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PROMOTION_MANAGE`
-- **Mô tả:** Phát hành một mã voucher cho chương trình; mã được chuẩn hóa chữ hoa và phải duy nhất toàn hệ thống.
+- **Quyền hạn:** `PROMOTION_MANAGE` (`hasAuthority('PERM_PROMOTION_MANAGE')`)
+- **Mô tả:** `id` là Long, bắt buộc. Phát hành một mã voucher cho chương trình; mã được chuẩn hóa chữ hoa và phải duy nhất toàn hệ thống.
 
 ### Request Body
 ```json
@@ -288,13 +283,12 @@ Module `promotion` phụ trách cấu hình các chiến dịch ưu đãi (giả
     "soLuongGiuCho": 0,
     "trangThai": "ACTIVE"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Mã trống hoặc quá 50 ký tự, số lượng phát hành không hợp lệ.
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy chương trình (`RESOURCE_NOT_FOUND`).
-- **HTTP 409 Conflict:** Mã voucher đã tồn tại (`DATA_CONFLICT`).
+- **HTTP 400 Bad Request:** `400 INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ." Lỗi kiểm tra DTO trả "Dữ liệu không hợp lệ." cùng `errors`. Service có thể trả: "Mã phải có từ 1 đến 50 ký tự."
+- **HTTP 403 Forbidden:** `403 ACCESS_DENIED` — "Bạn không có quyền truy cập tài nguyên này."
+- **HTTP 404 Not Found:** `404 RESOURCE_NOT_FOUND` — thông điệp mặc định: "Không tìm thấy tài nguyên." Service trả: "Không tìm thấy chiến dịch."
+- **HTTP 409 Conflict:** `409 DATA_CONFLICT` — thông điệp mặc định: "Dữ liệu bị xung đột." Service trả: "Mã Voucher đã tồn tại."

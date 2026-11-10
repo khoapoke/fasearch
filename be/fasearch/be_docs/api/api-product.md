@@ -19,14 +19,15 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "result": [
     {
       "id": 1,
-      "categoryName": "Áo sơ mi nam"
+      "categoryName": "Áo sơ mi nam",
+      "productCount": null
     },
     {
       "id": 2,
-      "categoryName": "Quần tây công sở"
+      "categoryName": "Quần tây công sở",
+      "productCount": null
     }
   ],
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -52,7 +53,6 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
       "productCount": 12
     }
   ],
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -73,22 +73,23 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "message": "Lấy chi tiết danh mục thành công",
   "result": {
     "id": 1,
-    "categoryName": "Áo sơ mi nam"
+    "categoryName": "Áo sơ mi nam",
+    "productCount": null
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy danh mục (`CATEGORY_NOT_FOUND`).
+- **HTTP 404:** `CATEGORY_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy danh mục."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 4. Thêm mới danh mục (FR-21)
 
 - **Endpoint:** `POST /api/v1/categories`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `CATEGORY_MANAGE`
+- **Quyền hạn:** Authority bắt buộc: `PERM_CATEGORY_MANAGE`
 - **Mô tả:** Tạo danh mục sản phẩm mới.
 
 ### Request Body
@@ -110,23 +111,23 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "message": "Thêm mới danh mục thành công",
   "result": {
     "id": 3,
-    "categoryName": "Áo Polo Unisex"
+    "categoryName": "Áo Polo Unisex",
+    "productCount": null
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Tên trống hoặc đã tồn tại (`CATEGORY_NAME_ALREADY_EXISTS`).
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` hoặc chưa đăng nhập đúng quyền.
+- **HTTP 400:** `CATEGORY_NAME_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "Tên danh mục đã tồn tại."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 5. Cập nhật danh mục (FR-21)
 
 - **Endpoint:** `PUT /api/v1/categories/{id}` (hoặc `PATCH`)
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `CATEGORY_MANAGE`
+- **Quyền hạn:** Authority bắt buộc: `PERM_CATEGORY_MANAGE`
 - **Mô tả:** Đổi tên danh mục.
 
 ### Request Body
@@ -148,23 +149,24 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "message": "Cập nhật danh mục thành công",
   "result": {
     "id": 3,
-    "categoryName": "Áo Polo Nam"
+    "categoryName": "Áo Polo Nam",
+    "productCount": null
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Tên trống hoặc đã tồn tại (`CATEGORY_NAME_ALREADY_EXISTS`).
-- **HTTP 404 Not Found:** Không tìm thấy danh mục (`CATEGORY_NOT_FOUND`).
+- **HTTP 400:** `CATEGORY_NAME_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "Tên danh mục đã tồn tại."
+- **HTTP 404:** `CATEGORY_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy danh mục."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 6. Xóa danh mục (FR-21)
 
 - **Endpoint:** `DELETE /api/v1/categories/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `CATEGORY_MANAGE`
+- **Quyền hạn:** Authority bắt buộc: `PERM_CATEGORY_MANAGE`
 - **Mô tả:** Xóa mềm danh mục: đánh dấu `da_xoa = true`, ghi `ngay_xoa`, `nguoi_xoa` (lấy từ security context, không bao giờ từ client) và `ly_do_xoa`, rồi chuyển danh mục vào Thùng rác để khôi phục. Chỉ xóa được khi **không còn sản phẩm nào tham chiếu, kể cả sản phẩm đã xóa mềm** (giữ nguyên khóa ngoại của lịch sử).
 
 ### Request Body (không bắt buộc)
@@ -179,15 +181,14 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "code": 200,
   "message": "Xóa danh mục thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
-- **HTTP 404 Not Found:** Không tìm thấy danh mục (`CATEGORY_NOT_FOUND`).
-- **HTTP 409 Conflict:** Danh mục còn sản phẩm tham chiếu (`DELETE_BLOCKED_BY_REFERENCES`); thông báo nêu số sản phẩm đang chặn.
+- **HTTP 404:** `CATEGORY_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy danh mục."
+- **HTTP 409:** `DELETE_BLOCKED_BY_REFERENCES` (code 4403) — thông điệp mặc định: "Không thể xóa vì còn dữ liệu tham chiếu"
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
@@ -195,7 +196,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 
 - **Endpoint:** `GET /api/v1/products`
 - **Quyền hạn:** `PUBLIC`
-- **Mô tả:** Danh sách sản phẩm có phân trang, tìm kiếm và lọc theo danh mục, giá, trạng thái, thương hiệu. Tìm kiếm không phân biệt hoa/thường và dấu tiếng Việt (kể cả `đ`), tối đa 100 ký tự. `keyword` của khách/ẩn danh chỉ so khớp tên sản phẩm; ADMIN/STAFF so khớp thêm model, ID sản phẩm, tên/slug thương hiệu và SKU/mã vạch. Ký tự `%` và `_` do người dùng nhập được hiểu là ký tự thường. `GET` công khai chỉ thấy hàng `PUBLISHED`; ADMIN/STAFF (theo security context) thấy thêm hàng chưa xuất bản. Lọc `Tất cả` (không `status`): ADMIN/STAFF thấy mọi `publicationStatus`; `ACTIVE`/`OUT_OF_STOCK`: chỉ `PUBLISHED`; `DISCONTINUED`/`DRAFT`: lọc theo `status` nghiệp vụ (gồm hàng `UNPUBLISHED`/`DRAFT`). Khách/ẩn danh luôn thêm điều kiện `PUBLISHED` với mọi `status`.
+- **Mô tả:** Danh sách sản phẩm có phân trang, tìm kiếm và lọc theo danh mục, giá, trạng thái, thương hiệu. Tìm kiếm không phân biệt hoa/thường và dấu tiếng Việt (kể cả `đ`), tối đa 100 ký tự. `keyword` của khách/ẩn danh chỉ so khớp tên sản phẩm; người có quyền `PRODUCT_VIEW` so khớp thêm model, ID sản phẩm, tên/slug thương hiệu và SKU/mã vạch. Ký tự `%` và `_` do người dùng nhập được hiểu là ký tự thường. `GET` công khai chỉ thấy hàng `PUBLISHED`; người có quyền `PRODUCT_VIEW` (theo security context) thấy thêm hàng chưa xuất bản. Lọc `Tất cả` (không `status`): người có quyền `PRODUCT_VIEW` thấy mọi `publicationStatus`; `ACTIVE`/`OUT_OF_STOCK`: chỉ `PUBLISHED`; `DISCONTINUED`/`DRAFT`: lọc theo `status` nghiệp vụ (gồm hàng `UNPUBLISHED`/`DRAFT`). Khách/ẩn danh luôn thêm điều kiện `PUBLISHED` với mọi `status`.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -203,7 +204,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 | `page` | Integer | Không | Số trang (mặc định: `0`) |
 | `size` | Integer | Không | Số bản ghi/trang (mặc định: `10`) |
 | `sort` | String | Không | Tiêu chí sắp xếp (mặc định `id,desc`) |
-| `keyword` | String | Không | Tìm theo tên sản phẩm (khách/ẩn danh); ADMIN/STAFF tìm thêm model, ID, thương hiệu, SKU/mã vạch. Tối đa 100 ký tự, không phân biệt hoa/thường và dấu tiếng Việt |
+| `keyword` | String | Không | Tìm theo tên sản phẩm (khách/ẩn danh); người có quyền `PRODUCT_VIEW` tìm thêm model, ID, thương hiệu, SKU/mã vạch. Tối đa 100 ký tự, không phân biệt hoa/thường và dấu tiếng Việt |
 | `categoryId` | Long | Không | Lọc theo ID danh mục |
 | `minPrice` | Number | Không | Giá thấp nhất |
 | `maxPrice` | Number | Không | Giá cao nhất |
@@ -243,16 +244,16 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
-- Các trường brand / nguồn (`brand*`, `modelCode`, `source*`, `curationClass`) chỉ xuất hiện khi có dữ liệu.
+- Các trường không null của `ProductRes` được trả về; các trường nguồn tùy chọn gồm `sourceHost` (String), `sourceUrl` (String), `sourceBrand` (String), `sourcePrice` (Number), `sourceCurrency` (String), `curationClass` (String). Các trường null bị bỏ qua.
 - `publicationStatus`: `PUBLISHED` | `UNPUBLISHED` | `DRAFT`. Admin dùng để hiển thị trạng thái thật: `UNPUBLISHED` đọc là “Đã gỡ xuất bản”, không đọc là “Đang bán” dù `status` vẫn là `ACTIVE`/`OUT_OF_STOCK`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Tham số lọc sai kiểu (ví dụ `status` không thuộc danh sách).
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
@@ -304,20 +305,22 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
+Các trường tùy chọn của `ProductDetailRes` gồm `sourceHost`, `sourceUrl`, `sourceBrand`, `sourcePrice` (Number), `sourceCurrency`, `curationClass`; các trường null bị bỏ qua.
+
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 9. Thêm mới sản phẩm (FR-23)
 
 - **Endpoint:** `POST /api/v1/products`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_EDIT`
 - **Mô tả:** Tạo sản phẩm mới kèm danh sách biến thể (tự sinh SKU và mã vạch nếu không truyền).
 
 ### Request Body
@@ -352,7 +355,7 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
 | `brandId` | Long | Không | ID thương hiệu |
 | `modelCode` | String | Không | Mã model, tối đa 100 ký tự |
 | `status` | String | Không | `DRAFT`, `ACTIVE`, `OUT_OF_STOCK`, `DISCONTINUED` (mặc định `ACTIVE`) |
-| `variants` | Array | Không | Danh sách `{ color, size, barcode }` |
+| `variants` | Array | Không | Danh sách đối tượng `VariantReq`; mỗi trường `color` (String, tối đa 50), `size` (String, tối đa 50), `barcode` (String) đều không bắt buộc |
 
 ### Response Thành công (HTTP 201 Created)
 ```json
@@ -372,25 +375,27 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "imageUrl": "/api/v1/products/images/polo01.jpg",
     "status": "ACTIVE",
     "variants": [
-      { "skuId": 110, "productId": 5, "color": "Đen", "size": "L", "barcode": "SP0005-DEN-L" }
+      { "skuId": 110, "productId": 5, "color": "Đen", "size": "L", "barcode": "SP0005-DEN-L", "additionalPrice": null, "colorIsSentinel": false, "sizeIsSentinel": false, "availableStock": null }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
+`ProductDetailRes` có các trường như mục 8; các trường null bị bỏ qua.
+
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc mã vạch đã tồn tại (`BARCODE_ALREADY_EXISTS`).
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy danh mục hoặc thương hiệu.
+- **HTTP 404:** `CATEGORY_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy danh mục."
+- **HTTP 404:** `RESOURCE_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy tài nguyên."
+- **HTTP 400:** `BARCODE_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "Mã vạch đã tồn tại."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 10. Cập nhật sản phẩm (FR-24)
 
 - **Endpoint:** `PUT /api/v1/products/{id}` (hoặc `PATCH`)
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_EDIT`
 - **Mô tả:** Cập nhật từng phần thông tin sản phẩm (các trường gửi lên); cùng tập trường như mục 9, tất cả đều không bắt buộc. Không áp dụng cho sản phẩm đã `PUBLISHED`.
 
 ### Request Body
@@ -401,6 +406,20 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "status": "ACTIVE"
 }
 ```
+
+| Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `productName` | String | Không | Tối đa 255 ký tự |
+| `categoryId` | Long | Không | ID danh mục |
+| `material` | String | Không | Tối đa 100 ký tự |
+| `style` | String | Không | Tối đa 100 ký tự |
+| `description` | String | Không | Mô tả |
+| `price` | Number | Không | Không âm |
+| `imageUrl` | String | Không | URL ảnh |
+| `brandId` | Long | Không | ID thương hiệu |
+| `modelCode` | String | Không | Tối đa 100 ký tự |
+| `status` | String | Không | `DRAFT`, `ACTIVE`, `OUT_OF_STOCK`, `DISCONTINUED` |
+| `variants` | Array | Không | Mỗi đối tượng có `color`, `size` (String, tối đa 50) và `barcode` (String), đều không bắt buộc |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -417,22 +436,25 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "status": "ACTIVE",
     "variants": []
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
+`ProductDetailRes` có các trường như mục 8; các trường null bị bỏ qua.
+
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ.
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm, danh mục hoặc thương hiệu.
-- **HTTP 409 Conflict:** Sản phẩm đã `PUBLISHED`, phải sửa qua bản nháp hoặc gỡ xuất bản trước (`DATA_CONFLICT`). Thông điệp tiếng Việt: "Sản phẩm đang xuất bản nên không sửa trực tiếp được. Hãy sửa qua bản nháp hoặc gỡ xuất bản trước."
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- **HTTP 404:** `CATEGORY_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy danh mục."
+- **HTTP 404:** `RESOURCE_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy tài nguyên."
+- **HTTP 409:** `DATA_CONFLICT` (code 409) — thông điệp mặc định: "Dữ liệu bị xung đột."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 11. Xóa / Tạm ẩn sản phẩm (FR-25)
 
 - **Endpoint:** `DELETE /api/v1/products/{id}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_DELETE`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_DELETE`
 - **Mô tả:** Xóa mềm sản phẩm và toàn bộ biến thể (`da_xoa = true`) rồi chuyển vào Thùng rác; trạng thái nghiệp vụ sang `DISCONTINUED`, giữ nguyên lịch sử. Ghi `ngay_xoa`, `nguoi_xoa` (từ security context) và `ly_do_xoa`. Sản phẩm đã `PUBLISHED` phải `unpublish` trước. **Chặn khi đã phát sinh giao dịch**: có dòng trong `ct_don_hang`, tồn kho (`so_luong_vat_ly` hoặc `so_luong_tam_giu` > 0), dòng trên phiếu nhập/xuất/kiểm kê, hoặc đang nằm trong phạm vi chiến dịch khuyến mãi. Thay vào đó hãy dùng "Ngừng kinh doanh".
 
 ### Request Body (không bắt buộc)
@@ -447,15 +469,17 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "code": 200,
   "message": "Xóa sản phẩm thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
-- **HTTP 409 Conflict:** Sản phẩm đang `PUBLISHED` (`DELETE_BLOCKED_PUBLISHED`); đã có dòng đơn hàng (`DELETE_BLOCKED_BY_HISTORY`); còn tồn kho (`DELETE_BLOCKED_BY_STOCK`); có dòng phiếu nhập/xuất/kiểm kê hoặc đang trong chiến dịch khuyến mãi (`DELETE_BLOCKED_BY_REFERENCES`). Thông báo nêu số dòng đang chặn và việc cần làm.
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- **HTTP 409:** `DELETE_BLOCKED_PUBLISHED` (code 4408) — thông điệp mặc định: "Sản phẩm đang được xuất bản"
+- **HTTP 409:** `DELETE_BLOCKED_BY_HISTORY` (code 4401) — thông điệp mặc định: "Không thể xóa vì dữ liệu đã phát sinh giao dịch"
+- **HTTP 409:** `DELETE_BLOCKED_BY_STOCK` (code 4402) — thông điệp mặc định: "Không thể xóa vì còn tồn kho"
+- **HTTP 409:** `DELETE_BLOCKED_BY_REFERENCES` (code 4403) — thông điệp mặc định: "Không thể xóa vì còn dữ liệu tham chiếu"
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
@@ -480,16 +504,17 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
       "barcode": "SP0001-TRANG-S",
       "additionalPrice": 0.00,
       "colorIsSentinel": false,
-      "sizeIsSentinel": false
+      "sizeIsSentinel": false,
+      "availableStock": null
     }
   ],
-  "errors": null,
   "timestamp": "2026-10-26T16:50:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
@@ -513,22 +538,23 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "barcode": "SP0001-TRANG-S",
     "additionalPrice": 0.00,
     "colorIsSentinel": false,
-    "sizeIsSentinel": false
+    "sizeIsSentinel": false,
+      "availableStock": null
   },
-  "errors": null,
   "timestamp": "2026-10-26T16:50:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 404:** `VARIANT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy SKU."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 14. Thêm biến thể cho sản phẩm (FR-26)
 
 - **Endpoint:** `POST /api/v1/products/{productId}/variants`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_EDIT`
 - **Mô tả:** Thêm biến thể màu / size mới; không truyền `barcode` thì hệ thống tự sinh theo mẫu `SP%04d-%s-%s`.
 
 ### Request Body
@@ -557,23 +583,28 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "productId": 1,
     "color": "Trắng",
     "size": "S",
-    "barcode": "SP0001-TRANG-S"
+    "barcode": "SP0001-TRANG-S",
+    "additionalPrice": null,
+    "colorIsSentinel": false,
+    "sizeIsSentinel": false,
+    "availableStock": null
   },
-  "errors": null,
   "timestamp": "2026-10-26T16:50:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, biến thể màu + size đã tồn tại (`VARIANT_ALREADY_EXISTS`) hoặc mã vạch trùng (`BARCODE_ALREADY_EXISTS`).
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- **HTTP 400:** `VARIANT_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "SKU với màu và cỡ này đã tồn tại trong sản phẩm."
+- **HTTP 400:** `BARCODE_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "Mã vạch đã tồn tại."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 15. Cập nhật biến thể (FR-26)
 
 - **Endpoint:** `PATCH /api/v1/products/variants/{variantId}` (hoặc `PUT`)
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_EDIT`
 - **Mô tả:** Cập nhật màu, size hoặc mã vạch của biến thể.
 
 ### Request Body
@@ -602,23 +633,28 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "productId": 1,
     "color": "Xanh navy",
     "size": "M",
-    "barcode": "SP0001-XANH-M"
+    "barcode": "SP0001-XANH-M",
+    "additionalPrice": null,
+    "colorIsSentinel": false,
+    "sizeIsSentinel": false,
+    "availableStock": null
   },
-  "errors": null,
   "timestamp": "2026-10-26T16:50:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Biến thể màu + size đã tồn tại hoặc mã vạch trùng.
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 404:** `VARIANT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy SKU."
+- **HTTP 400:** `VARIANT_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "SKU với màu và cỡ này đã tồn tại trong sản phẩm."
+- **HTTP 400:** `BARCODE_ALREADY_EXISTS` (code 400) — thông điệp mặc định: "Mã vạch đã tồn tại."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 16. Xóa biến thể (FR-26)
 
 - **Endpoint:** `DELETE /api/v1/products/variants/{variantId}`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_DELETE`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_DELETE`
 - **Mô tả:** Xóa mềm biến thể (`da_xoa = true`), ghi `ngay_xoa`/`nguoi_xoa`/`ly_do_xoa` và chuyển SKU vào Thùng rác. Chặn theo cùng điều kiện như sản phẩm, ở mức SKU: còn dòng đơn hàng, còn tồn kho vật lý/giữ chỗ, có dòng phiếu nhập/xuất/kiểm kê, hoặc sản phẩm của SKU đang nằm trong chiến dịch khuyến mãi.
 
 ### Request Body (không bắt buộc)
@@ -633,22 +669,23 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
   "code": 200,
   "message": "Xóa biến thể thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-10-26T16:50:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
-- **HTTP 409 Conflict:** SKU đã có dòng đơn hàng (`DELETE_BLOCKED_BY_HISTORY`); còn tồn kho (`DELETE_BLOCKED_BY_STOCK`); có dòng phiếu kho/kiểm kê hoặc sản phẩm đang trong chiến dịch khuyến mãi (`DELETE_BLOCKED_BY_REFERENCES`).
+- **HTTP 404:** `VARIANT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy SKU."
+- **HTTP 409:** `DELETE_BLOCKED_BY_HISTORY` (code 4401) — thông điệp mặc định: "Không thể xóa vì dữ liệu đã phát sinh giao dịch"
+- **HTTP 409:** `DELETE_BLOCKED_BY_STOCK` (code 4402) — thông điệp mặc định: "Không thể xóa vì còn tồn kho"
+- **HTTP 409:** `DELETE_BLOCKED_BY_REFERENCES` (code 4403) — thông điệp mặc định: "Không thể xóa vì còn dữ liệu tham chiếu"
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 17. Xuất dữ liệu mã vạch Barcode (FR-27)
 
 - **Endpoint:** `GET /api/v1/products/variants/{skuId}/barcode`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_VIEW`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_VIEW`
 - **Mô tả:** Trả dữ liệu mã vạch của SKU kèm ảnh mã vạch dạng Base64 để in tem dán sản phẩm.
 
 ### Response Thành công (HTTP 200 OK)
@@ -667,37 +704,38 @@ Module `product` và `category` quản lý danh mục thời trang, thông tin s
     "barcode": "893850123401",
     "barcodeBase64": "iVBORw0KGgoAAAANSUhEUgAA..."
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 404:** `VARIANT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy SKU."
+- **HTTP 500:** `INTERNAL_SERVER_ERROR` (code 500) — thông điệp mặc định: "Đã xảy ra lỗi. Vui lòng thử lại sau."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 18. Xuất ảnh mã vạch PNG (FR-27)
 
 - **Endpoint:** `GET /api/v1/products/variants/{skuId}/barcode/image`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_VIEW`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_VIEW`
 - **Mô tả:** Trả trực tiếp ảnh PNG mã vạch của SKU (`Content-Type: image/png`), không bọc `ApiResponse`.
 
 ### Response Thành công (HTTP 200 OK)
 Nội dung nhị phân ảnh PNG.
 
 ### Response Lỗi thường gặp
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 404:** `VARIANT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy SKU."
+- **HTTP 500:** `INTERNAL_SERVER_ERROR` (code 500) — thông điệp mặc định: "Đã xảy ra lỗi. Vui lòng thử lại sau."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 19. Tra cứu nhanh bằng mã vạch tại quầy POS (FR-28)
 
 - **Endpoint:** `GET /api/v1/products/pos-lookup`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `POS_USE`
-- **Mô tả:** Thu ngân quét mã vạch để lấy thông tin SKU, giá và tồn kho khả dụng.
+- **Quyền hạn:** Authority bắt buộc: `PERM_POS_USE`
+- **Mô tả:** Tra cứu mã vạch (hoặc ID SKU dạng số); `availableStock` hiện được trả cố định bằng 0.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -718,25 +756,24 @@ Nội dung nhị phân ảnh PNG.
     "size": "L",
     "price": 350000.00,
     "barcode": "893850123401",
-    "availableStock": 25,
+    "availableStock": 0,
     "imageUrl": null
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Mã vạch trống.
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm theo mã vạch.
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- **HTTP 404:** `RESOURCE_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy tài nguyên."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 19.1. Tra cứu mã quét khi lập phiếu kho (FR-27, FR-28)
 
 - **Endpoint:** `GET /api/v1/products/variants/scan-lookup`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `INVENTORY_VIEW`
+- **Quyền hạn:** Authority bắt buộc: `PERM_INVENTORY_VIEW`
 - **Mô tả:** Máy quét mã vạch nhập mã rồi nhấn Enter trong form phiếu nhập, phiếu xuất, kiểm kê. Khớp chính xác mã vạch (không phân biệt hoa thường), nếu không có thì khớp mã SKU. SKU đã xóa mềm không được trả về. SKU chưa có dòng tồn kho vẫn được trả về với số lượng 0, để nhận được hàng mới nhập lần đầu.
 
 ### Query Params
@@ -763,23 +800,22 @@ Nội dung nhị phân ảnh PNG.
     "minThreshold": 10,
     "productStatus": "ACTIVE"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Mã quét trống (`INVALID_REQUEST`).
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không có SKU nào khớp mã quét (`VARIANT_NOT_FOUND`).
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- **HTTP 404:** `VARIANT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy SKU."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 20. Tìm sản phẩm tại quầy POS (FR-28)
 
 - **Endpoint:** `GET /api/v1/products/pos-search`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `POS_USE`
-- **Mô tả:** Tìm nhanh SKU theo tên hoặc mã SKU / mã vạch, trả danh sách cùng dạng `result` như mục 19.
+- **Quyền hạn:** Authority bắt buộc: `PERM_POS_USE`
+- **Mô tả:** Tìm nhanh SKU theo tên hoặc mã SKU / mã vạch, trả danh sách cùng dạng `result` như mục 19; `availableStock` hiện được trả cố định bằng 0. Từ khóa rỗng trả danh sách rỗng.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -801,11 +837,10 @@ Nội dung nhị phân ảnh PNG.
       "size": "L",
       "price": 350000.00,
       "barcode": "893850123401",
-      "availableStock": 25,
+      "availableStock": 0,
       "imageUrl": null
     }
   ],
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -819,7 +854,7 @@ Nội dung nhị phân ảnh PNG.
 ## 21. Tải ảnh sản phẩm lên
 
 - **Endpoint:** `POST /api/v1/products/{id}/image`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_EDIT`
 - **Mô tả:** Tải ảnh lên (`multipart/form-data`, field `file`): PNG / JPG / JPEG / WEBP, tối đa 5MB; kiểm tra nội dung ảnh thật và lưu với tên UUID. Không áp dụng cho sản phẩm đã `PUBLISHED`.
 
 ### Request Body
@@ -834,22 +869,23 @@ Nội dung nhị phân ảnh PNG.
   "code": 200,
   "message": "Tải ảnh sản phẩm thành công",
   "result": "/api/v1/products/images/3f8a9c2e-1b7d-4e55-a6f0-2c9d1e7b8a40.jpg",
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Chưa chọn file, file quá 5MB hoặc không phải ảnh hợp lệ (`INVALID_IMAGE_FILE`).
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm hoặc sản phẩm không khả dụng (`PRODUCT_NOT_FOUND`).
-- **HTTP 409 Conflict:** Sản phẩm đã `PUBLISHED` (`DATA_CONFLICT`).
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- **HTTP 409:** `DATA_CONFLICT` (code 409) — thông điệp mặc định: "Dữ liệu bị xung đột."
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- **HTTP 400:** `INVALID_IMAGE_FILE` (code 400) — thông điệp mặc định: "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp"
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 22. Xóa ảnh sản phẩm
 
 - **Endpoint:** `DELETE /api/v1/products/{id}/image`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_EDIT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_EDIT`
 - **Mô tả:** Xóa file ảnh trên đĩa và đặt `imageUrl` về rỗng.
 
 ### Response Thành công (HTTP 200 OK)
@@ -858,15 +894,14 @@ Nội dung nhị phân ảnh PNG.
   "success": true,
   "code": 200,
   "message": "Xóa ảnh sản phẩm thành công",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
-- **HTTP 409 Conflict:** Sản phẩm đã `PUBLISHED` (`DATA_CONFLICT`).
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- **HTTP 409:** `DATA_CONFLICT` (code 409) — thông điệp mặc định: "Dữ liệu bị xung đột."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
@@ -880,8 +915,10 @@ Nội dung nhị phân ảnh PNG.
 Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Tên file hoặc phần mở rộng không hợp lệ.
-- **HTTP 404 Not Found:** Ảnh không tồn tại.
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- **HTTP 400:** `INVALID_IMAGE_FILE` (code 400) — thông điệp mặc định: "Định dạng file ảnh không hợp lệ. Chỉ chấp nhận các file: .png, .jpg, .jpeg, .webp"
+- **HTTP 404:** `RESOURCE_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy tài nguyên."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
@@ -913,6 +950,7 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
       "price": 320000.00,
       "imageUrl": "/api/v1/products/images/d4e5f6.jpg",
       "status": "ACTIVE",
+      "publicationStatus": "PUBLISHED",
       "brandId": 1,
       "brandName": "Nike",
       "brandSlug": "nike",
@@ -920,22 +958,22 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
       "modelCode": "official-model-id"
     }
   ],
-  "errors": null,
   "timestamp": "2026-11-05T10:00:00"
 }
 ```
 
-- Trả mảng rỗng khi không có sản phẩm phù hợp. Các trường brand / nguồn chỉ xuất hiện khi có dữ liệu.
+- Trả mảng rỗng khi không có sản phẩm phù hợp. `ProductRes` còn có `publicationStatus`, `sourceHost`, `sourceUrl`, `sourceBrand`, `sourcePrice`, `sourceCurrency`, `curationClass`; các trường null bị bỏ qua.
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy sản phẩm hoặc sản phẩm chưa xuất bản (`PRODUCT_NOT_FOUND`).
+- **HTTP 404:** `PRODUCT_NOT_FOUND` (code 404) — thông điệp mặc định: "Không tìm thấy sản phẩm."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 25. Thùng rác sản phẩm, biến thể, danh mục (FR-25, FR-26, FR-21)
 
 - **Endpoint:** `GET /api/v1/admin/trash/products` · `GET /api/v1/admin/trash/variants` · `GET /api/v1/admin/trash/categories`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `TRASH_VIEW`
+- **Quyền hạn:** Authority bắt buộc: `PERM_TRASH_VIEW`
 - **Mô tả:** Danh sách dữ liệu đã xóa mềm, mới xóa trước. Đọc bằng SQL gốc vì `@SQLRestriction("da_xoa = false")` ẩn các dòng này khỏi JPA. Dòng xóa trước khi có cột `ngay_xoa`/`nguoi_xoa` trả `deletedAt`/`deletedBy` là `null` và giao diện hiển thị "Không rõ". Không có endpoint xóa vĩnh viễn. Khách hàng và hồ sơ nhân sự dùng mục 22, tài khoản đăng nhập dùng mục 13 của `api-auth.md` (chỉ `ADMIN`).
 
 ### Query Params
@@ -943,6 +981,7 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 | :--- | :--- | :---: | :--- |
 | `page` | Integer | Không | Số trang (mặc định: `0`) |
 | `size` | Integer | Không | Số bản ghi/trang (mặc định: `20`, tối đa `100`) |
+| `sort` | String | Không | Tham số sắp xếp của Pageable; danh sách được dịch vụ sắp theo thời điểm xóa |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -963,6 +1002,11 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
         "size": null,
         "barcode": null,
         "parentDeleted": false,
+        "phone": null,
+        "email": null,
+        "role": null,
+        "linkedUsername": null,
+        "linkedAccountStatus": null,
         "deletedAt": "2026-11-07T09:30:00",
         "deletedBy": "Nguyễn Quản Lý",
         "deleteReason": "Hết mùa"
@@ -974,7 +1018,6 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-07T09:35:00"
 }
 ```
@@ -990,11 +1033,11 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 ## 26. Khôi phục từ thùng rác (FR-25, FR-26, FR-21)
 
 - **Endpoint:** `POST /api/v1/admin/trash/products/{id}/restore` · `POST /api/v1/admin/trash/variants/{id}/restore` · `POST /api/v1/admin/trash/categories/{id}/restore`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `TRASH_RESTORE`
+- **Quyền hạn:** Authority bắt buộc: `PERM_TRASH_RESTORE`
 - **Mô tả:** Cập nhật có điều kiện `da_xoa = true` → `false` (kiểm tra đúng một dòng thay đổi) và xóa dấu vết xóa.
   - **Sản phẩm:** khôi phục về `DISCONTINUED` + `UNPUBLISHED`, đồng thời chỉ khôi phục các SKU bị xóa cùng đợt với sản phẩm (cùng thời điểm xóa được ghi lúc xóa); SKU đã xóa riêng từ trước vẫn nằm trong thùng rác. Sản phẩm **không** tự trở lại cửa hàng hay chỉ mục AI: phải xuất bản lại qua bản nháp.
   - **Biến thể:** từ chối khi sản phẩm của SKU vẫn đang ở thùng rác; từ chối khi mã vạch hoặc cặp màu/cỡ đã trùng với SKU đang hoạt động.
-  - **Danh mục:** từ chối khi tên danh mục đã được danh mục khác sử dụng.
+  - **Danh mục:** từ chối khi tên trùng danh mục đang hoạt động sau khi bỏ khoảng trắng hai đầu, gộp khoảng trắng liên tiếp và không phân biệt hoa/thường; trả HTTP 409 `RESTORE_CONFLICT` (code 4405).
   - Khôi phục không bao giờ gọi dịch vụ xuất bản hay đồng bộ AI.
 
 ### Response Thành công (HTTP 200 OK)
@@ -1004,27 +1047,28 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
   "code": 200,
   "message": "Khôi phục sản phẩm thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-11-07T09:40:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Mục không còn trong thùng rác (`TRASH_ITEM_NOT_FOUND`).
-- **HTTP 409 Conflict:** SKU thuộc sản phẩm đang bị xóa (`RESTORE_BLOCKED`); trùng mã vạch, màu/cỡ, tên danh mục hoặc thương hiệu + mã model (`RESTORE_CONFLICT`).
+- **HTTP 404:** `TRASH_ITEM_NOT_FOUND` (code 4407) — thông điệp mặc định: "Không tìm thấy mục trong thùng rác"
+- **HTTP 409:** `RESTORE_BLOCKED` (code 4406) — thông điệp mặc định: "Không thể khôi phục đối tượng này"
+- **HTTP 409:** `RESTORE_CONFLICT` (code 4405) — thông điệp mặc định: "Không thể khôi phục vì dữ liệu đã trùng"
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 27. Xuất CSV sản phẩm (FR-22)
 
 - **Endpoint:** `GET /api/v1/admin/csv/products`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `DATA_EXPORT` và `PRODUCT_VIEW`
+- **Quyền hạn:** Authority bắt buộc: `PERM_DATA_EXPORT` và `PERM_PRODUCT_VIEW`
 - **Mô tả:** Xuất CSV toàn bộ sản phẩm khớp bộ lọc, **mỗi dòng một SKU** (không chỉ trang hiện tại). Dùng đúng bộ lọc của `GET /api/v1/products` (mục 7). Sản phẩm, SKU và tồn kho đã xóa mềm không được xuất. Tệp UTF-8 **có BOM**, phân tách bằng **dấu phẩy**, xuống dòng CRLF, quote theo RFC 4180; header tiếng Việt. Tối đa **50.000 dòng**; vượt giới hạn trả lỗi và không tạo tệp.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `keyword` | String | Không | Tối đa 100 ký tự; cùng quy tắc với mục 7 (ADMIN/STAFF so khớp tên, model, ID, thương hiệu, SKU/mã vạch) |
+| `keyword` | String | Không | Tối đa 100 ký tự; cùng quy tắc với mục 7 (người có quyền `PRODUCT_VIEW` so khớp tên, model, ID, thương hiệu, SKU/mã vạch) |
 | `categoryId` | Long | Không | Lọc theo ID danh mục |
 | `minPrice` | Number | Không | Giá thấp nhất |
 | `maxPrice` | Number | Không | Giá cao nhất |
@@ -1035,7 +1079,7 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 ### Response Thành công (HTTP 200 OK)
 - `Content-Type: text/csv; charset=UTF-8`
 - `Content-Disposition: attachment; filename="san-pham-YYYY-MM-DD.csv"` (ngày theo giờ Việt Nam; tên tệp không chứa dữ liệu cá nhân)
-- `Cache-Control: no-store`
+- `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Export-Rows: <số dòng>`
 
 | Cột | Nguồn |
 | :--- | :--- |
@@ -1048,9 +1092,8 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 - Dòng được ghi theo lô 500, sắp xếp theo mã SKU tăng dần; mỗi lô đọc SKU và tồn kho bằng một truy vấn, không truy vấn theo từng dòng.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Bộ lọc sai kiểu/độ dài hoặc tập dữ liệu vượt 50.000 dòng (thu hẹp bộ lọc rồi thử lại).
-- **HTTP 401 Unauthorized:** Chưa đăng nhập.
-- **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 > Excel vi-VN có thể mặc định dùng `;`: tệp này luôn dùng **dấu phẩy**, mở bằng chức năng nhập CSV chỉ định dấu phẩy.
 
@@ -1059,7 +1102,7 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 ## 28. Nhập CSV sản phẩm (FR-22)
 
 - **Endpoint:** `POST /api/v1/admin/csv/products/import`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_IMPORT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_IMPORT`
 - **Mô tả:** Nhập sản phẩm từ CSV **thành bản nháp** (D9, D10). Không bao giờ tự xuất bản, không ghi tồn kho (tồn kho đi qua phiếu nhập), không gọi dịch vụ AI. `?dryRun=true` chỉ kiểm tra và **không ghi gì**; không có `dryRun` là áp dụng **tất cả hoặc không dòng nào** trong một transaction. Mỗi sản phẩm được tạo qua đúng luồng bản nháp hiện có (`PublishService.createDraft`), nên bản nháp hiện trong màn hình bản nháp và chỉ xuất bản được bằng luồng xuất bản thường.
 
 ### Request (multipart/form-data)
@@ -1099,7 +1142,6 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
     ],
     "drafts": []
   },
-  "errors": null,
   "timestamp": "2026-11-07T15:00:00"
 }
 ```
@@ -1109,17 +1151,18 @@ Nội dung nhị phân ảnh (`image/png`, `image/jpeg` hoặc `image/webp`).
 - Mã lỗi theo dòng thường gặp: `REQUIRED`, `TOO_LONG`, `INVALID_NUMBER`, `NEGATIVE_NUMBER`, `CATEGORY_NOT_FOUND`, `BRAND_NOT_FOUND`, `VARIANT_REQUIRED`, `DUPLICATE_BARCODE_FILE`, `BARCODE_EXISTS`, `BARCODE_IN_DRAFT`, `PRODUCT_EXISTS`, `PRODUCT_IN_DRAFT`, `PRODUCT_ROW_BLOCKED` (các dòng sau của sản phẩm đã bị chặn), `DUPLICATE_COMBINATION`, `TEXT_MISMATCH`, `ROW_WIDTH`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** thiếu tệp, sai phần mở rộng/Content-Type, tệp không phải UTF-8 (thông báo gợi ý lưu “CSV UTF-8”), sai/thiếu/thừa cột tiêu đề, tệp trống, quá 10.000 dòng, hoặc thiếu `checksum` khi áp dụng.
-- **HTTP 409 Conflict:** `checksum` không khớp tệp hiện tại; áp dụng lại cùng tệp; dữ liệu đã đổi từ lần kiểm tra. Không dòng nào được ghi.
-- **HTTP 413 Payload Too Large:** tệp vượt 5 MB.
-- **HTTP 401 Unauthorized / 403 Forbidden:** chưa đăng nhập hoặc vai trò `CUSTOMER`.
+- **HTTP 400:** `INVALID_REQUEST` (code 400) — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."
+- **HTTP 409:** `DATA_CONFLICT` (code 409) — thông điệp mặc định: "Dữ liệu bị xung đột."
+- **HTTP 413:** `PAYLOAD_TOO_LARGE` (code 413) — thông điệp mặc định: "Tệp tải lên quá lớn."
+- **HTTP 500:** `INTERNAL_SERVER_ERROR` (code 500) — thông điệp mặc định: "Đã xảy ra lỗi. Vui lòng thử lại sau."
+- Một số trường hợp dùng thông điệp chi tiết thay cho thông điệp mặc định; lỗi kiểm tra DTO có thông điệp theo trường.
 
 ---
 
 ## 29. Tải tệp mẫu nhập CSV sản phẩm (FR-22)
 
 - **Endpoint:** `GET /api/v1/admin/csv/products/template`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `PRODUCT_IMPORT`
+- **Quyền hạn:** Authority bắt buộc: `PERM_PRODUCT_IMPORT`
 - **Mô tả:** Tải tệp mẫu chỉ có dòng tiêu đề, đúng 11 cột của mục 28, để điền và nhập lại. Không chứa dữ liệu thật hay dữ liệu cá nhân.
 
 ### Response Thành công (HTTP 200 OK)

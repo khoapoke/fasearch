@@ -26,10 +26,11 @@ Module `brand` cung cấp danh sách thương hiệu công khai và logo thươn
       "officialUrl": "https://www.nike.com/"
     }
   ],
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
+
+`id` là Long; `name`, `slug`, `country`, `logoUrl`, `officialUrl` là String; ba trường cuối có thể null.
 
 ---
 
@@ -40,7 +41,8 @@ Module `brand` cung cấp danh sách thương hiệu công khai và logo thươn
 - **Mô tả:** Trả file logo của thương hiệu (`image/svg+xml`, PNG, JPEG hoặc WEBP; `Cache-Control: private, max-age=3600`), không bọc `ApiResponse`. Chỉ phục vụ logo đã được import, không nhận đường dẫn hoặc URL tùy ý.
 
 ### Response Thành công (HTTP 200 OK)
-Nội dung nhị phân logo.
+Nội dung nhị phân logo. Header gồm `X-Content-Type-Options: nosniff` và `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`.
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy thương hiệu hoặc logo.
+- **HTTP 404 Not Found:** `RESOURCE_NOT_FOUND` (404): "Không tìm thấy thương hiệu." hoặc "Không tìm thấy logo thương hiệu."
+- **HTTP 400 Bad Request:** `INVALID_REQUEST` (400): "Không đọc được logo thương hiệu."; hoặc `INVALID_IMAGE_FILE` (400): "Logo SVG không an toàn." / "Nội dung logo thương hiệu không được hỗ trợ hoặc không khớp."

@@ -95,6 +95,7 @@ public class OrderServiceImpl implements OrderService {
     private final CheckoutIdempotencyRepository checkoutIdempotencyRepository;
     private final CancelledOrderStripeExpiry cancelledOrderStripeExpiry;
     private final OrderItemHistoryBuilder orderItemHistoryBuilder;
+    private final org.springframework.context.ApplicationEventPublisher notificationEvents;
 
     private Customer getCurrentCustomer() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -199,9 +200,12 @@ public class OrderServiceImpl implements OrderService {
             return;
         }
         invoiceRepository.findByOrderId(order.getId()).ifPresent(invoice -> {
-            if (invoice.getStatus() == PaymentStatus.PAID) {
+            if (invoice.getStatus() == PaymentStatus.PAID || invoice.getStatus() == PaymentStatus.REFUNDED) {
                 res.setPaymentStatus(invoice.getStatus());
                 res.setPaymentMethod(invoice.getPaymentMethodCode());
+                res.setPaidAmount(invoice.getTotalActualPaid());
+                var refunds=invoiceRepository.refundedByOrderIds(java.util.List.of(order.getId()));
+                res.setRefundedAmount(refunds.isEmpty()?BigDecimal.ZERO:(BigDecimal)refunds.getFirst()[1]);
             }
         });
     }
@@ -336,6 +340,7 @@ public class OrderServiceImpl implements OrderService {
         order.setDetails(orderDetails);
 
         Order savedOrder = orderRepository.save(order);
+        notificationEvents.publishEvent(new com.springboot.fasearch.modules.notification.NotificationEvents.OrderChanged(savedOrder.getId(), savedOrder.getStatus().name()));
         checkoutBenefitService.recordHold(savedOrder.getId(), benefit);
         if (checkoutKey != null) checkoutIdempotencyRepository.save(CheckoutIdempotency.builder()
                 .id(new CheckoutIdempotencyId(customer.getId(), checkoutKey)).payloadHash(payloadHash)
@@ -473,7 +478,7 @@ public class OrderServiceImpl implements OrderService {
         if (!page.getContent().isEmpty()) {
             java.util.List<Long> orderIds = page.getContent().stream().map(Order::getId).toList();
             for (Invoice invoice : invoiceRepository.findByOrderIds(orderIds)) {
-                if (invoice.getStatus() == PaymentStatus.PAID && invoice.getOrder() != null) {
+                if ((invoice.getStatus() == PaymentStatus.PAID || invoice.getStatus() == PaymentStatus.REFUNDED) && invoice.getOrder() != null) {
                     paidByOrder.put(invoice.getOrder().getId(), invoice);
                 }
             }
@@ -631,6 +636,7 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(targetStatus);
         Order savedOrder = orderRepository.save(order);
+        notificationEvents.publishEvent(new com.springboot.fasearch.modules.notification.NotificationEvents.OrderChanged(savedOrder.getId(), targetStatus.name()));
 
         OrderDetailRes detailRes = mapToOrderDetailRes(savedOrder);
         fillPaidPayment(savedOrder, detailRes);
@@ -728,10 +734,12 @@ public class OrderServiceImpl implements OrderService {
                 ? currentNote + " | " + noteLog
                 : noteLog;
         order.setNote(updatedNote);
+        order.setCancellationReason(reason);
 
         // 5. Cập nhật trạng thái CANCELLED
         order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
+        notificationEvents.publishEvent(new com.springboot.fasearch.modules.notification.NotificationEvents.OrderChanged(savedOrder.getId(), "CANCELLED"));
 
         // Expire open Stripe sessions AFTER the order transaction commits, so a Stripe failure
         // cannot roll back the cancellation and no HTTP call holds a DB transaction open.

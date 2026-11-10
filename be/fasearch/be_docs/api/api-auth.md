@@ -2,6 +2,8 @@
 
 Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT Token, đăng ký tài khoản khách hàng, kiểm soát phân quyền dựa trên vai trò (RBAC), quên/đặt lại mật khẩu, xác thực email và quản lý danh sách tài khoản hệ thống.
 
+Trong `ApiResponse`, các trường `null` (bao gồm `result` và `errors`) được bỏ khỏi JSON; các ví dụ thành công bên dưới phản ánh điều này.
+
 ---
 
 ## 1. Đăng nhập hệ thống (FR-05)
@@ -37,15 +39,14 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "role": "ADMIN",
     "emailVerified": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Thiếu `username` hoặc `password`.
-- **HTTP 401 Unauthorized:** Sai tên đăng nhập hoặc mật khẩu (`INVALID_CREDENTIALS`).
-- **HTTP 403 Forbidden:** Tài khoản đã bị khóa (`ACCOUNT_LOCKED`), chưa kích hoạt (`ACCOUNT_INACTIVE`) hoặc chưa xác thực email khi bật `EMAIL_VERIFICATION_REQUIRED` (`EMAIL_NOT_VERIFIED`).
+- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ (code `400`, message `Dữ liệu không hợp lệ.`).
+- **HTTP 401 Unauthorized:** `INVALID_CREDENTIALS` (401): `Tên đăng nhập hoặc mật khẩu không đúng.`
+- **HTTP 403 Forbidden:** `ACCOUNT_LOCKED` (403): `Tài khoản đã bị khóa.`; `ACCOUNT_INACTIVE` (403): `Tài khoản đang không hoạt động.`; `EMAIL_NOT_VERIFIED` (403): `Tài khoản chưa xác thực email`.
 
 ---
 
@@ -53,7 +54,7 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 
 - **Endpoint:** `POST /api/v1/auth/register`
 - **Quyền hạn:** `PUBLIC` (Không yêu cầu đăng nhập)
-- **Mô tả:** Khách hàng mới tự tạo tài khoản mua sắm trực tuyến (tự động gán vai trò `CUSTOMER`) và nhận email xác thực.
+- **Mô tả:** Khách hàng mới tự tạo tài khoản mua sắm trực tuyến (tự động gán vai trò `CUSTOMER`) và thử gửi email xác thực; đăng ký vẫn thành công nếu gửi thất bại.
 
 ### Request Body
 ```json
@@ -92,20 +93,20 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "role": "CUSTOMER",
     "emailVerified": false
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc trùng tên đăng nhập / email / số điện thoại (`USERNAME_ALREADY_EXISTS`, `EMAIL_ALREADY_EXISTS`, `PHONE_NUMBER_ALREADY_EXISTS`).
+- **HTTP 400 Bad Request:** Validation (code `400`, message `Dữ liệu không hợp lệ.`); `USERNAME_ALREADY_EXISTS` (400): `Tên đăng nhập đã tồn tại.`; `EMAIL_ALREADY_EXISTS` (400): `Email đã tồn tại.`; `PHONE_NUMBER_ALREADY_EXISTS` (400): `Số điện thoại đã tồn tại`.
+- **HTTP 404 Not Found:** `ROLE_NOT_FOUND` (404): `Không tìm thấy vai trò.`
 
 ---
 
 ## 3. Xem thông tin tài khoản hiện tại (FR-07)
 
 - **Endpoint:** `GET /api/v1/auth/my-info`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (Cần Header `Authorization: Bearer <token>`)
+- **Quyền hạn:** Tài khoản đã xác thực (Cần Header `Authorization: Bearer <token>`; không có `@PreAuthorize`)
 - **Mô tả:** Trích xuất định danh từ token JWT để lấy hồ sơ tài khoản đang đăng nhập.
 
 ### Response Thành công (HTTP 200 OK)
@@ -125,7 +126,6 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "createdAt": "2026-10-25T08:00:00",
     "permissions": ["ORDER_VIEW", "ORDER_UPDATE_STATUS", "...", "TRASH_RESTORE"]
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -138,6 +138,7 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 
 ### Response Lỗi thường gặp
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
+- **HTTP 404 Not Found:** `USER_NOT_FOUND` (404): `Không tìm thấy người dùng.`
 
 ---
 
@@ -182,7 +183,6 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -232,14 +232,14 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "emailVerified": false,
     "createdAt": "2026-10-25T15:30:00"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc trùng tên đăng nhập / email.
+- **HTTP 400 Bad Request:** Validation (code `400`, message `Dữ liệu không hợp lệ.`); `USERNAME_ALREADY_EXISTS` (400): `Tên đăng nhập đã tồn tại.`; `EMAIL_ALREADY_EXISTS` (400): `Email đã tồn tại.`
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 404 Not Found:** `ROLE_NOT_FOUND` (404): `Không tìm thấy vai trò.`
 
 ---
 
@@ -248,6 +248,11 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 - **Endpoint:** `PUT /api/v1/auth/accounts/{id}` (hoặc `PATCH`)
 - **Quyền hạn:** `ADMIN`
 - **Mô tả:** Cập nhật email, trạng thái tài khoản, vai trò hoặc đặt lại mật khẩu; chỉ các trường được gửi lên mới đổi.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | Mã tài khoản |
 
 ### Request Body
 ```json
@@ -263,7 +268,7 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 | :--- | :--- | :---: | :--- |
 | `email` | String | Không | Định dạng Email, duy nhất |
 | `status` | String | Không | `ACTIVE`, `INACTIVE`, `LOCKED`, `DELETED` |
-| `role` | String | Không | `ADMIN`, `STAFF`, `CUSTOMER` |
+| `role` | String | Không | `ADMIN`, `STAFF` (service từ chối `CUSTOMER`) |
 | `newPassword` | String | Không | Tối thiểu 6 ký tự |
 
 ### Response Thành công (HTTP 200 OK)
@@ -282,15 +287,14 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "emailVerified": false,
     "createdAt": "2026-10-25T15:30:00"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Email sai định dạng hoặc đã tồn tại (`EMAIL_ALREADY_EXISTS`).
-- **HTTP 403 Forbidden:** Không phải `ADMIN`; hoặc đổi `role`/`status` của **chính tài khoản đang đăng nhập** (`ACCESS_DENIED`, "Không thể đổi vai trò hoặc trạng thái của chính tài khoản đang đăng nhập."). Gửi lại đúng giá trị hiện tại, hoặc chỉ đổi email, vẫn được phép.
-- **HTTP 404 Not Found:** Không tìm thấy tài khoản (`USER_NOT_FOUND`).
+- **HTTP 400 Bad Request:** Validation; `EMAIL_ALREADY_EXISTS` (400): `Email đã tồn tại.`; `INVALID_REQUEST` (400), mặc định `Dữ liệu yêu cầu không hợp lệ.`, được service ghi đè thành `Chỉ được đổi vai trò giữa Nhân viên và Quản trị viên.`
+- **HTTP 403 Forbidden:** Không phải `ADMIN`; `ACCESS_DENIED` (403), mặc định `Bạn không có quyền truy cập tài nguyên này.`, được ghi đè thành `Không thể đổi vai trò hoặc trạng thái của chính tài khoản đang đăng nhập.` khi tự đổi role/status.
+- **HTTP 404 Not Found:** `USER_NOT_FOUND` (404): `Không tìm thấy người dùng.`; `ROLE_NOT_FOUND` (404): `Không tìm thấy vai trò.`
 
 ---
 
@@ -299,6 +303,11 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 - **Endpoint:** `DELETE /api/v1/auth/accounts/{id}`
 - **Quyền hạn:** `ADMIN`
 - **Mô tả:** Chuyển trạng thái tài khoản thành `DELETED` và cập nhật `da_xoa = true` (kèm `ngay_xoa`, `nguoi_xoa` từ security context, `ly_do_xoa`) để vô hiệu hóa tài khoản mà không mất dữ liệu lịch sử. `token_version` tăng ngay khi xóa, nên token đã cấp trước đó mất hiệu lực và không thể sống lại kể cả khi tài khoản được khôi phục rồi bật lại; bộ lọc JWT cũng từ chối mọi tài khoản không `ACTIVE` hoặc đã `da_xoa = true`. **Chặn** tự xóa tài khoản đang đăng nhập, chặn xóa `ADMIN` đang `ACTIVE` cuối cùng, và chặn khi còn hồ sơ `nhan_vien`/`khach_hang` liên kết.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | Mã tài khoản |
 
 ### Request Body (không bắt buộc)
 | Trường | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -312,23 +321,22 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "code": 200,
   "message": "Xóa tài khoản thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
+- **HTTP 400 Bad Request:** Validation lý do (code `400`, message `Dữ liệu không hợp lệ.`, chi tiết `Lý do xóa tối đa 255 ký tự`).
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
-- **HTTP 404 Not Found:** Không tìm thấy tài khoản (`USER_NOT_FOUND`).
-- **HTTP 409 Conflict:** Tự xóa hoặc xóa `ADMIN` `ACTIVE` cuối cùng (`DELETE_NOT_ALLOWED`); còn hồ sơ nhân sự/khách hàng liên kết (`DELETE_BLOCKED_BY_REFERENCES`).
+- **HTTP 404 Not Found:** `USER_NOT_FOUND` (404): `Không tìm thấy người dùng.`
+- **HTTP 409 Conflict:** `DELETE_NOT_ALLOWED` (4404): mặc định `Không thể xóa đối tượng này`; `DELETE_BLOCKED_BY_REFERENCES` (4403): mặc định `Không thể xóa vì còn dữ liệu tham chiếu`. Message thực tế lần lượt: `Không thể xóa tài khoản đang đăng nhập. Hãy dùng một tài khoản Quản trị viên khác.`, `Không thể xóa Quản trị viên đang hoạt động cuối cùng của hệ thống.`, hoặc `Không thể xóa tài khoản vì còn <số> hồ sơ nhân sự hoặc khách hàng liên kết. Hãy xử lý hồ sơ trước.`
 
 ---
 
 ## 8. Đổi mật khẩu
 
 - **Endpoint:** `POST /api/v1/auth/change-password`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (đổi mật khẩu của chính mình)
+- **Quyền hạn:** Tài khoản đã xác thực (đổi mật khẩu của chính mình; không có `@PreAuthorize`)
 - **Mô tả:** Đổi mật khẩu khi đang đăng nhập; mọi token cũ của tài khoản bị vô hiệu, client phải đăng nhập lại.
 
 ### Request Body
@@ -350,15 +358,14 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "success": true,
   "code": 200,
   "message": "Đổi mật khẩu thành công",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Mật khẩu mới trùng mật khẩu cũ hoặc sai định dạng.
-- **HTTP 401 Unauthorized:** Mật khẩu cũ không đúng hoặc token không hợp lệ.
+- **HTTP 400 Bad Request:** Validation; `INVALID_REQUEST` (400), mặc định `Dữ liệu yêu cầu không hợp lệ.`, được ghi đè thành `Mật khẩu mới phải khác mật khẩu cũ`.
+- **HTTP 401 Unauthorized:** `INVALID_CREDENTIALS` (401), mặc định `Tên đăng nhập hoặc mật khẩu không đúng.`, được ghi đè thành `Mật khẩu cũ không đúng`; hoặc token không hợp lệ.
+- **HTTP 404 Not Found:** `USER_NOT_FOUND` (404): `Không tìm thấy người dùng.`
 
 ---
 
@@ -385,15 +392,13 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "success": true,
   "code": 200,
   "message": "Nếu email đã đăng ký, liên kết đặt lại mật khẩu đã được gửi. Kiểm tra hộp thư (kể cả thư rác).",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Email trống hoặc sai định dạng.
-- **HTTP 429 Too Many Requests:** Vượt giới hạn số lượt yêu cầu (`TOO_MANY_REQUESTS`).
+- **HTTP 400 Bad Request:** Email trống hoặc sai định dạng (validation, code `400`, message `Dữ liệu không hợp lệ.`).
+- **HTTP 429 Too Many Requests:** `TOO_MANY_REQUESTS` (429): `Bạn thao tác quá nhiều lần. Vui lòng thử lại sau`.
 
 ---
 
@@ -422,23 +427,21 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "success": true,
   "code": 200,
   "message": "Đặt lại mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới.",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Token sai, đã dùng hoặc hết hạn (`EMAIL_TOKEN_INVALID`); mật khẩu mới sai định dạng.
-- **HTTP 429 Too Many Requests:** Vượt giới hạn số lượt yêu cầu.
+- **HTTP 400 Bad Request:** Validation; `EMAIL_TOKEN_INVALID` (400): `Liên kết không hợp lệ hoặc đã hết hạn`.
+- **HTTP 429 Too Many Requests:** `TOO_MANY_REQUESTS` (429): `Bạn thao tác quá nhiều lần. Vui lòng thử lại sau`.
 
 ---
 
 ## 11. Gửi lại email xác thực
 
 - **Endpoint:** `POST /api/v1/auth/email/verification-request`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)`, `CUSTOMER` (tài khoản đang đăng nhập)
-- **Mô tả:** Gửi email xác thực (token hiệu lực 24 giờ, dùng một lần). Tài khoản đã xác thực vẫn trả `200` và không gửi lại. Giới hạn 5 lượt/giờ mỗi tài khoản và 20 lượt/giờ mỗi IP.
+- **Quyền hạn:** Tài khoản đã xác thực (không có `@PreAuthorize`)
+- **Mô tả:** Gửi email xác thực (token hiệu lực 24 giờ, dùng một lần). Tài khoản đã xác thực vẫn trả `200` và không gửi lại; lỗi gửi email được ghi log và không làm yêu cầu thất bại. Giới hạn 5 lượt/giờ mỗi tài khoản và 20 lượt/giờ mỗi IP.
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -446,17 +449,15 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "success": true,
   "code": 200,
   "message": "Email xác thực đã được gửi. Kiểm tra hộp thư (kể cả thư rác).",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Tài khoản chưa có email (`EMAIL_ADDRESS_MISSING`).
+- **HTTP 400 Bad Request:** `EMAIL_ADDRESS_MISSING` (400): `Tài khoản chưa có địa chỉ email`.
 - **HTTP 401 Unauthorized:** Chưa đăng nhập.
-- **HTTP 429 Too Many Requests:** Vượt giới hạn số lượt yêu cầu.
-- **HTTP 503 Service Unavailable:** Không gửi được email (`EMAIL_SEND_FAILED`).
+- **HTTP 404 Not Found:** `USER_NOT_FOUND` (404): `Không tìm thấy người dùng.`
+- **HTTP 429 Too Many Requests:** `TOO_MANY_REQUESTS` (429): `Bạn thao tác quá nhiều lần. Vui lòng thử lại sau`.
 
 ---
 
@@ -483,15 +484,13 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "success": true,
   "code": 200,
   "message": "Xác thực email thành công",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-05T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Token sai, đã dùng hoặc hết hạn (`EMAIL_TOKEN_INVALID`).
-- **HTTP 429 Too Many Requests:** Vượt giới hạn số lượt yêu cầu.
+- **HTTP 400 Bad Request:** Validation; `EMAIL_TOKEN_INVALID` (400): `Liên kết không hợp lệ hoặc đã hết hạn`.
+- **HTTP 429 Too Many Requests:** `TOO_MANY_REQUESTS` (429): `Bạn thao tác quá nhiều lần. Vui lòng thử lại sau`.
 
 ---
 
@@ -506,6 +505,7 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 | :--- | :--- | :---: | :--- |
 | `page` | Integer | Không | Số trang (mặc định: `0`) |
 | `size` | Integer | Không | Số bản ghi/trang (mặc định: `20`, tối đa `100`) |
+| `sort` | String | Không | Tham số Pageable; truy vấn thùng rác dùng thứ tự xóa mới nhất |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -542,7 +542,6 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-07T13:00:00"
 }
 ```
@@ -559,6 +558,11 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
 - **Quyền hạn:** `ADMIN`
 - **Mô tả:** Cập nhật có điều kiện `da_xoa = true` → `false` (kiểm tra đúng một dòng thay đổi) và xóa dấu vết xóa. Tài khoản trở lại với trạng thái **`INACTIVE`**: chưa đăng nhập được cho tới khi `ADMIN` bật `ACTIVE` ở mục 6. `token_version` tăng thêm một lần nữa để mọi token cấp trước khi xóa không thể dùng lại sau khi bật. Từ chối khi còn hồ sơ nhân sự/khách hàng đang hoạt động liên kết, hoặc khi tên đăng nhập/email đã được tài khoản khác dùng.
 
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | Mã tài khoản |
+
 ### Response Thành công (HTTP 200 OK)
 ```json
 {
@@ -566,15 +570,14 @@ Module `auth` chịu trách nhiệm quản lý đăng nhập, cấp phát JWT To
   "code": 200,
   "message": "Khôi phục tài khoản thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-11-07T13:05:00"
 }
 ```
 
 ### Response Lỗi thường gặp
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
-- **HTTP 404 Not Found:** Tài khoản không còn trong thùng rác (`TRASH_ITEM_NOT_FOUND`).
-- **HTTP 409 Conflict:** Còn hồ sơ liên kết đang hoạt động (`RESTORE_BLOCKED`); trùng tên đăng nhập hoặc email (`RESTORE_CONFLICT`).
+- **HTTP 404 Not Found:** `TRASH_ITEM_NOT_FOUND` (4407): mặc định `Không tìm thấy mục trong thùng rác`; service ghi đè `Không tìm thấy tài khoản này trong thùng rác.`
+- **HTTP 409 Conflict:** `RESTORE_BLOCKED` (4406): mặc định `Không thể khôi phục đối tượng này`; `RESTORE_CONFLICT` (4405): mặc định `Không thể khôi phục vì dữ liệu đã trùng`. Message thực tế lần lượt: `Không thể khôi phục tài khoản vì còn <số> hồ sơ nhân sự hoặc khách hàng đang hoạt động liên kết.`, `Không thể khôi phục tài khoản: tên đăng nhập đã được một tài khoản khác sử dụng.`, hoặc `Không thể khôi phục tài khoản: email đã được một tài khoản khác sử dụng.`
 
 ---
 
@@ -607,6 +610,7 @@ Danh mục mã quyền (nhóm → mã: nhãn):
 | Khuyến mãi | `PROMOTION_VIEW` / `PROMOTION_MANAGE` | Xem / Tạo, sửa khuyến mãi và Voucher |
 | Điểm | `LOYALTY_POLICY_VIEW` / `LOYALTY_POLICY_MANAGE` | Xem / Sửa chính sách điểm và hạng |
 | Điểm | `LOYALTY_ADJUST` | Điều chỉnh điểm và tính lại điểm cho đơn (mặc định tắt) |
+| Report | `AUDIT_VIEW` | Xem nhật ký hoạt động (mặc định tắt cho STAFF) |
 | Report | `REPORT_VIEW` | Xem Report |
 | Report | `DATA_EXPORT` | Export CSV |
 | Thùng rác | `TRASH_VIEW` / `TRASH_RESTORE` | Xem / Khôi phục từ thùng rác |
@@ -656,6 +660,8 @@ Bảng endpoint → quyền. "KH hoặc" = endpoint dùng chung: khách hàng v�
 | `GET /api/v1/thanh-vien/chinh-sach`, `GET /api/v1/thanh-vien/chinh-sach/hang` | `LOYALTY_POLICY_VIEW` |
 | `POST /api/v1/thanh-vien/chinh-sach`, `PUT .../chinh-sach/{policyId}`, `PUT .../chinh-sach/hang/{tierId}` | `LOYALTY_POLICY_MANAGE` |
 | `POST /api/v1/quan-tri/thanh-vien/khach-hang/{customerId}/dieu-chinh`, `GET/POST /api/v1/quan-tri/thanh-vien/don-hang/{orderId}/tinh-lai-diem` | `LOYALTY_ADJUST` (controller và service) |
+| `GET /api/v1/admin/audit`, `GET /api/v1/admin/audit/{id}` | `AUDIT_VIEW` |
+| `GET /api/v1/admin/audit/export` | `AUDIT_VIEW` và `DATA_EXPORT` |
 | `GET /api/v1/analytics/**` (revenue, top-products, inventory-movement, overview) | `REPORT_VIEW` |
 | `GET /api/v1/admin/csv/products` | `DATA_EXPORT` và `PRODUCT_VIEW` |
 | `GET /api/v1/admin/csv/stock` | `DATA_EXPORT` và `INVENTORY_VIEW` |
@@ -668,11 +674,45 @@ Tầng URL (`SecurityConfig`) vẫn là cổng vai trò bên ngoài: `/api/v1/an
 
 ---
 
+### Thông báo đơn hàng — N1
+
+| Endpoint | Quyền |
+| :--- | :--- |
+| GET `/api/v1/admin/notifications` | Ít nhất một ORDER_VIEW / RETURN_VIEW / INVENTORY_VIEW; từng sự kiện lọc theo VIEW tương ứng |
+| POST `/api/v1/admin/notifications/{id}/read` | Như trên; chỉ read marker của tài khoản hiện tại và sự kiện được xem |
+| GET/PUT `/api/v1/notifications/preferences` | CUSTOMER, tài khoản hiện tại |
+| GET `/api/v1/notifications/favorites` | CUSTOMER, danh sách của mình |
+| PUT `/api/v1/notifications/favorites/{productId}` | CUSTOMER, sản phẩm yêu thích của mình |
+
+Không thêm permission code; xem [api-notification.md](./api-notification.md).
+
+### Đổi/trả
+
+| Endpoint | Quyền | Mặc định STAFF |
+| :--- | :--- | :--- |
+| `GET /api/v1/returns/orders/{orderId}` | `CUSTOMER` | Chỉ CUSTOMER, đơn của mình |
+| `POST /api/v1/returns` | `CUSTOMER` | Chỉ CUSTOMER, đơn của mình |
+| `GET /api/v1/returns/{id}` | `CUSTOMER` | Chỉ CUSTOMER, đơn của mình |
+| `GET /api/v1/returns/{id}/photos/{position}` | `CUSTOMER` | Chỉ CUSTOMER, đơn của mình |
+| `GET /api/v1/admin/returns` | `RETURN_VIEW` | Bật |
+| `GET /api/v1/admin/returns/{id}` | `RETURN_VIEW` | Bật |
+| `GET /api/v1/admin/returns/{id}/photos/{position}` | `RETURN_VIEW` | Bật |
+| `POST /api/v1/admin/returns/{id}/decision` | `RETURN_PROCESS` | Bật |
+| `POST /api/v1/admin/returns/{id}/receive` | `RETURN_PROCESS` | Bật |
+| `POST /api/v1/admin/returns/{id}/refund` | `RETURN_REFUND` | Tắt |
+
+---
+
 ## 16. Xem phân quyền của vai trò
 
 - **Endpoint:** `GET /api/v1/auth/roles/{role}/permissions` (`role` = `STAFF` hoặc `ADMIN`)
 - **Quyền hạn:** `ADMIN`
 - **Mô tả:** Trả danh mục quyền theo nhóm cùng trạng thái bật. Với `ADMIN`: mọi quyền bật, `editable = false`.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `role` | String (RoleType) | Có | Vai trò trong đường dẫn |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -695,22 +735,27 @@ Tầng URL (`SecurityConfig`) vẫn là cổng vai trò bên ngoài: `/api/v1/an
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-11-08T10:37:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** `role` không hợp lệ hoặc là `CUSTOMER` (`INVALID_REQUEST`).
+- **HTTP 400 Bad Request:** `CUSTOMER`: `INVALID_REQUEST` (400), mặc định `Dữ liệu yêu cầu không hợp lệ.`, được ghi đè thành `Chỉ chỉnh được phân quyền của vai trò Quản lý.`; giá trị enum sai bị từ chối khi chuyển kiểu.
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 404 Not Found:** `ROLE_NOT_FOUND` (404): `Không tìm thấy vai trò.`
 
 ---
 
 ## 17. Lưu phân quyền của Quản lý
 
-- **Endpoint:** `PUT /api/v1/auth/roles/STAFF/permissions`
+- **Endpoint:** `PUT /api/v1/auth/roles/{role}/permissions` (`role` = `STAFF`)
 - **Quyền hạn:** `ADMIN`
 - **Mô tả:** Thay toàn bộ bộ quyền đang bật của Quản lý (gửi **đủ** danh sách sau khi lưu, không phải phần thay đổi). Mã trùng được gộp; mã không có trong danh mục bị từ chối và không ghi gì. Có thay đổi thì ghi một dòng nhật ký (`nhat_ky_phan_quyen`: người lưu, thời điểm, bộ quyền trước và sau); không đổi gì thì không ghi. Có hiệu lực ở request kế tiếp của mọi tài khoản Quản lý.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `role` | String (RoleType) | Có | Vai trò trong đường dẫn |
 
 ### Request Body
 ```json
@@ -724,19 +769,25 @@ Tầng URL (`SecurityConfig`) vẫn là cổng vai trò bên ngoài: `/api/v1/an
 | `permissions` | String[] | Có | Mã quyền thuộc danh mục ở mục 15; tối đa 200 phần tử |
 
 ### Response Thành công (HTTP 200 OK)
-Giống mục 16 (bộ quyền sau khi lưu), `message` = `"Đã lưu phân quyền"`.
+Giống mục 16 (đầy đủ `role`, `editable`, `enabled`, `groups` và các trường lồng nhau; bộ quyền sau khi lưu), `message` = `"Đã lưu phân quyền"`.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Thiếu `permissions`, có mã không hợp lệ (`INVALID_REQUEST`, thông báo liệt kê mã), hoặc `role` khác `STAFF` (`ADMIN` luôn toàn quyền, không chỉnh được).
+- **HTTP 400 Bad Request:** Validation danh sách; `INVALID_REQUEST` (400), mặc định `Dữ liệu yêu cầu không hợp lệ.`, được ghi đè thành `Thiếu danh sách quyền.`, `Mã quyền không hợp lệ: <danh sách>`, `Quản trị viên luôn có toàn quyền, không chỉnh được.`, hoặc `Chỉ chỉnh được phân quyền của vai trò Quản lý.`
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 404 Not Found:** `ROLE_NOT_FOUND` (404): `Không tìm thấy vai trò.`
 
 ---
 
 ## 18. Nhật ký phân quyền
 
-- **Endpoint:** `GET /api/v1/auth/roles/STAFF/permissions/audit`
+- **Endpoint:** `GET /api/v1/auth/roles/{role}/permissions/audit` (`role` = `STAFF`)
 - **Quyền hạn:** `ADMIN`
 - **Mô tả:** 50 lần lưu gần nhất, mới nhất trước, kèm quyền được bật thêm và tắt bớt.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `role` | String (RoleType) | Có | Vai trò trong đường dẫn |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -754,10 +805,11 @@ Giống mục 16 (bộ quyền sau khi lưu), `message` = `"Đã lưu phân quy�
       "removed": ["CUSTOMER_DELETE", "INVENTORY_VIEW"]
     }
   ],
-  "errors": null,
   "timestamp": "2026-11-08T13:35:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **HTTP 400 Bad Request:** `INVALID_REQUEST` (400), mặc định `Dữ liệu yêu cầu không hợp lệ.`, được ghi đè thành `Quản trị viên luôn có toàn quyền, không chỉnh được.` hoặc `Chỉ chỉnh được phân quyền của vai trò Quản lý.`; giá trị enum sai bị từ chối khi chuyển kiểu.
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 404 Not Found:** `ROLE_NOT_FOUND` (404): `Không tìm thấy vai trò.`

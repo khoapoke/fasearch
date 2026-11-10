@@ -8,7 +8,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 
 - **Endpoint:** `GET /api/v1/inventory/stock`
 - **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `INVENTORY_VIEW`
-- **Mô tả:** Xem số lượng tồn kho thực tế, số lượng đang bị tạm giữ bởi các đơn hàng trực tuyến và tồn kho khả dụng để bán. Các bộ lọc văn bản không phân biệt hoa/thường và dấu tiếng Việt (kể cả `đ`), tối đa 100 ký tự; `%` và `_` do người dùng nhập được hiểu là ký tự thường.
+- **Mô tả:** Xem số lượng tồn kho thực tế, số lượng đang bị tạm giữ bởi các đơn hàng trực tuyến và tồn kho khả dụng để bán. Các bộ lọc văn bản không phân biệt hoa/thường và dấu tiếng Việt (kể cả `đ`), được chuẩn hóa rồi cắt còn tối đa 100 ký tự; `%` và `_` do người dùng nhập được hiểu là ký tự thường.
 
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
@@ -18,7 +18,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 | `sort` | String | Không | Tiêu chí sắp xếp (mặc định `id,desc`) |
 | `sku` | String | Không | Mã SKU (số nguyên, khớp chính xác) hoặc một phần mã vạch |
 | `productName` | String | Không | Tìm theo tên sản phẩm (không phân biệt hoa/thường và dấu tiếng Việt) |
-| `keyword` | String | Không | Từ khóa chung: SKU id, tên sản phẩm, mã vạch, màu sắc, kích cỡ. Tối đa 100 ký tự |
+| `keyword` | String | Không | Từ khóa chung: SKU id, tên sản phẩm, mã vạch, màu sắc, kích cỡ. Chuẩn hóa rồi cắt còn tối đa 100 ký tự |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -48,7 +48,6 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -105,7 +104,6 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -113,7 +111,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 - `exceptions` sắp xếp `availableStock` tăng dần rồi `skuId`; `exceptionsTotal` là tổng thật (hết hàng + thấp).
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** `limit` ngoài khoảng `1` - `50`.
+- **HTTP 400 Bad Request:** `INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."; khi `limit` ngoài khoảng `1` - `50`, thông điệp trả về: "Giới hạn không hợp lệ (1-50)."
 
 ---
 
@@ -121,7 +119,12 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 
 - **Endpoint:** `GET /api/v1/inventory/stock/{skuId}`
 - **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `INVENTORY_VIEW`
-- **Mô tả:** Lấy tồn kho của một SKU.
+- **Mô tả:** Lấy tồn kho của một SKU; nếu SKU tồn tại nhưng chưa có bản ghi kho, hệ thống tạo bản ghi với số lượng bằng 0.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `skuId` | Long | Có | ID biến thể (SKU) |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -142,13 +145,12 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "minThreshold": 10,
     "productStatus": "ACTIVE"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không có bản ghi tồn kho cho SKU (`INVENTORY_NOT_FOUND`).
+- **HTTP 404 Not Found:** `VARIANT_NOT_FOUND` — "Không tìm thấy SKU."
 
 ---
 
@@ -217,15 +219,14 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc phiếu không có mặt hàng hợp lệ (`INVALID_RECEIPT_ITEM`).
+- **HTTP 400 Bad Request:** `INVALID_RECEIPT_ITEM` — "Phiếu phải có ít nhất một dòng hợp lệ."; kiểm tra Request Body thất bại trả "Dữ liệu không hợp lệ." cùng chi tiết trường.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 404 Not Found:** `VARIANT_NOT_FOUND` — "Không tìm thấy SKU."
 
 ---
 
@@ -269,7 +270,6 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -285,6 +285,11 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 - **Endpoint:** `GET /api/v1/inventory/import-receipts/{id}`
 - **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `INVENTORY_VIEW`
 - **Mô tả:** Chi tiết một phiếu nhập kho kèm các dòng hàng; cùng dạng `result` như mục 4.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | ID phiếu |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -304,13 +309,12 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "createdAt": "2026-10-25T15:30:00",
     "items": []
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy phiếu nhập (`RECEIPT_NOT_FOUND`).
+- **HTTP 404 Not Found:** `RECEIPT_NOT_FOUND` — "Không tìm thấy phiếu nhập kho."
 
 ---
 
@@ -372,15 +376,14 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, phiếu không có mặt hàng hợp lệ hoặc không đủ tồn kho (`INSUFFICIENT_STOCK`).
+- **HTTP 400 Bad Request:** `INVALID_RECEIPT_ITEM` — "Phiếu phải có ít nhất một dòng hợp lệ."; `INSUFFICIENT_STOCK` — "Không đủ tồn kho cho SKU đã chọn."; kiểm tra Request Body thất bại trả "Dữ liệu không hợp lệ." cùng chi tiết trường.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 404 Not Found:** `VARIANT_NOT_FOUND` — "Không tìm thấy SKU."
 
 ---
 
@@ -423,7 +426,6 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -439,6 +441,11 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 - **Endpoint:** `GET /api/v1/inventory/export-receipts/{id}`
 - **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `INVENTORY_VIEW`
 - **Mô tả:** Chi tiết một phiếu xuất kho kèm các dòng hàng; cùng dạng `result` như mục 7.
+
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | ID phiếu |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -457,13 +464,12 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "createdAt": "2026-10-25T15:30:00",
     "items": []
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy phiếu xuất (`EXPORT_RECEIPT_NOT_FOUND`).
+- **HTTP 404 Not Found:** `EXPORT_RECEIPT_NOT_FOUND` — "Không tìm thấy phiếu xuất kho."
 
 ---
 
@@ -503,7 +509,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "stocktakeId": 701,
     "stocktakeCode": "KK-20261025-001",
     "note": "Kiểm kê định kỳ cuối tuần",
-    "totalDiscrepancy": 1,
+    "totalDiscrepancy": 2,
     "status": "PENDING_APPROVAL",
     "createdAt": "2026-10-25T15:30:00",
     "discrepancies": [
@@ -520,14 +526,13 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
       }
     ]
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc phiếu không có bản ghi hợp lệ (`INVALID_STOCKTAKE_RECORD`).
-- **HTTP 404 Not Found:** Không tìm thấy biến thể (`VARIANT_NOT_FOUND`).
+- **HTTP 400 Bad Request:** `INVALID_STOCKTAKE_RECORD` — "Phiếu kiểm kê cần có ít nhất một dòng hợp lệ"; kiểm tra Request Body thất bại trả "Dữ liệu không hợp lệ." cùng chi tiết trường.
+- **HTTP 404 Not Found:** `VARIANT_NOT_FOUND` — "Không tìm thấy SKU."
 
 ---
 
@@ -570,7 +575,6 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
@@ -587,6 +591,11 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 - **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `INVENTORY_VIEW`
 - **Mô tả:** Chi tiết một phiếu kiểm kê kèm các dòng chênh lệch; cùng dạng `result` như mục 10.
 
+### Path Params
+| Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `id` | Long | Có | ID phiếu |
+
 ### Response Thành công (HTTP 200 OK)
 ```json
 {
@@ -602,13 +611,12 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
     "createdAt": "2026-10-25T15:30:00",
     "discrepancies": []
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
-- **HTTP 404 Not Found:** Không tìm thấy phiếu kiểm kê (`STOCKTAKE_NOT_FOUND`).
+- **HTTP 404 Not Found:** `STOCKTAKE_NOT_FOUND` — "Không tìm thấy phiếu kiểm kê"
 
 ---
 
@@ -621,14 +629,16 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 ### Query Params
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `sku` | String | Không | Mã SKU (số nguyên) hoặc một phần mã vạch, tối đa 100 ký tự |
-| `productName` | String | Không | Tên sản phẩm, tối đa 255 ký tự |
-| `keyword` | String | Không | Từ khóa chung: SKU id, tên sản phẩm, mã vạch, màu, cỡ; tối đa 100 ký tự |
+| `sku` | String | Không | Mã SKU (số nguyên) hoặc một phần mã vạch, chuẩn hóa rồi cắt còn tối đa 100 ký tự |
+| `productName` | String | Không | Tên sản phẩm, chuẩn hóa rồi cắt còn tối đa 100 ký tự |
+| `keyword` | String | Không | Từ khóa chung: SKU id, tên sản phẩm, mã vạch, màu, cỡ; chuẩn hóa rồi cắt còn tối đa 100 ký tự |
 
 ### Response Thành công (HTTP 200 OK)
 - `Content-Type: text/csv; charset=UTF-8`
 - `Content-Disposition: attachment; filename="ton-kho-YYYY-MM-DD.csv"`
 - `Cache-Control: no-store`
+- `X-Export-Rows: <số dòng>`
+- `X-Content-Type-Options: nosniff`
 
 | Cột | Nguồn |
 | :--- | :--- |
@@ -641,7 +651,7 @@ Module `inventory` quản lý số lượng tồn kho theo từng mã biến th�
 - Dòng được ghi theo lô 500, sắp xếp theo mã dòng tồn kho tăng dần; mỗi lô đọc SKU và sản phẩm bằng một truy vấn, không N+1.
 
 ### Response Lỗi thường gặp
-- **HTTP 400 Bad Request:** Bộ lọc quá dài hoặc tập dữ liệu vượt 50.000 dòng.
+- **HTTP 400 Bad Request:** `INVALID_REQUEST` — thông điệp mặc định: "Dữ liệu yêu cầu không hợp lệ."; khi vượt 50.000 dòng, thông điệp trả về: "Tập dữ liệu có <số dòng> dòng, vượt giới hạn xuất 50000 dòng. Hãy thu hẹp bộ lọc rồi thử lại."
 - **HTTP 401 Unauthorized:** Chưa đăng nhập.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 

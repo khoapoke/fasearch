@@ -21,7 +21,7 @@ Quy tắc nghiệp vụ chung:
 | Tham số | Kiểu dữ liệu | Bắt buộc | Mặc định | Mô tả |
 | :--- | :--- | :---: | :--- | :--- |
 | `rating` | Integer | Không | | Lọc theo số sao (1 - 5) |
-| `sort` | String | Không | `newest` | `newest` (mới nhất), `rating_desc` (sao cao nhất), `rating_asc` (sao thấp nhất) |
+| `sort` | String | Không | `newest` | `newest` (mới nhất), `rating_desc` / `highest` (sao cao nhất), `rating_asc` / `lowest` (sao thấp nhất); không phân biệt hoa thường |
 | `page` | Integer | Không | `0` | Trang (bắt đầu từ 0) |
 | `size` | Integer | Không | `10` | Số bản ghi mỗi trang (1 - 50) |
 
@@ -52,12 +52,11 @@ Quy tắc nghiệp vụ chung:
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T10:00:00"
 }
 ```
 
-- `sizeFit`: `NHO` (hơi nhỏ), `VUA` (vừa vặn), `RONG` (hơi rộng) hoặc `null` khi khách không chọn.
+- `ReviewRes` bỏ các trường có giá trị null khỏi JSON. `sizeFit` khi có là `NHO` (hơi nhỏ), `VUA` (vừa vặn), `RONG` (hơi rộng); `hidden` và `hiddenReason` chỉ dành cho tác giả hoặc quản trị, `productName` chỉ dành cho quản trị.
 
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** `rating` ngoài khoảng 1 - 5 hoặc `sort` không hợp lệ (`INVALID_REQUEST`).
@@ -86,13 +85,13 @@ Quy tắc nghiệp vụ chung:
     "fitCount": 10,
     "fitVerdict": "VUA"
   },
-  "errors": null,
   "timestamp": "2026-11-05T10:00:00"
 }
 ```
 
-- `average`: làm tròn 1 chữ số thập phân, bằng `0` khi chưa có đánh giá.
-- `fitVerdict`: nhóm cảm nhận kích cỡ nhiều nhất; `null` khi có ít hơn 3 đánh giá chọn cảm nhận kích cỡ.
+- `productId` là Long; `average` là double làm tròn 1 chữ số thập phân, bằng `0` khi chưa có đánh giá; `count` là long. `distribution` ánh xạ các khóa `"1"`–`"5"` đến số lượng long.
+- `fit` ánh xạ `NHO`, `VUA`, `RONG` đến số lượng long; `fitCount` là tổng số đánh giá có chọn cảm nhận. Giao diện tính tỷ lệ mỗi nhóm bằng số lượng chia `fitCount`, và dùng `fitVerdict` để gợi ý lên size, giữ size hoặc xuống size.
+- `fitVerdict`: nhóm cảm nhận kích cỡ nhiều nhất; `null` khi có ít hơn 5 đánh giá chọn cảm nhận kích cỡ (3 hoặc 4 phiếu vẫn là `null`; từ 5 phiếu mới có lời khuyên).
 
 ### Response Lỗi thường gặp
 - **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
@@ -130,7 +129,6 @@ Quy tắc nghiệp vụ chung:
       "hidden": false
     }
   },
-  "errors": null,
   "timestamp": "2026-11-05T10:00:00"
 }
 ```
@@ -186,7 +184,6 @@ Quy tắc nghiệp vụ chung:
     "updatedAt": "2026-11-05T10:00:00",
     "hidden": false
   },
-  "errors": null,
   "timestamp": "2026-11-05T10:00:00"
 }
 ```
@@ -194,9 +191,9 @@ Quy tắc nghiệp vụ chung:
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ (thiếu `rating`, ngoài 1 - 5, quá độ dài).
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
-- **HTTP 403 Forbidden:** Chưa nhận hàng sản phẩm này (`4301 REVIEW_NOT_ELIGIBLE`) hoặc không phải vai trò `CUSTOMER`.
+- **HTTP 403 Forbidden:** Chưa nhận hàng sản phẩm này (`4301 REVIEW_NOT_ELIGIBLE`: "Chỉ khách đã nhận hàng sản phẩm này mới được đánh giá") hoặc không phải vai trò `CUSTOMER`.
 - **HTTP 404 Not Found:** Không tìm thấy sản phẩm (`PRODUCT_NOT_FOUND`).
-- **HTTP 409 Conflict:** Đã đánh giá sản phẩm này, hãy chỉnh sửa (`4302 REVIEW_ALREADY_EXISTS`).
+- **HTTP 409 Conflict:** Đã đánh giá sản phẩm này, hãy chỉnh sửa (`4302 REVIEW_ALREADY_EXISTS`: "Bạn đã đánh giá sản phẩm này, hãy chỉnh sửa đánh giá hiện có").
 
 ---
 
@@ -242,7 +239,6 @@ Quy tắc nghiệp vụ chung:
     "updatedAt": "2026-11-06T08:30:00",
     "hidden": false
   },
-  "errors": null,
   "timestamp": "2026-11-06T08:30:00"
 }
 ```
@@ -251,7 +247,7 @@ Quy tắc nghiệp vụ chung:
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ.
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
 - **HTTP 403 Forbidden:** Không phải vai trò `CUSTOMER`.
-- **HTTP 404 Not Found:** Chưa có đánh giá để sửa (`4303 REVIEW_NOT_FOUND`) hoặc không tìm thấy sản phẩm.
+- **HTTP 404 Not Found:** Chưa có đánh giá để sửa (`4303 REVIEW_NOT_FOUND`: "Không tìm thấy đánh giá") hoặc không tìm thấy sản phẩm.
 
 ---
 
@@ -262,13 +258,13 @@ Quy tắc nghiệp vụ chung:
 - **Mô tả:** Xóa mềm (`da_xoa = true`) đánh giá của khách; sau đó khách có thể viết lại đánh giá mới.
 
 ### Response Thành công (HTTP 200 OK)
+
+`result` không xuất hiện vì giá trị null.
 ```json
 {
   "success": true,
   "code": 200,
   "message": "Xóa đánh giá thành công",
-  "result": null,
-  "errors": null,
   "timestamp": "2026-11-06T08:35:00"
 }
 ```
@@ -276,14 +272,14 @@ Quy tắc nghiệp vụ chung:
 ### Response Lỗi thường gặp
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
 - **HTTP 403 Forbidden:** Không phải vai trò `CUSTOMER`.
-- **HTTP 404 Not Found:** Chưa có đánh giá để xóa (`4303 REVIEW_NOT_FOUND`).
+- **HTTP 404 Not Found:** Chưa có đánh giá để xóa (`4303 REVIEW_NOT_FOUND`: "Không tìm thấy đánh giá").
 
 ---
 
 ## 7. Danh sách đánh giá cho quản trị (FR-NC6)
 
 - **Endpoint:** `GET /api/v1/admin/reviews`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` (Cần Header `Authorization: Bearer <token>`) — Quản lý cần quyền `REVIEW_MODERATE`
+- **Quyền hạn:** `PERM_REVIEW_MODERATE` (Cần Header `Authorization: Bearer <token>`)
 - **Mô tả:** Liệt kê mọi đánh giá (kể cả đã ẩn), mới nhất trước, kèm tên sản phẩm và lý do ẩn để kiểm duyệt.
 
 ### Query Parameters
@@ -309,7 +305,6 @@ Quy tắc nghiệp vụ chung:
         "rating": 1,
         "title": "Quảng cáo",
         "body": "Mua hàng giá rẻ tại website khác...",
-        "sizeFit": null,
         "verifiedPurchase": true,
         "authorName": "Lê M.",
         "createdAt": "2026-11-05T09:00:00",
@@ -325,21 +320,20 @@ Quy tắc nghiệp vụ chung:
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T10:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
-- **HTTP 403 Forbidden:** Không phải `ADMIN` hoặc `STAFF`.
+- **HTTP 403 Forbidden:** Thiếu quyền `PERM_REVIEW_MODERATE`.
 
 ---
 
 ## 8. Ẩn / hiện đánh giá (FR-NC6)
 
 - **Endpoint:** `PATCH /api/v1/admin/reviews/{reviewId}/visibility`
-- **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` (Cần Header `Authorization: Bearer <token>`) — Quản lý cần quyền `REVIEW_MODERATE`
+- **Quyền hạn:** `PERM_REVIEW_MODERATE` (Cần Header `Authorization: Bearer <token>`)
 - **Mô tả:** Ẩn đánh giá vi phạm khỏi trang sản phẩm (kèm lý do) hoặc hiện lại. Đánh giá ẩn không tính vào điểm trung bình.
 
 ### Request Body
@@ -367,15 +361,14 @@ Quy tắc nghiệp vụ chung:
     "rating": 1,
     "title": "Quảng cáo",
     "body": "Mua hàng giá rẻ tại website khác...",
-    "sizeFit": null,
     "verifiedPurchase": true,
     "authorName": "Lê M.",
     "createdAt": "2026-11-05T09:00:00",
     "updatedAt": "2026-11-05T10:05:00",
     "hidden": true,
-    "hiddenReason": "Spam"
+    "hiddenReason": "Spam",
+    "productName": "Áo thun cotton basic"
   },
-  "errors": null,
   "timestamp": "2026-11-05T10:05:00"
 }
 ```
@@ -383,5 +376,5 @@ Quy tắc nghiệp vụ chung:
 ### Response Lỗi thường gặp
 - **HTTP 400 Bad Request:** Thiếu `hidden` hoặc `reason` quá dài.
 - **HTTP 401 Unauthorized:** Thiếu token hoặc token không hợp lệ / hết hạn.
-- **HTTP 403 Forbidden:** Không phải `ADMIN` hoặc `STAFF`.
-- **HTTP 404 Not Found:** Không tìm thấy đánh giá (`4303 REVIEW_NOT_FOUND`).
+- **HTTP 403 Forbidden:** Thiếu quyền `PERM_REVIEW_MODERATE`.
+- **HTTP 404 Not Found:** Không tìm thấy đánh giá (`4303 REVIEW_NOT_FOUND`: "Không tìm thấy đánh giá").

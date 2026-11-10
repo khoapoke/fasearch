@@ -31,6 +31,10 @@ public enum Permission {
     ORDER_COLLECT_CASH("ORDERS", "Ghi nhận thu tiền COD"),
     POS_USE("ORDERS", "Bán tại quầy (POS)"),
 
+    RETURN_VIEW("ORDERS", "Xem đổi/trả"),
+    RETURN_PROCESS("ORDERS", "Duyệt và nhận hàng trả"),
+    RETURN_REFUND("ORDERS", "Hoàn tiền đổi/trả"),
+
     // Khách hàng
     CUSTOMER_VIEW("CUSTOMERS", "Xem khách hàng"),
     CUSTOMER_CREATE("CUSTOMERS", "Thêm khách hàng"),
@@ -65,6 +69,8 @@ public enum Permission {
     LOYALTY_POLICY_VIEW("LOYALTY", "Xem chính sách điểm và hạng"),
     LOYALTY_POLICY_MANAGE("LOYALTY", "Sửa chính sách điểm và hạng"),
     LOYALTY_ADJUST("LOYALTY", "Điều chỉnh điểm và tính lại điểm cho đơn"),
+
+    AUDIT_VIEW("REPORTS", "Xem nhật ký hoạt động"),
 
     // Report
     REPORT_VIEW("REPORTS", "Xem Report"),
@@ -104,7 +110,7 @@ public enum Permission {
      * để Quản lý giữ đúng phạm vi trước khi có phân quyền.
      */
     public static final Set<Permission> OFF_BY_DEFAULT_FOR_STAFF = Collections.unmodifiableSet(
-            new LinkedHashSet<>(List.of(LOYALTY_ADJUST)));
+            new LinkedHashSet<>(List.of(LOYALTY_ADJUST, RETURN_REFUND, AUDIT_VIEW)));
 
     private final Group group;
     private final String label;

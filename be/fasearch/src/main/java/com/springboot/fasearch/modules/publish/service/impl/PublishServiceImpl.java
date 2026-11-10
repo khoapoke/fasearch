@@ -213,13 +213,14 @@ public class PublishServiceImpl implements PublishService {
         } else {
             Product target = productRepository.findByIdForUpdate(draft.getProduct().getId())
                     .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+            // Set the publication version before SKU queries can auto-flush the new price.
+            target.setPublicationStatus(PublicationStatus.PUBLISHED);
+            target.setPublicationVersion(target.getPublicationVersion() == null ? 1L : target.getPublicationVersion() + 1);
             mergeScalars(target, draft);
             if (draft.getImageUrl() != null && draft.getImageUrl().contains("/drafts/")) {
                 target.setImageUrl(publishImage(draft));
             }
             mergeVariants(target, draft);
-            target.setPublicationStatus(PublicationStatus.PUBLISHED);
-            target.setPublicationVersion(target.getPublicationVersion() == null ? 1L : target.getPublicationVersion() + 1);
             product = productRepository.save(target);
         }
         draft.setDraftState("PUBLISHED");

@@ -43,7 +43,7 @@ Tài liệu này liệt kê toàn bộ yêu cầu chức năng (Functional Requi
 | FR-06 | Đăng ký tài khoản | Khách hàng tự đăng ký tài khoản mới với vai trò `CUSTOMER` | `P` | X |
 | FR-07 | Xem thông tin tài khoản hiện tại | Lấy thông tin tài khoản đang đăng nhập từ JWT Token | `A` `S` `C` | X |
 | FR-08 | Phân quyền truy cập (RBAC) | Giới hạn quyền truy cập chức năng và dữ liệu dựa trên Vai trò (`ADMIN`, `STAFF`, `CUSTOMER`) | `SYS` | X |
-| FR-09 | Ghi nhật ký hệ thống | Tự động ghi vết người dùng, thời gian và dữ liệu thay đổi khi Thêm / Sửa / Xóa — *Evidence @4e5369c5: no controller/service/entity; only table `nhat_ky_he_thong` (`db/migration/V1__init_database.sql:98`) and seed `V1_9__seed_doi_tra_nhat_ky_ht.sql:12`. KHÔNG có code ghi vết* | `SYS` | N |
+| FR-09 | Ghi nhật ký hệ thống | V33 `activity_log`, trigger cùng transaction, gán người thao tác, trường cho phép, lọc/phân trang/chi tiết/Export CSV; AUDIT_VIEW mặc định tắt STAFF. Xem api-audit.md và r3-fix/READY.md. | `SYS` `A` `S` | X |
 
 **Ghi chú xác thực (đối chiếu source `4e5369c5`):** `AuthController` (`auth/controller/AuthController.java`) có `POST /api/v1/auth/login` (`:32`), `POST /api/v1/auth/register` (`:39`), `GET /api/v1/auth/my-info` (`:46`), `POST /api/v1/auth/change-password` (`:54`); quản trị tài khoản ở `AccountController` `/api/v1/auth/accounts`. **KHÔNG có** `/api/v1/auth/logout`, `/api/v1/auth/csrf`, `/api/v1/auth/profile`. BE chỉ dùng JWT (`SecurityConfig`: `csrf.disable()`, dòng 61); đăng xuất là thao tác phía FE (xóa cookie cục bộ), không có thu hồi token phía BE.
 
@@ -113,7 +113,7 @@ S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; hi
 | FR-31 | Lập phiếu xuất / Chuyển kho | Tạo phiếu xuất hủy (hàng lỗi) hoặc phiếu chuyển kho giữa các chi nhánh | `A` | X |
 | FR-32 | Kiểm kê kho | Tạo phiếu kiểm kê, ghi nhận số lượng đếm thực tế bằng quét mã vạch | `A` `S` | X |
 | FR-33 | Cân bằng kho | Tự động tạo phiếu cân bằng để điều chỉnh tồn phần mềm khớp với thực tế — *Evidence @4e5369c5: `InventoryController` `POST /api/v1/inventory/stocktakes` chỉ tạo phiếu `PENDING_APPROVAL` + tính `difference` (`InventoryServiceImpl#createStocktake:410-470`); KHÔNG có endpoint duyệt/cân bằng, `StocktakeStatus.RECONCILED` chưa được dùng, tồn kho không bị điều chỉnh* | `SYS` | N |
-| FR-34 | Cảnh báo tồn kho thấp | Gửi thông báo khi số lượng tồn kho SKU xuống bằng hoặc dưới ngưỡng tối thiểu — *Evidence @4e5369c5: chỉ có số liệu tổng hợp `lowStock` trong `GET /api/v1/inventory/stock-summary` (`InventoryServiceImpl:82-88`, `InventoryRepository#countLowStock:38`); KHÔNG có thông báo/cảnh báo* | `SYS` | N |
+| FR-34 | Cảnh báo tồn kho thấp | V29 ghi sự kiện khi SKU từ trên ngưỡng xuống <= ngưỡng; chuông theo INVENTORY_VIEW, thăm dò 30 giây, đọc riêng từng tài khoản. Xem api-notification.md. | `SYS` | X |
 
 ---
 
@@ -156,10 +156,10 @@ S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; hi
 
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
-| FR-48 | Tra cứu hóa đơn đổi trả | Tìm kiếm hóa đơn cũ theo Mã đơn hàng hoặc SĐT khách hàng — *Evidence @4e5369c5: không có controller/service/entity/repository; chỉ enum `ReturnOrderType`/`ReturnOrderStatus` (`common/enums`) và bảng `phieu_doi_tra` trong migration* | `A` `S` | N |
-| FR-49 | Kiểm tra điều kiện đổi trả | Tự động từ chối nếu thời hạn tính từ lúc mua vượt quá số ngày quy định — *Evidence @4e5369c5: không có logic kiểm tra hạn đổi trả* | `SYS` | N |
-| FR-50 | Lập phiếu đổi / trả hàng | Tính chênh lệch giá khi đổi sang SP khác, hủy nếu chênh lệch vượt mức cho phép — *Evidence @4e5369c5: không có logic lập phiếu / tính chênh lệch* | `A` `S` | N |
-| FR-51 | Nhập kho hàng trả lại | Tự động tạo phiếu nhập kho thu hồi cho SP đủ điều kiện tái kinh doanh — *Evidence @4e5369c5: không có logic tạo phiếu nhập kho thu hồi* | `SYS` | N |
+| FR-48 | Tra cứu hóa đơn đổi trả | `ReturnController#list/detail`: GET `/api/v1/admin/returns`, lọc trạng thái/ngày/tên/SĐT/mã đơn, RETURN_VIEW | `A` `S` | X |
+| FR-49 | Kiểm tra điều kiện đổi trả | `ReturnService#create`: COMPLETED, 7 ngày từ completed_at, một yêu cầu mở, khóa đơn, giới hạn số lượng; đơn cũ chưa biết ngày hoàn tất cần liên hệ cửa hàng | `SYS` | X |
+| FR-50 | Lập phiếu đổi / trả hàng | R1 đã có yêu cầu trả hàng của khách, duyệt/từ chối/hủy đã duyệt/nhận hàng/hoàn Stripe test hoặc thủ công có chứng từ, điểm và lịch sử (R1F V31; báo cáo/hạng/CSV net hoàn). Đổi sang sản phẩm khác bằng đơn mua mới; chưa có phiếu tính chênh lệch đổi sản phẩm tự động | `A` `S` `C` | ~ |
+| FR-51 | Nhập kho hàng trả lại | R1 receive tăng tồn vật lý/khả dụng phần nhập lại; lưu liên kết order_return_line, phần hỏng tạo phiếu DAMAGED. Chưa tạo thêm phiếu nhập kho độc lập cho phần bán lại | `SYS` | ~ |
 
 ---
 
@@ -168,19 +168,31 @@ S2 routes nằm tại `/api/v1/thanh-vien` và `/api/v1/quan-tri/thanh-vien`; hi
 | Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
 | :--- | :--- | :--- | :---: | :---: |
 | FR-52 | Báo cáo doanh thu | Xuất tổng doanh thu, lợi nhuận theo Ngày/Tuần/Tháng, lọc theo kênh bán (POS vs Online) — *Evidence @4e5369c5: `AdminAnalyticsController#revenue` `GET /api/v1/analytics/revenue` (`analytics/controller/AdminAnalyticsController.java:34`, `AnalyticsServiceImpl#revenue:81`; DAY/WEEK/MONTH/YEAR). `totalCogs`/`grossProfit` luôn `null` (chưa có lịch sử giá vốn); kênh chỉ `ALL`, KHÔNG tách POS/Online (`channelNote`/`cogsNote`)* | `A` | ~ |
-| FR-53 | Báo cáo hiệu quả sản phẩm | Xuất Top N SP/SKU bán chạy nhất hoặc danh sách hàng tồn chậm luân chuyển — *Evidence @4e5369c5: `AdminAnalyticsController#topProducts` `GET /api/v1/analytics/top-products` (`:48`; `BEST_SELLER`/`SLOW_MOVING`)* | `A` | X |
+| FR-53 | Báo cáo hiệu quả sản phẩm | Xuất Top N sản phẩm (gộp SKU chưa xóa) bán chạy nhất hoặc sản phẩm có mọi SKU bán ròng bằng 0 — *Evidence @4e5369c5: `AdminAnalyticsController#topProducts` `GET /api/v1/analytics/top-products` (`:48`; `BEST_SELLER`/`SLOW_MOVING`)* | `A` | X |
 | FR-54 | Báo cáo Xuất - Nhập - Tồn | Xuất biến động tồn kho (Tồn đầu kỳ, Nhập, Xuất bán, Tồn cuối kỳ) theo từng SKU — *Evidence @4e5369c5: `AdminAnalyticsController#inventoryMovement` `GET /api/v1/analytics/inventory-movement` (`:58`, `AnalyticsServiceImpl:165-181`); chỉ có `totalSold` + `closingStock` (tồn hiện tại); `openingStock`/`totalImport`/`totalDamaged` luôn `null`* | `A` | ~ |
 
 ---
 
 ## Tổng kết tiến độ
 
-Đối chiếu source tại `4e5369c5` (tổng 58 dòng FR).
+Đối chiếu source tại `4e5369c5` (tổng 58 dòng FR); N1 cập nhật FR-34 hoàn thành. Nhóm FR-N1 bổ sung được liệt kê riêng bên dưới.
 
 | Trạng thái | Số lượng | Ghi chú |
 | :--- | :---: | :--- |
-| X (Hoàn thành) | 48 | Đã triển khai (controller + service) |
+| X (Hoàn thành) | 49 | Đã triển khai (controller + service) |
 | ~ (Một phần) | 3 | FR-14, FR-52, FR-54 (xem cột Mô tả) |
-| N (Chưa có trong source) | 7 | FR-09, FR-33, FR-34, FR-48..51 |
+| N (Chưa có trong source) | 6 | FR-09, FR-33, FR-48..51 |
 | O (Đang làm) | 0 | — |
 | (trống) | 0 | — |
+
+## 11. Thông báo (Module `notification`, round 3 N1)
+
+| Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
+| :--- | :--- | :--- | :---: | :---: |
+| FR-N1-01..03 | Thông báo đơn và đổi/trả, cảnh báo yêu thích, chuông quản trị | V29; outbox, AFTER_COMMIT, opt-out, giới hạn 24 giờ, quyền VIEW; dry-run mặc định. Xem api-notification.md. | CUSTOMER / ADMIN / STAFF / SYS | X |
+
+## 12. Nhật ký hoạt động (Module `audit`, round 3 F)
+
+| Mã | Chức năng | Mô tả | Vai trò | Trạng thái |
+| :--- | :--- | :--- | :---: | :---: |
+| FR-A1-01 | Nhật ký hoạt động | Ghi cùng transaction, gán người thao tác, không lưu giá trị nhạy cảm, lọc/phân trang/chi tiết và Export CSV; V33, AUDIT_VIEW. | ADMIN / STAFF (được cấp quyền) / SYS | X |

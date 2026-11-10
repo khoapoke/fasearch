@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.transaction.annotation.Transactional;
+import com.springboot.fasearch.modules.trash.service.interfaces.TrashService;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -15,6 +19,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import com.springboot.fasearch.exception.AppException;
 import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.exception.GlobalExceptionHandler;
 import com.springboot.fasearch.modules.order.entity.Order;
 import com.springboot.fasearch.modules.order.repository.OrderRepository;
 import com.springboot.fasearch.modules.order.repository.OrderSpecifications;
@@ -50,6 +55,8 @@ class CategoryNameAndOrderRangeIntegrationTest {
     private CategoryService categories;
     @Autowired
     private OrderRepository orders;
+    @Autowired
+    private TrashService trash;
 
     private CategoryReq req(String name) {
         CategoryReq r = new CategoryReq();
@@ -80,6 +87,42 @@ class CategoryNameAndOrderRangeIntegrationTest {
         jdbc.update("update danh_muc set da_xoa = true where ma_danh_muc = ?", ao);
         Long again = categories.createCategory(req("áo khoác f5")).getId();
         assertThat(again).isNotEqualTo(ao);
+    }
+
+    @Test
+    @Transactional
+    void migrationMergesReferencesAndRestoreRejectsNormalizedConflict() throws Exception {
+        jdbc.execute("drop index uq_danh_muc_active_name");
+        long winner = jdbc.queryForObject("insert into danh_muc(ten_danh_muc) values ('MERGE TEST') returning ma_danh_muc", Long.class);
+        long duplicate = jdbc.queryForObject("insert into danh_muc(ten_danh_muc) values ('merge   test') returning ma_danh_muc", Long.class);
+        jdbc.update("insert into san_pham(ten_sp, gia_ban, ma_danh_muc) values ('winner', 1, ?)", winner);
+        jdbc.update("insert into san_pham(ten_sp, gia_ban, ma_danh_muc, da_xoa) values ('deleted', 1, ?, true)", duplicate);
+        jdbc.update("insert into product_draft(ma_danh_muc) values (?)", duplicate);
+        String migration = new ClassPathResource("db/migration/V34__merge_duplicate_categories.sql")
+                .getContentAsString(StandardCharsets.UTF_8);
+        jdbc.execute(migration);
+        assertThat(jdbc.queryForObject("select ten_danh_muc from danh_muc where ma_danh_muc = ?", String.class, winner)).isEqualTo("Merge test");
+        assertThat(jdbc.queryForObject("select count(*) from san_pham where ma_danh_muc = ?", Long.class, winner)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from product_draft where ma_danh_muc = ?", Long.class, winner)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select ly_do_xoa from danh_muc where ma_danh_muc = ? and da_xoa and ngay_xoa is not null", String.class, duplicate)).isEqualTo("Gộp trùng tên vào #" + winner);
+        assertThatThrownBy(() -> trash.restoreCategory(duplicate)).isInstanceOfSatisfying(AppException.class,
+                e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.RESTORE_CONFLICT));
+        // A second execution has no duplicates and must be safe.
+        jdbc.execute(migration);
+        assertThat(jdbc.queryForObject("select count(*) from pg_indexes where indexname = 'uq_danh_muc_active_name'", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    void uniqueIndexViolationMapsToCategoryError() {
+        jdbc.update("insert into danh_muc(ten_danh_muc) values ('index conflict fixture')");
+        try {
+            jdbc.update("insert into danh_muc(ten_danh_muc) values ('INDEX CONFLICT FIXTURE')");
+            throw new AssertionError("Expected unique index violation");
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            var response = new GlobalExceptionHandler().handleRuntimeException(e);
+            assertThat(response.getStatusCode().value()).isEqualTo(400);
+            assertThat(response.getBody().getMessage()).isEqualTo(ErrorCode.CATEGORY_NAME_ALREADY_EXISTS.getMessage());
+        }
     }
 
     @Test

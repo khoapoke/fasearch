@@ -1,5 +1,15 @@
 package com.springboot.fasearch.modules.product;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Optional;
+import org.mapstruct.factory.Mappers;
+import com.springboot.fasearch.exception.AppException;
+import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.modules.product.dto.request.ProductUpdateReq;
+import com.springboot.fasearch.modules.product.dto.response.ProductDetailRes;
+import com.springboot.fasearch.modules.product.entity.Product;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -271,6 +281,33 @@ class ProductPublicationFilterTest {
         when(mapper.toProductDetailResponse(product)).thenReturn(detail);
         ProductServiceImpl svc = serviceWithProduct(product, mapper);
         org.junit.jupiter.api.Assertions.assertEquals(50L, svc.getProductById(50L).getId());
+    }
+
+
+
+    @Test
+    void detailResponseCarriesPublicationStatus() {
+        ProductMapper mapper = Mappers.getMapper(ProductMapper.class);
+        Product product = new Product();
+        product.setPublicationStatus(PublicationStatus.UNPUBLISHED);
+        ProductDetailRes res = mapper.toProductDetailResponse(product);
+        assertEquals(PublicationStatus.UNPUBLISHED, res.getPublicationStatus());
+    }
+
+    @Test
+    void editingPublishedProductGivesVietnameseConflict() {
+        ProductRepository repo = mock(ProductRepository.class);
+        Product product = new Product();
+        product.setPublicationStatus(PublicationStatus.PUBLISHED);
+        when(repo.findById(5L)).thenReturn(Optional.of(product));
+        ProductServiceImpl service = new ProductServiceImpl(repo, mock(ProductVariantRepository.class),
+                mock(InventoryRepository.class), mock(CategoryRepository.class),
+                mock(BrandRepository.class), mock(ProductMapper.class),
+                mock(com.springboot.fasearch.modules.trash.service.impl.DeleteGuards.class),
+                new com.springboot.fasearch.common.softdelete.SoftDeleteRecorder(mock(com.springboot.fasearch.modules.auth.repository.AccountRepository.class)));
+        AppException error = assertThrows(AppException.class, () -> service.updateProduct(5L, new ProductUpdateReq()));
+        assertEquals(ErrorCode.DATA_CONFLICT, error.getErrorCode());
+        assertTrue(error.getMessage().startsWith("Sản phẩm đang xuất bản"));
     }
 
 }

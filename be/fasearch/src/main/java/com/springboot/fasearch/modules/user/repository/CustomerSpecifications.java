@@ -52,14 +52,21 @@ public final class CustomerSpecifications {
                     var invoice = invoices.from(Invoice.class);
                     invoices.select(cb.coalesce(cb.sum(invoice.get("totalActualPaid")), java.math.BigDecimal.ZERO));
                     invoices.where(cb.equal(invoice.get("order").get("customer").get("id"), root.get("id")),
-                            cb.equal(invoice.get("status"), PaymentStatus.PAID));
+                            invoice.get("status").in(PaymentStatus.PAID, PaymentStatus.REFUNDED),
+                            cb.isFalse(invoice.get("order").get("isDeleted")));
+                    var refunds = query.subquery(java.math.BigDecimal.class);
+                    var refund = refunds.from(com.springboot.fasearch.modules.returns.ReturnRefundSnapshot.class);
+                    refunds.select(cb.coalesce(cb.sum(refund.<java.math.BigDecimal>get("refundAmount")),java.math.BigDecimal.ZERO));
+                    refunds.where(cb.equal(refund.get("order").get("customer").get("id"),root.get("id")),
+                            cb.equal(refund.get("status"),"REFUNDED"), cb.isFalse(refund.get("order").get("isDeleted")));
+                    var netSales=cb.diff(invoices,refunds);
                     predicates.add(cb.isTrue(root.get("salesHistoryComplete")));
-                    predicates.add(cb.greaterThanOrEqualTo(invoices, salesTier.getMinimumCumulativePaidSales()));
+                    predicates.add(cb.greaterThanOrEqualTo(netSales, salesTier.getMinimumCumulativePaidSales()));
                     membershipTierRepository.findAll().stream()
                             .map(MembershipTier::getMinimumCumulativePaidSales)
                             .filter(value -> value != null && value.compareTo(salesTier.getMinimumCumulativePaidSales()) > 0)
                             .min(java.math.BigDecimal::compareTo)
-                            .ifPresent(next -> predicates.add(cb.lessThan(invoices, next)));
+                            .ifPresent(next -> predicates.add(cb.lessThan(netSales, next)));
                 }
             }
 

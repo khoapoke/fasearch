@@ -42,6 +42,8 @@ public class OrderDetailRes {
     private Long voucherCampaignVersion;
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
+    private BigDecimal paidAmount;
+    private BigDecimal refundedAmount;
     private PaymentStatus paymentStatus;
     private PaymentMethodType paymentMethod;
     private LocalDateTime createdAt;

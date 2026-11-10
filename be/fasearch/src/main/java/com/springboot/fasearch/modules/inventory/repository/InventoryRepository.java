@@ -20,6 +20,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
     @Query("select i from Inventory i where i.variant.id = :skuId")
     Optional<Inventory> findByVariantIdForUpdate(@Param("skuId") Long skuId);
 
+    /** Historical return must work even when its SKU/product was soft-deleted. */
+    @Query(value = "select * from ton_kho where ma_sku=:skuId and da_xoa=false for update", nativeQuery = true)
+    Optional<Inventory> findForReturn(@Param("skuId") Long skuId);
+
     boolean existsByVariantId(Long skuId);
 
     /** Storefront: tồn khả dụng theo lô SKU của một sản phẩm (một truy vấn, không N+1). */

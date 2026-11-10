@@ -81,6 +81,11 @@ public class BrevoMailClient {
      * Che do brevo thu lai dung mot lan roi moi bao loi EMAIL_SEND_FAILED.
      */
     public void send(String toEmail, String toName, String subject, String htmlContent, String textContent) {
+        send(toEmail, toName, subject, htmlContent, textContent, null);
+    }
+
+    /** Stable UUID supplied by the notification outbox; Brevo deduplicates accepted requests. */
+    public void send(String toEmail, String toName, String subject, String htmlContent, String textContent, String idempotencyKey) {
         if (!isBrevoMode()) {
             log.info("[mail:log] to={} subject={}\n--- text ---\n{}\n--- html ---\n{}",
                     toEmail, subject, textContent, htmlContent);
@@ -89,7 +94,7 @@ public class BrevoMailClient {
         BrevoSendReq body = new BrevoSendReq(
                 new BrevoParty(senderName, senderEmail),
                 new BrevoParty[] { new BrevoParty(toName, toEmail) },
-                subject, htmlContent, textContent);
+                subject, htmlContent, textContent, idempotencyKey == null ? java.util.Map.of() : java.util.Map.of("idempotencyKey", idempotencyKey));
         AppException failure = null;
         for (int attempt = 1; attempt <= 2; attempt++) {
             try {
@@ -103,6 +108,13 @@ public class BrevoMailClient {
                         .toBodilessEntity();
                 return;
             } catch (RestClientResponseException e) {
+                if (idempotencyKey != null && e.getStatusCode().value() == 400) {
+                    try {
+                        var error = new com.fasterxml.jackson.databind.ObjectMapper().readTree(e.getResponseBodyAsString());
+                        if ("duplicate_parameter".equals(error.path("code").asText()) &&
+                                error.path("message").asText("").toLowerCase(java.util.Locale.ROOT).contains("idempoten")) return;
+                    } catch (Exception ignored) { /* normal error path */ }
+                }
                 failure = new AppException(ErrorCode.EMAIL_SEND_FAILED,
                         "Brevo tu choi yeu cau (" + e.getStatusCode() + ")");
                 log.warn("Brevo send that bai lan {} (HTTP {}), to={}", attempt, e.getStatusCode(), toEmail);
@@ -119,6 +131,6 @@ public class BrevoMailClient {
     }
 
     private record BrevoSendReq(BrevoParty sender, BrevoParty[] to, String subject,
-            String htmlContent, String textContent) {
+            String htmlContent, String textContent, java.util.Map<String, String> headers) {
     }
 }

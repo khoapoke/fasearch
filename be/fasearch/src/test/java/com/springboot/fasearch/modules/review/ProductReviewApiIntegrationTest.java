@@ -227,7 +227,7 @@ class ProductReviewApiIntegrationTest {
     void summaryFilterAndSort() throws Exception {
         giveOrder(buyer, OrderStatus.COMPLETED);
         assertThat(call("POST", url(), review(5, "VUA", "Rất hài lòng"), buyerToken).status()).isEqualTo(201);
-        // Thêm 3 đánh giá khác bằng SQL (tài khoản khách tạo nhanh) để đủ mẫu cho cảm nhận size.
+        // Bốn lượt chưa đủ mẫu cho cảm nhận size.
         int[] ratings = {4, 4, 2};
         String[] fits = {"VUA", "VUA", "NHO"};
         for (int i = 0; i < ratings.length; i++) {
@@ -243,13 +243,17 @@ class ProductReviewApiIntegrationTest {
         assertThat(s.at("/distribution/4").asLong()).isEqualTo(2);
         assertThat(s.at("/distribution/2").asLong()).isEqualTo(1);
         assertThat(s.get("fitCount").asLong()).isEqualTo(4);
-        assertThat(s.get("fitVerdict").asText()).isEqualTo("VUA");
+        assertThat(s.get("fitVerdict").isNull()).isTrue();
+        Account fifth = newCustomerAccount("extra4", "Lê", "Minh 4");
+        jdbc.update("INSERT INTO product_review (product_id, account_id, rating, body, size_fit, verified_purchase, created_at) VALUES (?,?,?,?,?,true, now() - interval '5 days')",
+                productId, fifth.getId(), 3, "Nhận xét thứ năm", "VUA");
+        assertThat(call("GET", url() + "/summary", null, null).json().at("/result/fitVerdict").asText()).isEqualTo("VUA");
 
         JsonNode onlyFour = call("GET", url() + "?rating=4", null, null).json().get("result");
         assertThat(onlyFour.get("totalElements").asLong()).isEqualTo(2);
         JsonNode lowest = call("GET", url() + "?sort=rating_asc&size=2", null, null).json().get("result");
         assertThat(lowest.get("content").get(0).get("rating").asInt()).isEqualTo(2);
-        assertThat(lowest.get("totalPages").asInt()).isEqualTo(2);
+        assertThat(lowest.get("totalPages").asInt()).isEqualTo(3);
         JsonNode newest = call("GET", url(), null, null).json().get("result");
         assertThat(newest.get("content").get(0).get("rating").asInt()).isEqualTo(5);
         assertThat(call("GET", url() + "?rating=9", null, null).status()).isEqualTo(400);

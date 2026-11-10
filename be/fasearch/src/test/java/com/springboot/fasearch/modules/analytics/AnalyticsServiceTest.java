@@ -69,8 +69,8 @@ class AnalyticsServiceTest {
 
     private static Object[] salesRow(long sku, long product, String name, long qty, String revenue,
             long softDeleted, long stock) {
-        return new Object[] { sku, product, name, "Ao", "Den", "M", "BC-" + sku, qty,
-                new BigDecimal(revenue), softDeleted, stock };
+        return new Object[] { product, name, "Ao", qty,
+                new BigDecimal(revenue), softDeleted, stock, qty == 0 };
     }
 
     @Test
@@ -95,6 +95,18 @@ class AnalyticsServiceTest {
                 LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 2));
         assertEquals(1, result.size());
         assertEquals(1L, result.get(0).getProductId());
+    }
+
+    @Test
+    void slowMovingRequiresEverySkuZeroBeforeApplyingLimit() {
+        when(repository.productSalesInRange(anyString(), anyString())).thenReturn(List.<Object[]>of(
+                new Object[] { 1L, "Offsetting SKUs", "Ao", 0L, BigDecimal.ZERO, 0L, 5L, false },
+                new Object[] { 2L, "All zero", "Ao", 0L, BigDecimal.ZERO, 0L, 8L, true }));
+        var result = service.topProducts("SLOW_MOVING", 1,
+                LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 2));
+        assertEquals(1, result.size());
+        assertEquals(2L, result.get(0).getProductId());
+        assertEquals(1, result.get(0).getRank());
     }
 
     @Test

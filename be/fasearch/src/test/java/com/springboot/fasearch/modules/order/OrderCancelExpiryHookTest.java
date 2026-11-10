@@ -48,7 +48,8 @@ class OrderCancelExpiryHookTest {
                 mock(InventoryRepository.class), mock(ProductVariantRepository.class),
                 benefits, mock(ShippingService.class), loyalty,
                 mock(CheckoutIdempotencyRepository.class), expiry,
-                mock(com.springboot.fasearch.modules.order.service.impl.OrderItemHistoryBuilder.class));
+                mock(com.springboot.fasearch.modules.order.service.impl.OrderItemHistoryBuilder.class),
+                mock(org.springframework.context.ApplicationEventPublisher.class));
     }
 
     private Order pendingOrder(Long id) {
@@ -74,6 +75,7 @@ class OrderCancelExpiryHookTest {
         EmployeeRepository employees = mock(EmployeeRepository.class);
 
         Order order = pendingOrder(94L);
+        order.setNote("[Người nhận: Lan - 0900000000] | [PACKING]: Ghi chú nội bộ");
         when(orders.findByIdForUpdate(94L)).thenReturn(Optional.of(order));
         when(employees.findByAccount_Username("admin")).thenReturn(Optional.empty());
         when(orders.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -85,6 +87,7 @@ class OrderCancelExpiryHookTest {
 
         verify(expiry).expireAfterCommit(94L);
         org.junit.jupiter.api.Assertions.assertEquals(OrderStatus.CANCELLED, order.getStatus());
+        org.junit.jupiter.api.Assertions.assertEquals("khach doi y", order.getCancellationReason());
     }
 
     @Test

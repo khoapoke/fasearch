@@ -4,6 +4,8 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 
 ---
 
+Các ví dụ thành công bỏ qua `errors` vì `ApiResponse` không tuần tự hóa trường null. `CustomerRes` và `EmployeeRes` cũng bỏ qua trường null; `avatar` là trường tùy chọn của `EmployeeRes`, còn tọa độ giao hàng và hạng legacy là các trường tùy chọn của `CustomerRes`.
+
 ## 1. Xem danh sách khách hàng (FR-10)
 
 - **Endpoint:** `GET /api/v1/users/customers`
@@ -42,7 +44,9 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
         "cumulativePaidSales": null,
         "salesTierId": null,
         "salesTierName": null,
-        "salesTierStatus": "HISTORY_UNKNOWN"
+        "salesTierStatus": "HISTORY_UNKNOWN",
+        "deliveryLatitude": 10.8070354,
+        "deliveryLongitude": 106.6287031
       }
     ],
     "pageNumber": 0,
@@ -51,12 +55,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 401 Unauthorized:** Chưa đăng nhập.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 
@@ -92,12 +96,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "deliveryLatitude": 10.8070354,
     "deliveryLongitude": 106.6287031
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** `CUSTOMER` xem hồ sơ của người khác.
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
 
@@ -145,17 +149,21 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "dob": "1998-10-20",
     "address": "456 Đường CMT8, Quận 3, TP.HCM",
     "accumulatePoint": 0,
+    "tierId": 2,
+    "tierName": "Bạc",
     "cumulativePaidSales": null,
     "salesTierId": null,
     "salesTierName": null,
-    "salesTierStatus": "HISTORY_UNKNOWN"
+    "salesTierStatus": null
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
+- Các trường doanh số luôn là `null` trong phản hồi tạo/cập nhật vì dịch vụ không làm giàu dữ liệu doanh số ở hai thao tác này.
+
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `PHONE_NUMBER_ALREADY_EXISTS` (400): “Số điện thoại đã tồn tại”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ hoặc SĐT đã tồn tại (`PHONE_NUMBER_ALREADY_EXISTS`).
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 
@@ -206,19 +214,23 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "dob": "1995-05-15",
     "address": "999 Đường Nguyễn Huệ, Quận 1, TP.HCM",
     "accumulatePoint": 150,
+    "tierId": 2,
+    "tierName": "Bạc",
     "cumulativePaidSales": null,
     "salesTierId": null,
     "salesTierName": null,
-    "salesTierStatus": "HISTORY_UNKNOWN",
+    "salesTierStatus": null,
     "deliveryLatitude": 10.7769,
     "deliveryLongitude": 106.7009
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
+- Các trường doanh số luôn là `null` trong phản hồi tạo/cập nhật vì dịch vụ không làm giàu dữ liệu doanh số ở hai thao tác này.
+
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `PHONE_NUMBER_ALREADY_EXISTS` (400): “Số điện thoại đã tồn tại”; `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, tọa độ lệch cặp / ngoài miền hoặc SĐT đã tồn tại.
 - **HTTP 403 Forbidden:** `CUSTOMER` sửa hồ sơ của người khác.
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
@@ -244,12 +256,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
   "code": 200,
   "message": "Xóa khách hàng thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”; `DELETE_BLOCKED_BY_HISTORY` (4401): “Không thể xóa vì dữ liệu đã phát sinh giao dịch”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền; `STAFF (Quản lý)` xóa hồ sơ đang liên kết tài khoản đăng nhập (`ACCESS_DENIED`).
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
@@ -283,6 +295,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
         "id": 1,
         "firstName": "Thanh",
         "lastName": "Lê",
+        "avatar": "https://example.com/avatar.jpg",
         "gender": "MALE",
         "phoneNumber": "0901234567",
         "cccd": "079201001234",
@@ -299,12 +312,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 
 ---
@@ -325,6 +338,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "id": 1,
     "firstName": "Thanh",
     "lastName": "Lê",
+    "avatar": "https://example.com/avatar.jpg",
     "gender": "MALE",
     "phoneNumber": "0901234567",
     "cccd": "079201001234",
@@ -334,12 +348,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "username": "staff01",
     "role": "STAFF"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `EMPLOYEE_NOT_FOUND` (404): “Không tìm thấy nhân viên.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 404 Not Found:** Không tìm thấy nhân viên (`EMPLOYEE_NOT_FOUND`).
 
 ---
@@ -394,12 +408,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "username": "staff01",
     "role": "STAFF"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `PHONE_NUMBER_ALREADY_EXISTS` (400): “Số điện thoại đã tồn tại”; `CCCD_ALREADY_EXISTS` (400): “Số CCCD đã tồn tại”; `ACCOUNT_NOT_FOUND` (404): “Không tìm thấy tài khoản.”; `ACCOUNT_ALREADY_LINKED` (400): “Tài khoản đã được liên kết với nhân viên khác.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, trùng SĐT / CCCD hoặc tài khoản đã liên kết nhân viên khác (`ACCOUNT_ALREADY_LINKED`).
 - **HTTP 403 Forbidden:** `STAFF (Quản lý)` gửi `accountId` (`ACCESS_DENIED`).
 - **HTTP 404 Not Found:** Không tìm thấy tài khoản (`ACCOUNT_NOT_FOUND`).
@@ -441,6 +455,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "id": 3,
     "firstName": "Thanh",
     "lastName": "Lê",
+    "avatar": "https://example.com/avatar.jpg",
     "gender": "MALE",
     "phoneNumber": "0907654321",
     "cccd": "079201001234",
@@ -450,12 +465,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "username": "staff01",
     "role": "STAFF"
   },
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `EMPLOYEE_NOT_FOUND` (404): “Không tìm thấy nhân viên.”; `PHONE_NUMBER_ALREADY_EXISTS` (400): “Số điện thoại đã tồn tại”; `CCCD_ALREADY_EXISTS` (400): “Số CCCD đã tồn tại”; `ACCOUNT_NOT_FOUND` (404): “Không tìm thấy tài khoản.”; `ACCOUNT_ALREADY_LINKED` (400): “Tài khoản đã được liên kết với nhân viên khác.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ, trùng SĐT / CCCD hoặc tài khoản đã liên kết (`ACCOUNT_ALREADY_LINKED`).
 - **HTTP 403 Forbidden:** `STAFF (Quản lý)` đổi `accountId` hoặc sửa hồ sơ đang liên kết tài khoản `ADMIN` (`ACCESS_DENIED`).
 - **HTTP 404 Not Found:** Không tìm thấy nhân viên (`EMPLOYEE_NOT_FOUND`) hoặc tài khoản.
@@ -480,12 +495,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
   "code": 200,
   "message": "Xóa nhân viên thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-10-25T15:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `EMPLOYEE_NOT_FOUND` (404): “Không tìm thấy nhân viên.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Lý do xóa dài quá 255 ký tự (`INVALID_REQUEST`).
 - **HTTP 403 Forbidden:** `STAFF (Quản lý)` xóa hồ sơ đang liên kết tài khoản, kể cả hồ sơ liên kết `ADMIN` (`ACCESS_DENIED`). Xóa không lan sang tài khoản đăng nhập, chỉ khóa tài khoản (ADMIN thực hiện).
 - **HTTP 404 Not Found:** Không tìm thấy nhân viên (`EMPLOYEE_NOT_FOUND`).
@@ -518,7 +533,6 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "currentPolicyId": 7,
     "currentPolicyVersion": 2
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -526,11 +540,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 | Trường | Mô tả |
 | :--- | :--- |
 | `availablePoints` | `balancePoints - heldPoints`; không cần opening. `openingRecorded` chỉ cho biết đã có bút toán `OPENING` (tự ghi khi khách đổi điểm lần đầu) |
-| `cumulativePaidSales` | `null` nếu chưa đủ lịch sử hóa đơn |
+| `cumulativePaidSales` | Tổng thực trả trừ các khoản đã hoàn (V28); `null` nếu chưa đủ lịch sử hóa đơn |
 | `salesTierStatus` | `HISTORY_UNKNOWN`, `NO_CONFIGURED_THRESHOLDS`, `KNOWN` |
 | `policyStatus` | `UNCONFIGURED`, `DISABLED`, `ENABLED` |
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `LOYALTY_STATE_CONFLICT` (4208): “Trạng thái điểm đã thay đổi. Tải lại và thử lại.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
 - **HTTP 404 Not Found:** Tài khoản chưa có hồ sơ khách hàng (`CUSTOMER_NOT_FOUND`).
 
@@ -570,14 +585,15 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
-- `type`: `OPENING` (ghi nhận điểm cũ), `HOLD`, `RELEASE`, `REDEEM`, `EARN`, `ADJUST` (cửa hàng điều chỉnh thủ công; `points` có dấu, âm là trừ điểm). Lý do, ghi chú nội bộ và người thực hiện không bao giờ trả về cho khách hàng.
+- `type`: `OPENING` (ghi nhận điểm cũ), `HOLD`, `RELEASE`, `REDEEM`, `EARN`, `RETURN_REVERSE` (thu hồi điểm đơn trả, số không âm; có thể 0 khi thiếu điểm), `RETURN_REDEEM` (hoàn điểm đã đổi), `ADJUST` (cửa hàng điều chỉnh thủ công; `points` có dấu, âm là trừ điểm). Lý do, ghi chú nội bộ và người thực hiện không bao giờ trả về cho khách hàng.
 
 ### Response Lỗi thường gặp
+- **HTTP 404 Not Found:** Không tìm thấy hồ sơ khách hàng (`CUSTOMER_NOT_FOUND`).
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** `page` / `size` ngoài miền cho phép.
 - **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
 
@@ -596,25 +612,26 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
   "code": 200,
   "message": "Customer loyalty policy",
   "result": {
-    "balance": { "customerId": 42, "balancePoints": 150, "heldPoints": 0, "availablePoints": 150, "openingRecorded": true, "policyStatus": "ENABLED" },
+    "balance": { "customerId": 42, "balancePoints": 150, "heldPoints": 0, "availablePoints": 150, "cumulativePaidSales": 2500000.00, "salesTierId": 2, "salesTierName": "Bạc", "salesTierStatus": "KNOWN", "openingRecorded": true, "policyStatus": "ENABLED", "currentPolicyId": 7, "currentPolicyVersion": 2 },
     "policy": {
       "policyId": 7,
       "version": 2,
       "earnCurrencyPerPoint": 100000.00,
       "redeemCurrencyPerPoint": 1000.00,
       "status": "ENABLED",
-      "createdAt": "2026-11-01T10:00:00"
+      "createdAt": null
     },
     "tiers": [
       { "tierId": 1, "name": "Đồng", "minimumCumulativePaidSales": 0.00, "version": 1 }
     ]
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **HTTP 404 Not Found:** Không tìm thấy hồ sơ khách hàng (`CUSTOMER_NOT_FOUND`).
+- **Mã và thông báo mặc định trong `ErrorCode`:** `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `LOYALTY_STATE_CONFLICT` (4208): “Trạng thái điểm đã thay đổi. Tải lại và thử lại.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Không phải `CUSTOMER`.
 
 ---
@@ -645,12 +662,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "currentPolicyId": 7,
     "currentPolicyVersion": 2
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `LOYALTY_STATE_CONFLICT` (4208): “Trạng thái điểm đã thay đổi. Tải lại và thử lại.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
 
@@ -691,12 +708,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 
 ---
@@ -736,12 +753,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "status": "DISABLED",
     "createdAt": "2026-11-05T09:00:00"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Tỷ lệ hoặc trạng thái không hợp lệ.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
 
@@ -784,12 +801,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "status": "ENABLED",
     "createdAt": "2026-11-05T09:00:00"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `RESOURCE_NOT_FOUND` (404): “Không tìm thấy tài nguyên.”; `LOYALTY_POLICY_VERSION_CHANGED` (4206): “Chính sách điểm đã thay đổi. Tải lại trước khi lưu.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Dữ liệu không hợp lệ.
 - **HTTP 404 Not Found:** Không tìm thấy chính sách.
 - **HTTP 409 Conflict:** Phiên bản đã đổi, tải lại trước khi lưu (`4206 LOYALTY_POLICY_VERSION_CHANGED`).
@@ -812,7 +829,6 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     { "tierId": 1, "name": "Đồng", "minimumCumulativePaidSales": 0.00, "version": 1 },
     { "tierId": 2, "name": "Bạc", "minimumCumulativePaidSales": 2500000.00, "version": 1 }
   ],
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
@@ -848,12 +864,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
   "code": 200,
   "message": "Sales tier updated",
   "result": { "tierId": 2, "name": "Bạc", "minimumCumulativePaidSales": 2500000.00, "version": 2 },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `RESOURCE_NOT_FOUND` (404): “Không tìm thấy tài nguyên.”; `LOYALTY_TIER_VERSION_CHANGED` (4207): “Hạng thành viên đã thay đổi. Tải lại trước khi lưu.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Ngưỡng không hợp lệ (âm, trùng hoặc sai thứ tự).
 - **HTTP 404 Not Found:** Không tìm thấy hạng.
 - **HTTP 409 Conflict:** Phiên bản đã đổi (`4207 LOYALTY_TIER_VERSION_CHANGED`).
@@ -890,12 +906,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "entryId": 300,
     "occurredAt": "2026-11-05T09:00:00"
   },
-  "errors": null,
   "timestamp": "2026-11-05T09:00:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `OPENING_ALREADY_RECORDED` (4205): “Số dư điểm mở đầu đã được ghi nhận trước đó.”; `LOYALTY_STATE_CONFLICT` (4208): “Trạng thái điểm đã thay đổi. Tải lại và thử lại.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Không phải `ADMIN`.
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
 - **Ghi chú:** `points` của bút toán `OPENING` = số dư hiện tại trừ phần EARN/REDEEM đã có trong sổ cái, để tổng sổ cái khớp `balancePoints`. Khi khách đổi điểm lần đầu tại checkout, hệ thống tự ghi `OPENING` cùng giao dịch (cùng `sourceKey` `opening:<customerId>`), nên bước này của ADMIN là tùy chọn.
@@ -919,6 +935,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 | `salesTierId` | Long | Không | Lọc theo hạng doanh số |
 
 ### Response Thành công (HTTP 200 OK)
+- `X-Export-Rows`: số dòng; `X-Content-Type-Options: nosniff`
 - `Content-Type: text/csv; charset=UTF-8`
 - `Content-Disposition: attachment; filename="khach-hang-YYYY-MM-DD.csv"`
 - `Cache-Control: no-store`
@@ -933,6 +950,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 - Dòng được ghi theo lô 500, sắp xếp theo mã khách hàng tăng dần; mỗi lô đọc hồ sơ và tổng chi tiêu bằng một truy vấn gộp, không N+1.
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** Bộ lọc sai kiểu/độ dài hoặc tập dữ liệu vượt 50.000 dòng.
 - **HTTP 401 Unauthorized:** Chưa đăng nhập.
 - **HTTP 403 Forbidden:** Vai trò `CUSTOMER` không có quyền.
@@ -950,6 +968,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 | :--- | :--- | :---: | :--- |
 | `page` | Integer | Không | Số trang (mặc định: `0`) |
 | `size` | Integer | Không | Số bản ghi/trang (mặc định: `20`, tối đa `100`) |
+| `sort` | String | Không | Pageable tiếp nhận tham số; truy vấn dịch vụ vẫn sắp xếp theo thời gian xóa |
 
 ### Response Thành công (HTTP 200 OK)
 ```json
@@ -986,7 +1005,6 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-07T09:35:00"
 }
 ```
@@ -1005,6 +1023,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 - **Quyền hạn:** `ADMIN`, `STAFF (Quản lý)` — Quản lý cần quyền `TRASH_RESTORE`
 - **Mô tả:** Cập nhật có điều kiện `da_xoa = true` → `false` (kiểm tra đúng một dòng thay đổi) và xóa dấu vết xóa; các trạng thái khác của hồ sơ giữ nguyên.
   - **Không mở khóa tài khoản liên kết:** hồ sơ nhân sự bị khóa tài khoản khi nghỉ việc, hoặc hồ sơ khách hàng bị khóa tài khoản khi xóa, vẫn ở trạng thái `LOCKED` sau khi khôi phục. `ADMIN` quyết định bật lại ở màn hình tài khoản (mục 6 của `api-auth.md`).
+  - `STAFF` không được khôi phục hồ sơ nhân sự liên kết tài khoản `ADMIN` (`ACCESS_DENIED`).
   - Từ chối khi tài khoản đăng nhập liên kết vẫn đang ở trong thùng rác — khôi phục tài khoản trước (mục 14 của `api-auth.md`).
   - Từ chối khi số điện thoại (khách hàng, nhân sự) hoặc số CCCD (nhân sự) đã được hồ sơ khác đang hoạt động sử dụng.
 
@@ -1015,12 +1034,12 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
   "code": 200,
   "message": "Khôi phục khách hàng thành công",
   "result": true,
-  "errors": null,
   "timestamp": "2026-11-07T09:40:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `TRASH_ITEM_NOT_FOUND` (4407): “Không tìm thấy mục trong thùng rác”; `RESTORE_BLOCKED` (4406): “Không thể khôi phục đối tượng này”; `RESTORE_CONFLICT` (4405): “Không thể khôi phục vì dữ liệu đã trùng”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 404 Not Found:** Mục không còn trong thùng rác (`TRASH_ITEM_NOT_FOUND`).
 - **HTTP 409 Conflict:** Tài khoản đăng nhập liên kết đang bị xóa (`RESTORE_BLOCKED`); trùng số điện thoại hoặc CCCD (`RESTORE_CONFLICT`).
 
@@ -1066,16 +1085,16 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "totalPages": 1,
     "last": true
   },
-  "errors": null,
   "timestamp": "2026-11-08T10:30:00"
 }
 ```
 
-- `delta`: ảnh hưởng có dấu lên số dư (`EARN`, `ADJUST` cộng theo dấu; `REDEEM` trừ; `OPENING`, `HOLD`, `RELEASE` bằng `0`).
-- `balanceAfter`: số dư ngay sau dòng này = số dư hiện tại trừ `delta` của các dòng mới hơn. Chính xác kể cả khi khách chưa có bút toán `OPENING`.
+- `delta`: ảnh hưởng có dấu lên số dư (`EARN`, `ADJUST`, `RETURN_REDEEM` cộng theo dấu; `REDEEM`, `RETURN_REVERSE` trừ; `OPENING`, `HOLD`, `RELEASE` bằng `0`).
+- `balanceAfter`: số dư ngay sau dòng này = số dư hiện tại trừ `delta` của các dòng mới hơn. Trả `null` khi chưa có `OPENING` và tổng hiệu ứng sổ cái không khớp số dư hiện tại.
 - `reasonCode`: `BOI_THUONG`, `DIEU_CHINH_SAI_SOT`, `TANG_THEM`, `HOAN_DON`, `KHAC` (điều chỉnh) hoặc `TINH_LAI_DON` (bút toán `EARN` do tính lại điểm đơn).
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** `page` / `size` ngoài miền cho phép.
 - **HTTP 403 Forbidden:** Không phải `ADMIN` hoặc `STAFF`.
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
@@ -1121,17 +1140,17 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "occurredAt": "2026-11-08T10:30:00",
     "replayed": false
   },
-  "errors": null,
   "timestamp": "2026-11-08T10:30:00"
 }
 ```
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `INVALID_REQUEST` (400): “Dữ liệu yêu cầu không hợp lệ.”; `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”; `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `LOYALTY_STATE_CONFLICT` (4208): “Trạng thái điểm đã thay đổi. Tải lại và thử lại.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 400 Bad Request:** `errors[].reason` là một trong `NON_ZERO` (delta = 0), `INVALID_REASON`, `REQUIRED_FOR_OTHER` (thiếu ghi chú cho `KHAC`), `TOO_LONG`, `BELOW_ZERO` (số dư sau < 0), `BELOW_HELD` (số dư sau thấp hơn điểm đang giữ cho đơn chưa hoàn tất), `OVER_MAX` (vượt giới hạn Integer).
-- **HTTP 403 Forbidden:** Không phải `ADMIN`.
+- **HTTP 403 Forbidden:** Thiếu quyền `LOYALTY_ADJUST`.
 - **HTTP 404 Not Found:** Không tìm thấy khách hàng (`CUSTOMER_NOT_FOUND`).
 - **HTTP 409 Conflict:** Dùng lại `requestId` với `delta` khác (`4208 LOYALTY_STATE_CONFLICT`).
-- **Ghi chú:** Khách còn số dư cũ chưa có `OPENING` vẫn điều chỉnh được; khi `OPENING` được ghi sau đó, `points` của nó = số dư hiện tại trừ phần EARN/ADJUST/REDEEM đã có trong sổ cái nên tổng sổ cái vẫn khớp số dư.
+- **Ghi chú:** Khi gửi lại thành công, `balanceBefore` và `balanceAfter` đều là `null`. Khách còn số dư cũ chưa có `OPENING` vẫn điều chỉnh được; khi `OPENING` được ghi sau đó, `points` của nó = số dư hiện tại trừ phần EARN/ADJUST/REDEEM đã có trong sổ cái nên tổng sổ cái vẫn khớp số dư.
 
 ---
 
@@ -1165,7 +1184,6 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
     "balanceAfter": 120,
     "applied": false
   },
-  "errors": null,
   "timestamp": "2026-11-08T10:30:00"
 }
 ```
@@ -1173,6 +1191,7 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 - `reason` khi `eligible = false`: `NO_CUSTOMER`, `STATUS`, `NOT_PAID`, `ALREADY_EARNED`, `NO_POLICY`, `ZERO_POINTS`, `STATE_CONFLICT`.
 
 ### Response Lỗi thường gặp
+- **Mã và thông báo mặc định trong `ErrorCode`:** `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”; `ORDER_NOT_FOUND` (404): “Không tìm thấy đơn hàng.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Không phải `ADMIN` hoặc `STAFF`.
 - **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
 
@@ -1186,8 +1205,14 @@ Module `user` quản lý thông tin khách hàng, nhân viên, quản trị viê
 - **Request Body:** không có (hoặc `{}`).
 
 ### Response Thành công (HTTP 200 OK)
-Cùng cấu trúc mục 26. Lần ghi thành công có `applied = true`, `balanceBefore` / `balanceAfter` là số dư trước và sau. Gọi lại khi đã có `EARN` trả `eligible = false`, `reason = ALREADY_EARNED`, `applied = false` và không đổi số dư.
+Cùng cấu trúc mục 26, với `message` là `Earn recalculated`. Lần ghi thành công có `applied = true`, `balanceBefore` / `balanceAfter` là số dư trước và sau. Gọi lại khi đã có `EARN` trả `eligible = false`, `reason = ALREADY_EARNED`, `applied = false` và không đổi số dư.
 
 ### Response Lỗi thường gặp
+- **HTTP 404 Not Found:** Khách hàng của đơn không còn tồn tại (`CUSTOMER_NOT_FOUND`).
+- **HTTP 409 Conflict:** Trạng thái điểm không hợp lệ (`LOYALTY_STATE_CONFLICT`).
+- **Mã và thông báo mặc định trong `ErrorCode`:** `ACCESS_DENIED` (403): “Bạn không có quyền truy cập tài nguyên này.”; `UNAUTHENTICATED` (401): “Bạn cần đăng nhập để truy cập tài nguyên này.”; `ORDER_NOT_FOUND` (404): “Không tìm thấy đơn hàng.”; `CUSTOMER_NOT_FOUND` (404): “Không tìm thấy khách hàng.”; `LOYALTY_STATE_CONFLICT` (4208): “Trạng thái điểm đã thay đổi. Tải lại và thử lại.”. Thông báo thực tế có thể được dịch vụ thay bằng thông báo cụ thể.
 - **HTTP 403 Forbidden:** Không phải `ADMIN` hoặc `STAFF`.
 - **HTTP 404 Not Found:** Không tìm thấy đơn hàng (`ORDER_NOT_FOUND`).
+
+### Lọc hạng doanh số sau hoàn (R1F)
+CustomerSpecifications salesTierId và Export CSV khách dùng hóa đơn PAID/REFUNDED trừ tổng yêu cầu REFUNDED. Hóa đơn hoàn đủ vẫn là giao dịch đã thanh toán rồi hoàn, đóng góp net 0. Chi tiết đơn bổ sung paidAmount/refundedAmount; [quy tắc đổi/trả](./api-return.md).

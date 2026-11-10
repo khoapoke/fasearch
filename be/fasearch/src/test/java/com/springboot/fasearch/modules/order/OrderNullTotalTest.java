@@ -56,7 +56,8 @@ class OrderNullTotalTest {
                 mock(InventoryRepository.class), mock(ProductVariantRepository.class),
                 mock(CheckoutBenefitService.class), mock(ShippingService.class), mock(LoyaltyService.class),
                 mock(CheckoutIdempotencyRepository.class), mock(com.springboot.fasearch.modules.payment.service.impl.CancelledOrderStripeExpiry.class),
-                mock(com.springboot.fasearch.modules.order.service.impl.OrderItemHistoryBuilder.class));
+                mock(com.springboot.fasearch.modules.order.service.impl.OrderItemHistoryBuilder.class),
+                mock(org.springframework.context.ApplicationEventPublisher.class));
     }
     private OrderServiceImpl serviceWith(OrderRepository orderRepository, InvoiceRepository invoices, UserRepository users) {
         return new OrderServiceImpl(orderRepository, invoices, mock(CartRepository.class),
@@ -64,7 +65,8 @@ class OrderNullTotalTest {
                 mock(InventoryRepository.class), mock(ProductVariantRepository.class),
                 mock(CheckoutBenefitService.class), mock(ShippingService.class), mock(LoyaltyService.class),
                 mock(CheckoutIdempotencyRepository.class), mock(com.springboot.fasearch.modules.payment.service.impl.CancelledOrderStripeExpiry.class),
-                mock(com.springboot.fasearch.modules.order.service.impl.OrderItemHistoryBuilder.class));
+                mock(com.springboot.fasearch.modules.order.service.impl.OrderItemHistoryBuilder.class),
+                mock(org.springframework.context.ApplicationEventPublisher.class));
     }
     private void asAdmin() {
         Authentication auth = new UsernamePasswordAuthenticationToken("admin", "x",
