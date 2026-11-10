@@ -64,9 +64,9 @@ class EvaluationService:
         Tự động loại trừ các bản ghi có trạng thái DELETED (xóa mềm).
         """
         if k_list is None:
-            k_list = sorted(list(set([1, 3, 5, 10, limit])))
+            k_list = [1, 3, 5, 10]
         else:
-            k_list = sorted(list(set(list(k_list) + [limit])))
+            k_list = sorted(list(set(k_list)))
 
         gt = ground_truth or load_ground_truth(csv_path)
         target_clean = target_article_type.strip().lower()
@@ -79,9 +79,10 @@ class EvaluationService:
 
         # Thực hiện tìm kiếm và đo thời gian Latency trên collection chỉ định
         start_time = time.perf_counter()
+        fetch_limit = max(limit, max(k_list)) if k_list else limit
         raw_results = self.search_srv.search_by_text(
             query_text=query_text,
-            limit=max(limit, max(k_list)),
+            limit=fetch_limit,
             exclude_deleted=True,
         )
         latency_ms = (time.perf_counter() - start_time) * 1000.0
@@ -184,9 +185,11 @@ class EvaluationService:
             rr_scores.append(res.rr)
             latencies.append(res.latency_ms)
 
-            for k, metric in res.metrics_at_k.items():
-                accum_precision[k].append(metric.precision)
-                accum_recall[k].append(metric.recall)
+            for k in k_list:
+                metric = res.metrics_at_k.get(k)
+                if metric is not None:
+                    accum_precision[k].append(metric.precision)
+                    accum_recall[k].append(metric.recall)
 
         # Tính điểm trung bình toàn hệ thống qua các hàm metrics chuẩn (Mean Metrics)
         mean_precision = calculate_mean_metrics_at_k(accum_precision)

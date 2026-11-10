@@ -5,7 +5,7 @@ import shutil
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from src.schemas.common import ApiResponse
 from src.schemas.search import SearchTextRequest, SearchData
-from src.services.search_service import search_by_text, search_by_image, search_multimodal
+from src.services.search_service import SearchService
 from src.services.query_translation import translate_query
 from src.core.config import settings, BASE_DIR
 from src.core.exceptions import InvalidInputError
@@ -34,7 +34,8 @@ async def api_search_text(request: SearchTextRequest):
         raise HTTPException(status_code=400, detail="Chuỗi tìm kiếm (query) không được để trống")
 
     try:
-        results = search_by_text(query, request.limit)
+        search_srv = SearchService()
+        results = search_srv.search_by_text(query, request.limit)
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     # Field dịch non-breaking: lỗi dịch không được làm hỏng search (fallback).
@@ -86,7 +87,8 @@ async def api_search_image(file: UploadFile = File(...), limit: int = Form(5)):
             shutil.copyfileobj(file.file, file_object)
 
         try:
-            results = search_by_image(file_location, limit)
+            search_srv = SearchService()
+            results = search_srv.search_by_image(file_location, limit)
         except InvalidInputError as e:
             raise HTTPException(status_code=400, detail=str(e))
         return {
@@ -157,7 +159,8 @@ async def api_search_multimodal(
             shutil.copyfileobj(file.file, file_object)
 
         try:
-            results = search_multimodal(
+            search_srv = SearchService()
+            results = search_srv.search_multimodal(
                 image_path=file_location,
                 query_text=query.strip(),
                 limit=limit,

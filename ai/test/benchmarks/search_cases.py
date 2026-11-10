@@ -912,6 +912,31 @@ CORE_SEARCH_BENCHMARK_CASES: List[Dict[str, str]] = [
     }
 ]
 
+TEST_SHORT_CASE: List[Dict[str, str]]=[
+
+    {
+        "query": "travel laptop school backpack bag",
+        "target_article_type": "Backpacks",
+        "description": "Tìm kiếm balo du lịch đi học đựng laptop"
+    },
+    {
+        "query": "classic genuine leather waist belt",
+        "target_article_type": "Belts",
+        "description": "Tìm kiếm thắt lưng dây nịt da nam nữ"
+    },
+    {
+        "query": "women wireless comfortable push up bra",
+        "target_article_type": "Bra",
+        "description": "Tìm kiếm áo lót ngực nữ nâng ngực thoải mái"
+    },
+    {
+        "query": "men soft cotton underwear briefs",
+        "target_article_type": "Briefs",
+        "description": "Tìm kiếm quần lót tam giác nam cotton"
+    },
+
+
+]
 
 # Mặc định sử dụng bộ trọng tâm để kiểm thử nhanh
 DEFAULT_BENCHMARK_CASES = CORE_SEARCH_BENCHMARK_CASES
