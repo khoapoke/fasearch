@@ -21,6 +21,8 @@ from src.repositories import get_image_repository
 from src.services.point_service import PointService
 from src.services.evaluation_service import EvaluationService
 from src.utils.csv_helpers import get_available_test_images
+from src.utils.formatters import format_percentage, format_score, format_latency
+from src.utils.visualization import plot_benchmark_results
 from test.benchmarks.search_cases import DEFAULT_BENCHMARK_CASES
 
 
@@ -59,6 +61,8 @@ def ensure_test_data_seeded(collection_name: str) -> None:
 def run_benchmark(
     test_cases: Optional[List[dict]] = None,
     k_list: Optional[List[int]] = None,
+    show_chart: bool = True,
+    save_chart: bool = True,
 ) -> None:
     """Hàm chạy kiểm thử benchmark và in báo cáo ra console."""
     test_cases = test_cases or DEFAULT_BENCHMARK_CASES
@@ -87,78 +91,98 @@ def run_benchmark(
     print_separator("-")
 
     # 3. Chạy Benchmark qua EvaluationService
-    print(f"[*] Dang thuc thi {len(test_cases)} kich ban kiem thu o cac moc K = {k_list}...")
-    summary = eval_service.run_full_benchmark(test_cases=test_cases, k_list=k_list)
+    sorted_k = sorted(k_list)
+    print(f"[*] Dang thuc thi {len(test_cases)} kich ban kiem thu o cac moc K = {sorted_k}...")
+    summary = eval_service.run_full_benchmark(test_cases=test_cases, k_list=sorted_k)
 
-    # 4. Bảng chi tiết từng câu truy vấn
-    print("\n" + "=" * 92)
+    # 4. Bảng chi tiết từng câu truy vấn (Sinh động theo k_list & chuẩn hóa %)
+    headers = [f"{'Query':<28}", f"{'Target':<12}"]
+    for k in sorted_k:
+        headers.append(f"{f'P@{k}':>8}")
+    for k in sorted_k:
+        headers.append(f"{f'R@{k}':>8}")
+    headers.append(f"{'AP':>8}")
+    headers.append(f"{'Time':>9}")
+
+    header_str = " | ".join(headers)
+    table_width = max(92, len(header_str))
+
+    print("\n" + "=" * table_width)
     print("                      CHI TIET TUNG CAU TRUY VAN (PER-QUERY BREAKDOWN)")
-    print("=" * 92)
-    header = f"{'Query':<32} | {'Target':<12} | {'P@1':<5} | {'P@3':<5} | {'P@5':<5} | {'P@10':<5} | {'R@5':<5} | {'AP':<5} | {'Time'}"
-    print(header)
-    print("-" * 92)
+    print("=" * table_width)
+    print(header_str)
+    print("-" * table_width)
 
     for q_res in summary.query_results:
-        p1 = q_res.metrics_at_k.get(1).precision if 1 in q_res.metrics_at_k else 0.0
-        p3 = q_res.metrics_at_k.get(3).precision if 3 in q_res.metrics_at_k else 0.0
-        p5 = q_res.metrics_at_k.get(5).precision if 5 in q_res.metrics_at_k else 0.0
-        p10 = q_res.metrics_at_k.get(10).precision if 10 in q_res.metrics_at_k else 0.0
-        r5 = q_res.metrics_at_k.get(5).recall if 5 in q_res.metrics_at_k else 0.0
-
-        q_name = safe_str(q_res.query, 32)
-        row = (
-            f"{q_name:<32} | "
-            f"{q_res.target_label:<12} | "
-            f"{p1:>5.2f} | "
-            f"{p3:>5.2f} | "
-            f"{p5:>5.2f} | "
-            f"{p10:>5.2f} | "
-            f"{r5:>5.2f} | "
-            f"{q_res.ap:>5.2f} | "
-            f"{q_res.latency_ms:>5.1f}ms"
-        )
-        print(row)
+        cols = [f"{safe_str(q_res.query, 28):<28}", f"{q_res.target_label:<12}"]
+        for k in sorted_k:
+            m = q_res.metrics_at_k.get(k)
+            cols.append(f"{format_percentage(m.precision if m else 0.0):>8}")
+        for k in sorted_k:
+            m = q_res.metrics_at_k.get(k)
+            cols.append(f"{format_percentage(m.recall if m else 0.0):>8}")
+        cols.append(f"{format_percentage(q_res.ap):>8}")
+        cols.append(f"{format_latency(q_res.latency_ms):>9}")
+        print(" | ".join(cols))
 
     # 5. Chi tiết các kết quả Hit / Miss cho từng Query
-    print("\n" + "-" * 92)
+    print("\n" + "-" * table_width)
     print("                      DANH SACH RETRIEVED ITEMS & GROUND TRUTH MATCH")
-    print("-" * 92)
+    print("-" * table_width)
     for q_res in summary.query_results:
         print(f"\n>> Truy van: \"{q_res.query}\" (Ky vong: {q_res.target_label} - Tong dung trong DB: {q_res.total_relevant_in_db})")
         for rank, item in enumerate(q_res.retrieved_items[:5], 1):
             status_tag = "[HIT - DUNG]" if item.is_hit else "[MISS - SAI]"
             type_tag = item.article_type or "Unknown"
             disp = safe_str(item.display_name or "N/A", 40)
-            print(f"   {rank}. {status_tag} Score: {item.score:.4f} | File: {item.file_name} | Type: {type_tag} | {disp}")
+            score_str = format_score(item.score)
+            print(f"   {rank}. {status_tag} Score: {score_str} | File: {item.file_name} | Type: {type_tag} | {disp}")
 
-    # 6. Bảng KPI tổng kết toàn hệ thống
-    print("\n" + "=" * 92)
+    # 6. Bảng KPI tổng kết toàn hệ thống (Chuẩn hóa % và độ trễ)
+    print("\n" + "=" * table_width)
     print("                    TONG KET KPI HE THONG (GLOBAL BENCHMARK KPI)")
-    print("=" * 92)
-    print(f"  * Tong so truy van kiem thu  : {summary.total_queries}")
-    print(f"  * Mean Precision@1 (P@1)     : {summary.mean_precision_at_k.get(1, 0.0) * 100:>6.2f}%")
-    print(f"  * Mean Precision@3 (P@3)     : {summary.mean_precision_at_k.get(3, 0.0) * 100:>6.2f}%")
-    print(f"  * Mean Precision@5 (P@5)     : {summary.mean_precision_at_k.get(5, 0.0) * 100:>6.2f}%")
-    print(f"  * Mean Precision@10 (P@10)   : {summary.mean_precision_at_k.get(10, 0.0) * 100:>6.2f}%")
-    print(f"  * Mean Recall@5 (R@5)        : {summary.mean_recall_at_k.get(5, 0.0) * 100:>6.2f}%")
-    print(f"  * Mean Recall@10 (R@10)      : {summary.mean_recall_at_k.get(10, 0.0) * 100:>6.2f}%")
-    print(f"  * Mean Average Precision(mAP): {summary.map_score * 100:>6.2f}%  (Gold Metric)")
-    print(f"  * Mean Reciprocal Rank (MRR) : {summary.mrr_score * 100:>6.2f}%")
-    print(f"  * Thoi gian phan hoi trung binh: {summary.avg_latency_ms:>5.1f} ms / query")
-    print("=" * 92)
+    print("=" * table_width)
+    print(f"  * Tong so truy van kiem thu    : {summary.total_queries}")
+    for k in sorted_k:
+        p_val = summary.mean_precision_at_k.get(k, 0.0)
+        print(f"  * Mean Precision@{k:<2} (P@{k:<2})   : {format_percentage(p_val):>8}")
+    for k in sorted_k:
+        r_val = summary.mean_recall_at_k.get(k, 0.0)
+        print(f"  * Mean Recall@{k:<2} (R@{k:<2})      : {format_percentage(r_val):>8}")
+    print(f"  * Mean Average Precision (mAP) : {format_percentage(summary.map_score):>8}  (Gold Metric)")
+    print(f"  * Mean Reciprocal Rank (MRR)   : {format_percentage(summary.mrr_score):>8}")
+    print(f"  * Thoi gian phan hoi trung binh: {format_latency(summary.avg_latency_ms):>8} / query")
+    print("=" * table_width)
+
+    # 7. Trực quan hóa biểu đồ Matplotlib (Interactive GUI & Xuất ảnh 300 DPI)
+    plot_benchmark_results(
+        summary=summary,
+        k_list=sorted_k,
+        show_chart=show_chart,
+        save_chart=save_chart,
+    )
 
 
 def main():
     # =========================================================================
     # CẤU HÌNH BENCHMARK (CHỈNH SỬA TRỰC TIẾP TẠI ĐÂY)
     # =========================================================================
-    # Danh sách các mốc K để đo Precision@K và Recall@K
-    k_list = [1, 3, 5, 10]
+    # Danh sách các mốc K để đo Precision@K và Recall@K (chuẩn IR: 1, 3, 5, 10)
+    k_list = [ 10,15,20]
 
     # Bộ ca kiểm thử sử dụng (DEFAULT_BENCHMARK_CASES gồm 143 ca kiểm thử)
     test_cases = DEFAULT_BENCHMARK_CASES
 
-    run_benchmark(test_cases=test_cases, k_list=k_list)
+    # Cấu hình biểu đồ (Hiển thị popup Matplotlib và tự động lưu ảnh báo cáo 300 DPI)
+    show_chart = True
+    save_chart = True
+
+    run_benchmark(
+        test_cases=test_cases,
+        k_list=k_list,
+        show_chart=show_chart,
+        save_chart=save_chart,
+    )
 
 
 if __name__ == "__main__":
