@@ -46,6 +46,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\venv312\Scripts\Activate.ps1
 ```
 
+Máy **không có GPU NVIDIA** (Linux/WSL/server CPU): dùng `pip install -r requirements-cpu.txt` thay cho `requirements.txt` (cùng phiên bản thư viện, chỉ khác bản PyTorch CPU).
+
 Mỗi terminal mới cần activate lại môi trường trước khi chạy Python.
 
 ## 4. Cấu hình biến môi trường cho Docker
@@ -58,7 +60,7 @@ STORAGE_DOCKER=D:/DockerData/qdrant
 
 `STORAGE_DOCKER` là thư mục trên máy host dùng để lưu dữ liệu Qdrant. Nên dùng đường dẫn tuyệt đối và bảo đảm Docker Desktop có quyền truy cập thư mục đó.
 
-File `.env` chỉ phục vụ nội suy biến của Docker Compose. Ứng dụng Python hiện đọc cấu hình chính từ `configs\database.yaml`, không đọc các giá trị Qdrant từ `.env`.
+File `.env` chỉ phục vụ nội suy biến của Docker Compose. Ứng dụng Python đọc cấu hình chính từ `configs\database.yaml`; riêng tên collection có thể ghi đè bằng biến môi trường `QDRANT_COLLECTION`, và giới hạn `limit` tối đa của API search bằng `MAX_SEARCH_LIMIT` (mặc định 24; FE hiện chỉ gửi 1–5).
 
 ## 5. Khởi động Qdrant
 
@@ -120,6 +122,8 @@ python scripts\init_qdrant.py
 ```
 
 Script hiện gọi `init_db(reset=True)`, nên sẽ xóa collection `image_gallery` cũ và tạo lại collection với khoảng cách cosine. Chỉ chạy lệnh này khi muốn reset toàn bộ dữ liệu vector.
+
+Tên collection lấy từ `configs\database.yaml`, hoặc biến môi trường `QDRANT_COLLECTION` nếu được đặt (biến môi trường ưu tiên hơn YAML). **Lưu ý:** khi đặt `QDRANT_COLLECTION` trỏ vào collection thật, đừng chạy script này.
 
 ## 8. Nạp dataset kiểm thử
 
@@ -275,3 +279,11 @@ Lệnh cuối có tác dụng reset vì script đang hard-code `reset=True`; hã
 - Không chạy script reset collection trên Qdrant dùng chung nếu chưa thông báo team.
 - Khi thay đổi model hoặc kích thước vector, phải cập nhật `configs\database.yaml`, tạo lại collection và nạp lại dữ liệu.
 - Khi triển khai production, thay `allow_origins=["*"]` trong `src\main.py` bằng danh sách domain frontend cụ thể.
+
+## 15. Chạy unit test
+Unit test dùng Qdrant in-memory và CLIP giả (không cần Docker, GPU hay tải model). Từ thư mục `ai`:
+
+```powershell
+pip install pytest
+python -m pytest test\unit tests -v
+```

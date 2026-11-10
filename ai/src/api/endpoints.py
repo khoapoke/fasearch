@@ -1,11 +1,14 @@
 import os
+import math
 import uuid
 import shutil
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from src.schemas.common import ApiResponse
 from src.schemas.search import SearchTextRequest, SearchData
-from src.services.search_service import search_by_text, search_by_image, search_multimodal
+from src.services.search_service import SearchService
+from src.services.query_translation import translate_query
 from src.core.config import settings, BASE_DIR
+from src.core.exceptions import InvalidInputError
 
 router = APIRouter()
 
@@ -26,14 +29,29 @@ async def api_search_text(request: SearchTextRequest):
             detail=f"Tham số limit phải nằm trong khoảng từ 1 đến {MAX_SEARCH_LIMIT}"
         )
 
-    results = search_by_text(request.query, request.limit)
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Chuỗi tìm kiếm (query) không được để trống")
+
+    try:
+        search_srv = SearchService()
+        results = search_srv.search_by_text(query, request.limit)
+    except InvalidInputError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    # Field dịch non-breaking: lỗi dịch không được làm hỏng search (fallback).
+    try:
+        translation = translate_query(query)
+    except Exception:
+        translation = None
     return {
         "success": True,
         "status_code": 200,
         "message": "Tìm kiếm theo văn bản thành công",
         "data": {
             "total": len(results),
-            "results": results
+            "results": results,
+            "translated_query": translation.translated_query if translation else query,
+            "query_language": translation.query_language if translation else "en",
         },
         "errors": None
     }
@@ -60,14 +78,19 @@ async def api_search_image(file: UploadFile = File(...), limit: int = Form(5)):
         )
 
     # 3. Tạo tên file tạm ngẫu nhiên bằng UUID để chống Race Condition khi nhiều client upload cùng lúc
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    # Chỉ dùng phần mở rộng đã kiểm tra: tên file do client gửi (có thể chứa ../ hoặc ký tự lạ) không đi vào đường dẫn
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_location = os.path.join(UPLOAD_DIR, unique_filename)
 
     try:
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
 
-        results = search_by_image(file_location, limit)
+        try:
+            search_srv = SearchService()
+            results = search_srv.search_by_image(file_location, limit)
+        except InvalidInputError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return {
             "success": True,
             "status_code": 200,
@@ -120,33 +143,44 @@ async def api_search_multimodal(
         )
 
     # 3. Ràng buộc tham số text_weight
-    if text_weight < 0.0 or text_weight > 1.0:
+    if math.isnan(text_weight) or text_weight < 0.0 or text_weight > 1.0:
         raise HTTPException(
             status_code=400,
             detail="Tham số text_weight phải nằm trong khoảng từ 0.0 đến 1.0"
         )
 
     # 4. Tạo tên file tạm ngẫu nhiên bằng UUID để chống Race Condition
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    # Chỉ dùng phần mở rộng đã kiểm tra: tên file do client gửi (có thể chứa ../ hoặc ký tự lạ) không đi vào đường dẫn
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_location = os.path.join(UPLOAD_DIR, unique_filename)
 
     try:
         with open(file_location, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
 
-        results = search_multimodal(
-            image_path=file_location,
-            query_text=query.strip(),
-            limit=limit,
-            text_weight=text_weight,
-        )
+        try:
+            search_srv = SearchService()
+            results = search_srv.search_multimodal(
+                image_path=file_location,
+                query_text=query.strip(),
+                limit=limit,
+                text_weight=text_weight,
+            )
+        except InvalidInputError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        try:
+            translation = translate_query(query.strip())
+        except Exception:
+            translation = None
         return {
             "success": True,
             "status_code": 200,
             "message": "Tìm kiếm đa phương thức kết hợp thành công",
             "data": {
                 "total": len(results),
-                "results": results
+                "results": results,
+                "translated_query": translation.translated_query if translation else query.strip(),
+                "query_language": translation.query_language if translation else "en",
             },
             "errors": None
         }

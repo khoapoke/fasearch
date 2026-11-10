@@ -6,15 +6,15 @@ import streamlit as st
 from src.core.config import BASE_DIR
 from src.db.enums import PointStatus
 from src.services.point_service import PointService
-from src.services.evaluation_service import (
-    EvaluationService,
-    load_ground_truth,
-    get_available_article_types,
+from src.services.evaluation_service import EvaluationService
+from src.utils.csv_helpers import load_ground_truth, get_available_article_types
+from test.benchmarks.search_cases import (
     DEFAULT_BENCHMARK_CASES,
     CORE_SEARCH_BENCHMARK_CASES,
     FULL_SEARCH_BENCHMARK_CASES,
     get_benchmark_cases,
 )
+from src.utils.formatters import format_percentage, format_score, format_latency
 from admin_app.components.ui_helpers import resolve_image_path, open_csv_file_dialog
 
 
@@ -172,52 +172,65 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
             st.divider()
             st.markdown(f"#### Báo cáo Chỉ số Hệ thống — Collection: `{current_col}`")
 
-            # 4 Thẻ KPI chính
+            # 4 Thẻ KPI chính (Chuẩn hóa %)
             kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
             with kpi_col1:
                 st.metric(
                     label="mAP (Mean Average Precision)",
-                    value=f"{summary_res.map_score * 100:.2f}%",
+                    value=format_percentage(summary_res.map_score),
                     help="mAP (Mean Average Precision): Trung bình cộng (Mean) điểm AP của toàn bộ các câu truy vấn. Thước đo vàng đánh giá chất lượng xếp hạng tổng thể của hệ thống Search.",
                 )
             with kpi_col2:
                 st.metric(
                     label="MRR (Mean Reciprocal Rank)",
-                    value=f"{summary_res.mrr_score * 100:.2f}%",
+                    value=format_percentage(summary_res.mrr_score),
                     help="MRR (Mean Reciprocal Rank): Trung bình cộng (Mean) điểm RR của toàn bộ các câu truy vấn. Đo lường mức độ ưu tiên đưa kết quả đúng lên vị trí số #1 của toàn hệ thống.",
                 )
             with kpi_col3:
-                p1_val = summary_res.mean_precision_at_k.get(1, 0.0) * 100
-                p5_val = summary_res.mean_precision_at_k.get(5, 0.0) * 100
-                st.metric(
-                    label="Mean P@1 / Mean P@5",
-                    value=f"{p1_val:.1f}% / {p5_val:.1f}%",
-                    help="Mean Precision@K: Trung bình cộng tỷ lệ % sản phẩm đúng nhãn trong Top 1 và Top 5 qua toàn bộ các câu truy vấn.",
-                )
+                active_k = sorted(list(summary_res.mean_precision_at_k.keys()))
+                if len(active_k) == 1:
+                    k_tgt = active_k[0]
+                    st.metric(
+                        label=f"Mean P@{k_tgt} / R@{k_tgt}",
+                        value=f"{format_percentage(summary_res.mean_precision_at_k.get(k_tgt, 0.0))} / {format_percentage(summary_res.mean_recall_at_k.get(k_tgt, 0.0))}",
+                        help=f"Mean Precision@{k_tgt} và Mean Recall@{k_tgt} qua toàn bộ các câu truy vấn.",
+                    )
+                else:
+                    k_first, k_last = active_k[0], active_k[-1]
+                    st.metric(
+                        label=f"Mean P@{k_first} / P@{k_last}",
+                        value=f"{format_percentage(summary_res.mean_precision_at_k.get(k_first, 0.0))} / {format_percentage(summary_res.mean_precision_at_k.get(k_last, 0.0))}",
+                        help=f"Mean Precision tại K={k_first} và K={k_last} qua toàn bộ các câu truy vấn.",
+                    )
             with kpi_col4:
                 st.metric(
                     label="Độ trễ trung bình",
-                    value=f"{summary_res.avg_latency_ms:.1f} ms",
+                    value=format_latency(summary_res.avg_latency_ms),
                     help="Mean Latency: Thời gian phản hồi tìm kiếm trung bình (ms) cho mỗi câu truy vấn.",
                 )
 
-            # Bảng chi tiết từng câu truy vấn (Per-query breakdown)
+            # Bảng chi tiết từng câu truy vấn (Sinh động theo k_list & đầy đủ Precision/Recall)
             st.markdown("##### Chi tiết từng câu truy vấn (Per-query Breakdown):")
+            active_k_list = sorted(list(summary_res.mean_precision_at_k.keys()))
             rows = []
             for q in summary_res.query_results:
                 row_data = {
                     "Câu truy vấn": q.query,
                     "Nhãn kỳ vọng": q.target_label,
                     "Tổng đúng trong DB": f"{q.total_relevant_in_db:,}",
-                    "P@1 (%)": f"{q.metrics_at_k.get(1).precision * 100:.1f}%" if 1 in q.metrics_at_k else "N/A",
-                    "P@3 (%)": f"{q.metrics_at_k.get(3).precision * 100:.1f}%" if 3 in q.metrics_at_k else "N/A",
-                    "P@5 (%)": f"{q.metrics_at_k.get(5).precision * 100:.1f}%" if 5 in q.metrics_at_k else "N/A",
-                    "P@10 (%)": f"{q.metrics_at_k.get(10).precision * 100:.1f}%" if 10 in q.metrics_at_k else "N/A",
-                    "R@5 (%)": f"{q.metrics_at_k.get(5).recall * 100:.2f}%" if 5 in q.metrics_at_k else "N/A",
-                    "AP": f"{q.ap:.4f}",
-                    "RR": f"{q.rr:.4f}",
-                    "Độ trễ": f"{q.latency_ms:.1f}ms",
                 }
+                # Thêm đầy đủ Precision@K cho mọi K được chọn
+                for k in active_k_list:
+                    m = q.metrics_at_k.get(k)
+                    row_data[f"P@{k}"] = format_percentage(m.precision if m else 0.0)
+                # Thêm đầy đủ Recall@K cho mọi K được chọn
+                for k in active_k_list:
+                    m = q.metrics_at_k.get(k)
+                    row_data[f"R@{k}"] = format_percentage(m.recall if m else 0.0)
+
+                row_data["AP"] = format_percentage(q.ap)
+                row_data["RR"] = format_percentage(q.rr)
+                row_data["Độ trễ"] = format_latency(q.latency_ms)
                 rows.append(row_data)
 
             table_df = pd.DataFrame(rows)
@@ -238,8 +251,8 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                 f"Truy vấn: **\"{chosen_q_res.query}\"** | "
                 f"Kỳ vọng: **{chosen_q_res.target_label}** | "
                 f"Tổng đúng trong DB: **{chosen_q_res.total_relevant_in_db:,}** | "
-                f"AP: **{chosen_q_res.ap:.4f}** | "
-                f"RR: **{chosen_q_res.rr:.4f}**"
+                f"AP: **{format_percentage(chosen_q_res.ap)}** | "
+                f"RR: **{format_percentage(chosen_q_res.rr)}**"
             )
 
             if not chosen_q_res.retrieved_items:
@@ -280,7 +293,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                                 </div>""",
                                 unsafe_allow_html=True,
                             )
-                            st.caption(f"Score: `{item.score:.4f}`")
+                            st.caption(f"Score: `{format_score(item.score)}`")
                             st.caption(f"Loại: **{item.article_type or 'Unknown'}**")
                             if item.display_name:
                                 st.caption(f"Tên: {item.display_name[:24]}...")
@@ -346,33 +359,33 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
             with cq_col1:
                 st.metric(
                     label="AP",
-                    value=f"{custom_res.ap:.4f}",
+                    value=format_percentage(custom_res.ap),
                     help="Average Precision: Điểm số đánh giá chất lượng xếp hạng của 1 câu truy vấn này.",
                 )
             with cq_col2:
                 first_hit_str = f"Rank #{int(1 / custom_res.rr)}" if custom_res.rr > 0 else "Không tìm thấy"
                 st.metric(
                     label="RR",
-                    value=f"{custom_res.rr:.4f}",
+                    value=format_percentage(custom_res.rr),
                     delta=first_hit_str,
                     help="Reciprocal Rank: chỉ số đánh giá kết quả ",
                 )
             with cq_col3:
                 st.metric(
                     label=f"Precision@{custom_top_k}",
-                    value=f"{metric_k.precision * 100:.1f}%",
+                    value=format_percentage(metric_k.precision),
                     help=f"Precision@{custom_top_k}: Tỷ lệ % sản phẩm đúng nhãn trong số {custom_top_k} kết quả hiển thị trên màn hình ({metric_k.hit_count}/{custom_top_k} đúng).",
                 )
             with cq_col4:
                 st.metric(
                     label=f"Recall@{custom_top_k}",
-                    value=f"{metric_k.recall * 100:.1f}%",
+                    value=format_percentage(metric_k.recall),
                     help=f"Recall@{custom_top_k}: Tỷ lệ % sản phẩm đúng tìm thấy ({metric_k.hit_count} sản phẩm) trên tổng số {custom_res.total_relevant_in_db:,} sản phẩm đúng có trong cơ sở dữ liệu.",
                 )
             with cq_col5:
                 st.metric(
                     label="Thời gian phản hồi",
-                    value=f"{custom_res.latency_ms:.1f} ms",
+                    value=format_latency(custom_res.latency_ms),
                     help="Query Latency: Thời gian AI trích xuất vector CLIP và truy vấn Qdrant cho câu này tính bằng mili-giây.",
                 )
 
@@ -416,7 +429,7 @@ def render_evaluation(eval_srv: EvaluationService, point_srv: PointService) -> N
                                 </div>""",
                                 unsafe_allow_html=True,
                             )
-                            st.caption(f"Score: `{item.score:.4f}`")
+                            st.caption(f"Score: `{format_score(item.score)}`")
                             st.caption(f"Loại: **{item.article_type or 'Unknown'}**")
                             if item.display_name:
                                 st.caption(f"Tên: {item.display_name[:24]}...")

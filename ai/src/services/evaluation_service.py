@@ -11,7 +11,7 @@ from src.schemas.evaluation import (
     QueryEvaluationResult,
     BenchmarkSummary,
 )
-from src.services.search_service import SearchService, search_by_text
+from src.services.search_service import SearchService
 from src.utils.metrics import (
     calculate_average_precision,
     calculate_precision_recall_at_k,
@@ -64,9 +64,9 @@ class EvaluationService:
         Tự động loại trừ các bản ghi có trạng thái DELETED (xóa mềm).
         """
         if k_list is None:
-            k_list = sorted(list(set([1, 3, 5, 10, limit])))
+            k_list = [1, 3, 5, 10]
         else:
-            k_list = sorted(list(set(list(k_list) + [limit])))
+            k_list = sorted(list(set(k_list)))
 
         gt = ground_truth or load_ground_truth(csv_path)
         target_clean = target_article_type.strip().lower()
@@ -79,9 +79,10 @@ class EvaluationService:
 
         # Thực hiện tìm kiếm và đo thời gian Latency trên collection chỉ định
         start_time = time.perf_counter()
+        fetch_limit = max(limit, max(k_list)) if k_list else limit
         raw_results = self.search_srv.search_by_text(
             query_text=query_text,
-            limit=max(limit, max(k_list)),
+            limit=fetch_limit,
             exclude_deleted=True,
         )
         latency_ms = (time.perf_counter() - start_time) * 1000.0
@@ -184,9 +185,11 @@ class EvaluationService:
             rr_scores.append(res.rr)
             latencies.append(res.latency_ms)
 
-            for k, metric in res.metrics_at_k.items():
-                accum_precision[k].append(metric.precision)
-                accum_recall[k].append(metric.recall)
+            for k in k_list:
+                metric = res.metrics_at_k.get(k)
+                if metric is not None:
+                    accum_precision[k].append(metric.precision)
+                    accum_recall[k].append(metric.recall)
 
         # Tính điểm trung bình toàn hệ thống qua các hàm metrics chuẩn (Mean Metrics)
         mean_precision = calculate_mean_metrics_at_k(accum_precision)
@@ -207,65 +210,4 @@ class EvaluationService:
         )
 
 
-# =========================================================================
-# BACKWARD COMPATIBILITY: Module-level Singletons & Functions
-# =========================================================================
-evaluation_service = EvaluationService()
 
-
-def evaluate_query(
-    query_text: str,
-    target_article_type: str,
-    k_list: Optional[List[int]] = None,
-    limit: int = 10,
-    ground_truth: Optional[Dict[str, Dict[str, str]]] = None,
-    available_images: Optional[Set[str]] = None,
-    csv_path: Optional[Union[str, Path]] = None,
-) -> QueryEvaluationResult:
-    """Hàm module-level tương thích ngược cho scripts/run_benchmark.py."""
-    return evaluation_service.evaluate_query(
-        query_text=query_text,
-        target_article_type=target_article_type,
-        k_list=k_list,
-        limit=limit,
-        ground_truth=ground_truth,
-        csv_path=csv_path,
-    )
-
-
-def run_full_benchmark(
-    test_cases: Optional[List[Dict[str, str]]] = None,
-    k_list: Optional[List[int]] = None,
-    csv_path: Optional[Union[str, Path]] = None,
-) -> BenchmarkSummary:
-    """Hàm module-level tương thích ngược cho scripts/run_benchmark.py."""
-    return evaluation_service.run_full_benchmark(test_cases=test_cases, k_list=k_list, csv_path=csv_path)
-
-
-__all__ = [
-    # Class & Singleton
-    "EvaluationService",
-    "evaluation_service",
-    "DEFAULT_BENCHMARK_CASES",
-    "CORE_SEARCH_BENCHMARK_CASES",
-    "FULL_SEARCH_BENCHMARK_CASES",
-    "get_benchmark_cases",
-    # Re-exported CSV & Ground truth helpers
-    "load_ground_truth",
-    "get_available_test_images",
-    "get_available_article_types",
-    "TEST_DATASET_DIR",
-    "STYLES_CSV_PATH",
-    "TEST_IMAGES_DIR",
-    # Re-exported metric math functions
-    "calculate_precision_recall_at_k",
-    "calculate_average_precision",
-    "calculate_reciprocal_rank",
-    "calculate_map",
-    "calculate_mrr",
-    "calculate_mean_metrics_at_k",
-    "calculate_mean_latency",
-    # Module-level benchmark runners
-    "evaluate_query",
-    "run_full_benchmark",
-]

@@ -68,7 +68,7 @@ class ModelConfig(ConfigSection):
 class AppConfig(ConfigSection):
     upload_dir: str = Field(default_factory=lambda: os.getenv("UPLOAD_DIR", "storage/uploads"))
     raw_data_dir: str = Field(default_factory=lambda: os.getenv("RAW_DATA_DIR", "dataset"))
-    max_search_limit: int = Field(default_factory=lambda: int(os.getenv("MAX_SEARCH_LIMIT", 5)))
+    max_search_limit: int = Field(default_factory=lambda: int(os.getenv("MAX_SEARCH_LIMIT", 24)))
     vector_size: int = 512
 
 
@@ -106,6 +106,12 @@ def load_settings() -> AppSettings:
     if "model" in yaml_data and isinstance(yaml_data["model"], dict):
         if "id" in yaml_data["model"]:
             model_cfg.id = str(yaml_data["model"]["id"])
+
+    # Cho phép chỉ định collection qua biến môi trường: cùng một source chạy được nhiều
+    # môi trường (mặc định vẫn là giá trị YAML; env chỉ thắng khi được set tường minh).
+    env_collection = os.getenv("QDRANT_COLLECTION")
+    if env_collection and env_collection.strip():
+        qdrant_cfg.collection_name = env_collection.strip()
 
     return AppSettings(qdrant=qdrant_cfg, model=model_cfg, app=app_cfg)
 

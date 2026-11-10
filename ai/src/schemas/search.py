@@ -17,6 +17,10 @@ class SearchData(BaseModel):
     """Cấu trúc data cho kết quả tìm kiếm thời trang."""
     total: int
     results: List[SearchResultItem]
+    # Non-breaking: query gốc + bản dịch Anh dùng để encode CLIP.
+    # BE cũ bỏ qua field thừa trong JSON nên hợp đồng hiện tại giữ nguyên.
+    translated_query: Optional[str] = None
+    query_language: Optional[str] = None
 
 
 class SearchTextRequest(BaseModel):

@@ -10,10 +10,12 @@ from qdrant_client.models import PointStruct
 
 from src.core.ai_model import get_ai_model
 from src.core.config import settings
+from src.core.exceptions import InvalidInputError
 from src.db.enums import CatalogCategory, PointStatus
 from src.db.models import ImagePointPayload
 from src.repositories import ImageRepository, get_image_repository
-from src.utils import normalize_slash, to_system_path, to_web_path
+from src.utils import to_system_path, to_web_path
+from src.utils.point_id import PointId, normalize_point_id
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,31 @@ class PointService:
             with Image.open(sys_path) as img:
                 rgb_image = img.convert("RGB")
         except Exception as e:
-            raise ValueError(f"Không thể đọc file ảnh '{sys_path}': {e}")
+            logger.warning(f"Không thể đọc file ảnh '{sys_path}': {e}")
+            raise InvalidInputError("File ảnh không hợp lệ hoặc bị hỏng")
 
         inputs = processor(images=rgb_image, return_tensors="pt").to(device)
         with torch.no_grad():
             features = model.get_image_features(**inputs)
+            features = features / features.norm(p=2, dim=-1, keepdim=True)
+            vector = features.cpu().numpy()[0].tolist()
+
+        del inputs, features
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        return vector
+
+    @staticmethod
+    def extract_text_vector(text: str) -> List[float]:
+        """Trích xuất vector CLIP 512D (chuẩn hóa L2) từ một đoạn văn bản (tự cắt theo giới hạn 77 token)."""
+        clean = (text or "").strip()
+        if not clean:
+            raise InvalidInputError("Nội dung văn bản để tạo vector không được để trống")
+        device, model, processor = get_ai_model()
+        inputs = processor(text=[clean], return_tensors="pt", padding=True, truncation=True).to(device)
+        with torch.no_grad():
+            features = model.get_text_features(**inputs)
             features = features / features.norm(p=2, dim=-1, keepdim=True)
             vector = features.cpu().numpy()[0].tolist()
 
@@ -92,14 +114,14 @@ class PointService:
         status: Union[PointStatus, str] = PointStatus.ACTIVE,
         product_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        point_id: Optional[str] = None,
-    ) -> str:
+        point_id: Optional[PointId] = None,
+    ) -> PointId:
         """
         Tạo mới 1 Vector Point từ file ảnh trong collection:
         1. Trích xuất vector đặc trưng bằng mô hình CLIP (chuẩn hóa L2).
         2. Đóng gói Entity ImagePointPayload.
         3. Lưu trữ vào collection tương ứng trên Qdrant qua Repository.
-        Trả về: point_id (UUID).
+        Trả về: point_id (UUID tự sinh, hoặc ID số/UUID do caller chỉ định).
         """
         path_obj = to_system_path(image_path)
         if not path_obj.exists() or not path_obj.is_file():
@@ -111,7 +133,7 @@ class PointService:
         # 2. Xây dựng web_path phục vụ web client (/dataset/...)
         web_path = to_web_path(path_obj)
         file_name = path_obj.name
-        assigned_id = point_id or str(uuid.uuid4())
+        assigned_id = normalize_point_id(point_id) if point_id is not None else str(uuid.uuid4())
 
         catalog_enum = CatalogCategory(catalog) if isinstance(catalog, str) else catalog
         status_enum = PointStatus(status) if isinstance(status, str) else status
@@ -136,7 +158,55 @@ class PointService:
         )
         return assigned_id
 
-    def delete_point(self, point_id: str, hard_delete: bool = False) -> bool:
+    def upsert_product_point(
+        self,
+        product_id: PointId,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        brand_slug: Optional[str] = None,
+        model: Optional[str] = None,
+        image_path: Optional[Union[str, Path]] = None,
+    ) -> PointId:
+        """
+        Upsert (idempotent) 1 point sản phẩm do Backend đồng bộ khi publish.
+        - point_id = product_id số của Backend (hoặc UUID).
+        - Vector: từ ảnh nếu có `image_path`, ngược lại từ văn bản (name + description + brand + model).
+        - Payload giữ nguyên hợp đồng cũ của Backend: catalog "brand_catalog", product_id, metadata.
+        """
+        point_id = normalize_point_id(product_id)
+        if image_path is not None:
+            vector = self.extract_image_vector(image_path)
+        else:
+            text = " ".join(p for p in [name or "", description or "", brand_slug or "", model or ""] if p).strip()
+            if not text:
+                raise InvalidInputError("Không có dữ liệu để lập chỉ mục: thiếu cả ảnh và văn bản")
+            vector = self.extract_text_vector(text)
+
+        payload = {
+            "image_path": "",
+            "file_name": "",
+            "catalog": "brand_catalog",
+            "status": PointStatus.SEEDED.value,
+            "product_id": str(point_id),
+            "metadata": {
+                k: v for k, v in {"brand_slug": brand_slug, "model": model, "name": name}.items() if v
+            },
+        }
+        self.repo.create(point_id=point_id, vector=vector, payload=payload)
+        # Dọn các point cũ cùng product_id nhưng khác ID (vd. point UUID do lần seed trước) để không bị trùng
+        self.repo.delete_by_product_id(str(point_id), keep_id=point_id)
+        logger.info(f"Đã upsert sản phẩm '{point_id}' vào collection '{self.collection_name}'")
+        return point_id
+
+    def delete_product_point(self, product_id: PointId) -> bool:
+        """Xóa cứng point sản phẩm (tombstone khi sản phẩm bị unpublish/xóa). Idempotent."""
+        point_id = normalize_point_id(product_id)
+        self.repo.hard_delete(point_id)
+        # Sản phẩm có thể đang được lập chỉ mục dưới ID khác (UUID) -> xóa theo product_id trong payload
+        self.repo.delete_by_product_id(str(point_id))
+        return True
+
+    def delete_point(self, point_id: PointId, hard_delete: bool = False) -> bool:
         """
         Xóa 1 point trong collection:
         - hard_delete = False (mặc định): Xóa mềm (chuyển status = DELETED).
@@ -151,7 +221,7 @@ class PointService:
             logger.info(f"Đã xóa MỀM Point ID '{point_id}' (status: DELETED) trong collection '{self.collection_name}'")
             return res
 
-    def update_point_payload(self, point_id: str, payload_updates: Dict[str, Any]) -> bool:
+    def update_point_payload(self, point_id: PointId, payload_updates: Dict[str, Any]) -> bool:
         """Cập nhật các trường payload cho một point cụ thể."""
         return self.repo.update_payload(point_id=point_id, payload=payload_updates)
 
@@ -253,27 +323,15 @@ class PointService:
         return success_count, skipped_count
 
 
-# Instance mặc định dùng collection_name từ database.yaml làm fallback
-point_service = PointService()
-
-# Tương thích ngược cho các module đang gọi dạng hàm
-create_point = point_service.create_point
-delete_point = point_service.delete_point
-update_point_payload = point_service.update_point_payload
-clear_all_points = point_service.clear_all_points
-batch_create_from_directory = point_service.batch_create_from_directory
-scan_directory_images = PointService.scan_directory_images
-_extract_image_vector = PointService.extract_image_vector
-
-
 if __name__ == "__main__":
     test_img_path = r"dataset/test/images/1855.jpg"
     sys_path = to_system_path(test_img_path)
     web_path = to_web_path(test_img_path)
 
-    print(f"Collection : {point_service.collection_name}")
+    srv = PointService(auto_create_collection=False)
+    print(f"Collection : {srv.collection_name}")
     print(f"System path: {sys_path}")
     print(f"Web path   : {web_path}")
 
-    point_sev = PointService(collection_name="test")
+    point_sev = PointService(collection_name="test", auto_create_collection=False)
     print(f"Custom collection: {point_sev.collection_name}")

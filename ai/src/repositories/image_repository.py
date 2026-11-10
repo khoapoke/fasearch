@@ -5,6 +5,8 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    FilterSelector,
+    HasIdCondition,
     MatchValue,
     PointIdsList,
     PointStruct,
@@ -17,6 +19,7 @@ from src.core.config import settings
 from src.core.qdrant_client import get_qdrant_client
 from src.db.enums import PointStatus
 from src.db.models import ImagePointPayload
+from src.utils.point_id import PointId, normalize_point_id
 from src.repositories.base import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -95,11 +98,11 @@ class ImageRepository(BaseRepository):
         )
         return results
 
-    def get_by_id(self, point_id: str) -> Optional[Record]:
-        """Lấy thông tin chi tiết một point theo ID."""
+    def get_by_id(self, point_id: PointId) -> Optional[Record]:
+        """Lấy thông tin chi tiết một point theo ID (số hoặc UUID)."""
         records = self.client.retrieve(
             collection_name=self.collection_name,
-            ids=[point_id],
+            ids=[normalize_point_id(point_id)],
             with_payload=True,
             with_vectors=False,
         )
@@ -109,7 +112,7 @@ class ImageRepository(BaseRepository):
 
     def create(
         self,
-        point_id: str,
+        point_id: PointId,
         vector: List[float],
         payload: Union[ImagePointPayload, Dict[str, Any]],
     ) -> bool:
@@ -123,7 +126,7 @@ class ImageRepository(BaseRepository):
             collection_name=self.collection_name,
             points=[
                 PointStruct(
-                    id=point_id,
+                    id=normalize_point_id(point_id),
                     vector=vector,
                     payload=payload_dict,
                 )
@@ -143,7 +146,7 @@ class ImageRepository(BaseRepository):
 
     def update_payload(
         self,
-        point_id: str,
+        point_id: PointId,
         payload: Union[ImagePointPayload, Dict[str, Any]],
     ) -> bool:
         """Cập nhật các trường payload cho một point cụ thể."""
@@ -155,24 +158,41 @@ class ImageRepository(BaseRepository):
         self.client.set_payload(
             collection_name=self.collection_name,
             payload=payload_dict,
-            points=[point_id],
+            points=[normalize_point_id(point_id)],
         )
         return True
 
-    def soft_delete(self, point_id: str) -> bool:
+    def soft_delete(self, point_id: PointId) -> bool:
         """Xóa mềm point bằng cách cập nhật status = DELETED."""
         return self.update_payload(
             point_id=point_id,
             payload={"status": PointStatus.DELETED.value},
         )
 
-    def hard_delete(self, point_id: str) -> bool:
+    def hard_delete(self, point_id: PointId) -> bool:
         """Xóa cứng: Loại bỏ hoàn toàn vector và payload của point khỏi collection."""
         self.client.delete(
             collection_name=self.collection_name,
-            points_selector=PointIdsList(points=[point_id]),
+            points_selector=PointIdsList(points=[normalize_point_id(point_id)]),
         )
         return True
+
+    def delete_by_product_id(self, product_id: str, keep_id: Optional[PointId] = None) -> None:
+        """
+        Xóa mọi point mang product_id này trong payload (kể cả point có ID UUID do lần lập chỉ mục cũ tạo ra),
+        trừ point có ID = keep_id. Giúp unpublish/upsert không để sót bản ghi trùng sản phẩm.
+        """
+        pid = str(product_id)
+        conditions = [FieldCondition(key="product_id", match=MatchValue(value=pid))]
+        if pid.isdigit():
+            conditions.append(FieldCondition(key="metadata.product_id", match=MatchValue(value=int(pid))))
+        query_filter = Filter(should=conditions)
+        if keep_id is not None:
+            query_filter.must_not = [HasIdCondition(has_id=[normalize_point_id(keep_id)])]
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=FilterSelector(filter=query_filter),
+        )
 
     def count_points(self, filter_status: Optional[PointStatus] = None) -> int:
         """Đếm tổng số point trong collection. Có thể lọc theo PointStatus."""

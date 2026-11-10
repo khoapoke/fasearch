@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Import router và các hàm khởi tạo từ Core
 from src.api.endpoints import router as search_router
+from src.api.internal_endpoints import internal_router
 from src.core.ai_model import get_ai_model
 from src.core.qdrant_client import get_qdrant_client
 from src.core.config import settings, BASE_DIR
@@ -109,6 +110,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # 5. Gắn các API Endpoints vào ứng dụng
 app.include_router(search_router, prefix="/api", tags=["Search API"])
+app.include_router(internal_router, tags=["Internal Index API"])
 
 # 6. Phục vụ thư mục tĩnh (Static files)
 UPLOAD_DIR = os.path.join(BASE_DIR, settings.app.upload_dir)

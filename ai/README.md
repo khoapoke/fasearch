@@ -75,65 +75,48 @@ Dự án áp dụng mô hình **Clean Architecture 5 tầng độc lập**, đ�
       created_at: str                 # Thời điểm tạo (ISO 8601 UTC)
   ```
 
+### 2.3. Bộ Chuyển đổi Truy vấn Thời trang Việt - Anh (Query Translation)
+- **Mục đích:** Mô hình CLIP được tiền huấn luyện chủ yếu trên văn bản tiếng Anh. Nhằm hỗ trợ người dùng tìm kiếm tự nhiên bằng tiếng Việt (vd: *"áo sơ mi nam dài tay"*, *"quần bò xanh"*, *"đồng hồ thể thao"*), hệ thống tích hợp bộ dịch thuật từ khóa chuyên ngành thời trang.
+- **Cơ chế hoạt động:**
+  - Tra cứu và thay thế từ điển thuật ngữ thời trang song ngữ (`src/services/fashion_glossary_vi_en.json`).
+  - Chuẩn hóa xóa dấu, xử lý quy tắc ngữ pháp thời trang (`src/services/query_translation.py`).
+  - Chuyển hóa chuỗi tìm kiếm tiếng Việt sang tiếng Anh tối ưu ngữ nghĩa trước khi đưa vào CLIP text encoder, giúp nâng cao độ chính xác truy hồi vector.
+
 ---
 
-## 3. CẤU TRÚC THƯ MỤC DỰ ÁN
+## 3. CẤU TRÚC THƯ MỤC DỰ ÁN (FOLDER STRUCTURE)
+
+Cấu trúc thư mục được tổ chức theo cấp độ module và package chuẩn Clean Architecture:
 
 ```text
 fasearch/ai/
-├── admin_app/                     # Ứng dụng Streamlit quản trị và kiểm thử trực quan
-│   ├── __init__.py
-│   ├── app.py                     # Entrypoint Streamlit (Dashboard, Point CRUD, Playground)
-│   ├── components/                # UI Helpers: xử lý ảnh, format badge trạng thái
-│   │   ├── __init__.py
-│   │   └── ui_helpers.py
-│   └── views/                     # Các màn hình chức năng chính
-│       ├── __init__.py
-│       ├── overview.py            # Thống kê GPU/DB, sửa database.yaml, Danger Zone (Reset/Seed)
-│       ├── point_manager.py       # Quản trị Point CRUD (Gallery, Thêm mới, Sửa, Xóa)
-│       └── search_tester.py       # Sân chơi thử nghiệm Text, Image & Multimodal
-├── configs/
-│   └── database.yaml              # Cấu hình Qdrant, Model CLIP, thư mục ảnh
-├── dataset/                       # Thư mục chứa dataset ảnh sản phẩm mẫu
-│   ├── admin/                     # Nơi lưu trữ ảnh sản phẩm mới tải lên từ Admin UI
-│   ├── raw/                       # Ảnh gốc chưa qua xử lý
-│   └── test/                      # Tập dữ liệu kiểm thử
-├── docs/                          # Tài liệu kỹ thuật dự án
-│   ├── SETUP.md                   # Hướng dẫn chi tiết cài đặt môi trường
-│   └── API_DOCUMENTATION.md       # Tài liệu tích hợp API cho Backend Java Spring Boot
-├── scripts/
-│   ├── __init__.py
-│   ├── init_qdrant.py             # Script khởi tạo/Reset Qdrant collection (vector_size: 512, cosine)
-│   └── seed_data.py               # Script nạp ảnh hàng loạt từ dataset/ vào Qdrant qua Repository
-├── src/
-│   ├── __init__.py
-│   ├── main.py                    # Entrypoint FastAPI, Lifespan startup, CORS, Static mounts
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── endpoints.py           # REST Endpoints: /api/search/text, /image, /multimodal
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── ai_model.py            # Singleton quản lý mô hình CLIP trên VRAM (eval mode)
-│   │   ├── config.py              # Centralized config loader (database.yaml + .env)
-│   │   └── qdrant_client.py       # Singleton quản lý kết nối Qdrant qua gRPC (timeout: 5s)
-│   ├── db/
-│   │   ├── __init__.py
-│   │   ├── enums.py               # Enums chuẩn hóa: PointStatus, CatalogCategory
-│   │   └── models.py              # Entity ImagePointPayload lưu trong Vector Point Qdrant
-│   ├── repositories/
-│   │   ├── __init__.py
-│   │   ├── base.py                # Base Repository trừu tượng hóa tương tác Qdrant
-│   │   └── image_repository.py    # Repository CRUD, Scroll, Count & Vector search
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   ├── common.py              # ApiResponse[T] envelope chuẩn doanh nghiệp
-│   │   └── search.py              # Pydantic DTOs cho Search Request & Response
-│   └── services/
-│       ├── __init__.py
-│       └── search_service.py      # Nghiệp vụ trích xuất vector CLIP và truy vấn qua Repository
-├── storage/
-│   └── uploads/                   # Nơi lưu tạm file do client upload lên để tìm kiếm so sánh
-├── test/                          # Các test script đơn lẻ (kiểm tra CPU, gRPC, seed, retrieve)
+├── admin_app/                     # Bảng điều khiển quản trị Streamlit & Test Playground
+│   ├── components/                # UI widgets & helpers (hiển thị ảnh, format badge, dialog CSV)
+│   └── views/                     # Màn hình: Overview, Point Manager, Search Tester, Evaluation
+├── configs/                       # Cấu hình hệ thống tĩnh (database.yaml)
+├── dataset/                       # Dữ liệu ảnh và nhãn chuẩn Ground Truth (styles.csv)
+│   ├── admin/                     # Thư mục lưu trữ ảnh sản phẩm mới tải lên từ Admin UI
+│   ├── raw/                       # Ảnh gốc chưa qua tiền xử lý
+│   └── test/                      # Tập dữ liệu kiểm thử và nhãn Ground Truth (styles.csv)
+├── docs/                          # Tài liệu kỹ thuật dự án (SETUP.md, API_DOCUMENTATION.md)
+├── scripts/                       # Bộ công cụ CLI vận hành & đo lường offline
+│   ├── init_qdrant.py             # Script khởi tạo / Reset collection trên Qdrant (512 chiều, Cosine)
+│   ├── seed_data.py               # Script nạp ảnh hàng loạt từ dataset vào Qdrant qua Repository
+│   ├── run_benchmark.py           # Script chạy đánh giá toàn diện mô hình tìm kiếm trên terminal
+│   ├── eval_runner.py             # Runner chạy đánh giá offline qua tập queries.json và qrels.json
+│   └── eval_metrics.py            # Thư viện tính toán offline metrics (P@K, R@K, NDCG@K, MRR)
+├── src/                           # Mã nguồn chính của dịch vụ AI (FastAPI & Clean Architecture)
+│   ├── api/                       # Presentation Layer: Endpoints Public (/api/search) & Internal (/api/internal)
+│   ├── core/                      # Core Infrastructure: CLIP Model Singleton, Qdrant gRPC, Config, Exceptions
+│   ├── db/                        # Persistence Layer: ImagePointPayload, Enums (PointStatus, CatalogCategory)
+│   ├── repositories/              # Data Access Layer: Qdrant Base & ImageRepository (Vector CRUD, Filter)
+│   ├── schemas/                   # Data Transfer Objects: ApiResponse[T], Search DTOs, Evaluation DTOs
+│   ├── services/                  # Business Logic: SearchService, PointService, Translation, Evaluation
+│   └── utils/                     # Shared Utilities: CSV helpers, Metrics IR math, Path helpers, Point ID
+├── storage/                       # Thư mục lưu trữ tạm (ảnh upload từ client để tìm kiếm)
+├── test/                          # Hệ thống kiểm thử độc lập (Testing & Benchmarks)
+│   ├── benchmarks/                # Bộ 143 kịch bản kiểm thử song ngữ chuẩn hóa (styles.csv)
+│   └── unit/                      # Bộ kiểm thử đơn vị Pytest (API search, internal, translation, point IDs)
 ├── docker-compose.yml             # Docker compose khởi chạy Qdrant GPU (port 6333, 6334)
 ├── requirements.txt               # Danh sách thư viện Python
 ├── .env.example                   # Mẫu cấu hình môi trường local
@@ -260,9 +243,90 @@ streamlit run admin_app/app.py
 - `/dataset/...` -> Mount trực tiếp thư mục `dataset/` để frontend hiển thị ảnh sản phẩm.
 - `/uploads/...` -> Mount thư mục `storage/uploads/` phục vụ ảnh tạm tải lên.
 
+### 6.5. Endpoints Nội bộ Đồng bộ Dữ liệu (Internal Index API)
+- **Phân quyền:** `ADMIN / LOOPBACK ONLY` (Chỉ chấp nhận gọi từ `127.0.0.1`, `localhost`, `::1`).
+- **Các phương thức:**
+  - `POST /internal/v1/index/upsert`: Nhận multipart form (`product_id`, `name`, `description`, `brand_slug`, `model`, `file`) để trích xuất vector CLIP và đồng bộ thêm mới / cập nhật point sản phẩm trong Qdrant.
+  - `DELETE /internal/v1/index/products/{product_id}`: Xóa point sản phẩm khỏi Qdrant khi backend unpublish sản phẩm.
+  - `GET /internal/v1/health`: Kiểm tra sức khỏe kết nối API nội bộ.
+
 ---
 
-## 7. QUY CHUẨN KỸ THUẬT KHI VIẾT CODE
+## 7. HƯỚNG DẪN CHẠY KIỂM THỬ & ĐÁNH GIÁ (TESTING & BENCHMARKS)
+
+Hệ thống cung cấp 3 cấp độ kiểm thử và đo lường độc lập, từ kiểm thử logic đơn vị đến đánh giá chỉ số chuyên sâu:
+
+### 7.1. Chạy Kiểm thử Đơn vị (Unit Tests)
+
+Bộ kiểm thử đơn vị được xây dựng bằng **Pytest** đặt tại thư mục `test/unit/`, đảm bảo tính đúng đắn của logic nghiệp vụ trước khi triển khai:
+
+```powershell
+# Chạy toàn bộ các ca kiểm thử đơn vị
+pytest test/unit -v
+
+# 1. Kiểm thử module Dịch thuật Truy vấn Việt - Anh (Glossary, Rule-based mapping)
+pytest test/unit/test_query_translation.py -v
+
+# 2. Kiểm thử luồng REST API Tìm kiếm (Text, Image, Multimodal, Pagination)
+pytest test/unit/test_search_api.py -v
+
+# 3. Kiểm thử Internal Index API (Upsert, Delete, Loopback auth, Validation ID)
+pytest test/unit/test_internal_api.py -v
+
+# 4. Kiểm thử cơ chế sinh và phân giải Point ID trong Qdrant
+pytest test/unit/test_point_ids_config.py -v
+```
+
+### 7.2. Chạy Đánh giá Toàn diện Hệ thống (Benchmark Suite)
+
+Đo lường độ chính xác của mô hình CLIP và thuật toán tìm kiếm dựa trên Ground Truth `dataset/test/styles.csv`. Bộ kịch bản kiểm thử được định nghĩa độc lập tại `test/benchmarks/search_cases.py` với **143 ca kiểm thử song ngữ** (Query tiếng Anh, Description tiếng Việt) tương ứng 143 giá trị của cột `articleType`.
+
+#### Cách 1: Chạy trực quan trên Giao diện Streamlit Admin (Khuyến nghị)
+1. Khởi chạy Admin App:
+   ```powershell
+   python -m streamlit run admin_app/app.py
+   ```
+2. Mở trình duyệt tại `http://localhost:8501`, chọn trang **"Đánh giá & Benchmark (Evaluation)"**.
+3. Chọn Collection cần đánh giá (ví dụ: `image_gallery` hoặc `fashion_gallery`).
+4. Lựa chọn phạm vi kịch bản:
+   - **Bộ trọng tâm (36 ngành hàng chính):** Chạy nhanh (~0.5 - 1s), bao phủ >96% sản phẩm thực tế.
+   - **Bộ toàn diện (Tất cả 143 danh mục trong styles.csv):** Quét toàn bộ mọi ngành hàng thời trang.
+5. Chọn các ngưỡng Top $K$ cần đo (`[1, 3, 5, 10, 15, 20]`) và bấm **"Chạy Đánh giá Hệ thống"**.
+6. Theo dõi các chỉ số KPI:
+   - **mAP (Mean Average Precision):** Đánh giá chất lượng xếp hạng trung bình toàn bộ câu truy vấn.
+   - **MRR (Mean Reciprocal Rank):** Đánh giá vị trí xuất hiện của kết quả đúng đầu tiên.
+   - **Precision@K & Recall@K:** Độ chính xác và độ bao phủ tại từng ngưỡng $K$.
+   - **Thời gian phản hồi trung bình (ms):** Tốc độ trích xuất vector và truy hồi trên Qdrant.
+   - **Hit / Miss Visual Inspection:** Bảng kiểm tra trực quan chi tiết từng ảnh trả về (HIT màu xanh, MISS màu đỏ).
+
+#### Cách 2: Chạy tự động qua dòng lệnh (CLI Script)
+```powershell
+# Chạy đánh giá tự động trên terminal
+python scripts/run_benchmark.py
+```
+Script tự động kiểm tra dữ liệu, nạp dữ liệu mẫu nếu DB trống, chạy kịch bản kiểm thử và in bảng báo cáo chỉ số ra màn hình console.
+
+### 7.3. Chạy Đánh giá Tìm kiếm Ngoại tuyến (Offline Search Evaluation Runner)
+
+Phục vụ việc đánh giá độ chuẩn xác từ kết quả truy hồi offline theo tập dữ liệu câu truy vấn (`queries.json`) và nhãn phán quyết độ phù hợp (`qrels.json`):
+
+```powershell
+python scripts/eval_runner.py --queries <path_to_queries.json> --qrels <path_to_qrels.json> --output <path_to_results.json> --k 10
+```
+
+- **Định dạng file đầu vào:**
+  - `queries.json`: Danh sách câu hỏi kiểm thử `[{"query_id": "q1", "query": "áo sơ mi", "mode": "text", "limit": 5}]`.
+  - `qrels.json`: File nhãn phán quyết `{"q1": ["product_id_1", "product_id_2"]}`.
+- **Các chỉ số IR được tính toán:**
+  - $\text{NDCG}@K$ (Normalized Discounted Cumulative Gain)
+  - $\text{MRR}$ (Mean Reciprocal Rank)
+  - $\text{Precision}@K$ và $\text{Recall}@K$
+  - $\text{MAP}$ (Mean Average Precision)
+- **Cơ chế an toàn:** Nếu file `qrels` bị thiếu hoặc sai schema, script sẽ xuất báo cáo `BLOCKED` chỉ rõ định dạng cần bổ sung mà không tự ý sinh nhãn giả lập.
+
+---
+
+## 8. QUY CHUẨN KỸ THUẬT KHI VIẾT CODE
 
 - **Type Safety:** 100% tham số và hàm bắt buộc có type hint rõ ràng.
 - **Enum Policy:** 100% Enum và Status viết bằng **TIẾNG ANH IN HOA** kế thừa `StrEnum`.
