@@ -29,7 +29,25 @@ from src.utils.path_helpers import (
     to_web_path,
 )
 
+from src.utils.formatters import (
+    format_percentage,
+    format_score,
+    format_latency,
+)
+
+from src.utils.visualization import (
+    create_benchmark_figure,
+    plot_benchmark_results,
+)
+
 __all__ = [
+    # Formatters
+    "format_percentage",
+    "format_score",
+    "format_latency",
+    # Visualizations
+    "create_benchmark_figure",
+    "plot_benchmark_results",
     # Per-query metrics
     "calculate_average_precision",
     "calculate_precision_recall_at_k",
