@@ -1,0 +1,446 @@
+/* Storefront shell — Stitch "Kinetic Minimalist Retail".
+ * promo #FF4D00 · primary #aa3000 · container #d43f00 · ink #151c27. */
+
+.sfPromo {
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+.sfPromoInner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 7px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.sfPromoMsgs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sfPromoMsgs span + span::before {
+  content: "•";
+  margin-right: 8px;
+  opacity: 0.7;
+}
+.sfHeader {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--header-bg);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.sfBar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.sfBrand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  font-size: 16.5px;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+.sfBrandMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent), var(--brand));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sfBrand small {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+.sfBrandAi {
+  color: var(--accent);
+}
+.sfNav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.sfNav a {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 8px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.sfNav a:hover {
+  background: var(--surface-tint);
+  color: var(--brand-text);
+}
+.sfNav a[aria-current="page"] {
+  background: var(--surface-tint);
+  color: var(--brand-text);
+}
+.sfNavAi {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--accent-border);
+  color: var(--brand-text) !important;
+}
+.sfSearch {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 4px 4px 14px;
+  min-width: 150px;
+}
+.sfSearch input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 13.5px;
+  min-width: 0;
+}
+.sfSearchBtn {
+  border: 0;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sfSearchBtn:hover {
+  background: var(--accent-deep);
+}
+.sfIconBtn {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.sfIconBtn:hover {
+  background: var(--surface-tint);
+  color: var(--brand-text);
+}
+.sfBadge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sfAccountLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.sfAccountLink:hover {
+  background: var(--surface-tint);
+}
+.sfAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ink-fill);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sfMenuBtn {
+  display: none;
+}
+.sfMobileNav {
+  display: none;
+}
+
+.sfMain {
+  min-height: 60vh;
+}
+
+/* Footer */
+.sfFooter {
+  margin-top: 56px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+.sfNews {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line-soft);
+}
+.sfNews h2 {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.sfNews p {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.sfBtn {
+  border: 0;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background: var(--ink-fill);
+  color: #fff;
+  white-space: nowrap;
+}
+.sfBtn:hover {
+  background: #000;
+}
+.sfBtnPrimary {
+  background: var(--accent);
+}
+.sfBtnPrimary:hover {
+  background: var(--accent-deep);
+}
+.sfCols {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 34px 20px 10px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 28px;
+}
+.sfCols h3 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.sfCols a, .sfCols p {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  padding: 4px 0;
+}
+.sfCols a:hover {
+  color: var(--brand);
+}
+.sfBottom {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 20px 26px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* Account center layout (storefront header/footer + account sidebar) */
+.sfAccountWrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 22px 20px 10px;
+}
+.sfCrumbs {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.sfCrumbs a:hover {
+  color: var(--brand);
+}
+.sfAccountGrid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.sfSideCard {
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 14px;
+}
+.sfIdentity {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.sfIdentityAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--brand));
+  color: #fff;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sfIdentityName {
+  font-weight: 700;
+  font-size: 14.5px;
+}
+.sfIdentitySub {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.sfSideNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sfSideNav a, .sfSideNav button {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sfSideNav a:hover, .sfSideNav button:hover {
+  background: var(--surface-subtle);
+}
+.sfSideNav a[aria-current="page"] {
+  background: var(--surface-tint);
+  color: var(--brand);
+}
+
+/* Preview banner */
+.sfPreviewBar {
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-border);
+  color: var(--warn-text);
+  font-size: 12.5px;
+}
+.sfPreviewBar div {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 8px 20px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .sfNav { display: none; }
+  .sfMenuBtn { display: inline-flex; }
+  .sfMobileNav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 8px 16px 12px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .sfMobileNav a {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: var(--surface-subtle);
+    white-space: nowrap;
+  }
+  .sfCols { grid-template-columns: 1fr 1fr; }
+  .sfAccountGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .sfPromoMsgs {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
+  }
+  .sfBar { gap: 10px; padding: 10px 14px; }
+  .sfBrand span:last-child { display: none; }
+  .sfSearch { padding-left: 10px; }
+  .sfAccountLink span { display: none; }
+  .sfCols { grid-template-columns: 1fr; }
+}
+
+/* Màn hình hẹp nhất (320px): thu gọn thanh công cụ để không tràn ngang. */
+@media (max-width: 380px) {
+  .sfBar { gap: 6px; padding: 8px 10px; }
+  .sfSearch { flex: 1; min-width: 0; }
+  .sfSearch input { min-width: 0; }
+  .sfAccountLink { padding: 4px; }
+  .sfAvatar { width: 28px; height: 28px; }
+  .sfIconBtn { width: 34px; height: 34px; }
+}
+
+/* Người dùng giảm độ trong suốt: bề mặt đục, không làm mờ nội dung phía sau. */
+@media (prefers-reduced-transparency: reduce) {
+  .sfHeader {
+    backdrop-filter: none;
+    background: var(--surface);
+  }
+}

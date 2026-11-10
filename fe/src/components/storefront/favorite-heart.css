@@ -1,0 +1,121 @@
+/* Trái tim yêu thích dùng chung (thẻ sản phẩm + trang chi tiết).
+ * Chỉ transform/opacity/màu. Giảm chuyển động & html[data-motion="off"]: bỏ spring + tia, giữ đổi màu. */
+.favHeart {
+  --fav-on: var(--badge-discount, #e11d48);
+  --fav-reach: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.favIcon { position: relative; display: inline-flex; line-height: 0; }
+.favHeart svg {
+  overflow: visible;
+  transition: color 200ms var(--ease-out, ease-out);
+  transform-origin: 50% 55%;
+}
+.favHeart[aria-pressed="true"] { color: var(--fav-on); }
+.favHeart[aria-pressed="false"]:hover svg { color: var(--fav-on); }
+.favHeart[aria-busy="true"] { cursor: progress; }
+.favHeart:focus-visible { outline: 2px solid var(--st-focus, var(--brand, #3730d8)); outline-offset: 3px; }
+
+/* thích: nhấn xuống → vọt → lắng (spring) */
+.favHeart[data-pop] svg { animation: fav-pop 560ms linear(0, 0.42 12%, 1.32 34%, 0.9 52%, 1.06 68%, 0.99 84%, 1); }
+@keyframes fav-pop {
+  from { transform: scale(0.5); }
+  to { transform: scale(1); }
+}
+/* bỏ thích: co nhẹ rồi trả lại, không phô trương */
+.favHeart[data-drop] svg { animation: fav-drop 240ms var(--ease-out, ease-out); }
+@keyframes fav-drop {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.8); }
+  100% { transform: scale(1); }
+}
+.favHeart:active svg { transform: scale(0.88); }
+.favHeart:active[data-pop] svg, .favHeart:active[data-drop] svg { transform: none; }
+
+.favBurst { position: absolute; inset: 0; pointer-events: none; }
+.favRing {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--fav-on);
+  opacity: 0;
+  animation: fav-ring 520ms var(--ease-out, ease-out) both;
+}
+@keyframes fav-ring {
+  0% { transform: scale(0.35); opacity: 0.75; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.favBurst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--fav-on);
+  opacity: 0;
+  animation: fav-spark 600ms var(--ease-out, ease-out) both;
+}
+.favBurst i:nth-of-type(even) { background: var(--st-citron, #d6ef72); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.14); width: 4px; height: 4px; margin: -2px 0 0 -2px; }
+@keyframes fav-spark {
+  0% { transform: rotate(var(--a)) translateY(-6px) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(calc(var(--fav-reach) * -1)) scale(0.2); opacity: 0; }
+}
+
+/* nhãn chữ (trang chi tiết) */
+.favHeartLabel {
+  position: relative;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--st-control-border, #6f766c);
+  border-radius: 999px;
+  background: var(--st-surface, #fff);
+  color: var(--st-ink, #1b1c1a);
+  font-size: 14px;
+  font-weight: 500;
+  --fav-reach: 30px;
+  transition: background-color 200ms var(--ease-out, ease-out), border-color 200ms var(--ease-out, ease-out), color 200ms;
+}
+.favHeartLabel[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--fav-on) 55%, transparent);
+  background: color-mix(in srgb, var(--fav-on) 9%, var(--st-surface, #fff));
+  color: var(--fav-on);
+}
+.favLive { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.favHeart[data-error] .favLive {
+  clip-path: none;
+  width: max-content;
+  height: auto;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--st-err-bg, #f9eaec);
+  color: var(--st-err-text, #a6293a);
+  border: 1px solid var(--st-err-border, #efb0b7);
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favBurst { display: none; }
+  .favHeart[data-pop] svg, .favHeart[data-drop] svg { animation: none; }
+  .favHeart:active svg { transform: none; }
+}
+html[data-motion="off"] .favBurst { display: none; }
+html[data-motion="off"] .favHeart[data-pop] svg,
+html[data-motion="off"] .favHeart[data-drop] svg { animation: none; }
+html[data-motion="off"] .favHeart:active svg { transform: none; }

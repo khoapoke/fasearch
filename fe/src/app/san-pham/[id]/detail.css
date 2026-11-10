@@ -1,0 +1,168 @@
+/* Product detail (Stitch #4). */
+.pdMain img {
+  opacity: 1;
+  transition: opacity 140ms var(--ease-out, ease-out);
+}
+.pdMain img.pdDim {
+  opacity: 0;
+}
+.pdWrap { max-width: 1280px; margin: 0 auto; padding: 18px 20px 8px; }
+.pdGrid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 30px; align-items: start; margin-top: 12px; }
+.pdGallery { position: sticky; top: 130px; }
+.pdMain {
+  border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 5;
+  background: linear-gradient(160deg, var(--placeholder-from), var(--placeholder-to));
+}
+.pdMain img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.pdBadges { position: absolute; }
+.pdThumbs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
+.pdThumbs button {
+  border: 2px solid transparent; border-radius: 12px; overflow: hidden; cursor: pointer;
+  aspect-ratio: 1; background: var(--thumb-bg); padding: 0;
+}
+.pdThumbs button[aria-current="true"] { border-color: var(--accent); }
+.pdThumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pdSku { font-size: 11.5px; color: var(--ink-soft); font-weight: 600; }
+.pdTitle { font-size: clamp(20px, 2.6vw, 27px); font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 8px; line-height: 1.35; }
+.pdRate { display: flex; gap: 12px; align-items: center; font-size: 12.5px; color: var(--ink-soft); }
+.pdRate .stars { color: #f59e0b; font-weight: 800; }
+.pdPriceRow { display: flex; gap: 12px; align-items: baseline; margin: 14px 0 4px; }
+.pdPrice { font-size: 27px; font-weight: 800; color: var(--accent); }
+.pdOld { font-size: 15px; color: var(--ink-soft); text-decoration: line-through; }
+.pdSave { font-size: 11.5px; font-weight: 800; color: #fff; background: var(--badge-discount, #e11d48); border-radius: 6px; padding: 3px 8px; }
+.pdOptLabel { font-size: 13px; font-weight: 700; margin: 16px 0 8px; }
+.pdOptLabel span { font-weight: 500; color: var(--ink-soft); }
+.pdColors { display: flex; gap: 10px; }
+.pdColor {
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer; padding: 0;
+  border: 2px solid var(--surface); box-shadow: 0 0 0 1.5px var(--line);
+}
+.pdColor[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--accent); }
+.pdAiTip {
+  display: flex; gap: 10px; background: var(--tip-bg); border: 1px solid var(--tip-border); border-radius: 12px;
+  padding: 11px 13px; font-size: 12.5px; color: var(--tip-text); margin: 12px 0;
+}
+.pdQtyRow { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+.pdQty { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; }
+.pdQty button { border: 0; background: transparent; width: 34px; height: 38px; font-size: 17px; cursor: pointer; }
+.pdQty b { min-width: 30px; text-align: center; }
+.pdStock { font-size: 12.5px; color: var(--ink-soft); }
+.pdBuyRow { display: flex; gap: 10px; }
+.pdBuyRow .hmCta { flex: 1; justify-content: center; }
+.pdPerks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.pdPerks div { border: 1px solid var(--line-soft); border-radius: 12px; padding: 11px; font-size: 11.5px; text-align: center; }
+.pdPerks b { display: block; font-size: 12px; margin-bottom: 2px; }
+.pdTabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 30px 0 18px; overflow-x: auto; }
+.pdTabs button { border: 0; background: transparent; cursor: pointer; font-size: 13.5px; font-weight: 700; padding: 12px 16px; color: var(--ink-soft); border-bottom: 2px solid transparent; white-space: nowrap; }
+.pdTabs button[aria-selected="true"] { color: var(--brand); border-bottom-color: var(--accent); }
+.pdSpec { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.pdSpec dl { display: grid; grid-template-columns: 150px 1fr; gap: 8px 14px; font-size: 13.5px; }
+.pdSpec dt { color: var(--ink-soft); }
+.pdSpec dd { font-weight: 600; }
+.pdFeat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.pdFeat div { border: 1px solid var(--line-soft); border-radius: 12px; padding: 14px; }
+.pdFeat b { display: block; font-size: 13px; margin-bottom: 4px; }
+.pdFeat small { font-size: 12px; color: var(--ink-soft); }
+.pdLife { border-radius: 16px; overflow: hidden; min-height: 280px; position: relative; background: #23272f; }
+.pdLife img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pdLife div { position: absolute; z-index: 1; left: 18px; right: 18px; bottom: 18px; color: #fff; }
+.pdLife small { background: var(--accent); font-size: 10px; font-weight: 800; border-radius: 6px; padding: 4px 9px; }
+.pdLife b { display: block; font-size: 17px; margin: 6px 0 2px; }
+.pdLife p { font-size: 12.5px; color: #e2e8f0; }
+.pdReco { margin-top: 34px; }
+.pdRecoHead { display: flex; align-items: baseline; margin-bottom: 4px; }
+.pdRecoHead h2 { font-size: 19px; font-weight: 800; }
+.pdRecoHead a { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+.pdRecoHead + p { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 14px; }
+@media (max-width: 1024px) {
+  .pdGrid { grid-template-columns: 1fr; }
+  .pdGallery { position: static; }
+  .pdSpec { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .pdFeat { grid-template-columns: 1fr; }
+  .pdPerks { grid-template-columns: 1fr 1fr; }
+  .pdBuyRow { flex-direction: column; }
+}
+
+/* Source attribution: one quiet line, wraps instead of overflowing on 390px. */
+.cat-source-line {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3, #6b6b6b);
+  overflow-wrap: anywhere;
+}
+.cat-source-line a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+
+/* R4-D: tiêu đề sản phẩm có kích thước đọc được thay vì "tường chữ" trên tên dài,
+   nhịp nhóm 24–32px, brand + logo gần tên. */
+.catPage .cat-detail-info h1,
+.catPage .cat-detail-title {
+  font-size: clamp(28px, 2.4vw, 40px);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  margin: 6px 0 12px;
+  overflow-wrap: anywhere;
+}
+.catPage .cat-detail-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.catPage .cat-detail-brand img { width: 22px; height: 22px; object-fit: contain; }
+.catPage .cat-detail-info > * + * { margin-top: 20px; }
+.catPage .cat-detail-buy { margin-top: 28px; }
+.catPage .cat-disclosures { margin-top: 28px; }
+.catPage .cat-tech-body { line-height: 1.65; }
+@media (max-width: 760px) {
+  .catPage .cat-detail-title,   .catPage .cat-detail-info > * + * { margin-top: 16px; }
+}
+
+/* R4-D closure: logo hãng là nhãn nhỏ (24–28px cao, ≤100px rộng), không bao giờ
+   là banner marketing; ảnh thiếu/không đúng thì chỉ còn tên chữ. */
+.catPage .cat-detail-brand img {
+  width: auto;
+  height: 26px;
+  max-width: 100px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+/* R4-I: mark hãng luôn đọc được trên cả nền sáng và tối, không phụ thuộc màu mực
+   gốc của file (Davies/MLB Korea trắng, ClownZ/Teelab đen…). */
+.catPage .cat-detail-brand-mark {
+  width: 100px;
+  height: 26px;
+  flex: 0 0 auto;
+  background-color: var(--st-ink);
+  -webkit-mask-image: var(--brand-logo);
+  mask-image: var(--brand-logo);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  mask-position: left center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.catPage .cat-detail-info h1 { max-width: 100%; }
+.catPage .cat-attr-list { display: grid; gap: 8px; margin: 12px 0 0; }
+.catPage .cat-attr-list > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.catPage .cat-attr-list dt { color: var(--st-ink-soft); font-size: 12.5px; }
+.catPage .cat-attr-list dd { margin: 0; font-size: 13.5px; overflow-wrap: anywhere; }
+.catPage .cat-source-inline { margin: 12px 0 0; color: var(--st-ink-soft); font-size: 12px; }
+.catPage .cat-source-inline a { color: inherit; text-decoration: underline; }
+.catPage .cat-size-hint { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 12.5px; }
+@media (max-width: 760px) {
+  .catPage .cat-attr-list > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}

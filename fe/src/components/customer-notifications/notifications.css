@@ -1,0 +1,4 @@
+.customer-notification-toggle { display:flex; align-items:center; gap:10px; font-size:14px; line-height:1.5; color:var(--st-ink); cursor:pointer; }
+.customer-notification-toggle input { width:18px; height:18px; flex:0 0 auto; accent-color:var(--st-ink); }
+.favorite-notification-options { display:grid; gap:10px; padding:0 14px 16px; }
+.customer-notification-error { color:var(--st-danger,#b42318); font-size:13px; margin:0; }

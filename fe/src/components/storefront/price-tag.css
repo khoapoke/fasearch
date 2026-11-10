@@ -1,0 +1,36 @@
+/* Giá sản phẩm — ngôn ngữ góc cạnh, xanh brand, hơi "tương lai" như logo FaSearch. */
+.pxPrice {
+  --px-c: var(--st-brand-text, #3730d8);
+  --px-on: var(--st-surface, #ffffff);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.06em;
+  color: var(--px-c);
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pxPrice-num {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+/* Đơn vị "đ" viết thường, cùng màu với số, không khung nền. */
+.pxPrice-cur {
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Trang chi tiết: khung góc ngoặc (trên-trái + dưới-phải) và nền xanh rất nhạt. */
+.pxPrice--hero {
+  position: relative;
+  padding: 0.3em 0.46em 0.32em 0.4em;
+  background:
+    linear-gradient(var(--px-c), var(--px-c)) left top / 0.42em 2px no-repeat,
+    linear-gradient(var(--px-c), var(--px-c)) left top / 2px 0.42em no-repeat,
+    linear-gradient(var(--px-c), var(--px-c)) right bottom / 0.42em 2px no-repeat,
+    linear-gradient(var(--px-c), var(--px-c)) right bottom / 2px 0.42em no-repeat,
+    color-mix(in srgb, var(--px-c) 7%, transparent);
+}
+.pxPrice--hero .pxPrice-num { letter-spacing: -0.04em; }
+.pxPrice--hero .pxPrice-cur { font-size: 0.66em; }

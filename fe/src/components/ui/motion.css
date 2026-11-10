@@ -1,0 +1,155 @@
+/* Shared motion patterns P1–P7 (batch rev 3, Emil audit).
+ * Chỉ transform/opacity. Tokens --ease-out/--ease-in-out ở globals.css.
+ * Reduced-motion: globals.css đã rút mọi transition/animation về 0.01ms. */
+
+.hmCta, .pgApply, .mpTopBtn, .adBtn, .sfBtn, .pFav, .pgSize, .hmTabs a,
+.cat-button, .cat-primary {
+  transition: transform 160ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hmCta:hover, .pgApply:hover, .mpTopBtn:hover, .adBtn:hover, .sfBtn:hover,
+  .cat-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+
+.hmCta:active, .pgApply:active, .mpTopBtn:active, .adBtn:active, .sfBtn:active,
+.pFav:active, .pgSize:active,
+.cat-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Disabled controls never animate: no lift, no press, no transform. */
+.cat-button:disabled, .cat-button:disabled:hover, .cat-button:disabled:active {
+  transform: none;
+  transition: none;
+}
+
+/* P2 — modal enter (centered, backdrop fade cùng nhịp) */
+.bkOverlay {
+  opacity: 1;
+  transition: opacity 250ms var(--ease-out);
+}
+.bkOverlay[data-fresh] {
+  animation: bk-in 250ms var(--ease-out);
+}
+.bkModal {
+  opacity: 1;
+  transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+}
+.bkModal[data-fresh] {
+  animation: bk-pop 250ms var(--ease-out);
+}
+@keyframes bk-in {
+  from { opacity: 0; }
+}
+@keyframes bk-pop {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
+/* P3 — panel/drawer enter */
+.rise-in {
+  opacity: 1;
+}
+.rise-in[data-fresh] {
+  animation: rise-in 200ms var(--ease-out);
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* P4 — gallery crossfade (transition 2 pha qua class .pdDim trong
+   detail.css; timer ref clear khi bấm liên tục nên retarget thay vì
+   restart keyframe). Không dùng key-remount ở đây nữa. */
+
+/* P5 — notice/status enter */
+.flash-in {
+  opacity: 1;
+}
+.flash-in[data-fresh] {
+  animation: flash-in 250ms var(--ease-out);
+}
+@keyframes flash-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* P6 — collapse (grid-rows, không đo JS) */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 200ms var(--ease-out), opacity 200ms var(--ease-out);
+}
+.collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.collapse > div {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* P7 — hover gating: hover lift chỉ chạy trên con trỏ chuột (xem listing.css
+   cho .pCard và khối @media hover ở P1 cho buttons). */
+
+/* Chuyển vùng nội dung (tab báo cáo): mờ dần + trượt nhẹ, không chặn thao tác. */
+.fade-swap {
+  animation: fade-swap 180ms var(--ease-out) both;
+}
+@keyframes fade-swap {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* Lưới kết quả AI: mờ dàn theo nhịp ngắn (tổng <= 240ms). */
+.stagger-item {
+  animation: fade-swap 200ms var(--ease-out) both;
+  animation-delay: calc(var(--stagger-index, 0) * 30ms);
+}
+
+/* ---- Sitewide motion completion (item 6) --------------------------------
+ * CTA quan trọng ngoài nhóm P1: checkout/giỏ (.commerce-primary), AI search
+ * (.search-submit), tìm kiếm header (.sfSearchBtn). Chỉ transform; disabled /
+ * aria-disabled không bao giờ nâng hay lún. Tắt chuyển động đã được
+ * globals.css xử lý (prefers-reduced-motion và html[data-motion="off"]). */
+.commercePage .commerce-primary, .aiPage .search-submit, .sfSearchBtn {
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .commercePage .commerce-primary:not(:disabled):not([aria-disabled="true"]):hover,
+  .aiPage .search-submit:not(:disabled):hover,
+  .sfSearchBtn:hover {
+    transform: translateY(-1px);
+  }
+}
+.commercePage .commerce-primary:not(:disabled):not([aria-disabled="true"]):active,
+.aiPage .search-submit:not(:disabled):active,
+.sfSearchBtn:active {
+  transform: scale(0.97);
+}
+.commercePage .commerce-primary:disabled, .aiPage .search-submit:disabled {
+  transform: none;
+  transition: none;
+}
+
+/* Focus bàn phím khác hẳn hover: vòng 3px offset, không phụ thuộc transform. */
+.hmCta:focus-visible, .pgApply:focus-visible, .sfBtn:focus-visible,
+.cat-button:focus-visible, .commercePage .commerce-primary:focus-visible,
+.aiPage .search-submit:focus-visible, .sfSearchBtn:focus-visible {
+  outline: 3px solid var(--st-focus, var(--accent));
+  outline-offset: 3px;
+}
+
+/* Số lượng: số đổi chỉ mờ-trượt 2px (opacity/transform), vùng số có min-width
+   + tabular-nums nên không dịch layout. Nút giới hạn (disabled) đứng yên. */
+.qty-tick {
+  display: inline-block;
+  animation: qty-tick 140ms var(--ease-out);
+}
+@keyframes qty-tick {
+  from { opacity: 0.35; transform: translateY(3px); }
+}
+.cat-stepper button:focus-visible, .commerce-stepper button:focus-visible {
+  outline: 2px solid var(--st-focus, var(--accent));
+  outline-offset: -3px;
+}
