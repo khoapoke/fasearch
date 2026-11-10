@@ -284,7 +284,7 @@ pytest test/unit/test_point_ids_config.py -v
 #### Cách 1: Chạy trực quan trên Giao diện Streamlit Admin (Khuyến nghị)
 1. Khởi chạy Admin App:
    ```powershell
-   streamlit run admin_app/app.py
+   python -m streamlit run admin_app/app.py
    ```
 2. Mở trình duyệt tại `http://localhost:8501`, chọn trang **"Đánh giá & Benchmark (Evaluation)"**.
 3. Chọn Collection cần đánh giá (ví dụ: `image_gallery` hoặc `fashion_gallery`).
