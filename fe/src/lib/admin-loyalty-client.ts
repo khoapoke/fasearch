@@ -1,4 +1,4 @@
-export type LedgerType = "OPENING" | "HOLD" | "RELEASE" | "REDEEM" | "EARN" | "ADJUST";
+export type LedgerType = "OPENING" | "HOLD" | "RELEASE" | "REDEEM" | "EARN" | "ADJUST" | "RETURN_REVERSE" | "RETURN_REDEEM";
 export type AdminLedgerItem = {
   entryId: number; type: LedgerType; points: number; delta: number; balanceAfter: number | null;
   orderId: number | null; orderCode: string | null; reasonCode: string | null; note: string | null; actor: string | null; occurredAt: string;
@@ -25,7 +25,7 @@ export const ADJUST_REASONS: { code: string; label: string }[] = [
 ];
 
 export const ledgerTypeLabel = (type: string): string => ({
-  OPENING: "Số dư mở đầu", HOLD: "Giữ điểm", RELEASE: "Nhả giữ", REDEEM: "Dùng điểm", EARN: "Tích điểm", ADJUST: "Điều chỉnh",
+  OPENING: "Số dư mở đầu", HOLD: "Giữ điểm", RELEASE: "Nhả giữ", REDEEM: "Dùng điểm", EARN: "Tích điểm", ADJUST: "Điều chỉnh", RETURN_REVERSE: "Thu hồi điểm đơn trả", RETURN_REDEEM: "Hoàn điểm đã đổi",
 } as Record<string, string>)[type] ?? type;
 
 export const reasonLabel = (code: string | null): string | null => {

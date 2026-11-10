@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 // FP-1: mật khẩu fixture không được nằm trong mã theo dõi; loader phải báo lỗi
 // hành động được khi thiếu cấu hình, không có giá trị mặc định và không log bí mật.
 //
@@ -5,7 +6,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,17 +73,12 @@ describe("fixture config loader (FP-1)", () => {
 
   it("không mã theo dõi nào chứa mật khẩu fixture dạng chữ", () => {
     const secret = /\b(Adm|Stf|Cst)-\d{8}\b|\bDemo-[A-Za-z]+-\d{4}\b/;
-    const scanDirs = [join(REPO_ROOT, ".agent"), join(FE_ROOT, "src"), join(FE_ROOT, "scripts"), join(FE_ROOT, "tests")];
-    const hits = [];
-    const walk = (dir) => {
-      for (const entry of readdirSync(dir)) {
-        const full = join(dir, entry);
-        if (statSync(full).isDirectory()) { walk(full); continue; }
-        if (!/\.(md|mjs|ts|tsx|json|sql)$/.test(entry)) continue;
-        if (secret.test(readFileSync(full, "utf8"))) hits.push(full);
-      }
-    };
-    for (const dir of scanDirs) walk(dir);
+    const tracked = execFileSync("git", ["ls-files", "-z", "--", ".agent", "fe/src", "fe/scripts", "fe/tests", "fe/e2e"], { cwd: REPO_ROOT, encoding: "utf8" }).split("\0").filter(Boolean);
+    const hits = tracked.filter((file) => {
+      if (!/\.(md|mjs|ts|tsx|json|sql)$/.test(file)) return false;
+      try { return secret.test(readFileSync(join(REPO_ROOT, file), "utf8")); }
+      catch (error) { if (error.code === "ENOENT") return false; throw error; }
+    });
     assert.deepEqual(hits, [], `còn mật khẩu fixture trong: ${hits.join(", ")}`);
   });
 });

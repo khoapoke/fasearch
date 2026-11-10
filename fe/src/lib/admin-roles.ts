@@ -6,6 +6,7 @@ export const canManage = (role: string | null): boolean => role === "ADMIN" || r
  * Quản trị viên bật trong "Vai trò & quyền". FE chỉ dùng để ẩn/hiện; BE luôn kiểm tra lại từng yêu cầu.
  */
 export type PermissionCode =
+  | "RETURN_VIEW" | "RETURN_PROCESS" | "RETURN_REFUND"
   | "ORDER_VIEW" | "ORDER_UPDATE_STATUS" | "ORDER_CANCEL" | "ORDER_COLLECT_CASH" | "POS_USE"
   | "CUSTOMER_VIEW" | "CUSTOMER_CREATE" | "CUSTOMER_EDIT" | "CUSTOMER_DELETE"
   | "EMPLOYEE_VIEW" | "EMPLOYEE_CREATE" | "EMPLOYEE_EDIT" | "EMPLOYEE_DELETE"
@@ -13,7 +14,7 @@ export type PermissionCode =
   | "INVENTORY_VIEW" | "INVENTORY_RECEIPT_CREATE" | "STOCKTAKE_CREATE"
   | "PROMOTION_VIEW" | "PROMOTION_MANAGE"
   | "LOYALTY_POLICY_VIEW" | "LOYALTY_POLICY_MANAGE" | "LOYALTY_ADJUST"
-  | "REPORT_VIEW" | "DATA_EXPORT"
+  | "AUDIT_VIEW" | "REPORT_VIEW" | "DATA_EXPORT"
   | "TRASH_VIEW" | "TRASH_RESTORE";
 
 /** Quyền hiệu lực: ADMIN luôn đúng; Quản lý theo danh sách my-info; vai trò khác luôn sai. */
@@ -28,6 +29,8 @@ export function hasPermission(role: string | null, permissions: readonly string[
  * Tài khoản nội bộ (`/quan-tri/tai-khoan-noi-bo`) là ADMIN-only và được khung chặn riêng.
  */
 const ROUTE_PERMISSIONS: Array<{ pattern: RegExp; perm: PermissionCode }> = [
+  { pattern: /^\/quan-tri\/nhat-ky(\/|$)/, perm: "AUDIT_VIEW" },
+  { pattern: /^\/quan-tri\/doi-tra(\/|$)/, perm: "RETURN_VIEW" },
   { pattern: /^\/quan-tri\/don-hang(\/|$)/, perm: "ORDER_VIEW" },
   { pattern: /^\/quan-tri\/khach-hang\/moi(\/|$)/, perm: "CUSTOMER_CREATE" },
   { pattern: /^\/quan-tri\/khach-hang(\/|$)/, perm: "CUSTOMER_VIEW" },

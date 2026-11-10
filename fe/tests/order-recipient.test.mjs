@@ -1,7 +1,7 @@
 // Run: node --test tests/order-recipient.test.mjs   (from fe/)
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseOrderNote, stripRecipientToken } from "../src/lib/order-recipient.ts";
+import { parseOrderNote, stripRecipientToken, parseCustomerOrderNote } from "../src/lib/order-recipient.ts";
 
 describe("parseOrderNote", () => {
   it("reads the recipient and leaves real note text", () => {
@@ -28,4 +28,10 @@ describe("parseOrderNote", () => {
   it("strips the token only", () => {
     assert.equal(stripRecipientToken("a [Người nhận: X - 1] b").replace(/\s+/g, " "), "a b");
   });
+});
+
+it("prepares a token note for printing without internal status messages", () => {
+  const note = parseCustomerOrderNote("Gọi trước [Người nhận: Demo Cầm - 0911000001] | [PACKING]: Đang đóng gói");
+  assert.deepEqual(note.recipient, { name: "Demo Cầm", phone: "0911000001" });
+  assert.equal(note.text, "Gọi trước");
 });

@@ -8,6 +8,7 @@ import { fetchCustomerOrders } from "@/lib/customer-commerce-client";
 import { orderStatusText, type CustomerOrder } from "@/lib/customer-commerce";
 import { EmailVerificationBanner } from "./email-verification-banner";
 import { ProfileEditor } from "./profile-editor";
+import { NotificationPreferences } from "@/components/customer-notifications/preferences";
 import { PriceTag } from "@/components/storefront/price-tag";
 import ac from "@/components/account/account-cards.module.css";
 
@@ -65,6 +66,8 @@ export function AccountHub({
           <p className={ac.meta}>Tài khoản quản trị dùng trang quản trị riêng; hồ sơ khách hàng không áp dụng tại đây.</p>
         </section>
       )}
+
+      {isCustomer ? <NotificationPreferences /> : null}
 
       <section className={ac.card} aria-labelledby="account-orders-title">
         <div className={ac.head}>

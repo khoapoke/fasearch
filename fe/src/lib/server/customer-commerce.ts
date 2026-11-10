@@ -15,7 +15,7 @@ function timeoutSignal(signal: AbortSignal): AbortSignal {
 export async function commerceUpstream(
   request: NextRequest,
   path: string,
-  init: { method: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown; safeErrors?: boolean } = { method: "GET" },
+  init: { method: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown; safeErrors?: boolean; businessErrors?: boolean } = { method: "GET" },
 ): Promise<Response> {
   const token = authCookie(request);
   if (!token) {
@@ -41,7 +41,7 @@ export async function commerceUpstream(
     try {
       payload = await upstream.json() as { code?: unknown; message?: unknown; errors?: unknown };
     } catch { /* use status-only fallback */ }
-    const formatted = formatCommerceUpstreamError(upstream.status, payload, Boolean(init.safeErrors));
+    const formatted = formatCommerceUpstreamError(upstream.status, payload, Boolean(init.safeErrors), Boolean(init.businessErrors));
     return Response.json(formatted.body, { status: formatted.status, headers: { "cache-control": "no-store" } });
   }
   const out = new Headers({ "cache-control": "no-store" });

@@ -157,7 +157,7 @@ export default function ReportsPage() {
         });
         downloadCsv(name, ["Ngay", "SoDon", "DoanhThu"], series.map((r) => [r.key, r.count ?? 0, r.value]));
       } else if (tab === "san-pham" && ready.sanPham) {
-        downloadCsv(name, ["Hang", "MaSP", "TenSP", "DanhMuc", "SLBan", "DoanhThu", "TonHienTai"],
+        downloadCsv(name, ["Hạng", "Mã sản phẩm", "Tên sản phẩm", "Danh mục", "SL bán ròng", "Doanh thu ròng", "Tồn khả dụng"],
           ready.sanPham.map((r) => [r.rank, r.productId, r.productName, r.categoryName ?? "", r.totalQuantitySold, r.totalRevenue, r.currentInventory ?? ""]));
       } else if (tab === "xuat-nhap-ton" && ready.xnt) {
         // The screen shows one page; the file holds every page of the current month and SKU filter (bounded).
@@ -186,7 +186,7 @@ export default function ReportsPage() {
     : tab === "doanh-thu"
     ? "Doanh thu tính từ hóa đơn đã thu. Giá vốn và lãi gộp chưa có dữ liệu nên không hiển thị."
     : tab === "san-pham"
-      ? "Bán chạy xếp theo số lượng bán trong kỳ (hóa đơn đã thu). Bán chậm là sản phẩm không bán được cái nào trong kỳ, kể cả sản phẩm đã hết hàng; cột Tồn là số khả dụng hiện tại."
+      ? "Mỗi dòng là một sản phẩm, cộng tất cả SKU chưa xóa. Bán chạy xếp theo số lượng bán ròng sau hoàn trả; doanh thu ròng đã trừ giảm giá và hoàn tiền. Bán chậm chỉ gồm sản phẩm có mọi SKU bán ròng bằng 0 trong kỳ; tồn khả dụng cộng tất cả SKU."
       : "Nhập và Hỏng lấy từ phiếu nhập và phiếu xuất hỏng đã hoàn tất trong tháng; Xuất bán lấy từ hóa đơn đã thu, nên hàng hỏng không bị tính hai lần. Không có dữ liệu tồn đầu tháng nên cột này không hiển thị; Tồn cuối là số khả dụng hiện tại, không phải tồn cuối tháng.";
 
   return (
@@ -368,30 +368,30 @@ function SanPhamView({ data, loai }: { data: TopProductRow[]; loai: TopType }) {
     label: r.productName,
     value: best ? r.totalQuantitySold : r.currentInventory ?? 0,
     tooltip: best
-      ? `${r.productName} · ${formatNumber(r.totalQuantitySold)} đã bán · ${moneyText(r.totalRevenue)}`
-      : `${r.productName} · tồn ${r.currentInventory === null ? "chưa có" : formatNumber(r.currentInventory)} · không bán trong kỳ`,
+      ? `${r.productName} · ${formatNumber(r.totalQuantitySold)} bán ròng · ${moneyText(r.totalRevenue)}`
+      : `${r.productName} · tồn khả dụng ${r.currentInventory === null ? "chưa có" : formatNumber(r.currentInventory)} · mọi SKU bán ròng bằng 0`,
   })), [data, best]);
   if (data.length === 0) return <section className="form-card rp-card"><Empty title={best ? "Chưa có sản phẩm bán được trong kỳ này" : "Không có sản phẩm bán chậm trong kỳ này"}><p>Thử chọn kỳ dài hơn hoặc đổi loại.</p></Empty></section>;
   return (
     <div className="rp-grid rp-grid-top">
       <section className="form-card rp-card rp-chart" aria-label={best ? "Biểu đồ bán chạy" : "Biểu đồ bán chậm"}>
-        <div className="rp-card-head"><h2>{best ? "Số lượng bán" : "Tồn hiện tại"}</h2></div>
+        <div className="rp-card-head"><h2>{best ? "Số lượng bán ròng" : "Tồn khả dụng"}</h2></div>
         <HBarChart title={best ? "Sản phẩm bán chạy" : "Sản phẩm bán chậm"} tone={best ? "blue" : "gray"} data={bars} formatValue={(v) => formatNumber(v)} />
       </section>
       <section className="form-card rp-card rp-table" aria-label="Bảng sản phẩm">
         <div className="table-scroll rp-scroll" tabIndex={0} aria-label={best ? "Top bán chạy" : "Bán chậm"}>
           <table className="review-orders-table l3-table">
             <caption className="sr-only">{best ? "Sản phẩm bán chạy" : "Sản phẩm bán chậm"} · {formatNumber(data.length)} dòng</caption>
-            <thead><tr><th className="num rp-rank">Hạng</th><th>Sản phẩm</th><th>Danh mục</th><th className="num">SL bán</th><th className="num">Doanh thu</th><th className="num">Tồn</th></tr></thead>
+            <thead><tr><th className="num rp-rank">Hạng</th><th>Sản phẩm</th><th>Danh mục</th><th className="num">SL bán ròng</th><th className="num">Doanh thu ròng</th><th className="num">Tồn khả dụng</th></tr></thead>
             <tbody>
               {data.map((r) => (
                 <tr key={`${r.rank}-${r.productId}`}>
                   <td data-label="Hạng" className="num rp-rank tabnum">{r.rank}</td>
                   <td data-label="Sản phẩm" className="cell-title"><span className="rp-clip" title={r.productName}>{r.productName}</span></td>
                   <td data-label="Danh mục">{r.categoryName ?? <span className="empty-value">Chưa có</span>}</td>
-                  <td data-label="SL bán" className="num"><Num tone="blue" value={r.totalQuantitySold} /></td>
-                  <td data-label="Doanh thu" className="num"><Num tone="green" money value={r.totalRevenue} /></td>
-                  <td data-label="Tồn" className="num">{r.currentInventory === null ? <span className="empty-value">Chưa có</span> : <Num tone={r.currentInventory <= 0 ? "red" : "green"} dimZero={false} value={r.currentInventory} />}</td>
+                  <td data-label="SL bán ròng" className="num"><Num tone="blue" value={r.totalQuantitySold} /></td>
+                  <td data-label="Doanh thu ròng" className="num"><Num tone="green" money value={r.totalRevenue} /></td>
+                  <td data-label="Tồn khả dụng" className="num">{r.currentInventory === null ? <span className="empty-value">Chưa có</span> : <Num tone={r.currentInventory <= 0 ? "red" : "green"} dimZero={false} value={r.currentInventory} />}</td>
                 </tr>
               ))}
             </tbody>

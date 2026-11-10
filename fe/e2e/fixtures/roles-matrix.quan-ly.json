@@ -124,7 +124,7 @@
           }
         }
       ],
-      "journalPlaceholderText": "Chưa có nhật ký từ máy chủ",
+      "journalHeading": "Nhật ký hoạt động",
       "deniedReads": [
         "/api/admin/accounts?page=0&size=1"
       ],

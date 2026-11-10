@@ -78,8 +78,8 @@ export async function restoreTrashItem(kind: TrashKind, id: number): Promise<boo
   );
 }
 
-/** "Không rõ" cho dòng cũ thiếu người xóa; không bao giờ hiển thị id thô. */
+/** Người xóa rỗng được hiển thị là hệ thống; không bao giờ hiển thị id thô. */
 export function deletedByLabel(value: string | null): string {
   const trimmed = value?.trim();
-  return trimmed ? trimmed : "Không rõ";
+  return trimmed ? trimmed : "Hệ thống";
 }

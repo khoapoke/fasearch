@@ -92,3 +92,25 @@ bodies, so a regression could create data); in readonly mode they are skipped.
 
 See `be/fasearch/scripts/it-db/README.md` (`run-it.sh` creates the isolated `fasearch_it_*` database in the Postgres
 container, exports `PROMOTION_TEST_DB_*` / `DEMO_TEST_DB_*` and runs `./mvnw -o test`).
+
+## Consolidated regressions (tests audit 2026-11-07)
+
+`customer.api` now includes media/body/origin/cookie/token boundaries, five held-response
+session races, and catalog contracts. The registration/security probes use write mode.
+`customer.ui` includes category retry, missing-price versus zero-price, native auth forms,
+repeated profile keyboard focus (1440/390), and intercepted error-focus tests on checkout,
+AI, order detail and password screens. `ai` retains stale-mode/input, duplicate image and
+multimodal submissions, pre-transport cancellation, operation ownership and decode abort.
+The old AI CSRF wait is now tested at the current image-decode boundary; JSON/multipart
+request checks use the current `/api/ai/search/*` contract (limit 12).
+
+Write regressions require three distinct customer identities in `customer.json`,
+`customera.json`, and `customerb.json`. These aliases use the same private fixture loader;
+`accounts.json` entries with those role names are also accepted for A/B. `customer.json`
+additionally needs the real `email` and `phone` for duplicate-registration rejection.
+`locked.json` and `inactive.json` hold the respective disabled accounts for truthful
+403 login rejection. Missing fixtures fail explicitly; credentials are never embedded.
+
+The roles matrix uses `journalHeading` (Nhật ký hoạt động). The browser checks the live
+activity filters and API entries when AUDIT_VIEW is granted, or the explicit permission
+message with HTTP 403 when it is denied. No obsolete journal placeholder is expected.

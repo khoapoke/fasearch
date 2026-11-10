@@ -1,0 +1,18 @@
+.sfReturnForm fieldset { border:0; padding:0; margin:20px 0; display:grid; gap:18px; min-width:0; }
+.sfReturnForm legend { font-weight:600; margin-bottom:12px; }
+.sfReturnLine { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.sfReturnLine small { display:block; color:var(--st-muted); margin-top:5px; }
+.sfReturnLine input { width:80px; flex:none; }
+.sfReturnHistory { padding-top:20px; margin-top:20px; border-top:1px solid var(--st-border); font-size:14px; overflow-wrap:anywhere; }
+.sfReturnHistory h3 { font-size:16px; }
+.sfReturnHistory p,.sfReturnHistory li { margin-top:8px; line-height:1.6; }
+.sfReturnHistory ul,.sfReturnHistory ol { padding-left:20px; }
+.sfReturns { min-width:0; }
+.sfReturnForm input[type="file"] { width:100%; max-width:100%; min-width:0; font-size:13px; }
+.sfReturnLine > span { min-width:0; overflow-wrap:anywhere; }
+.sfReturnPartial { justify-self:start; width:fit-content; }
+
+.sfReturnFiles { padding: 0; list-style: none; }
+.sfReturnFiles li { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-block: 8px; }
+.sfReturnFiles li span { min-width: 0; overflow-wrap: anywhere; }
+.sfReturnForm input[hidden] { display: none; }

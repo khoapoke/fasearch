@@ -5,7 +5,7 @@ import {
   buildMovementQuery, buildRevenueQuery, buildTopQuery, formatMoneyOrUnknown,
   normalizeMonth, normalizeTopN, reportCsvName, validateReportRange,
 } from "../src/lib/reports.ts";
-import { csvCell } from "../src/lib/reports-client.ts";
+import { fetchTopProducts, csvCell } from "../src/lib/reports-client.ts";
 
 describe("validateReportRange", () => {
   it("accepts bounded ranges", () => {
@@ -59,4 +59,15 @@ describe("contract query builders (BE CONTRACT v1)", () => {
     assert.equal(csvCell(-150000.5), "-150000.5");
     assert.equal(csvCell("-5"), "'-5");
   });
+});
+
+it("product adapter preserves product totals and distinct IDs even for identical names", async () => {
+  const original = globalThis.fetch;
+  const rows = [
+    {rank:1, productId:21, productName:"Áo", categoryName:"Áo", totalQuantitySold:6, totalRevenue:555, currentInventory:14},
+    {rank:2, productId:22, productName:"Áo", categoryName:null, totalQuantitySold:0, totalRevenue:0, currentInventory:7},
+  ];
+  globalThis.fetch = async () => new Response(JSON.stringify({success:true,result:rows}));
+  try { assert.deepEqual(await fetchTopProducts("type=BEST_SELLER"), rows); }
+  finally { globalThis.fetch = original; }
 });

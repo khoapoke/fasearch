@@ -31,3 +31,19 @@ export function parseOrderNote(note: string | null | undefined): { recipient: Or
 export function stripRecipientToken(note: string): string {
   return note.replace(RECIPIENT_TOKEN, " ");
 }
+
+/** Customer rendering keeps reasons readable and removes internal status/actor tokens. */
+export function parseCustomerOrderNote(note: string | null | undefined) {
+  const parsed = parseOrderNote(note);
+  const transitions: { status: string; note: string }[] = [];
+  const cancellations: string[] = [];
+  let text = parsed.text.replace(/\[HỦY ĐƠN\s*-\s*([^\]]*)\]\s*:\s*([^|\]]*)/g, (_whole, _actor: string, reason: string) => {
+    if (reason.trim()) cancellations.push(reason.trim());
+    return " ";
+  });
+  text = text.replace(/\[(PENDING|CONFIRMED|PACKING|SHIPPING|COMPLETED|CANCELLED|RETURNED)\]\s*:\s*([^|\]]*)/g, (_whole, status: string, message: string) => {
+    if (message.trim()) transitions.push({ status, note: message.trim() });
+    return " ";
+  }).replace(/\s*\|\s*/g, " ").replace(/\s+/g, " ").trim();
+  return { recipient: parsed.recipient, text, transitions, cancellations };
+}

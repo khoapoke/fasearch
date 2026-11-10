@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ReturnSection } from "./return-section";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import { ProductLineImage } from "@/components/customer-commerce/product-line-image";
 import "@/components/customer-auth/auth.css";
 import ac from "@/components/account/account-cards.module.css";
 import { PriceTag } from "@/components/storefront/price-tag";
@@ -17,7 +19,7 @@ import {
   type PaymentAttempt,
 } from "@/lib/customer-commerce";
 import { paymentMethodLabel } from "@/lib/commerce";
-import { parseOrderNote } from "@/lib/order-recipient";
+import { parseCustomerOrderNote } from "@/lib/order-recipient";
 
 function dateText(value: string): string {
   const d = new Date(value);
@@ -166,7 +168,8 @@ export default function OrderDetailPage() {
   }
 
   const paid = isPaidOrder(order);
-  const recipientNote = parseOrderNote(order?.note);
+  const partialRefund = (order?.refundedAmount ?? 0) > 0 && (order?.refundedAmount ?? 0) < (order?.paidAmount ?? 0);
+  const recipientNote = parseCustomerOrderNote(order?.note);
   const cancellable = order && (order.status === "PENDING" || order.status === "CONFIRMED") && !paid;
   const orderDisplayCode = order ? (order.orderCode || `Đơn hàng #${order.orderId}`) : `#${id}`;
 
@@ -250,17 +253,7 @@ export default function OrderDetailPage() {
                       return (
                         <li key={line.skuId} className={ac.itemRow}>
                           <span style={{ display: "flex", gap: 12, minWidth: 0 }}>
-                            {img ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={img}
-                                alt={line.productName || "Sản phẩm"}
-                                referrerPolicy="no-referrer"
-                                style={{ width: 56, height: 72, objectFit: "cover", borderRadius: 4, flex: "none" }}
-                              />
-                            ) : (
-                              <span aria-hidden="true" style={{ width: 56, height: 72, borderRadius: 4, background: "var(--st-select)", flex: "none" }} />
-                            )}
+                            <ProductLineImage src={img} alt={line.productName || "Sản phẩm"} style={{ width: 56, height: 72, objectFit: "cover", borderRadius: 4, background: "var(--st-select)", flex: "none" }} />
                             <span style={{ minWidth: 0 }}>
                               <strong style={{ display: "block", fontSize: 14 }}>{line.productName || "Sản phẩm"}</strong>
                               <span className={ac.meta} style={{ display: "block", marginTop: 4 }}>
@@ -306,6 +299,8 @@ export default function OrderDetailPage() {
                         <dd className={ac.prose}>{recipientNote.text}</dd>
                       </div>
                     ) : null}
+                    {recipientNote.transitions.map((t, index) => <div className={ac.kvRow} key={index}><dt>{orderStatusText(t.status)}</dt><dd>{t.note}</dd></div>)}
+                    {recipientNote.cancellations.map((text, index) => <div className={ac.kvRow} key={`cancel-${index}`}><dt>Lý do hủy</dt><dd>{text}</dd></div>)}
                   </dl>
                 </section>
 
@@ -331,7 +326,7 @@ export default function OrderDetailPage() {
                     <li><span>Phí giao hàng</span><PriceTag value={order.shippingFee} /></li>
                     <li><span><strong>Tổng cộng</strong></span><PriceTag value={order.totalAmount} /></li>
                   </ul>
-                  {paid ? (
+                  {partialRefund ? <p className={ac.meta}>Đã hoàn một phần · Đã hoàn {(order.refundedAmount ?? 0).toLocaleString("vi-VN")}đ / Đã trả {(order.paidAmount ?? 0).toLocaleString("vi-VN")}đ</p> : order.paymentStatus === "REFUNDED" ? <p className={ac.meta}>Đã hoàn tiền{order.paymentMethod ? ` · ${paidMethodName(order.paymentMethod)}` : ""}</p> : paid ? (
                     <p className={ac.meta}>Đã thanh toán{order.paymentMethod ? ` · ${paidMethodName(order.paymentMethod)}` : ""}</p>
                   ) : (
                     <p className={ac.meta}>Phương thức thanh toán: Thanh toán khi nhận hàng (COD)</p>
@@ -341,7 +336,7 @@ export default function OrderDetailPage() {
                       <p className={ac.label}>Thanh toán trực tuyến (thử nghiệm)</p>
                       {storedAttempt ? (
                         <p className={ac.meta}>
-                          Kênh {storedAttempt.provider}: {paymentAttemptStatusText(storedAttempt.status)}
+                          Kênh {paidMethodName(storedAttempt.provider)}: {paymentAttemptStatusText(storedAttempt.status)}
                         </p>
                       ) : null}
                       {payError ? <p className={ac.alert} role="alert">{payError}</p> : null}
@@ -357,6 +352,8 @@ export default function OrderDetailPage() {
                     </div>
                   ) : null}
                 </section>
+
+                <ReturnSection orderId={order.orderId} items={order.items} status={order.status} refundMethod={order.paymentMethod} />
 
                 {cancellable ? (
                   <section className={ac.card} aria-labelledby="order-cancel">

@@ -53,3 +53,29 @@ export async function emit(t, results) {
   const assert = (await import("node:assert/strict")).default;
   for (const r of results) await t.test(r.name, () => { assert.ok(r.ok, `${r.name} ${r.detail}`.trim()); });
 }
+
+/** CDP adapter for migrated regressions; uses the same configured browser as the suite. */
+export async function regressionPage(t) {
+  const browser = await launch();
+  t.after(() => browser.close());
+  const context = await browser.newContext();
+  const tab = await context.newPage();
+  const session = await context.newCDPSession(tab);
+  const requests = [];
+  session.on("Network.requestWillBeSent", ({ request }) => requests.push({ url: request.url, method: request.method }));
+  for (const domain of ["Page", "Runtime", "Network", "DOM"]) await session.send(`${domain}.enable`);
+  return {
+    requests,
+    send: (method, params = {}) => session.send(method, params),
+    on: (method, fn) => session.on(method, fn),
+    eval: async (expression) => {
+      const r = await session.send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
+      if (r.exceptionDetails) throw new Error(r.exceptionDetails.text ?? "browser evaluation failed");
+      return r.result?.value;
+    },
+    goto: async (url) => { await tab.goto(url); await tab.waitForTimeout(1400); },
+    setViewport: (width, height = 900) => tab.setViewportSize({ width, height }),
+    setFile: (selector, path) => tab.locator(selector).setInputFiles(path),
+    shot: (file) => tab.screenshot({ path: file, fullPage: true }),
+  };
+}

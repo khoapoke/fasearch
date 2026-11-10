@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
+import { ProductLineImage } from "@/components/customer-commerce/product-line-image";
 import { createCustomerOrder, fetchShippingQuote, quoteCustomerCart } from "@/lib/customer-commerce-client";
 import { createStripeCheckout, createVnpayCheckout } from "@/lib/customer-payments-client";
 import { getSelfProfile, customerFullName } from "@/lib/customer-profile-client";
@@ -416,10 +417,7 @@ function CheckoutPageContent() {
                     const variant = variantLabel(line.color, line.size);
                     return (
                       <li className="co-line" key={line.skuId}>
-                        {line.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- product image comes from the candidate BE
-                          <img className="co-line-img" src={line.imageUrl.replace(/^\/api\/v1\/products\/images\//, "/api/catalog/product-images/")} alt="" referrerPolicy="no-referrer" />
-                        ) : <span className="co-line-img" aria-hidden="true" />}
+                        <ProductLineImage className="co-line-img" src={line.imageUrl?.replace(/^\/api\/v1\/products\/images\//, "/api/catalog/product-images/")} />
                         <span className="co-line-body">
                           <span className="co-line-name">{line.productName}</span>
                           {variant ? <span className="co-line-variant">{variant}</span> : null}

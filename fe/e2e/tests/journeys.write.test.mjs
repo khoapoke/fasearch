@@ -127,3 +127,116 @@ suite(["customer", "admin"], "commerce lifecycle (customer + admin)", () => {
     await chk(t, "A-end After logout admin API 401", await a.req("GET", "/api/admin/overview"), { ok: [401, 403] });
   });
 }, { write: true });
+
+// reliability-journey + harness-identity: actual identities, ownership, replay and frozen money.
+suite(["customer", "admin"], "customer isolation and checkout integrity", () => {
+  test("distinct sessions, denied writes, replay, stale quote and cancellation snapshots", { timeout: 240000 }, async (t) => {
+    const { cfg } = await import("../lib/config.mjs");
+    const { launch, loginContext } = await import("../lib/browser.mjs");
+    const clients = [new Client(), new Client(), new Client()];
+    const fixtures = [requireCreds("CUSTOMERA"), requireCreds("CUSTOMERB"), requireCreds("CUSTOMER")];
+    assert.equal(new Set(fixtures.map(f => f.username)).size, 3, "three distinct customer fixture aliases required");
+    const identities = [];
+    for (let i = 0; i < clients.length; i++) {
+      const login = await clients[i].login(fixtures[i].username, fixtures[i].password);
+      assert.equal(login.code, 200);
+      const me = await clients[i].req("GET", "/api/customer-auth/me");
+      assert.equal(me.j.identity.role, "CUSTOMER");
+      identities.push(me.j.identity.id);
+      t.after(() => clients[i].logout());
+    }
+    assert.equal(new Set(identities).size, 3, "runtime /me IDs must differ");
+    const [ca, cb, owner] = clients;
+    const admin = new Client(), af = requireCreds("ADMIN");
+    assert.equal((await admin.login(af.username, af.password)).code, 200);
+    t.after(() => admin.logout());
+    const [sku] = await discoverSkus(admin);
+    const orders = async c => {
+      const r = await c.req("GET", "/api/customer-commerce/orders?size=100");
+      assert.equal(r.code, 200); return res(r.j);
+    };
+    const listBefore = await orders(owner), stockBefore = await stockOf(admin, sku);
+    // Bypass Client's same-origin default: rejected write must have zero order/stock effects.
+    const denied = await fetch(cfg.baseUrl + "/api/customer-commerce/orders", {
+      method: "POST", headers: { "content-type": "application/json", cookie: owner.cookieHeader(), origin: "https://foreign.invalid" }, body: "{}",
+    });
+    assert.equal(denied.status, 403);
+    assert.equal((await orders(owner)).totalElements, listBefore.totalElements);
+    assert.deepEqual(await stockOf(admin, sku), stockBefore);
+    const offers = res((await owner.req("GET", "/api/customer-commerce/offers")).j);
+    assert.ok(offers?.length, "published voucher required to verify nonzero discount allocations");
+    await owner.req("DELETE", "/api/customer-commerce/cart", { body: {} });
+    assert.equal((await owner.req("POST", "/api/customer-commerce/cart/items", { body: { skuId: sku, quantity: 1 } })).code, 200);
+    const quoted = await owner.req("POST", "/api/customer-commerce/cart/quote", { body: { voucherCode: offers[0].code, redeemedPoints: 0 } });
+    assert.equal(quoted.code, 200);
+    const q = res(quoted.j);
+    assert.ok(q.voucherDiscount > 0, "voucher must produce a real discount");
+    const body = { deliveryAddress: "14 E2E Street, Quan 1, TP HCM", receiverName: "E2E Integrity", receiverPhone: "0913000001", paymentMethod: "COD", shippingFee: 0, voucherCode: offers[0].code, redeemedPoints: 0, quoteFingerprint: q.quoteFingerprint, expectedMerchandiseAmountDue: q.merchandiseAmountDue, checkoutKey: randomUUID().replace(/-/g, "") };
+    const made = await owner.req("POST", "/api/customer-commerce/orders", { body });
+    assert.ok([200, 201].includes(made.code));
+    const id = res(made.j).orderId;
+    assert.ok(id);
+    t.after(async () => { await owner.req("POST", `/api/customer-commerce/orders/${id}/cancel`, { body: { reason: "E2E cleanup" } }); });
+    const stockReserved = await stockOf(admin, sku);
+    const replay = await owner.req("POST", "/api/customer-commerce/orders", { body });
+    assert.ok([200, 201].includes(replay.code));
+    assert.equal(res(replay.j).orderId, id, "same checkout key returns same order");
+    assert.deepEqual(await stockOf(admin, sku), stockReserved, "replay must not reserve twice");
+    const own = await owner.req("GET", `/api/customer-commerce/orders/${id}`);
+    assert.equal(own.code, 200);
+    const snapshot = res(own.j);
+    for (const outsider of [ca, cb]) {
+      const foreign = await outsider.req("GET", `/api/customer-commerce/orders/${id}`);
+      assert.ok([401, 403, 404].includes(foreign.code));
+      assert.doesNotMatch(JSON.stringify(foreign.j), /"(?:totalAmount|discountAmount|pointsDiscountAmount|balancePoints|earnedPoints|redeemedPoints)"/);
+      const foreignProfile = await outsider.req("GET", `/api/admin/customers/${snapshot.customer?.customerId}`);
+      assert.ok(snapshot.customer?.customerId, "order must expose owner customer ID for profile isolation probe");
+      assert.ok([401, 403, 404].includes(foreignProfile.code));
+      assert.doesNotMatch(JSON.stringify(foreignProfile.j), /"(?:balancePoints|cumulativePaidSales|tier|availablePoints)"/);
+      assert.ok(!(await orders(outsider)).content.some(x => x.orderId === id));
+    }
+    const lists = await Promise.all(clients.map(orders));
+    for (let i = 0; i < lists.length; i++) for (let j = i + 1; j < lists.length; j++) {
+      assert.equal(lists[i].content.filter(x => lists[j].content.some(y => y.orderId === x.orderId)).length, 0);
+    }
+    assert.ok(lists[2].content.some(x => x.orderId === id), "owner sees own order");
+    assert.equal((await owner.req("POST", `/api/customer-commerce/orders/${id}/cancel`, { body: { reason: "E2E frozen snapshot" } })).code, 200);
+    const after = res((await owner.req("GET", `/api/customer-commerce/orders/${id}`)).j);
+    for (const key of ["totalAmount", "subTotal", "shippingFee", "discountAmount", "pointsDiscount", "redeemedPoints", "voucherCode"]) {
+      assert.ok(key in snapshot, `snapshot must contain ${key}`);
+      assert.deepEqual(after[key], snapshot[key], `cancellation preserves ${key}`);
+    }
+    assert.deepEqual(await stockOf(admin, sku), stockBefore, "cancellation restores reservation");
+    // Current quote fingerprints replace the legacy cart-version wire fields.
+    await owner.req("POST", "/api/customer-commerce/cart/items", { body: { skuId: sku, quantity: 1 } });
+    const fresh = res((await owner.req("POST", "/api/customer-commerce/cart/quote", { body: { voucherCode: null, redeemedPoints: 0 } })).j);
+    const count = (await orders(owner)).totalElements;
+    const wrong = await owner.req("POST", "/api/customer-commerce/orders", { body: { ...body, voucherCode: null, quoteFingerprint: fresh.quoteFingerprint, expectedMerchandiseAmountDue: fresh.merchandiseAmountDue + 1, checkoutKey: randomUUID().replace(/-/g, "") } });
+    assert.ok([400, 409].includes(wrong.code), "forged total rejected");
+    await owner.req("PUT", `/api/customer-commerce/cart/items/${sku}`, { body: { quantity: 2 } });
+    const stale = await owner.req("POST", "/api/customer-commerce/orders", { body: { ...body, voucherCode: null, quoteFingerprint: fresh.quoteFingerprint, expectedMerchandiseAmountDue: fresh.merchandiseAmountDue, checkoutKey: randomUUID().replace(/-/g, "") } });
+    assert.equal(stale.code, 409, "changed cart refuses stale quote");
+    assert.equal((await orders(owner)).totalElements, count, "invalid totals/quotes create no orders");
+    await owner.req("DELETE", "/api/customer-commerce/cart", { body: {} });
+    const browser = await launch(); t.after(() => browser.close());
+    const { c } = await loginContext(browser, "CUSTOMER");
+    const page = await c.newPage(); await page.goto(cfg.baseUrl + `/don-hang/${id}`, { waitUntil: "networkidle" });
+    // Discounted rendering is checked against the persisted discovered order;
+    // no historical order IDs or catalog prices are baked into the test.
+    const rows = await page.locator('section[aria-labelledby="order-summary"] li').evaluateAll(nodes => nodes.map(el => ({ label: el.children[0]?.textContent?.trim(), amount: el.children[1]?.textContent?.trim() })));
+    assert.ok(rows.length, "order money rows must render");
+    const num = s => Number(String(s).replace(/[^0-9]/g, ""));
+    const discounts = rows.filter(r => /Giảm giá|Tổng giảm|Voucher|[Đđ]iểm/.test(r.label));
+    assert.ok(discounts.length > 0);
+    assert.ok(discounts.every(r => num(r.amount) > 0 && !r.label.startsWith("Giảm giá ")));
+    const subtotal = rows.find(r => r.label === "Tạm tính"), fee = rows.find(r => r.label === "Phí giao hàng"), total = rows.find(r => r.label === "Tổng cộng");
+    assert.ok(subtotal && fee && total);
+    assert.equal(num(subtotal.amount) - discounts.reduce((sum, r) => sum + num(r.amount), 0) + num(fee.amount), num(total.amount));
+    await c.route(`**/api/customer-commerce/orders/${id}`, route => route.fulfill({ json: { success: true, result: { ...after, voucherId: null, voucherCode: null, voucherCampaignName: null, voucherCampaignVersion: null, discountAmount: 0, pointsDiscount: 0, redeemedPoints: 0, totalAmount: after.subTotal + after.shippingFee } } }));
+    await page.reload({ waitUntil: "networkidle" });
+    const noDiscount = await page.locator('section[aria-labelledby="order-summary"] li').evaluateAll(nodes => nodes.map(el => el.children[0]?.textContent));
+    assert.ok(noDiscount.length >= 3);
+    assert.equal(noDiscount.filter(label => /Giảm giá|Tổng giảm|Voucher|[Đđ]iểm/.test(label)).length, 0, "undiscounted legacy order has no invented zero discount rows");
+
+  });
+}, { write: true });

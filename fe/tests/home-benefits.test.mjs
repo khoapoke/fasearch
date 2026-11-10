@@ -63,3 +63,85 @@ describe("home motion preference", () => {
     assert.equal(readMotionPreference({ getItem: () => { throw new Error("blocked"); } }), "auto");
   });
 });
+
+// Consolidated from fe/tests/studio-theme.test.mjs; audit 2026-11-07.
+{
+// Run: node --test tests/home-benefits.test.mjs (from fe/)
+//
+// Chặn hồi quy cho lớp theme search-studio (P1): lựa chọn thiết bị, script boot
+// không flash, và việc ba bề mặt pilot thực sự dùng theme + control giao diện.
+const { describe, it } = await import("node:test");
+const { default: assert } = await import("node:assert/strict");
+
+const { THEME_CHOICE_LABELS, THEME_CHOICES, THEME_STORAGE_KEY, normalizeThemeChoice, readStoredTheme, resolveTheme, themeBootScript, writeStoredTheme } = await import("../src/lib/theme.ts");
+
+describe("lựa chọn giao diện của thiết bị", () => {
+  it("mặc định là 'system' (theo hệ điều hành)", () => {
+    assert.equal(normalizeThemeChoice(undefined), "system");
+    assert.equal(normalizeThemeChoice(null), "system");
+    assert.equal(normalizeThemeChoice(""), "system");
+    assert.equal(normalizeThemeChoice("neon"), "system");
+    assert.equal(readStoredTheme(null), "system");
+  });
+
+  it("giữ lựa chọn hợp lệ", () => {
+    assert.equal(normalizeThemeChoice("light"), "light");
+    assert.equal(normalizeThemeChoice("dark"), "dark");
+    assert.equal(normalizeThemeChoice("system"), "system");
+  });
+
+  it("đọc lựa chọn đã lưu; storage bị chặn thì không ném", () => {
+    const store = { getItem: () => "dark" };
+    assert.equal(readStoredTheme(store), "dark");
+    const blocked = {
+      getItem() {
+        throw new Error("blocked");
+      },
+    };
+    assert.equal(readStoredTheme(blocked), "system");
+  });
+
+  it("ghi lựa chọn; storage bị chặn thì trả false", () => {
+    const seen = [];
+    assert.equal(writeStoredTheme("dark", { setItem: (k, v) => seen.push([k, v]) }), true);
+    assert.deepEqual(seen, [[THEME_STORAGE_KEY, "dark"]]);
+    assert.equal(writeStoredTheme("light", {
+      setItem() {
+        throw new Error("blocked");
+      },
+    }), false);
+  });
+
+  it("theme hiệu dụng theo lựa chọn + trạng thái OS", () => {
+    assert.equal(resolveTheme("light", true), "light");
+    assert.equal(resolveTheme("dark", false), "dark");
+    assert.equal(resolveTheme("system", true), "dark");
+    assert.equal(resolveTheme("system", false), "light");
+  });
+
+  it("đủ ba lựa chọn và nhãn tiếng Việt", () => {
+    assert.deepEqual(THEME_CHOICES, ["system", "light", "dark"]);
+    assert.equal(THEME_CHOICE_LABELS.system, "Theo thiết bị");
+    assert.equal(THEME_CHOICE_LABELS.light, "Sáng");
+    assert.equal(THEME_CHOICE_LABELS.dark, "Tối");
+  });
+});
+
+describe("script boot (không flash sai màu)", () => {
+  it("đọc localStorage + OS rồi đặt data-theme trước khi vẽ", () => {
+    const js = themeBootScript();
+    assert.ok(js.includes(THEME_STORAGE_KEY), "phải đọc khoá lưu lựa chọn");
+    assert.ok(js.includes('setAttribute("data-theme"'), "phải đặt data-theme");
+    assert.ok(js.includes('setAttribute("data-theme-choice"'), "phải giữ lựa chọn của người dùng");
+    assert.ok(js.includes("prefers-color-scheme: dark"), "mặc định phải theo hệ điều hành");
+    assert.ok(js.includes("try{"), "lỗi storage/matchMedia không được làm hỏng trang");
+  });
+
+  it("không nhúng mật khẩu hay dữ liệu nhạy cảm", () => {
+    const js = themeBootScript();
+    assert.doesNotMatch(js, /password|token|secret/i);
+  });
+});
+
+
+}

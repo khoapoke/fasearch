@@ -8,6 +8,7 @@ import { roleLabel } from "@/lib/admin-people-client";
 import { hasPermission, routePermission, type PermissionCode } from "@/lib/admin-roles";
 import { Icon } from "./icons";
 import { ToastProvider } from "./toast";
+import { NotificationBell } from "./notification-bell";
 import "./admin-b.css";
 import "./o1.css";
 
@@ -23,6 +24,7 @@ const NAV: { label: string | null; items: NavItem[] }[] = [
     label: "Bán hàng",
     items: [
       { href: "/quan-tri/don-hang", label: "Đơn hàng", icon: "shopping-bag", pending: true, perm: "ORDER_VIEW" },
+      { href: "/quan-tri/doi-tra", label: "Đổi/trả", icon: "arrow-down-to-line", perm: "RETURN_VIEW" },
       { href: "/quan-tri/khach-hang", label: "Khách hàng", icon: "users", perm: "CUSTOMER_VIEW" },
       { href: "/quan-tri/khuyen-mai", label: "Khuyến mãi", icon: "ticket-percent", perm: "PROMOTION_VIEW" },
       { href: "/quan-tri/chinh-sach-diem", label: "Chính sách điểm", icon: "star", perm: "LOYALTY_POLICY_VIEW" },
@@ -50,6 +52,7 @@ const NAV: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: "/quan-tri/nhan-vien", label: "Nhân sự", icon: "user-cog", perm: "EMPLOYEE_VIEW" },
       { href: "/quan-tri/tai-khoan-noi-bo", label: "Tài khoản nội bộ", icon: "key-round", adminOnly: true },
+      { href: "/quan-tri/nhat-ky", label: "Nhật ký hoạt động", icon: "clipboard-check", perm: "AUDIT_VIEW" },
       { href: "/quan-tri/thung-rac", label: "Thùng rác", icon: "trash-2", perm: "TRASH_VIEW" },
     ],
   },
@@ -260,6 +263,7 @@ export function AdminFrame({ children }: { children: React.ReactNode }) {
                 <strong>{title}</strong>
               </div>
               <div className="utilities">
+                {state.kind === "ready" ? <NotificationBell key={`${state.identity.id}:${(state.identity.permissions ?? []).join(",")}`} identity={state.identity} /> : null}
                 <button className="icon-btn" type="button" onClick={toggleTheme} aria-label={showDark ? "Chuyển giao diện sáng" : "Chuyển giao diện tối"}><Icon name={showDark ? "sun" : "moon"} /></button>
                 {role ? <span className="user"><span className="avatar">{role === "STAFF" ? "QL" : "QT"}</span>{roleLabel(role)}</span> : null}
                 <button className="logout-btn" type="button" onClick={logout} disabled={loggingOut || !role} aria-busy={loggingOut} aria-label={loggingOut ? "Đang đăng xuất" : "Đăng xuất khỏi phiên trình duyệt này"} title="Đăng xuất khỏi phiên trình duyệt này"><Icon name="log-out" /><span>{loggingOut ? "Đang đăng xuất…" : "Đăng xuất"}</span></button>

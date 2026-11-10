@@ -71,6 +71,8 @@ export type CustomerOrderDetail = CustomerOrder & {
   note: string | null;
   customer: { customerId: number; fullName: string | null; phoneNumber: string | null } | null;
   items: CustomerOrderItem[];
+  paidAmount?: number | null;
+  refundedAmount?: number | null;
   paymentStatus: string | null;
   paymentMethod: string | null;
 };
@@ -130,6 +132,7 @@ export function formatCommerceUpstreamError(
   status: number,
   payload: { code?: unknown; message?: unknown; errors?: unknown } | null,
   safeErrors = false,
+  businessErrors = false,
 ): { status: number; body: { success: false; code: number | string; message: string; errors?: Array<{ field: string; reason: string }>; result: null } } {
   let code: number | string = status;
   let upstreamMessage = "";
@@ -208,6 +211,9 @@ export function formatCommerceUpstreamError(
               : "Yêu cầu chưa thể xử lý. Kiểm tra lại dữ liệu.";
   }
 
+  // Returns sends curated Vietnamese AppException reasons; preserve these for actionable validation.
+  if (businessErrors && upstreamMessage && status >= 400 && status !== 500 && status !== 401 && status !== 403)
+    message = upstreamMessage;
   const forwardedErrors = safeErrors ? undefined : (errors?.length ? errors : undefined);
   return {
     status,
@@ -339,6 +345,8 @@ export function normalizeOrderDetail(raw: unknown): CustomerOrderDetail {
     note: text(v.note),
     paymentStatus,
     paymentMethod,
+    paidAmount: v.paidAmount == null ? null : finite(v.paidAmount),
+    refundedAmount: v.refundedAmount == null ? null : finite(v.refundedAmount),
     customer: c ? { customerId: integer(c.customerId, 1), fullName: text(c.fullName), phoneNumber: text(c.phoneNumber) } : null,
     items: v.items.map((x) => {
       const i = record(x);

@@ -54,9 +54,17 @@ suite("roles", `role boundaries (${path.basename(matrixFile)})`, () => {
           await p.goto(cfg.baseUrl + "/quan-tri", { waitUntil: "networkidle" });
           assert.ok((await p.locator("body").innerText()).includes(rule.displayLabel), "label not shown");
         });
-        if (rule.journalPlaceholderText) await step(t, `${role}: honest journal placeholder retained`, async () => {
+        if (rule.journalHeading) await step(t, `${role}: activity journal shows current permission state`, async () => {
           await p.goto(cfg.baseUrl + "/quan-tri/nhat-ky", { waitUntil: "networkidle" });
-          assert.ok((await p.locator("main").innerText()).includes(rule.journalPlaceholderText));
+          assert.ok((await p.locator("main").innerText()).includes(rule.journalHeading));
+          const audit = await s.req("/api/admin/audit?page=0&size=1");
+          if (audit.http === 200) {
+            await p.getByLabel("Tìm đối tượng").waitFor();
+            assert.ok(Array.isArray(audit.data?.content), "audit API must return activity entries");
+          } else {
+            assert.equal(audit.http, 403);
+            await p.getByText("Bạn không có quyền xem nhật ký hoạt động.", { exact: true }).waitFor();
+          }
         });
         for (const u of rule.allowedReads ?? []) await step(t, `${role}: GET ${u.split("?")[0]} allowed`, async () => { const r = await s.req(u); assert.equal(r.http, 200, `http ${r.http}`); });
         for (const u of rule.deniedReads ?? []) await step(t, `${role}: GET ${u.split("?")[0]} denied`, async () => { const r = await s.req(u); assert.ok([401, 403].includes(r.http), `http ${r.http}`); });

@@ -119,8 +119,8 @@ export async function fetchOwnLoyaltyHistory(query: string): Promise<Paged<Loyal
   return pageResult(result, (raw) => {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Dòng lịch sử điểm không hợp lệ.");
     const h = raw as Record<string, unknown>;
-    if (!Number.isSafeInteger(h.entryId) || (h.entryId as number) < 1 || !["OPENING", "HOLD", "RELEASE", "REDEEM", "EARN", "ADJUST"].includes(String(h.type))
-      || !Number.isSafeInteger(h.points) || (h.type === "ADJUST" ? h.points === 0 : (h.points as number) < (h.type === "OPENING" ? 0 : 1)) || typeof h.occurredAt !== "string"
+    if (!Number.isSafeInteger(h.entryId) || (h.entryId as number) < 1 || !["OPENING", "HOLD", "RELEASE", "REDEEM", "EARN", "ADJUST", "RETURN_REVERSE", "RETURN_REDEEM"].includes(String(h.type))
+      || !Number.isSafeInteger(h.points) || (h.type === "ADJUST" ? h.points === 0 : (h.points as number) < (h.type === "OPENING" || h.type === "RETURN_REVERSE" ? 0 : 1)) || typeof h.occurredAt !== "string"
       || !(h.orderId === null || (Number.isSafeInteger(h.orderId) && (h.orderId as number) > 0))) throw new Error("Dòng lịch sử điểm không hợp lệ.");
     return h as unknown as LoyaltyHistoryEntry;
   });

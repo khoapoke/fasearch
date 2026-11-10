@@ -30,7 +30,7 @@ export type LoyaltyBalance = {
 
 export type LoyaltyHistoryEntry = {
   entryId: number;
-  type: "OPENING" | "HOLD" | "RELEASE" | "REDEEM" | "EARN" | "ADJUST";
+  type: "OPENING" | "HOLD" | "RELEASE" | "REDEEM" | "EARN" | "ADJUST" | "RETURN_REVERSE" | "RETURN_REDEEM";
   points: number;
   orderId: number | null;
   occurredAt: string;
@@ -115,6 +115,8 @@ export function loyaltyActionLabel(type: string): string {
     case "RELEASE": return "Nhả giữ";
     case "REDEEM": return "Dùng điểm";
     case "EARN": return "Tích điểm";
+    case "RETURN_REVERSE": return "Thu hồi điểm đơn trả";
+    case "RETURN_REDEEM": return "Hoàn điểm đã đổi";
     case "ADJUST": return "Điều chỉnh bởi cửa hàng";
     default: return type;
   }
@@ -150,7 +152,7 @@ export function loyaltyHistoryAmount(type: string, points: number): { text: stri
 export function loyaltySignedPoints(type: string, points: number): number {
   if (type === "OPENING") return 0;
   if (type === "ADJUST") return points;
-  return type === "HOLD" || type === "REDEEM" ? -Math.abs(points) : Math.abs(points);
+  return type === "HOLD" || type === "REDEEM" || type === "RETURN_REVERSE" ? -Math.abs(points) : Math.abs(points);
 }
 
 /** Lỗi benefit → câu VI trung thực, giữ input ở caller. */

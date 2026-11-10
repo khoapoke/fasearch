@@ -248,8 +248,8 @@ export function ReviewsSection({ productId }: { productId: number; productName?:
   const fitTotal = summary?.fitCount ?? 0;
   const fitPct = (key: SizeFit) => (fitTotal ? Math.round(((summary?.fit[key] ?? 0) / fitTotal) * 100) : 0);
   const fitVerdictText = summary?.fitVerdict
-    ? summary.fitVerdict === "VUA" ? "Đa số khách thấy vừa vặn" : summary.fitVerdict === "NHO" ? "Đa số khách thấy hơi nhỏ — cân nhắc lấy lớn hơn 1 cỡ" : "Đa số khách thấy hơi rộng — cân nhắc lấy nhỏ hơn 1 cỡ"
-    : fitTotal > 0 ? "Chưa đủ lượt chọn để kết luận về kích cỡ" : "Chưa có phản hồi về kích cỡ";
+    ? summary.fitVerdict === "VUA" ? "Đa số khách thấy vừa" : summary.fitVerdict === "NHO" ? "Hơi nhỏ, cân nhắc lên 1 size" : "Hơi rộng, cân nhắc xuống 1 size"
+    : null;
   const mine = me?.myReview ?? null;
 
   return (
@@ -283,16 +283,16 @@ export function ReviewsSection({ productId }: { productId: number; productName?:
               );
             })}
           </ul>
-          <div className="pdFit" aria-label="Cảm nhận về kích cỡ">
+          {fitTotal >= 5 && fitVerdictText ? <div className="pdFit" aria-label="Cảm nhận về kích cỡ">
             <p className="pdFitTitle">Kích cỡ</p>
             <div className="pdFitMeter" role="img" aria-label={`Hơi nhỏ ${fitPct("NHO")}%, vừa vặn ${fitPct("VUA")}%, hơi rộng ${fitPct("RONG")}%`}>
               {fitTotal ? FITS.filter((key) => (summary?.fit[key] ?? 0) > 0).map((key) => <span key={key} className={`pdFitSeg pdFit-${key}`} style={{ flexGrow: summary?.fit[key] ?? 0 }} />) : <span className="pdFitSeg pdFit-empty" />}
             </div>
             <div className="pdFitLegend" aria-hidden="true">
-              {FITS.map((key) => <span key={key}>{FIT_LABEL[key]}{fitTotal ? ` ${fitPct(key)}%` : ""}</span>)}
+              {FITS.map((key) => <span key={key}>{FIT_LABEL[key]}: {summary?.fit[key] ?? 0}</span>)}
             </div>
             <p className="pdFitVerdict">{fitVerdictText}</p>
-          </div>
+          </div> : null}
         </div>
 
         <div className="pdReviewMain">

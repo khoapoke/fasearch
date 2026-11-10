@@ -44,3 +44,23 @@ describe("nhãn vai trò (role-manager)", () => {
     }
   });
 });
+
+// Consolidated from fe/tests/admin-shell-identity.test.mjs; audit 2026-11-07.
+{
+const { describe, it } = await import("node:test");
+const { default: assert } = await import("node:assert/strict");
+const { readFileSync } = await import("node:fs");
+const { fileURLToPath } = await import("node:url");
+const { dirname, join } = await import("node:path");
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const source = readFileSync(join(root, "src/components/admin/admin-shell.tsx"), "utf8");
+
+describe("legacy AdminShell identity", () => {
+  it("shows candidate JWT identity only for ADMIN/STAFF, retaining the legacy session fallback", () => {
+    assert.match(source, /authMe\(\)[\s\S]*?identity\.role === "ADMIN" \|\| identity\.role === "STAFF"[\s\S]*?setMe\(\{ id: identity\.id, username: identity\.username, email: identity\.email, role: identity\.role, authenticated: true \}\)/);
+    assert.match(source, /\.catch\(\(\) => \{\s*void readOwnIdentity\(\)/);
+  });
+});
+
+}

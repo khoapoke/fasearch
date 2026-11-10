@@ -90,3 +90,36 @@ describe("formatVnDateTime + loyaltyHistoryAmount (readable loyalty history)", (
     assert.deepEqual(loyaltyHistoryAmount("OPENING", 184), { text: "+184 điểm", direction: "flat" });
   });
 });
+
+// Consolidated from fe/tests/points-adjust.test.mjs; audit 2026-11-07.
+{
+// Run: node --test tests/benefits.test.mjs (from fe/). S3: ADJUST in storefront history and admin labels.
+const { describe, it } = await import("node:test");
+const { default: assert } = await import("node:assert/strict");
+const { loyaltyActionLabel, loyaltyHistoryAmount, loyaltySignedPoints } = await import("../src/lib/benefits.ts");
+const { ledgerTypeLabel, reasonLabel, RECALC_REASONS } = await import("../src/lib/admin-loyalty-client.ts");
+
+describe("ADJUST in the storefront history", () => {
+  it("shows the neutral shop label and never an internal note", () => {
+    assert.equal(loyaltyActionLabel("ADJUST"), "Điều chỉnh bởi cửa hàng");
+  });
+  it("keeps the stored sign", () => {
+    assert.equal(loyaltySignedPoints("ADJUST", -30), -30);
+    assert.equal(loyaltySignedPoints("ADJUST", 12), 12);
+    assert.deepEqual(loyaltyHistoryAmount("ADJUST", -30), { text: "−30 điểm", direction: "down" });
+    assert.deepEqual(loyaltyHistoryAmount("ADJUST", 12), { text: "+12 điểm", direction: "up" });
+    assert.equal(loyaltySignedPoints("REDEEM", 5), -5);
+  });
+});
+
+describe("admin labels", () => {
+  it("translate every ledger type and reason", () => {
+    for (const t of ["OPENING", "HOLD", "RELEASE", "REDEEM", "EARN", "ADJUST"]) assert.notEqual(ledgerTypeLabel(t), t);
+    assert.equal(reasonLabel("BOI_THUONG"), "Bồi thường");
+    assert.equal(reasonLabel("TINH_LAI_DON"), "Tính lại điểm cho đơn");
+    assert.equal(reasonLabel(null), null);
+    assert.ok(RECALC_REASONS.ALREADY_EARNED);
+  });
+});
+
+}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { useCustomerCart } from "@/components/customer-commerce/customer-cart-provider";
+import { ProductLineImage } from "@/components/customer-commerce/product-line-image";
 import { readCart, writeCart, type CartItem as GuestItem } from "@/components/storefront/storefront-client";
 import { addCustomerCartItem, removeCustomerCartItem, updateCustomerCartItem, clearCustomerCart } from "@/lib/customer-commerce-client";
 import { CommerceError, formatMoney, type CustomerCart } from "@/lib/customer-commerce";
@@ -188,10 +189,7 @@ export default function CartPage() {
                   <ul className="commerce-lines">
                     {lines.map((line) => (
                       <li className="commerce-line" key={line.skuId}>
-                        {line.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- product image comes from the candidate BE
-                          <img className="commerce-line-image" src={line.imageUrl.replace(/^\/api\/v1\/products\/images\//, "/api/catalog/product-images/")} alt="" referrerPolicy="no-referrer" />
-                        ) : <span className="commerce-line-image" aria-hidden="true" />}
+                        <ProductLineImage className="commerce-line-image" src={line.imageUrl?.replace(/^\/api\/v1\/products\/images\//, "/api/catalog/product-images/")} />
                         <div>
                           <p className="commerce-line-name">{line.productName}</p>
                           <p className="commerce-line-meta">{[line.color, line.size].filter(Boolean).join(" · ") || "—"} · Đơn giá {formatMoney(line.unitPrice)}</p>

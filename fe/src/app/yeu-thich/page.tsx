@@ -8,6 +8,9 @@ import { PriceTag } from "@/components/storefront/price-tag";
 import { fetchCatalogProduct } from "@/lib/customer-catalog";
 import { fetchFavorites, removeFavorite } from "@/lib/customer-account-client";
 
+import { FavoriteAlertToggles } from "@/components/customer-notifications/favorite-alerts";
+import { notificationApi, type FavoriteAlert } from "@/lib/notification-client";
+
 type SavedProduct = {
   id: number;
   name: string;
@@ -19,6 +22,7 @@ type SavedProduct = {
 
 export default function FavoritesPage() {
   const [saved, setSaved] = useState<SavedProduct[]>([]);
+  const [alerts, setAlerts] = useState<FavoriteAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState<number | null>(null);
@@ -28,7 +32,8 @@ export default function FavoritesPage() {
     setLoading(true);
     setError("");
     try {
-      const pg = await fetchFavorites(0, 50);
+      const [pg, preferences] = await Promise.all([fetchFavorites(0, 50), notificationApi<{ items: FavoriteAlert[] }>("/api/customer-account/notifications/favorites")]);
+      setAlerts(preferences.items);
       const ids = pg.data.map((f) => f.productId);
       const results = await Promise.all(
         ids.map(async (id): Promise<SavedProduct> => {
@@ -201,6 +206,7 @@ export default function FavoritesPage() {
                       </div>
                     </div>
                   </Link>
+                  {alerts.find((a) => a.productId === v.id) ? <FavoriteAlertToggles value={alerts.find((a) => a.productId === v.id)!} onChange={(next) => setAlerts((prev) => prev.map((a) => a.productId === next.productId ? next : a))} /> : null}
                   <div style={{ padding: "0 14px 14px", marginTop: "auto" }}>
                     <button
                       type="button"

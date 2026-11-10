@@ -7,6 +7,7 @@ import { AdminShellB } from "./admin-shell";
 import { notifyOrdersChanged } from "./admin-frame";
 import { AdminModal } from "./modal";
 import { Icon } from "./icons";
+import { ReturnOrderLink } from "./return-order-link";
 import { PointsRecalcButton } from "./points-recalc-button";
 import { ProductImage } from "./product-image";
 import { statusToneColor, StatusBadge, Num } from "./status-badge";
@@ -156,6 +157,7 @@ export function OrderDetailClient({ id }: { id: string }) {
         {order?.voucherCode ? <span className="meta">· Voucher {order.voucherCode}{order.voucherCampaignName ? ` (${order.voucherCampaignName})` : ""}</span> : null}
       </div>
       {order ? <div className="page-head-actions">
+        {can("ORDER_VIEW") ? <><Link className="secondary btn-sm" href={`/quan-tri/don-hang/in?ids=${order.orderId}&type=invoice`} target="_blank">In hóa đơn</Link><Link className="secondary btn-sm" href={`/quan-tri/don-hang/in?ids=${order.orderId}&type=shipping`} target="_blank">In phiếu giao hàng</Link></> : null}
         {canCancel ? <button className="danger" type="button" disabled={busy || cancelling} onClick={() => { setCancelError(""); setConfirmingCancel(true); }}>Hủy đơn</button> : null}
         {canCollect ? <button className="secondary" type="button" disabled={busy} onClick={() => { setCashError(""); setCashOpen(true); }}>Thu tiền mặt</button> : null}
         {isPaid && order.customer && can("LOYALTY_ADJUST") ? <PointsRecalcButton orderId={id} /> : null}
@@ -165,6 +167,7 @@ export function OrderDetailClient({ id }: { id: string }) {
     {loading ? <TableSkeleton rows={4} columns={5} rowHeight={52} /> : null}
     {error ? <div className="order-empty" role="alert"><strong>{order ? "Không cập nhật được trạng thái" : "Không tải được đơn"}</strong><p>{error}</p>{uncertain ? <p className="meta">Đã đọc lại trạng thái mới nhất; không gửi lại yêu cầu tự động. <Link className="text-link" href="/quan-tri/don-hang">Mở danh sách để đối soát</Link></p> : null}</div> : null}
     {order ? <>
+      {can("RETURN_VIEW") && ["COMPLETED", "RETURNED"].includes(order.status) ? <ReturnOrderLink orderId={id} orderCode={order.orderCode ?? id} status={order.status} /> : null}
       <ol className="od-stepper" aria-label="Tiến trình đơn hàng">
         {STEPS.map((code, i) => {
           const tone = statusToneColor(code);
@@ -200,7 +203,8 @@ export function OrderDetailClient({ id }: { id: string }) {
           </section>
           <section className="od-card" aria-label="Thanh toán">
             <h2>Thanh toán</h2>
-            <p className="od-line"><StatusBadge status={order.paymentStatus === "PAID" ? "PAID" : "UNPAID"} tone={order.paymentStatus !== "PAID" && endState ? "gray" : undefined} label={order.paymentStatus === "PAID" ? "Đã thanh toán" : "Chưa ghi nhận thanh toán"} />{isPaid && paidMethodName(order.paymentMethod) ? <span className="meta"> · {paidMethodName(order.paymentMethod)}</span> : null}</p>
+            {(order.refundedAmount ?? 0) > 0 ? <p className="od-line">Đã hoàn {formatNumber(order.refundedAmount ?? 0)}đ / Đã trả {formatNumber(order.paidAmount ?? 0)}đ</p> : null}
+            <p className="od-line"><StatusBadge status={order.paymentStatus === "REFUNDED" ? "REFUNDED" : order.paymentStatus === "PAID" ? "PAID" : "UNPAID"} tone={order.paymentStatus !== "PAID" && endState ? "gray" : undefined} label={(order.refundedAmount ?? 0) > 0 && (order.refundedAmount ?? 0) < (order.paidAmount ?? 0) ? "Đã hoàn một phần" : order.paymentStatus === "REFUNDED" ? "Đã hoàn tiền" : order.paymentStatus === "PAID" ? "Đã thanh toán" : "Chưa ghi nhận thanh toán"} />{isPaid && paidMethodName(order.paymentMethod) ? <span className="meta"> · {paidMethodName(order.paymentMethod)}</span> : null}</p>
           </section>
           <section className="od-card order-totals" aria-label="Tổng đơn">
             <h2>Tổng đơn</h2>

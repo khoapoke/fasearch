@@ -25,13 +25,13 @@ export async function adminIdentity(request: NextRequest): Promise<{ identity: I
   }
 }
 
-export async function adminRead(request: NextRequest, path: string): Promise<Response> {
+export async function adminRead(request: NextRequest, path: string, accept = "application/json"): Promise<Response> {
   const who = await adminIdentity(request);
   if ("response" in who) return who.response;
   const token = authCookie(request);
   if (!token) return Response.json({ success: false, code: 401, message: "Thiếu phiên quản trị.", result: null }, { status: 401, headers: { "cache-control": "no-store" } });
   try {
-    const upstream = await fetch(`${BE}${path}`, { method: "GET", headers: headers(token), cache: "no-store", redirect: "manual", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) });
+    const upstream = await fetch(`${BE}${path}`, { method: "GET", headers: { ...headers(token), accept }, cache: "no-store", redirect: "manual", signal: AbortSignal.any([request.signal, AbortSignal.timeout(12000)]) });
     const outHeaders = new Headers({ "cache-control": "no-store" });
     const type = upstream.headers.get("content-type"); if (type) outHeaders.set("content-type", type);
     return new Response(upstream.body, { status: upstream.status, headers: outHeaders });

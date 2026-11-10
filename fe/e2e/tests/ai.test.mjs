@@ -63,3 +63,75 @@ suite("ai", "AI search via FE", () => {
     await step(t, "image search rejects non-image upload (415)", async () => { const r = await g.req("POST", "/api/ai/search/image", { raw: bad.raw, ctype: bad.ctype }); assert.equal(r.code, 415); });
   });
 });
+
+
+// ai-async-check: current product-card API, held browser responses and pre-request decode.
+suite("ai", "AI operation ownership", () => {
+  test("stale mode/input, duplicate image/composed, pending decode abort and owner cleanup", { timeout: 180000 }, async t => {
+    const { cfg } = await import("../lib/config.mjs");
+    const { launch } = await import("../lib/browser.mjs");
+    const browser = await launch(); t.after(() => browser.close());
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const identity = { id: 1, username: "intercepted", email: "test@example.invalid", role: "CUSTOMER", status: "ACTIVE", createdAt: "2026-01-01T00:00:00Z", emailVerified: true };
+    await context.route("**/api/customer-auth/me", route => route.fulfill({ json: { success: true, identity } }));
+    // Search-history writes are also intercepted; this suite never writes to the backend.
+    await context.route("**/api/customer-account/**", route => route.fulfill({ json: { success: true, result: { content: [] } } }));
+    const held = [];
+    await context.route("**/api/ai/search/*", route => { held.push(route); });
+    const payload = name => ({ success: true, result: { results: [{ sourceId: name, productId: 1, score: 0.9, name, price: 100000, imageUrl: null, colors: [] }] } });
+    const release = async (route, name) => { try { await route.fulfill({ json: payload(name) }); } catch { /* cancelled fetch */ } };
+    const waitCount = async n => { await page.waitForFunction(() => true); const until = Date.now() + 8000; while (held.length < n && Date.now() < until) await page.waitForTimeout(20); assert.equal(held.length, n, "expected number of search requests"); };
+    const mode = i => page.locator('.mode-switch button').nth(i).click();
+    const query = value => page.locator('#ai-query').fill(value);
+    const submit = () => page.locator('form.search-form').evaluate(form => form.requestSubmit());
+    const reset = async () => { for (const route of held.splice(0)) { try { await route.abort(); } catch { /* closed */ } } await page.goto(cfg.baseUrl + "/tim-kiem-ai"); await page.locator('#ai-query').waitFor(); await page.waitForFunction(() => !document.querySelector('.search-status')); };
+    const empty = async () => { assert.equal(await page.locator('.pCard').count(), 0); assert.equal(await page.locator('.search-status').count(), 0); assert.equal(await page.locator('.search-submit').isDisabled(), false); };
+    const file = { name: "test.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64") };
+    await reset(); await query("old mode"); await submit(); await waitCount(1);
+    assert.deepEqual(JSON.parse(held[0].request().postData()), { query: "old mode", limit: 12 }, "current text wire contract");
+    await mode(1); await release(held[0], "STALE mode"); await page.waitForTimeout(200);
+    await empty(); assert.equal(await page.locator('#ai-query').count(), 0);
+    await reset(); await query("old input"); await submit(); await waitCount(1);
+    await query("new input"); await release(held[0], "STALE input"); await page.waitForTimeout(200);
+    await empty(); assert.equal(await page.locator('#ai-query').inputValue(), "new input");
+    for (const [index, endpoint] of [[1, "image"], [2, "multimodal"]]) {
+      await reset(); await mode(index);
+      if (index === 2) await query("combined query");
+      await page.locator('#ai-file').setInputFiles(file);
+      await page.locator('form.search-form').evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
+      await waitCount(1); await page.waitForTimeout(200); assert.equal(held.length, 1, "synchronous duplicate submits send once");
+      const request = held[0].request(); assert.ok(request.url().endsWith('/' + endpoint));
+      assert.match(request.headers()['content-type'], /multipart\/form-data/);
+      assert.match(request.postData(), /name="file"/); assert.match(request.postData(), /name="limit"\r\n\r\n12/);
+      if (index === 2) assert.match(request.postData(), /name="query"\r\n\r\ncombined query/);
+      await release(held[0], endpoint); await page.getByText(endpoint, { exact: true }).waitFor();
+    }
+    // Old flow awaited CSRF before transport. Current flow awaits image decode:
+    // hold that actual async boundary and verify cancellation prevents the POST.
+    await reset(); await mode(1); await page.locator('#ai-file').setInputFiles(file);
+    await page.evaluate(() => {
+      const NativeImage = window.Image;
+      window.Image = function (...args) {
+        const image = new NativeImage(...args);
+        const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+        Object.defineProperty(image, 'src', { set(value) { window.releaseDecode = () => descriptor.set.call(image, value); } });
+        return image;
+      };
+    });
+    await submit(); await page.waitForFunction(() => typeof window.releaseDecode === 'function');
+    await mode(0); await page.evaluate(() => window.releaseDecode()); await page.waitForTimeout(200);
+    assert.equal(held.length, 0, "abort while pre-transport work pending never posts search"); await empty();
+    await reset(); await query("operation A"); await submit(); await waitCount(1);
+    await mode(1); await mode(0); await query("operation B"); await submit(); await waitCount(2);
+    await submit(); await page.waitForTimeout(100); assert.equal(held.length, 2);
+    assert.equal(await page.locator('.search-submit').isDisabled(), true);
+    await release(held[0], "old A"); await page.waitForTimeout(100);
+    assert.equal(await page.locator('.search-submit').isDisabled(), true, "old cleanup cannot unlock current owner");
+    await release(held[1], "new B"); await page.getByText("new B", { exact: true }).waitFor();
+    assert.equal(await page.getByText("old A", { exact: true }).count(), 0);
+    await reset(); await mode(1); await page.locator('#ai-file').setInputFiles(file);
+    await page.locator('form.search-form').evaluate(form => { form.requestSubmit(); document.querySelectorAll('.mode-switch button')[0].click(); });
+    await page.waitForTimeout(300); assert.equal(held.length, 0, "same-task decode cancellation sends no request"); await empty();
+  });
+});

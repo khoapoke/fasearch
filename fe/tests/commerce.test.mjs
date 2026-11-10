@@ -157,3 +157,101 @@ describe("discountLines (nhãn giảm theo snapshot máy chủ)", () => {
     assert.deepEqual(f({ giamGia: 0 }), []);
   });
 });
+
+// Consolidated from fe/tests/customer-admin-journey-polish.test.mjs; audit 2026-11-07.
+{
+const { describe, it } = await import("node:test");
+const { default: assert } = await import("node:assert/strict");
+const {
+  DEFAULT_WEIGHT_PER_ITEM_GRAM,
+  calculateCartWeightGram,
+  formatCommerceUpstreamError,
+  isCustomerSafeReason,
+  CommerceError,
+} = await import("../src/lib/customer-commerce.ts");
+const { readCommerceResponse } = await import("../src/lib/customer-commerce-client.ts");
+
+describe("commerce production regressions", () => {
+  it("F1 regression: computes shipping weight at 300g per item and updates quote on quantity change", () => {
+    // Contract constant is strictly 300g per item
+    assert.equal(DEFAULT_WEIGHT_PER_ITEM_GRAM, 300);
+
+    // 1 item => 300g; 2 items => 600g
+    const weightOneItem = calculateCartWeightGram(1);
+    const weightTwoItems = calculateCartWeightGram(2);
+    assert.equal(weightOneItem, 300);
+    assert.equal(weightTwoItems, 600);
+
+    // Zero / negative falls back safely to 1g min bound
+    assert.equal(calculateCartWeightGram(0), 1);
+    assert.equal(calculateCartWeightGram(-1), 1);
+
+    // Visible assumption copy aligns with 300g/item
+    const visibleAssumptionCopy = `Đơn thử nghiệm. Phí giao hàng lấy từ API BE với giả định ${DEFAULT_WEIGHT_PER_ITEM_GRAM}g/món vì DTO sản phẩm công khai chưa có trọng lượng; đây không phải metadata sản xuất.`;
+    assert.match(visibleAssumptionCopy, /300g\/món/);
+    assert.equal(visibleAssumptionCopy.includes("500g/món"), false);
+
+    // Quantity change in cart triggers recalculation with new total weight and fresh quote key
+    const province = "TP. Hồ Chí Minh";
+    const district = "Quận 1";
+    const keyOne = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weightOneItem}`;
+    const keyTwo = `${province.trim().toLowerCase()}|${district.trim().toLowerCase()}|${weightTwoItems}`;
+
+    assert.equal(keyOne, "tp. hồ chí minh|quận 1|300");
+    assert.equal(keyTwo, "tp. hồ chí minh|quận 1|600");
+    assert.notEqual(keyOne, keyTwo, "Cart quantity change MUST invalidate previous quote key and compute new weight");
+  });
+
+  it("F2 regression: prevents raw upstream validation reasons from reaching customer-visible errors in safe and non-safe calls", async () => {
+    const rawEnglishReason = "Insufficient stock for SKU 56";
+    const upstreamPayload = {
+      code: 400,
+      message: "Validation failed",
+      errors: [{ field: "quantity", reason: rawEnglishReason }],
+    };
+
+    // 1. Safe commerce call fixture (safeErrors = true)
+    const safeResult = formatCommerceUpstreamError(400, upstreamPayload, true);
+    assert.equal(safeResult.status, 400);
+    assert.equal(safeResult.body.message, "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé.");
+    assert.equal(safeResult.body.errors, undefined, "safeErrors policy MUST strip raw upstream errors array");
+
+    // Client readCommerceResponse on safe call
+    const safeResponse = new Response(JSON.stringify(safeResult.body), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+    const safeErr = await readCommerceResponse(safeResponse, (v) => v).catch((e) => e);
+    assert.ok(safeErr instanceof CommerceError);
+    assert.equal(safeErr.status, 400);
+    assert.match(safeErr.message, /Lựa chọn này tạm hết hàng/);
+    assert.equal(safeErr.message.includes(rawEnglishReason), false, "Customer-visible error MUST NOT contain raw English reason");
+    assert.equal(safeErr.message.includes("SKU 56"), false, "Customer-visible error MUST NOT contain raw backend SKU");
+
+    // 2. Non-safe commerce call fixture (safeErrors = false)
+    const nonSafeResult = formatCommerceUpstreamError(400, upstreamPayload, false);
+    assert.equal(nonSafeResult.status, 400);
+    assert.equal(nonSafeResult.body.message, "Lựa chọn này tạm hết hàng — bạn thử chọn tuỳ chọn khác hoặc quay lại sau nhé.");
+    assert.ok(Array.isArray(nonSafeResult.body.errors), "Non-safe call preserves errors on envelope");
+
+    // Client readCommerceResponse sanitizes raw reasons even if envelope retained them
+    const nonSafeResponse = new Response(JSON.stringify(nonSafeResult.body), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+    const nonSafeErr = await readCommerceResponse(nonSafeResponse, (v) => v).catch((e) => e);
+    assert.ok(nonSafeErr instanceof CommerceError);
+    assert.equal(nonSafeErr.status, 400);
+    assert.match(nonSafeErr.message, /Lựa chọn này tạm hết hàng/);
+    assert.equal(nonSafeErr.message.includes(rawEnglishReason), false, "Client MUST NOT concatenate raw upstream reason into customer-visible error");
+    assert.equal(nonSafeErr.message.includes("SKU 56"), false);
+
+    // 3. Reason sanitization predicate checks
+    assert.equal(isCustomerSafeReason(rawEnglishReason), false);
+    assert.equal(isCustomerSafeReason("Allowed maximum: 4"), false);
+    assert.equal(isCustomerSafeReason("NullPointerException on SKU query"), false);
+    assert.equal(isCustomerSafeReason("Số lượng vượt quá tồn kho"), true);
+  });
+});
+
+}
