@@ -5,6 +5,7 @@
 
 # port mở trên web để xem giao diện qdrant trong db http://localhost:6333/dashboard
 qdrant:
+  # collection default image_gallery
   collection_name: "image_gallery"
   vector_size: 512
   distance: "Cosine"
