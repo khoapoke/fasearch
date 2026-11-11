@@ -1,0 +1,26 @@
+--index-url https://download.pytorch.org/whl/cu128
+--extra-index-url https://pypi.org/simple
+
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+torchaudio==2.11.0+cu128
+pillow>=11.0.0,<13.0.0
+numpy>=1.26.0
+pandas>=2.2.0
+matplotlib>=3.9.0
+transformers==4.46.3
+
+# database
+qdrant-client==1.12.1
+PyYAML==6.0.2
+
+# api
+fastapi>=0.110.0
+uvicorn>=0.30.0
+python-multipart==0.0.9
+
+# admin app
+streamlit>=1.35.0
+
+# testing
+pytest>=8.0.0

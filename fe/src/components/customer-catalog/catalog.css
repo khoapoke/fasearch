@@ -1,0 +1,919 @@
+/* Customer catalog/detail — scoped port of frozen 6fdbcee styles.css
+ * (.content, listingScreen, productCard, detailScreen and final responsive
+ * cascade 509-620/668-700). Customer palette comes from shell; no motion. */
+
+.catPage {
+  min-width: 0;
+  color: var(--st-ink);
+  background: var(--st-canvas);
+}
+.catPage .cat-content {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 44px clamp(20px, 4.5vw, 68px) 72px;
+}
+.catPage .cat-catalog-content { padding-top: 24px; }
+.catPage .cat-detail-content { padding-top: 22px; }
+.catPage .cat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 36px;
+}
+.catPage .cat-head.cat-head-compact { margin-bottom: 22px; }
+/* Tiêu đề + ghi chú + link nhanh: xếp dọc, không ép chung một hàng với h1. */
+.catPage .cat-head.cat-head-stacked { display: block; }
+.catPage .cat-head-note {
+  margin: 8px 0 0;
+  color: var(--st-ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.catPage .cat-head-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+.catPage .cat-head h1 {
+  margin: 0;
+  font-size: clamp(40px, 4.4vw, 60px);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+}
+.catPage .cat-head.cat-head-compact h1 { font-size: clamp(30px, 3.2vw, 42px); }
+
+/* Shared controls (scoped; source styles.css:123-144) */
+.catPage .cat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 11px 18px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+.catPage .cat-button:disabled { cursor: not-allowed; opacity: 0.55; }
+.catPage .cat-button.cat-primary {
+  color: #fff;
+  border-color: var(--st-brand);
+  background: var(--st-brand);
+}
+.catPage .cat-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 0;
+  border: 0;
+  color: var(--st-ink-soft);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.catPage .cat-text-button:hover { color: var(--st-ink); text-decoration: underline; }
+.catPage .cat-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+}
+.catPage .cat-field label,
+.catPage .cat-field > span {
+  color: var(--st-ink-soft);
+  font-size: 12px;
+}
+.catPage .cat-input,
+.catPage .cat-select {
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 13px;
+}
+.catPage .cat-input:focus-visible,
+.catPage .cat-select:focus-visible,
+.catPage .cat-button:focus-visible,
+.catPage .cat-page-btn:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 3px;
+}
+
+/* Listing */
+.catPage .cat-listing-layout {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.catPage .cat-listing-products { min-width: 0; }
+/* R5: bộ lọc là luồng tài liệu thường — không giới hạn chiều cao, không khay cuộn
+   lồng nhau; mọi điều khiển tới được bằng cuộn trang bình thường. Mặc định
+   không sticky để tránh bẫy cuộn ở viewport thấp. Gutter 4px giữ vòng focus. */
+.catPage .cat-filter-panel { padding: 6px 10px 6px 6px; overflow: visible; }
+.catPage .cat-listing-tools { scroll-margin-top: 104px; }
+/* Phân trang: ‹ · số lớn trong khung góc (ô nhập) · / tổng · vạch tiến độ · › */
+.catPage .cat-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 36px;
+}
+.catPage .cat-page-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.catPage .cat-page-btn:disabled { cursor: default; opacity: 0.45; }
+.catPage .cat-page-jump {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+}
+.catPage .cat-page-cur { position: relative; display: inline-flex; flex: none; padding: 2px 14px; }
+.catPage .cat-page-cur-input {
+  min-width: 2ch;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  color: var(--st-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: text;
+}
+.catPage .cat-page-cur:has(.cat-page-cur-input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 2px; border-radius: 4px; }
+.catPage .cat-page-cur .cat-corner { inset: 0; }
+.catPage .cat-jump-total { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.catPage .cat-page-pos { flex: 1 1 80px; height: 2px; border-radius: 2px; background: var(--st-line); overflow: hidden; }
+.catPage .cat-page-pos i { display: block; height: 100%; background: var(--st-ink); transition: width 0.25s ease; }
+.catPage .cat-jump-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--st-err-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .catPage .cat-pagination { flex-wrap: wrap; gap: 10px; }
+  .catPage .cat-page-jump { order: 3; flex-basis: 100%; justify-content: center; }
+  .catPage .cat-page-btn:first-child { margin-right: auto; }
+  .catPage .cat-pagination .cat-page-btn:last-child { margin-left: auto; }
+}
+.catPage .cat-filter-panel h2 { margin: 0 0 24px; font-size: 14px; font-weight: 500; }
+.catPage .cat-filter-group { min-width: 0; margin: 0 0 30px; padding: 0; border: 0; }
+.catPage .cat-filter-group legend { margin-bottom: 14px; padding: 0; font-size: 14px; font-weight: 500; }
+.catPage .cat-filter-reset { justify-content: flex-start; }
+.catPage .cat-filter-note {
+  margin: 14px 0 0;
+  color: var(--st-ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.catPage .cat-filter-mobile {
+  display: none;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--st-line);
+}
+.catPage .cat-filter-mobile > summary { min-height: 45px; padding: 9px 0; font-size: 14px; }
+.catPage .cat-mobile-filter-body { display: block; padding: 18px 0 8px; }
+.catPage .cat-mobile-filter-body > h2 { display: none; }
+.catPage .cat-listing-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 40px;
+  margin-bottom: 12px;
+}
+.catPage .cat-result-count { color: var(--st-ink-soft); font-size: 12px; white-space: nowrap; }
+.catPage .cat-sort-control { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--st-ink-soft); font-size: 12px; line-height: 1.2; }
+.catPage .cat-sort { position: relative; display: inline-flex; flex: 0 0 auto; }
+.catPage .cat-sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  max-width: min(280px, 60vw);
+}
+.catPage .cat-sort-trigger:hover { background: var(--st-select); }
+.catPage .cat-sort-trigger:focus { outline: none; }
+.catPage .cat-sort-trigger:focus-visible { outline: 1px solid var(--st-focus); outline-offset: 2px; }
+.catPage .cat-sort-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.catPage .cat-sort-chevron {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  place-items: center;
+  color: var(--st-ink-soft);
+  transition: transform 160ms var(--ease-out);
+}
+.catPage .cat-sort-chevron svg { display: block; }
+.catPage .cat-sort-chevron[data-open="true"] { transform: rotate(180deg); }
+.catPage .cat-sort[data-motion="off"] .cat-sort-chevron { transition: none; }
+.catPage .cat-sort-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(280px, 80vw);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--st-line);
+  border-radius: 10px;
+  background: var(--st-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16);
+  animation: cat-sort-in 160ms var(--ease-out) both;
+}
+.catPage .cat-sort[data-motion="off"] .cat-sort-menu { animation: none; }
+@keyframes cat-sort-in { from { opacity: 0; transform: translateY(-4px); } }
+.catPage .cat-sort-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 14px 8px 18px;
+  border-radius: 6px;
+  color: var(--st-ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+.catPage .cat-sort-opt:hover { background: color-mix(in srgb, var(--st-select) 55%, transparent); }
+.catPage .cat-sort-opt[data-active="true"] { color: var(--st-ink); background: var(--st-select); }
+.catPage .cat-sort-opt:focus { outline: none; }
+.catPage .cat-sort-opt:focus-visible { outline: 1px solid var(--st-focus); outline-offset: -1px; }
+@media (prefers-reduced-motion: reduce) {
+  .catPage .cat-sort-menu { animation: none; }
+  .catPage .cat-sort-chevron { transition: none; }
+}
+.catPage .cat-applied-row { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 18px; }
+.catPage .cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--st-ink);
+  background: var(--st-select);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.catPage .cat-product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.catPage .cat-product-card { min-width: 0; }
+.catPage .cat-product-photo-wrap { position: relative; }
+.catPage .cat-product-photo {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+}
+.catPage .cat-product-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+}
+.catPage .cat-image-fail {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  padding: 12px;
+  color: var(--st-ink-soft);
+  background: var(--st-select);
+  font-size: 12px;
+  text-align: center;
+}
+.catPage .cat-favorite {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 8px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+.catPage .cat-favorite[aria-pressed="true"] { color: var(--fav-on, #e11d48); }
+.catPage .cat-product-info { padding-top: 8px; }
+.catPage .cat-product-info h3 { margin: 0 0 2px; line-height: 1.4; }
+.catPage .cat-product-name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+}
+.catPage .cat-product-meta { margin: 5px 0 0; color: var(--st-ink-soft); font-size: 12px; }
+.catPage .cat-product-price { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.catPage .cat-source { margin-top: 17px; }
+.catPage .cat-source summary { width: fit-content; min-height: 32px; padding: 6px 0; color: var(--st-ink-soft); font-size: 11px; cursor: pointer; }
+.catPage .cat-source > div { display: flex; flex-wrap: wrap; gap: 5px 18px; color: var(--st-ink-soft); font-size: 12px; }
+
+/* R5-pagination thay khối phân trang cũ (nút chữ lớn + fraction) — xem định nghĩa mới ở trên. */
+
+/* Status / empty / skeleton */
+.catPage .cat-status {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 7px;
+  font-size: 14px;
+}
+.catPage .cat-status.cat-error { color: var(--st-err-text); background: var(--st-err-bg); }
+.catPage .cat-status.cat-info { color: var(--st-info-text, #3348a3); background: var(--st-info-bg, #ecedf9); }
+.catPage .cat-empty {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 9px;
+  min-height: 250px;
+  padding: 28px;
+  border-radius: 6px;
+  color: var(--st-ink-soft);
+  background: var(--st-select);
+}
+.catPage .cat-empty h2 { margin: 0; color: var(--st-ink); font-size: 22px; font-weight: 500; }
+.catPage .cat-empty p { margin: 0; font-size: 14px; }
+.catPage .cat-skeleton-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.catPage .cat-skeleton {
+  min-width: 0;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 4 / 5;
+  border-radius: 4px;
+  background: var(--st-select);
+}
+
+/* Detail */
+.catPage .cat-back { margin-bottom: 22px; }
+.catPage .cat-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: clamp(30px, 5vw, 80px);
+  align-items: start;
+}
+.catPage .cat-detail-figure { min-width: 0; margin: 0; }
+.catPage .cat-detail-image-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+  cursor: zoom-in;
+}
+.catPage .cat-detail-image { display: block; width: 100%; max-height: 700px; aspect-ratio: 4 / 5; object-fit: contain; }
+.catPage .cat-detail-image-fail { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 5; padding: 20px; color: var(--st-ink-soft); text-align: center; }
+.catPage .cat-image-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14);
+}
+.catPage .cat-detail-figure figcaption { margin-top: 12px; color: var(--st-ink-soft); font-size: 11px; }
+.catPage .cat-detail-info { padding-top: 20px; min-width: 0; }
+.catPage .cat-detail-info h1 {
+  margin: 0;
+  font-size: clamp(28px, 2.4vw, 40px);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.05em;
+}
+.catPage .cat-product-description { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 14px; }
+.catPage .cat-detail-price { margin: 12px 0 26px; font-size: 29px; font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-note { margin: -18px 0 26px; color: var(--st-ink-soft); font-size: 11px; }
+.catPage .cat-option-block { margin: 18px 0; }
+.catPage .cat-option-block h2 { display: flex; gap: 14px; margin: 0 0 12px; font-size: 14px; font-weight: 500; letter-spacing: 0; }
+.catPage .cat-option-block h2 span { color: var(--st-ink-soft); font-weight: 400; }
+.catPage .cat-option-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.catPage .cat-option-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 46px;
+  min-height: 44px;
+  padding: 9px 13px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 6px;
+  color: var(--st-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.catPage .cat-option-chip[aria-pressed="true"] { color: var(--st-canvas); border-color: var(--st-ink); background: var(--st-ink); }
+.catPage .cat-option-chip:disabled { opacity: 0.55; text-decoration: none; border-style: dashed; cursor: not-allowed; }
+.catPage .cat-color-swatch { width: 12px; height: 12px; border: 1px solid #7d8279; border-radius: 50%; flex: 0 0 auto; }
+.catPage .cat-stepper {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+}
+.catPage .cat-stepper button {
+  width: 44px; height: 46px; padding: 0; border: 0; background: transparent; font: inherit;
+  cursor: pointer; transition: transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .catPage .cat-stepper button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+.catPage .cat-stepper button:active:not(:disabled) { transform: scale(0.97); }
+.catPage .cat-stepper button:disabled { transform: none; transition: none; cursor: not-allowed; opacity: 0.55; }
+.catPage .cat-stepper span { min-width: 30px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.catPage .cat-buy-row { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
+.catPage .cat-buy-row .cat-button { flex: 1; }
+.catPage .cat-readonly-note { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 12px; }
+/* Warm stock note under the add-to-cart row: same 12px PDP voice as
+   readonly-note, always in DOM with a one-line reserve so error/success
+   swaps never shift the disclosures below (no layout jump). */
+.catPage .cat-stock-note { margin: 10px 0 0; color: var(--st-ink-soft); font-size: 12px; line-height: 1.5; min-height: 18px; }
+.catPage .cat-stock-note:empty::before { content: "\00a0"; visibility: hidden; }
+.catPage .cat-size-guide { margin: 16px 0 0; border: 1px solid var(--st-line); border-radius: 8px; }
+.catPage .cat-size-guide > summary { min-height: 44px; padding: 10px 14px; font-size: 14px; cursor: pointer; }
+.catPage .cat-size-guide-body { padding: 0 14px 14px; color: var(--st-ink-soft); font-size: 13px; }
+.catPage .cat-disclosures { margin: 16px 0 0; border-top: 1px solid var(--st-line); }
+.catPage .cat-disclosures details { border-bottom: 1px solid var(--st-line); }
+.catPage .cat-disclosures summary { min-height: 44px; padding: 10px 0; font-size: 14px; cursor: pointer; }
+.catPage .cat-tech-body { padding: 3px 0 10px; color: var(--st-ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+
+/* Viewer ảnh PDP: panel-less cinematic (ghost) + deep zoom.
+   - Dialog trong suốt toàn màn hình, không panel: chỉ ghost/stage nổi trên backdrop.
+   - Chrome (head/caption/thumbs) chữ sáng trên backdrop đen, cả hai theme. */
+.catPage .cat-dialog {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  color: #f5f5f5;
+  background: transparent;
+  box-shadow: none;
+}
+.catPage .cat-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: transparent;
+}
+.catPage .cat-dialog::backdrop { background: #000; opacity: 0; }
+.catPage .cat-dialog[data-phase="open"]::backdrop { opacity: 0.86; transition: opacity 360ms ease; }
+.catPage .cat-dialog[data-phase="closing"]::backdrop { opacity: 0; transition: opacity 380ms ease; }
+.catPage .cat-chrome { opacity: 0; transform: translateY(8px); }
+.catPage .cat-dialog[data-phase="open"] .cat-chrome {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1) 300ms,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1) 300ms;
+}
+.catPage .cat-dialog[data-phase="closing"] .cat-chrome {
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+/* Motion Off / giảm chuyển động: không ghost, chrome hiện ngay, dialog fade 150ms (JS). */
+/* Stage nằm trong .cat-dialog-media: không trượt translateY, nếu không ghost đáp lệch 8px rồi ảnh giật lên khi chrome hiện. Media chỉ fade. */
+.catPage .cat-dialog .cat-dialog-media.cat-chrome { transform: none; }
+.catPage .cat-dialog[data-motion="off"] .cat-chrome { opacity: 1; transform: none; transition: none; }
+.catPage .cat-dialog[data-motion="off"]::backdrop { opacity: 0.86; transition: opacity 150ms ease; }
+.catPage .cat-dialog[data-motion="off"][data-phase="closing"]::backdrop { opacity: 0; transition: opacity 150ms ease; }
+.catPage .cat-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; flex: none; padding: 16px 20px 8px; }
+.catPage .cat-dialog-head h2 { margin: 0; font-size: 16px; font-weight: 500; color: #f5f5f5; }
+.catPage .cat-dialog-count { color: rgba(255, 255, 255, 0.7); font-weight: 400; font-variant-numeric: tabular-nums; }
+.catPage .cat-dialog-close {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: #f5f5f5;
+  background: transparent;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+.catPage .cat-dialog-close:hover { background: rgba(255, 255, 255, 0.12); }
+.catPage .cat-dialog-close:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+.catPage .cat-dialog-media { position: relative; display: grid; place-items: center; width: 100%; flex: 1 1 auto; min-height: 0; padding: 8px 20px 4px; }
+.catPage .cat-stage {
+  position: relative;
+  display: block;
+  width: min(1100px, 92vw);
+  aspect-ratio: 4 / 5;
+  max-height: calc(100dvh - 220px);
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  cursor: zoom-in;
+}
+/* Ghost và stage cùng là lớp compositor: cùng cách snap pixel + cùng bộ lọc scale ảnh,
+   nên lúc ghost rời đi ảnh thật không nhích 1px hay đổi độ nét. */
+.catPage .cat-stage { will-change: transform; }
+.catPage .cat-stage[data-zoom="on"] { cursor: zoom-out; touch-action: none; }
+.catPage .cat-stage:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.catPage .cat-stage-img { display: block; width: 100%; height: 100%; object-fit: contain; background: #fff; }
+/* Đổi ảnh trong viewer: crossfade ngắn 180ms, không ghost. */
+.catPage .cat-stage-img.is-in { animation: cat-stage-in 180ms ease-out; }
+@keyframes cat-stage-in { from { opacity: 0; transform: scale(0.985); } }
+/* Ghost morph: hộp trắng bay từ rect nguồn tới stage, ảnh contain — không giãn. */
+.catPage .cat-ghost { will-change: transform; position: fixed; z-index: 5; margin: 0; overflow: hidden; border-radius: 4px; background: #fff; pointer-events: none; }
+.catPage .cat-ghost img { display: block; width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.catPage .cat-dialog-fail { padding: 28px; color: rgba(255, 255, 255, 0.7); font-size: 13px; text-align: center; }
+.catPage .cat-dialog-foot { width: 100%; flex: none; display: flex; flex-direction: column; align-items: center; padding: 0 20px 20px; text-align: center; }
+.catPage .cat-dialog-caption { margin: 0; padding: 12px 0 0; color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+.catPage .cat-zoom-hint-touch { display: none; }
+@media (hover: none) {
+  .catPage .cat-zoom-hint-desktop { display: none; }
+  .catPage .cat-zoom-hint-touch { display: inline; }
+}
+.catPage .cat-dialog-thumbs { margin-top: 10px; padding-bottom: 0; justify-content: center; }
+.catPage .cat-dialog-thumbs .cat-thumb { border-color: rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.08); }
+.catPage .cat-dialog-thumbs .cat-thumb[aria-current="true"] { border-color: #fff; }
+.catPage .cat-dialog-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  color: #f5f5f5;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.catPage .cat-dialog-arrow:hover { background: rgba(255, 255, 255, 0.18); }
+.catPage .cat-dialog-arrow:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.catPage .cat-dialog-prev { left: 16px; }
+.catPage .cat-dialog-next { right: 16px; }
+/* Dev-only (?morphSlow): làm chậm cả transition CSS để ảnh kiểm chứng đúng nhịp. */
+.catPage .cat-dialog[data-slow][data-phase="open"]::backdrop { transition-duration: 2880ms; }
+.catPage .cat-dialog[data-slow][data-phase="open"] .cat-chrome {
+  transition-duration: 1760ms, 1760ms;
+  transition-delay: 2400ms, 2400ms;
+}
+.catPage .cat-dialog[data-slow][data-phase="closing"]::backdrop { transition-duration: 3040ms; }
+.catPage .cat-dialog[data-slow][data-phase="closing"] .cat-chrome { transition-duration: 960ms, 960ms; }
+@media (prefers-reduced-motion: reduce) {
+  .catPage .cat-chrome { transform: none; }
+  .catPage .cat-dialog[data-phase="open"] .cat-chrome { transition: none; }
+  .catPage .cat-dialog[data-phase="closing"] .cat-chrome { transition: none; }
+  .catPage .cat-stage-img.is-in { animation: none; }
+  .catPage .cat-dialog-arrow { transition: none; }
+}
+html[data-motion="off"] .catPage .cat-dialog .cat-chrome { transition: none; }
+html[data-motion="off"] .catPage .cat-stage-img.is-in { animation: none; }
+/* Gallery PDP: thumbnails dưới ảnh chính (chỉ khi > 1 ảnh). */
+.catPage .cat-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; }
+.catPage .cat-thumb {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 80px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--st-line);
+  border-radius: 8px;
+  background: var(--st-select);
+  cursor: pointer;
+  opacity: 0.75;
+}
+.catPage .cat-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.catPage .cat-thumb[aria-current="true"] { border-color: var(--st-brand); opacity: 1; }
+.catPage .cat-thumb:focus-visible { outline: 1px solid var(--st-focus); outline-offset: 2px; }
+/* Tồn theo size: hết hàng gạch chéo + mờ, sắp hết chấm đỏ, chữ đỏ mảnh. */
+.catPage .cat-option-chip.is-out {
+  position: relative;
+  overflow: hidden;
+  opacity: 1;
+  color: var(--st-ink-soft);
+  border-style: solid;
+  cursor: not-allowed;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), var(--st-ink-soft) calc(50% - 1px), var(--st-ink-soft) calc(50% + 1px), transparent calc(50% + 1px));
+}
+.catPage .cat-option-chip.is-out:disabled { opacity: 0.7; }
+.catPage .cat-lowdot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #dc2626; }
+/* Part C: tồn ≥ 4 chỉ một dòng lặng "Còn hàng", không nêu số. */
+.catPage .cat-ok-note { margin: 8px 0 0; color: var(--st-ink-soft); font-size: 12px; line-height: 1.5; }
+.catPage .cat-low-note { margin: 8px 0 0; color: #dc2626; font-size: 13px; line-height: 1.5; }
+/* Part B: cảnh báo giỏ đã giữ hết tồn — hộp đỏ rõ ràng, kèm lối vào giỏ. */
+.catPage .cat-stock-alert {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--st-err-border);
+  border-radius: 8px;
+  background: var(--st-err-bg);
+  color: var(--st-err-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.catPage .cat-stock-alert .cat-text-button { color: inherit; font-weight: 700; }
+@media (prefers-color-scheme: dark) { .catPage .cat-low-note { color: #f87171; } .catPage .cat-lowdot { background: #f87171; } }
+html[data-theme="dark"] .catPage .cat-low-note { color: #f87171; }
+html[data-theme="dark"] .catPage .cat-lowdot { background: #f87171; }
+/* Morph PDP → dialog dùng ghost overlay (WAAPI), không còn View Transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .catPage .cat-dialog-arrow { transition: none; }
+}
+html[data-motion="off"] .catPage .cat-dialog-arrow { transition: none; }
+
+@media (max-width: 1100px) {
+  .catPage .cat-product-grid { gap: 17px; }
+  .catPage .cat-skeleton-grid { gap: 17px; }
+  .catPage .cat-listing-layout { grid-template-columns: 220px minmax(0, 1fr); gap: 28px; }
+}
+@media (max-width: 900px) {
+  .catPage .cat-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catPage .cat-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catPage .cat-detail-layout { grid-template-columns: minmax(0, 1fr) minmax(290px, 1fr); gap: 26px; }
+  .catPage .cat-buy-row { flex-wrap: wrap; }
+  .catPage .cat-buy-row .cat-button { flex-basis: 100%; }
+}
+@media (max-width: 760px) {
+  .catPage .cat-content { padding: 30px 20px 48px; }
+  .catPage .cat-head { margin-bottom: 25px; }
+  .catPage .cat-head h1 { font-size: 42px; }
+  .catPage .cat-listing-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .catPage .cat-filter-desktop { display: none; }
+  .catPage .cat-filter-mobile { display: block; }
+  .catPage .cat-product-grid { gap: 16px; }
+  .catPage .cat-skeleton-grid { gap: 16px; }
+  .catPage .cat-sort-trigger { font-size: 16px; max-width: 60vw; }
+  .catPage .cat-detail-content { padding-top: 14px; }
+  .catPage .cat-back { margin-bottom: 16px; }
+  .catPage .cat-detail-image { max-height: 620px; }
+  .catPage .cat-detail-info { padding-top: 0; }
+  .catPage .cat-detail-layout { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .catPage .cat-detail-info h1 { max-width: none; font-size: 26px; line-height: 1.25; }
+  .catPage .cat-buy-row { flex-wrap: nowrap; }
+  .catPage .cat-buy-row .cat-button { flex-basis: auto; }
+}
+@media (max-width: 480px) {
+  .catPage .cat-content { padding-inline: 16px; }
+  .catPage .cat-product-grid { gap: 13px; }
+  .catPage .cat-skeleton-grid { gap: 13px; }
+  .catPage .cat-product-name { font-size: 14px; }
+  .catPage .cat-product-meta { font-size: 11px; }
+  .catPage .cat-product-price { font-size: 15px; }
+  .catPage .cat-favorite { top: 8px; right: 8px; width: 33px; height: 33px; }
+  .catPage .cat-listing-tools { gap: 12px; margin-bottom: 18px; }
+  .catPage .cat-sort-control { gap: 8px; }
+  .catPage .cat-detail-buy-row { align-items: stretch; flex-direction: column; gap: 14px; }
+  .catPage .cat-buy-row { flex-direction: column; align-items: stretch; gap: 14px; }
+  .catPage .cat-buy-row .cat-stepper { align-self: flex-start; }
+  .catPage .cat-buy-row .cat-button { flex: auto; }
+  .catPage .cat-detail-price { margin-bottom: 28px; }
+  .catPage .cat-image-zoom { right: 8px; bottom: 8px; width: 32px; height: 32px; }
+}
+
+
+/* R5: rail là luồng tài liệu thường — khối Chapter 5 cũ (max-height + overflow)
+   đã gỡ để không còn bẫy cuộn hay cắt vòng focus. */
+
+/* Brand label — metadata thật từ DB, không phải suy luận từ ảnh. */
+.cat-product-brand { display: inline-block; margin: 0 0 4px; color: var(--st-ink-soft); font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* R5: lưới thuộc tính hai cột thật — nhãn/cột giá trị thẳng hàng, đọc được. */
+.catPage .cat-attr-list { display: grid; gap: 12px; margin: 20px 0 0; }
+.catPage .cat-attr-list > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.35fr) minmax(0, 1fr);
+  gap: 12px 20px;
+  align-items: baseline;
+}
+.catPage .cat-attr-list dt { color: var(--st-ink-soft); font-size: 14px; line-height: 1.6; }
+.catPage .cat-attr-list dd { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+/* Nguồn là dòng phụ trong chi tiết, cách đường phân cách 16px, không dính chữ. */
+.catPage .cat-source-inline { margin: 16px 0 0; padding-top: 4px; color: var(--st-ink-soft); font-size: 12px; line-height: 1.6; }
+.catPage .cat-source-inline a { color: inherit; text-decoration: underline; }
+/* R5: mô tả thật từ feed (plaintext, React escape) — đoạn đọc được trong disclosure. */
+.catPage .cat-detail-desc { display: grid; gap: 10px; margin: 16px 0 0; }
+.catPage .cat-detail-desc p { margin: 0; color: var(--st-ink); font-size: 14.5px; line-height: 1.65; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .catPage .cat-attr-list > div { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .catPage .cat-attr-list > div > dt + dd { margin-top: -8px; }
+}
+.catPage .cat-brand-group { border-top: 1px solid var(--st-line); padding-top: 10px; margin-top: 12px; }
+.catPage .cat-brand-group > summary {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 44px; padding: 8px 0; font-size: 14px; font-weight: 600; cursor: pointer; list-style: none;
+}
+.catPage .cat-brand-group > summary::-webkit-details-marker { display: none; }
+.catPage .cat-brand-group > summary::after { content: "▾"; color: var(--st-ink-soft); font-size: 12px; }
+.catPage .cat-brand-group[open] > summary::after { content: "▴"; }
+.catPage .cat-brand-body { display: grid; gap: 14px; padding: 6px 2px 8px; }
+.catPage .cat-brand-search input { width: 100%; min-height: 40px; }
+/* R5: danh sách hãng là luồng tài liệu thường — không khay cuộn; hiển thị tập con
+   hữu ích + nút mở rộng rõ ràng thay vì cuộn lồng. */
+
+.catPage .cat-brand-more { justify-self: start; margin-top: 4px; }
+.catPage .cat-visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+
+/* ---- Bộ lọc: khoảng thở, mục chọn không dính nhau, không cắt vòng focus ---- */
+.catPage .cat-slide-opts {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 3px;
+  margin: -3px;
+  isolation: isolate;
+  overflow: visible;
+}
+.catPage .cat-filter-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.catPage .cat-filter-option:hover { background: color-mix(in srgb, var(--st-select) 55%, transparent); }
+.catPage .cat-filter-option[data-active="true"] { color: var(--st-ink); }
+/* Nền chọn do underlay (.cat-selbg) đảm nhiệm. */
+.catPage .cat-filter-option:has(input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 1px; }
+.catPage .cat-selbg {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 3px;
+  right: 3px;
+  height: 0;
+  border-radius: 7px;
+  background: var(--st-select);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+  transition: transform 0.32s cubic-bezier(0.34, 1.32, 0.5, 1), opacity 0.15s ease;
+}
+.catPage .cat-slide-opts[data-motion="off"] .cat-selbg { transition: none; }
+/* Khung góc xanh kiểu cũ (Direction A): góc trên-trái + dưới-phải, trượt cùng nền. */
+.catPage .cat-corner { position: absolute; inset: 4px; pointer-events: none; }
+.catPage .cat-corner::before, .catPage .cat-corner::after,
+.catPage .cat-selbg::before, .catPage .cat-selbg::after {
+  content: ""; position: absolute; width: 9px; height: 9px; border: 0 solid var(--st-brand);
+}
+.catPage .cat-corner::before, .catPage .cat-selbg::before { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
+.catPage .cat-corner::after, .catPage .cat-selbg::after { right: 0; bottom: 0; border-right-width: 2px; border-bottom-width: 2px; }
+.catPage .cat-selbg::before { top: 4px; left: 4px; }
+.catPage .cat-selbg::after { right: 4px; bottom: 4px; }
+/* Bỏ nút radio tròn: hàng chọn là cả hàng (input vẫn có thật, focus được, đọc được). */
+.catPage .cat-filter-option input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; pointer-events: none; }
+.catPage .cat-filter-option { padding: 6px 12px 6px 18px; border-radius: 6px; }
+.catPage .cat-keyword-field { margin-bottom: 30px; }
+.catPage .cat-brand-more { margin-top: 10px; }
+.catPage .cat-filter-group > .cat-brand-more { margin-left: 12px; }
+.catPage .cat-brand-search input { min-height: 44px; }
+.catPage .cat-filter-reset { margin-top: 8px; }
+
+/* ---- Khoảng giá ---- */
+.catPage .cat-price { display: grid; gap: 14px; }
+.catPage .cat-price-readout { margin: 0; color: var(--st-ink); font-size: 14px; font-variant-numeric: tabular-nums; }
+/* Khung thang giá có chiều cao cố định: loading → slider → ghi chú không làm rail dịch. */
+.catPage .cat-price-instrument { display: grid; align-content: start; gap: 8px; min-height: 52px; }
+.catPage .cat-price-instrument > .cat-filter-note { margin: 0; }
+.catPage .cat-price-skel { display: block; height: 4px; margin: 12px 10px 0; border-radius: 2px; background: var(--st-line); opacity: 0.6; }
+.catPage .cat-price-track { position: relative; height: 28px; margin: 0 10px; touch-action: none; }
+.catPage .cat-price-rail, .catPage .cat-price-fill { position: absolute; top: 12px; height: 4px; border-radius: 2px; }
+.catPage .cat-price-rail { left: 0; right: 0; background: var(--st-line); }
+.catPage .cat-price-fill { background: var(--st-brand); }
+.catPage .cat-price-thumb {
+  position: absolute;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 2px solid var(--st-brand);
+  border-radius: 50%;
+  background: var(--st-surface);
+  cursor: grab;
+  touch-action: none;
+}
+.catPage .cat-price-thumb:active { cursor: grabbing; }
+.catPage .cat-price-thumb:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; }
+.catPage .cat-price-scale { display: flex; height: 16px; line-height: 16px; justify-content: space-between; color: var(--st-ink-soft); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.catPage .cat-price-grid .cat-input { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+.catPage .cat-price-error { margin: 0; color: var(--st-err-text); }
+
+/* ---- Làm mới kết quả: giữ lưới cũ, mờ nhẹ, không nhảy bố cục ---- */
+.catPage .cat-results { transition: opacity 0.18s ease; }
+.catPage .cat-results[data-refetching="true"] { opacity: 0.55; pointer-events: none; }
+.catPage .cat-skeleton-grid[data-slow="false"] { visibility: hidden; }
+.catPage .cat-skeleton-grid[data-slow="true"] .cat-skeleton { animation: cat-pulse 1.4s ease-in-out infinite; }
+@keyframes cat-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) {
+  .catPage .cat-selbg { transition: none; }
+  .catPage .cat-results { transition: none; }
+  .catPage .cat-skeleton-grid[data-slow="true"] .cat-skeleton { animation: none; }
+}

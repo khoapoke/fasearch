@@ -1,0 +1,23 @@
+/* Admin round 2, lane H2: category card grid, top toolbar, account role note, AI sync line. */
+
+/* Danh mục: one toolbar (search left, pager right) and a dense card grid. */
+.admB .h2-toolbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);flex-wrap:wrap;margin-bottom:var(--s-3);}
+.admB .h2-toolbar .h2-search{flex:0 1 320px;min-width:200px;}
+.admB .h2-toolbar .pager{margin-left:auto;}
+.admB .h2-cat-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-2);}
+.admB .h2-cat-card{min-width:0;padding:var(--s-2) var(--s-2) var(--s-2) var(--s-3);border:1px solid var(--line);border-radius:8px;background:var(--surface);}
+.admB .h2-cat-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);min-height:32px;}
+.admB .h2-cat-name{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink);}
+.admB .h2-cat-actions{display:flex;gap:var(--s-1);flex:0 0 auto;}
+.admB .h2-cat-skel{height:52px;border-radius:8px;}
+@media (max-width:1199px){.admB .h2-cat-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:680px){.admB .h2-cat-grid{grid-template-columns:minmax(0,1fr);}.admB .h2-toolbar .h2-search{flex:1 1 100%;max-width:none;}.admB .h2-toolbar .pager{margin-left:0;}}
+
+/* Account edit modal: muted note under the role select. */
+.admB .h2-role-note{margin:0;}
+
+/* Product publication: quiet AI line when healthy, warning badge when failed. */
+.admB .pp-ai-ok{display:inline-flex;align-items:center;gap:var(--s-1);color:var(--t-green);font-size:var(--meta-size);line-height:var(--meta-lh);}
+.admB .pp-ai-ok svg{flex:0 0 auto;}
+.admB .pp-ai-warn{display:inline-flex;align-items:center;gap:var(--s-1);}
+.admB .pp-ai-warn svg{flex:0 0 auto;}

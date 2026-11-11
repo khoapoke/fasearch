@@ -1,0 +1,272 @@
+/* Customer auth/account — scoped port of frozen 6fdbcee login/account CSS
+ * (262-281, 375-404, 751-761, 805-844, responsive 519/531/566-571/587-590).
+ * No global selectors; Customer tokens only. No motion. */
+
+.authPage,
+.acctPage {
+  min-width: 0;
+  color: var(--st-ink);
+  background: var(--st-canvas);
+}
+
+.authPage { position: relative; isolation: isolate; }
+@media (min-width: 761px) {
+  .authPage.is-login { min-height: calc(100svh - 128px); }
+}
+.authPage .auth-content { position: relative; z-index: 1; }
+.authThreadline { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; color: var(--st-ink-soft); }
+.authThreadline,
+.authThreadline * { pointer-events: none !important; }
+.authThreadline .threadline { position: absolute; display: none; overflow: visible; left: var(--thread-left, 0px); top: var(--thread-top, 0px); width: var(--thread-width, 0px); height: var(--thread-height, 0px); opacity: 0.72; }
+.authThreadline[data-fit="visible"] .threadline { display: block; }
+@media (max-width: 1080px) {
+  .authPage .auth-layout { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .authPage .auth-editorial { height: 360px; }
+  .authPage .auth-form-wrap { max-width: 440px; }
+}
+@media (max-width: 760px) { .authThreadline { display: none; } }
+
+/* Login/register */
+.authPage .auth-content {
+  /* R3: cùng max-width/gutter với header Customer để mép trái không lệch. */
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: 34px clamp(20px, 4.5vw, 68px) 64px;
+}
+.authPage .auth-layout {
+  display: grid;
+  /* Form gọn 400–440px, ảnh giữ phần còn lại; tỉ lệ cân hơn panel cũ. */
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 440px);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: start;
+}
+.authPage .auth-editorial {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: clamp(480px, 62vh, 560px);
+  margin: 0;
+  padding: 24px 24px 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  color: #1b1c1a;
+  background: #e9eae5;
+}
+.authPage .auth-top { position: relative; z-index: 1; max-width: 44ch; }
+.authPage .auth-eyebrow { margin: 0; color: #4e554c; font-size: 13px; letter-spacing: 0.02em; }
+.authPage .auth-statement {
+  margin: 10px 0 0;
+  color: #1b1c1a;
+  font-size: clamp(26px, 2.6vw, 34px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.22;
+}
+/* CF-01: ảnh không được tràn xuống hàng chú thích. Trước đây `height:100%`
+   cộng margin dưới làm ảnh chờm qua figcaption: dòng credit 10px nằm ĐÈ lên
+   ảnh (đo được cap 652–665 trong photo 273–664 tại 1440), chữ xám nhỏ trên
+   pixel ảnh nên khó đọc. Hàng grid tự co giãn nên bỏ height cố định. */
+.authPage .auth-photo { min-height: 0; margin: 18px -26px 12px; overflow: hidden; }
+.authPage .auth-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.authPage .auth-photo-fail { display: grid; place-items: center; min-height: 320px; color: #4e554c; font-size: 12px; }
+.authPage .auth-editorial figcaption { display: block; padding-top: 2px; line-height: 1.4; }
+/* Credit nằm trên nền thẻ (không đè ảnh), 11px và màu đủ tương phản ~5.5:1. */
+.authPage .auth-credit { color: #4e554c; font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
+
+.authPage .auth-form-wrap {
+  display: grid;
+  align-items: center;
+  padding: 34px 22px;
+  background: var(--st-select);
+  border-top: 1px solid var(--st-line);
+  border-bottom: 1px solid var(--st-line);
+  padding-inline: clamp(20px, 2.2vw, 32px);
+}
+.authPage .auth-form {
+  width: min(100%, 380px);
+  margin: 0 auto;
+  position: relative;
+}
+.authPage .auth-rule { display: none; }
+.authPage .auth-access { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--st-ink-soft); font-size: 12px; letter-spacing: 0.02em; }
+.authPage .auth-access svg { display: block; width: 18px; height: 18px; opacity: 0.7; }
+.authPage .auth-form h1 { margin: 0 0 12px; font-size: 42px; font-weight: 500; letter-spacing: -0.05em; line-height: 1.08; }
+.authPage .auth-welcome { margin: 0 0 24px; color: var(--st-ink-soft); font-size: 14px; }
+.authPage .auth-field { display: grid; gap: 9px; margin: 0 0 18px; min-width: 0; }
+.authPage .auth-field label { font-size: 13px; font-weight: 400; }
+.authPage .auth-control {
+  min-width: 0;
+  width: 100%;
+  min-height: 50px;
+  padding: 11px 13px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 16px;
+}
+.authPage .auth-control::placeholder { color: var(--st-ink-soft); opacity: 1; }
+.authPage .auth-password { position: relative; }
+.authPage .auth-password .auth-control { padding-right: 48px; }
+.authPage .auth-eye {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--st-ink-soft);
+  background: transparent;
+  cursor: pointer;
+}
+.authPage .auth-eye[aria-pressed="true"] { color: var(--st-brand-text); }
+.authPage .auth-note { margin: 8px 0 0; color: var(--st-ink-soft); font-size: 12px; }
+.authPage .auth-status { margin: 20px 0 0; padding: 14px 16px; border-radius: 7px; font-size: 14px; }
+.authPage .auth-status.is-error { color: var(--st-err-text); background: var(--st-err-bg); }
+.authPage .auth-status.is-info { color: var(--st-info-text, #3348a3); background: var(--st-info-bg, #ecedf9); }
+.authPage .auth-actions { margin-top: 26px; }
+.authPage .auth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 11px 18px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 7px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+.authPage .auth-button.is-primary { width: 100%; color: #fff; border-color: var(--st-brand); background: var(--st-brand); }
+.authPage .auth-button:disabled { cursor: not-allowed; opacity: 0.6; }
+.authPage .auth-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 20px; }
+.authPage .auth-link { color: var(--st-brand-text); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.authPage .auth-secondary { color: var(--st-ink-soft); font-size: 13px; }
+.authPage .auth-name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.authPage .auth-name-grid .auth-field { margin-bottom: 0; }
+@media (max-width: 1100px) {
+  .authPage .auth-layout { gap: 26px; }
+  .authPage .auth-editorial { height: 570px; }
+}
+@media (max-width: 900px) {
+  .authPage .auth-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr); gap: 22px; }
+  .authPage .auth-editorial { padding-inline: 20px; }
+  .authPage .auth-photo { margin-inline: -20px; }
+}
+@media (max-width: 760px) {
+  .authPage .auth-content { padding-top: 26px; padding-bottom: 48px; }
+  .authPage .auth-layout { display: block; }
+  .authPage .auth-editorial { display: none; }
+  .authPage .auth-form-wrap { padding: 12px 0 38px; background: transparent; border: 0; }
+  .authPage .auth-form { max-width: 400px; }
+  .authPage .auth-form h1 { margin-bottom: 12px; font-size: 42px; line-height: 1.08; letter-spacing: -0.05em; }
+}
+@media (max-width: 480px) {
+  .authPage .auth-content { padding-inline: 16px; }
+  .authPage .auth-name-grid { grid-template-columns: 1fr; gap: 0; }
+  .authPage .auth-name-grid .auth-field { margin-bottom: 22px; }
+}
+
+/* Account */
+.acctPage .acct-content {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 44px clamp(20px, 4.5vw, 68px) 72px;
+}
+.acctPage .acct-head { margin-bottom: 22px; }
+.acctPage .acct-head h1 { margin: 0; font-size: clamp(30px, 3.2vw, 42px); font-weight: 500; letter-spacing: -0.05em; line-height: 1.08; }
+.acctPage .acct-layout { display: grid; grid-template-columns: 226px minmax(0, 1fr); gap: clamp(28px, 4vw, 60px); align-items: start; }
+.acctPage .acct-nav-wrap { min-width: 0; }
+.acctPage .acct-nav { display: grid; gap: 2px; }
+.acctPage .acct-nav button { min-height: 42px; padding: 10px 12px; border: 0; border-radius: 6px; color: var(--st-ink-soft); background: transparent; font: inherit; font-size: 14px; line-height: 1.55; text-align: left; cursor: pointer; }
+.acctPage .acct-nav button[aria-current="true"] { color: var(--st-ink); background: var(--st-select); }
+.acctPage .acct-hint { display: none; margin: 6px 0 0; color: var(--st-ink-soft); font-size: 11px; }
+.acctPage .acct-main { min-width: 0; }
+.acctPage .acct-identity { display: grid; gap: 3px; margin-bottom: 26px; padding-bottom: 22px; border-bottom: 1px solid var(--st-line); }
+.acctPage .acct-identity strong { font-size: 17px; font-weight: 500; overflow-wrap: anywhere; }
+.acctPage .acct-identity span { color: var(--st-ink-soft); font-size: 13px; }
+.acctPage .acct-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.acctPage .acct-section-head h2 { margin: 0 0 4px; font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+.acctPage .acct-profile { display: grid; gap: 0; margin: 14px 0 0; border-top: 1px solid var(--st-line); }
+.acctPage .acct-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--st-line); font-size: 14px; }
+.acctPage .acct-row dt { color: var(--st-ink-soft); }
+.acctPage .acct-row dd { margin: 0; overflow-wrap: anywhere; }
+.acctPage .acct-note { margin: 18px 0 0; color: var(--st-ink-soft); font-size: 13px; }
+.acctPage .acct-placeholder { display: grid; gap: 10px; justify-items: start; padding: 26px 0; border-top: 1px solid var(--st-line); }
+.acctPage .acct-placeholder h3 { margin: 0; font-size: 19px; font-weight: 500; }
+.acctPage .acct-placeholder p { margin: 0; max-width: 46ch; color: var(--st-ink-soft); font-size: 14px; }
+.acctPage .acct-state { display: grid; gap: 10px; justify-items: start; padding: 26px 0; border-top: 1px solid var(--st-line); }
+.acctPage .acct-state h2 { margin: 0; font-size: 22px; font-weight: 500; }
+.acctPage .acct-state p { margin: 0; color: var(--st-ink-soft); font-size: 14px; }
+.acctPage .acct-logout { min-height: 40px; padding: 6px 0; border: 0; color: var(--st-ink-soft); background: transparent; font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* Đăng xuất trong sidebar: cùng lề trái, baseline icon/chữ và nhịp với nav
+   (icon 18px + gap 10px + padding 10px 12px như .acct-nav a) nhưng vẫn phụ
+   (chữ nhỏ, gạch chân, mực mềm) so với các mục điều hướng. */
+.acctPage .acct-nav-wrap > .acct-logout { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 10px 12px; font-size: 13px; line-height: 1.55; text-decoration: underline; text-underline-offset: 3px; }
+.acctPage .acct-nav-wrap > button.acct-logout { width: 100%; text-align: left; }
+.acctPage .acct-nav-wrap > .acct-logout:hover { color: var(--st-ink); }
+.acctPage .acct-nav-wrap > .acct-logout:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: -2px; }
+/* Account center (favorites/history/voucher/profile) reuses the approved
+   account styles but renders links instead of buttons, so mirror the same
+   tokens for anchors and page-level actions. */
+.acctPage .acct-nav a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 10px 12px; border-radius: 6px; color: var(--st-ink-soft); background: transparent; font-size: 14px; line-height: 1.55; text-decoration: none; }
+.acctPage .acct-nav a[aria-current="page"] { color: var(--st-ink); background: var(--st-select); }
+.acctPage .acct-nav a:hover { color: var(--st-ink); }
+.acctPage .acct-nav a:focus-visible,
+.acctPage .acct-nav button:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: -2px; }
+.acctPage .auth-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--st-control-border); border-radius: 7px; color: var(--st-ink); background: var(--st-surface); font: inherit; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+.acctPage .auth-button:focus-visible { outline: 2px solid var(--st-focus, var(--st-brand)); outline-offset: 2px; }
+.acctPage .auth-button.is-primary { color: #fff; border-color: var(--st-brand); background: var(--st-brand); }
+.acctPage .auth-button:hover { border-color: var(--st-line-strong, var(--st-control-border)); }
+.acctPage .auth-button.is-primary:hover { background: var(--st-brand-text); }
+.acctPage .auth-button:disabled { cursor: not-allowed; opacity: 0.6; }
+.acctPage .auth-status { margin: 16px 0 0; padding: 12px 14px; border-radius: 7px; font-size: 14px; }
+.acctPage .auth-status.is-error { color: var(--st-err-text); background: var(--st-err-bg); }
+.acctPage .auth-status.is-info { color: var(--st-info-text, #3348a3); background: var(--st-info-bg, #ecedf9); }
+.acctPage .auth-verify-banner { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--st-line-strong, var(--st-line)); border-radius: 8px; background: var(--st-surface); }
+.acctPage .auth-verify-title { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.acctPage .auth-verify-text { margin: 0 0 12px; color: var(--st-ink-soft); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+  .acctPage .acct-layout { grid-template-columns: 196px minmax(0, 1fr); gap: 32px; }
+}
+@media (max-width: 760px) {
+  .acctPage .acct-content { padding: 30px 20px 48px; }
+  .acctPage .acct-layout { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .acctPage .acct-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .acctPage .acct-nav button,
+  .acctPage .acct-nav a { flex: 0 0 auto; min-height: 38px; padding: 8px 12px; border: 1px solid var(--st-line); white-space: nowrap; }
+  .acctPage .acct-hint { display: block; }
+  .acctPage .acct-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+@media (max-width: 480px) {
+  .acctPage .acct-content { padding-inline: 16px; }
+}
+
+.acctPage .acct-order-list { display: grid; border-top: 1px solid var(--st-line); }
+.acctPage .acct-order-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--st-line); color: var(--st-ink); text-decoration: none; }
+.acctPage .acct-order-row span { display: grid; gap: 3px; min-width: 0; }
+.acctPage .acct-order-row strong { font-size: 14px; font-weight: 500; }
+.acctPage .acct-order-row small { color: var(--st-ink-soft); font-size: 12px; }
+.acctPage .acct-order-row > strong { white-space: nowrap; }
+
+.acct-prose{white-space:normal;overflow-wrap:anywhere;word-break:break-word;max-width:70ch;}
+.acct-edit-form{display:grid;gap:12px;max-width:640px;margin-top:10px;}
+.acct-field{display:grid;gap:4px;}
+.acct-field label{font-size:12px;color:var(--auth-muted,#5b6475);}
+.acct-field input,.acct-field select,.acct-field textarea{min-height:40px;padding:8px 10px;border:1px solid var(--auth-line,#d8dee8);border-radius:4px;background:var(--auth-surface,#fff);color:var(--auth-ink,#1b2030);font:inherit;}
+.acct-field textarea{min-height:88px;resize:vertical;}
+.acct-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.acct-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:600px){.acct-form-grid{grid-template-columns:1fr;gap:12px;}}
+.acct-loading-wrap{padding:24px 0;}
+.acct-profile-view{max-width:640px;}

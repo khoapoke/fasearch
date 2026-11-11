@@ -1,0 +1,597 @@
+/* Customer Home header — port 1:1 từ 6fdbcee styles.css:98-113 (shared header),
+ * 502-503 (hover), 525-528 (900), 548-550 (760), 599-608 (480), 790,834-836
+ * (signature viewfinder). Chỉ dùng dưới variant `header="customer"` (Home).
+ * Không có rule global cho a/nav/header; mọi selector đều namespace .ch*. */
+
+/* NAV2: thanh dính 3 cột, brand căn giữa hình học ở cả hai trạng thái.
+   Chiều cao header cố định → thu gọn chỉ đổi padding bên trong, không layout shift. */
+.chHeader {
+  --ch-shadow: 0 0 0 1px rgba(27, 28, 26, 0.08), 0 6px 20px rgba(27, 28, 26, 0.08);
+  --ch-h: 88px;
+  --ch-pad-y: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--ch-h);
+  border-bottom: 1px solid var(--st-line);
+  background: color-mix(in srgb, var(--st-canvas) 92%, transparent);
+  backdrop-filter: saturate(120%) blur(6px);
+  transition: box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1), background-color 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.chHeaderInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  height: 100%;
+  padding: var(--ch-pad-y) clamp(20px, 4.5vw, 68px);
+  transition: padding 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.chHeader[data-compact="true"] {
+  --ch-pad-y: 9px;
+  box-shadow: var(--ch-shadow);
+  background: color-mix(in srgb, var(--st-canvas) 96%, transparent);
+}
+
+/* R3: cuộn xuống → chỉ còn logo icon ở giữa. Ẩn bằng visibility/opacity (giữ
+   nguyên hình học để không layout jump), và trả lại ngay khi có focus bàn phím
+   hoặc menu mở để không bao giờ giấu control đang được dùng. */
+.chHeader .chLeft,
+.chHeader .chRight {
+  transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1), transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* Wordmark: opacity + nhẹ translate, KHÔNG animate width (tránh snap/chữ méo). */
+.chHeader .chWord {
+  display: inline-block;
+  transform-origin: left center;
+  /* chỉ opacity + transform: không animate width/margin để không layout mỗi frame */
+  transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1), transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Ẩn bằng opacity để control vẫn tab tới được (giữ khả năng truy cập bàn phím);
+   `:focus-within` kéo cả cụm trở lại ngay khi có tiêu điểm. */
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chLeft,
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chRight {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+.chHeader[data-compact="true"]:focus-within .chLeft,
+.chHeader[data-compact="true"]:focus-within .chRight,
+.chHeader[data-compact="true"]:focus-within .chWord {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+.chHeader[data-compact="true"]:focus-within .chWord { opacity: 1; transform: none; }
+
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chWord {
+  opacity: 0;
+  transform: translate3d(-6px, 0, 0) scale(0.98);
+  pointer-events: none;
+}
+/* dịch cả cụm brand sang trái đúng nửa wordmark → shirt mark vào giữa viewport */
+.chHeader[data-compact="true"]:not([data-menu-open="true"]):not(:focus-within) .chBrand {
+  transform: translate3d(var(--chWordShift, 0px), 0, 0);
+}
+.chHeader .chBrand { transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1); }
+.chHeader[data-compact="true"]:focus-within .chBrand { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chHeader .chLeft, .chHeader .chRight, .chHeader .chWord { transition: none; }
+}
+
+.chLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.chRight { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+.chNavAccount { display: flex; align-items: center; gap: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chHeader, .chHeaderInner { transition: none; }
+}
+
+html[data-theme="dark"] .chHeader {
+  --ch-shadow: 0 0 0 1px rgba(237, 238, 240, 0.1), 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .chHeader {
+    --ch-shadow: 0 0 0 1px rgba(237, 238, 240, 0.1), 0 10px 26px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Preview-only strip for the theme control: outside the product header and
+ * excluded from header geometry; kept neutral so it is not the old promo. */
+.chPreviewBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 6px clamp(16px, 4.5vw, 68px);
+  border-bottom: 1px solid var(--st-line);
+  background: var(--st-select);
+  color: var(--st-ink-soft);
+  font-size: 11px;
+}
+
+.chPreviewLabel {
+  white-space: nowrap;
+}
+
+.chBrand {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  color: var(--st-ink);
+  text-decoration: none;
+}
+
+.chMark {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+}
+
+.chWord {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.chActions {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-width: 0;
+}
+
+.chNav {
+  display: flex;
+  align-items: center;
+  gap: 29px;
+}
+
+.chNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 6px;
+  color: var(--st-ink-soft);
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chNav a[aria-current="page"] {
+  color: var(--st-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--st-brand-text);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 9px;
+}
+
+.chAi {
+  gap: 0;
+}
+
+.chAiIcon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  flex: 0 0 auto;
+}
+
+.chViewfinder {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.chCart {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--st-ink);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chBag {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.chCartCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--st-select);
+  color: inherit;
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.chMobile {
+  position: relative;
+  display: none;
+}
+
+.chMobile > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.chMobile > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron là SVG code-native (cùng stroke/round-cap với icon header) thay cho
+ * glyph Unicode; xoay 180deg tĩnh khi mở, không transition/animation. */
+.chMobile nav {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: 190px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--st-raised);
+  box-shadow: var(--ch-shadow);
+}
+
+.chMobile a {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: var(--st-ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.chMobile a[aria-current="page"] {
+  color: var(--st-brand-text);
+  background: var(--st-select);
+}
+
+.chMobile a.chAi {
+  display: flex;
+  align-items: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chNav a:hover {
+    color: var(--st-ink);
+    text-decoration: underline;
+  }
+  .chCart:hover,
+  .chMobile a:hover {
+    background: var(--st-select);
+  }
+  .chMobile > summary:hover {
+    background: var(--st-select);
+  }
+}
+
+.chCart:active {
+  transform: scale(0.985);
+}
+
+/* CF-04: dưới ~1060px thanh điều hướng đầy đủ (4 mục, gap 29px) chạm vào
+   brand căn giữa (đo được -3.41px tại 1024, -59px tại 901). Hai bước, không
+   đổi thiết kế: (1) siết gap/cỡ chữ vừa phải trong dải hẹp, (2) dùng
+   hamburger sẵn có khi vẫn không đủ chỗ thay vì ép chữ. */
+@media (max-width: 1100px) and (min-width: 991px) {
+  .chHeaderInner { padding-inline: 20px; gap: 12px; }
+  .chHeader .chNav { gap: 18px; }
+  .chHeader .chNav a { font-size: 13px; }
+  .chHeader .chRight { gap: 8px; }
+}
+
+@media (max-width: 990px) {
+  /* Mobile: hamburger trái, brand giữa, giỏ hàng phải; tài khoản vào menu. */
+  .chNav {
+    display: none;
+  }
+  .chMobile {
+    display: block;
+  }
+  .chNavAccount {
+    display: none;
+  }
+  .chRight {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  .chHeader {
+    --ch-h: 72px;
+    --ch-pad-y: 14px;
+  }
+  .chHeader[data-compact="true"] {
+    --ch-pad-y: 8px;
+  }
+  .chHeaderInner {
+    padding-inline: 20px;
+    gap: 12px;
+  }
+  .chMark {
+    width: 32px;
+    height: 32px;
+  }
+  .chWord {
+    font-size: 23px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chHeaderInner {
+    gap: 6px;
+    padding-inline: 16px;
+  }
+  .chBrand {
+    gap: 8px;
+  }
+  .chMark {
+    width: 28px;
+    height: 28px;
+  }
+  .chWord {
+    font-size: 21px;
+  }
+  .chCart {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+  .chCartLabel {
+    display: none;
+  }
+  .chCartCount {
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+  .chMobile > summary {
+    gap: 6px;
+    padding-inline: 6px;
+  }
+  .chPreviewBar {
+    padding-inline: 16px;
+  }
+}
+
+.chAuthHeader {
+  justify-content: space-between;
+}
+
+/* R4-F: header auth phải trùng container/gutter với .auth-content bên dưới
+   (brand trước đây dính sát mép trái trong khi form thụt vào ~125px). */
+.chAuthHeader {
+  /* R4-F: header auth không render .chHeaderInner nên phải tự là flex container;
+     trước đây thiếu display nên brand + "Home" nằm cạnh nhau ở mép trái. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1320px, 100%);
+  margin-inline: auto;
+  padding-inline: clamp(20px, 4.5vw, 68px);
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+}
+.chAuthBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 0;
+  color: var(--st-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+.chAuthBack:hover { color: var(--st-ink); text-decoration: underline; }
+.chAuthBack svg { display: block; flex: 0 0 auto; }
+@media (max-width: 480px) {
+  .chAuthBack { font-size: 12px; }
+  .chAuthBack svg { width: 14px; height: 14px; }
+}
+
+/* Customer-only theme picker: 40px icon trigger + small popover. */
+.chThemeCompact {
+  display: inline-flex;
+  align-items: center;
+}
+
+.chTheme {
+  position: relative;
+  display: inline-flex;
+}
+
+.chThemeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--st-line);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.chThemeBtn:hover {
+  background: var(--st-select);
+  border-color: var(--st-line-strong, var(--st-line));
+}
+
+.chThemeBtn:focus-visible {
+  outline: 2px solid var(--st-focus, var(--st-brand));
+  outline-offset: 2px;
+}
+
+.chThemeIcon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.chThemePop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 188px;
+  padding: 6px;
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  background: var(--st-surface);
+  box-shadow: 0 10px 30px rgba(16, 18, 16, 0.12);
+}
+
+.chThemeOpt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.chThemeOpt:hover {
+  background: var(--st-select);
+}
+
+.chThemeOpt:focus-visible {
+  outline: 2px solid var(--st-focus, var(--st-brand));
+  outline-offset: -2px;
+}
+
+.chThemeOpt[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--st-brand-text);
+}
+
+.chThemeOpt .chThemeIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--st-ink-soft);
+}
+
+.chThemeOpt[aria-pressed="true"] .chThemeIcon {
+  color: var(--st-brand-text);
+}
+
+.chThemeOpt > span {
+  flex: 1;
+}
+
+.chThemeSep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--st-line);
+}
+
+.chThemeHint {
+  margin: 4px 10px 6px;
+  max-width: 220px;
+  color: var(--st-ink-soft);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.chThemeCheck {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+/* Mobile: hamburger keeps the native disclosure behaviour and a 40px target. */
+.chMenuIcon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 480px) {
+  .chThemeBtn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  .chThemePop {
+    min-width: 176px;
+  }
+}
+
+.chAdminEntry {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--st-select);
+  color: var(--st-brand-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chAdminEntry:hover {
+  text-decoration: underline;
+}
+
+
+
+
+/* R4-F: ở ≤480px .auth-content dùng gutter 16px — header auth theo đúng gutter đó. */
+@media (max-width: 480px) {
+  .chAuthHeader { padding-inline: 16px; }
+}

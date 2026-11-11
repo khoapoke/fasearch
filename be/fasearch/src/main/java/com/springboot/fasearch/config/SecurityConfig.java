@@ -1,0 +1,143 @@
+package com.springboot.fasearch.config;
+
+import java.util.List;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import com.springboot.fasearch.common.enums.RoleType;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.springboot.fasearch.security.CustomAccessDeniedHandler;
+import com.springboot.fasearch.security.JwtAuthenticationEntryPoint;
+import com.springboot.fasearch.security.JwtAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
+
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/password/forgot",
+            "/api/v1/auth/password/reset",
+            "/api/v1/auth/email/verify",
+            "/api/v1/orders/calculate-shipping-fee",
+            "/api/v1/payments/methods",
+            "/api/v1/search/**",
+            "/api/v1/brands",
+            "/api/v1/brands/**",
+            "/api/v1/payments/stripe/webhook",
+            "/api/v1/payments/vnpay/return",
+            "/api/v1/payments/vnpay/ipn",
+            "/api/v1/promotions",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs",
+            "/favicon.ico"
+    };
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf->csrf.disable()) // tắt cơ chế bảo vệ chống tấn công CSRF
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler))
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Nhóm endpoint công khai (Public)
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers("/api/v1/products/pos-lookup/**", "/api/v1/products/pos-search/**", "/api/v1/products/variants/*/barcode/**")
+                                .hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reviews/products/*", "/api/v1/reviews/products/*/summary").permitAll()
+
+                        // 2. Nhóm quyền nghiệp vụ cửa hàng: Quản trị viên (ADMIN) hoặc Quản lý (STAFF)
+                        .requestMatchers("/api/v1/khuyen-mai", "/api/v1/khuyen-mai/**")
+                                .hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/categories/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/products/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+
+                        // Report và các màn hình quản trị dưới /quan-tri: chỉ nội bộ (quyền chi tiết PERM_* ở @PreAuthorize)
+                        .requestMatchers("/api/v1/analytics", "/api/v1/analytics/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/quan-tri", "/api/v1/quan-tri/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+
+                        // 2b. Tài khoản đăng nhập & phân quyền: CHỈ Quản trị viên hệ thống (ADMIN)
+                        .requestMatchers("/api/v1/auth/accounts", "/api/v1/auth/accounts/**").hasRole(RoleType.ADMIN.name())
+                        .requestMatchers("/api/v1/auth/roles", "/api/v1/auth/roles/**").hasRole(RoleType.ADMIN.name())
+
+                        // 3. Nhóm quyền Quản lý (STAFF) hoặc Admin. Hồ sơ nhân sự không bao giờ dành cho khách hàng.
+                        .requestMatchers("/api/v1/users/employees", "/api/v1/users/employees/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers("/api/v1/users/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/inventory/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+
+                        // 4. Nhóm quyền Khách hàng & Đơn hàng
+                        .requestMatchers("/api/v1/orders/pos/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers(HttpMethod.GET, "/api/v1/orders/**").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/orders/*/status").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/cancel").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/cart/**").hasRole(RoleType.CUSTOMER.toString())
+                        .requestMatchers("/api/v1/orders/checkout").hasRole(RoleType.CUSTOMER.toString())
+
+                        // 5. Nhóm quyền Thanh toán & Hóa đơn
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/calculate").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/process").hasAnyRole(RoleType.ADMIN.name(), RoleType.STAFF.name(), RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/payments/attempts/**").hasRole(RoleType.CUSTOMER.name())
+                        .requestMatchers("/api/v1/payments/stripe/checkout", "/api/v1/payments/vnpay/checkout")
+                                .hasRole(RoleType.CUSTOMER.name())
+
+                        // Mọi endpoint còn lại bắt buộc phải xác thực
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}

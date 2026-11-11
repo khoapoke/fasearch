@@ -1,0 +1,25 @@
+# Bản cài đặt cho máy KHÔNG có GPU NVIDIA (CPU-only, ví dụ server Linux/WSL).
+# requirements.txt vẫn giữ nguyên bản CUDA 12.8 (cu128) cho máy có GPU.
+#   pip install -r requirements-cpu.txt
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+torch==2.11.0
+torchvision==0.26.0
+pillow>=11.0.0,<13.0.0
+numpy>=1.26.0
+pandas>=2.2.0
+matplotlib>=3.9.0
+transformers==4.46.3
+
+# database
+qdrant-client==1.12.1
+PyYAML==6.0.2
+
+# api
+fastapi>=0.110.0
+uvicorn>=0.30.0
+python-multipart==0.0.9
+
+# admin app
+streamlit>=1.35.0

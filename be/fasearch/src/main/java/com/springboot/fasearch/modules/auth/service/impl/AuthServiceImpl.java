@@ -1,0 +1,343 @@
+package com.springboot.fasearch.modules.auth.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import com.springboot.fasearch.common.enums.AccountStatus;
+import com.springboot.fasearch.common.enums.RoleType;
+import com.springboot.fasearch.common.softdelete.SoftDeleteRecorder;
+import com.springboot.fasearch.config.JwtConfig;
+import com.springboot.fasearch.exception.AppException;
+import com.springboot.fasearch.exception.ErrorCode;
+import com.springboot.fasearch.modules.auth.dto.request.AccountCreateReq;
+import com.springboot.fasearch.modules.auth.dto.request.AccountUpdateReq;
+import com.springboot.fasearch.modules.auth.dto.request.LoginReq;
+import com.springboot.fasearch.modules.auth.dto.request.RegisterReq;
+import com.springboot.fasearch.modules.auth.dto.response.AccountInfoRes;
+import com.springboot.fasearch.modules.auth.dto.response.AuthRes;
+import com.springboot.fasearch.modules.auth.entity.Account;
+import com.springboot.fasearch.modules.auth.entity.Role;
+import com.springboot.fasearch.modules.auth.mapper.AccountMapper;
+import com.springboot.fasearch.modules.auth.repository.AccountRepository;
+import com.springboot.fasearch.modules.auth.repository.RoleRepository;
+import com.springboot.fasearch.modules.auth.service.interfaces.AuthService;
+import com.springboot.fasearch.modules.auth.service.interfaces.EmailTokenService;
+import com.springboot.fasearch.modules.trash.service.impl.DeleteGuards;
+import com.springboot.fasearch.modules.user.entity.Customer;
+import com.springboot.fasearch.modules.user.repository.UserRepository;
+import com.springboot.fasearch.security.JwtProvider;
+import com.springboot.fasearch.security.RolePermissionResolver;
+import com.springboot.fasearch.security.SecurityUtils;
+import com.springboot.fasearch.shared.PageResponse;
+
+import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AuthServiceImpl implements AuthService {
+
+    private final AccountRepository accountRepository;
+    private final RoleRepository roleRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
+    private final JwtConfig jwtConfig;
+    private final AccountMapper accountMapper;
+    private final EmailTokenService emailTokenService;
+    private final DeleteGuards deleteGuards;
+    private final SoftDeleteRecorder softDeleteRecorder;
+    private final RolePermissionResolver rolePermissionResolver;
+
+    @Value("${email.verification-required:false}")
+    private boolean verificationRequired;
+
+    @Override
+    public AuthRes login(LoginReq req) {
+        Account account = accountRepository.findByUsername(req.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+
+        if (!passwordEncoder.matches(req.getPassword(), account.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (account.getStatus() == AccountStatus.LOCKED) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
+        if (account.getStatus() == AccountStatus.INACTIVE || account.getStatus() == AccountStatus.DELETED) {
+            throw new AppException(ErrorCode.ACCOUNT_INACTIVE);
+        }
+
+        // Round nay login KHONG chan tai khoan chua xac thuc (FE hien banner).
+        // Bat chan dang nhap bang EMAIL_VERIFICATION_REQUIRED=true.
+        if (verificationRequired && account.getEmailVerifiedAt() == null) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        String roleName = account.getRole() != null ? account.getRole().getName().name() : RoleType.CUSTOMER.name();
+        String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId(), account.getTokenVersion());
+
+        return AuthRes.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .expiresIn(jwtConfig.getExpirationMs() / 1000)
+                .username(account.getUsername())
+                .role(roleName)
+                .emailVerified(account.getEmailVerifiedAt() != null)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AuthRes register(RegisterReq req) {
+        if (accountRepository.existsByUsername(req.getUsername())) {
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        if (accountRepository.existsByEmail(req.getEmail())) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        if (userRepository.findByPhoneNumber(req.getPhoneNumber()).isPresent()) {
+            throw new AppException(ErrorCode.PHONE_NUMBER_ALREADY_EXISTS);
+        }
+
+        Role customerRole = roleRepository.findByName(RoleType.CUSTOMER)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        Account account = Account.builder()
+                .username(req.getUsername())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .email(req.getEmail())
+                .role(customerRole)
+                .status(AccountStatus.ACTIVE)
+                .isDeleted(false)
+                .build();
+
+        account = accountRepository.save(account);
+
+        Customer customer = Customer.builder()
+                .firstName(req.getFirstName())
+                .lastName(req.getLastName())
+                .phoneNumber(req.getPhoneNumber())
+                .gender(req.getGender())
+                .accumulatePoint(0)
+                .salesHistoryComplete(true)
+                .account(account)
+                .isDeleted(false)
+                .build();
+
+        userRepository.save(customer);
+
+        String roleName = customerRole.getName().name();
+        String token = jwtProvider.generateToken(account.getUsername(), roleName, account.getId(), account.getTokenVersion());
+
+        log.info("Khách hàng mới đã đăng ký thành công: username={}", account.getUsername());
+
+        try {
+            emailTokenService.requestVerificationEmail(account.getId());
+        } catch (Exception e) {
+            // Dang ky van thanh cong du email xac thuc gui that bai; FE hien banner + gui lai.
+            log.warn("Khong gui duoc email xac thuc sau dang ky (username={}): {}", account.getUsername(), e.getMessage());
+        }
+
+        return AuthRes.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .expiresIn(jwtConfig.getExpirationMs() / 1000)
+                .username(account.getUsername())
+                .role(roleName)
+                .emailVerified(false)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(oldPassword, account.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Mật khẩu cũ không đúng");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Mật khẩu mới phải khác mật khẩu cũ");
+        }
+
+        account.setPassword(passwordEncoder.encode(newPassword));
+        account.setTokenVersion(account.getTokenVersion() == null ? 1L : account.getTokenVersion() + 1);
+        accountRepository.save(account);
+        log.info("Password changed successfully for account [{}]", username);
+        try {
+            emailTokenService.sendPasswordChangedNotice(account.getId());
+        } catch (Exception e) {
+            // Doi mat khau van thanh cong du thong bao email gui that bai.
+            log.warn("Khong gui duoc thong bao doi mat khau (username={}): {}", username, e.getMessage());
+        }
+    }
+
+    @Override
+    public AccountInfoRes getMyInfo(String username) {
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        AccountInfoRes res = accountMapper.toAccountInfoResponse(account);
+        res.setEmailVerified(account.getEmailVerifiedAt() != null);
+        // Bổ sung id hồ sơ khách hàng để client tự tra cứu chính mình mà không phải
+        // đoán/hay dùng id tài khoản (hai id khác nhau).
+        res.setCustomerId(userRepository.findByAccount_Username(username)
+                .map(com.springboot.fasearch.modules.user.entity.Customer::getId).orElse(null));
+        res.setPermissions(RolePermissionResolver.codes(rolePermissionResolver.permissionsOf(account)));
+        return res;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AccountInfoRes> getAccounts(Pageable pageable, String keyword, RoleType role, AccountStatus status) {
+        Specification<Account> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (StringUtils.hasText(keyword)) {
+                String search = "%" + keyword.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("username")), search),
+                        cb.like(cb.lower(root.get("email")), search)
+                ));
+            }
+
+            if (role != null) {
+                predicates.add(cb.equal(root.get("role").get("name"), role));
+            }
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Account> page = accountRepository.findAll(spec, pageable);
+        Page<AccountInfoRes> resPage = page.map(accountMapper::toAccountInfoResponse);
+
+        return PageResponse.from(resPage);
+    }
+
+    @Override
+    @Transactional
+    public AccountInfoRes createInternalAccount(AccountCreateReq req) {
+        if (accountRepository.existsByUsername(req.getUsername())) {
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        if (accountRepository.existsByEmail(req.getEmail())) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        RoleType targetRoleType = req.getRole() != null ? req.getRole() : RoleType.STAFF;
+        Role role = roleRepository.findByName(targetRoleType)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        Account account = Account.builder()
+                .username(req.getUsername())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .email(req.getEmail())
+                .role(role)
+                .status(AccountStatus.ACTIVE)
+                .isDeleted(false)
+                .build();
+
+        Account saved = accountRepository.save(account);
+        log.info("Internal account created successfully with ID [{}] and role [{}]", saved.getId(), targetRoleType);
+
+        AccountInfoRes created = accountMapper.toAccountInfoResponse(saved);
+        created.setEmailVerified(saved.getEmailVerifiedAt() != null);
+        return created;
+    }
+
+    @Override
+    @Transactional
+    public AccountInfoRes updateAccount(Long id, AccountUpdateReq req) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Tự bảo vệ ở BE (không chỉ ở BFF): Quản trị viên không tự đổi vai trò hay trạng thái của chính mình,
+        // để không tự khóa mình hoặc tự hạ quyền làm hệ thống mất Quản trị viên đang hoạt động.
+        boolean self = SecurityUtils.getCurrentUsername().map(account.getUsername()::equals).orElse(false);
+        if (self) {
+            boolean roleChange = req.getRole() != null
+                    && (account.getRole() == null || req.getRole() != account.getRole().getName());
+            boolean statusChange = req.getStatus() != null && req.getStatus() != account.getStatus();
+            if (roleChange || statusChange) {
+                throw new AppException(ErrorCode.ACCESS_DENIED,
+                        "Không thể đổi vai trò hoặc trạng thái của chính tài khoản đang đăng nhập.");
+            }
+        }
+
+        if (StringUtils.hasText(req.getEmail()) && !req.getEmail().equals(account.getEmail())) {
+            if (accountRepository.existsByEmail(req.getEmail())) {
+                throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+            account.setEmail(req.getEmail());
+        }
+
+        if (req.getStatus() != null) {
+            account.setStatus(req.getStatus());
+        }
+
+        if (req.getRole() != null) {
+            if (req.getRole() != RoleType.STAFF && req.getRole() != RoleType.ADMIN) {
+                throw new AppException(ErrorCode.INVALID_REQUEST,
+                        "Chỉ được đổi vai trò giữa Nhân viên và Quản trị viên.");
+            }
+            Role role = roleRepository.findByName(req.getRole())
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+            account.setRole(role);
+        }
+
+        if (StringUtils.hasText(req.getNewPassword())) {
+            account.setPassword(passwordEncoder.encode(req.getNewPassword()));
+        }
+
+        Account updated = accountRepository.save(account);
+        log.info("Updated account ID [{}] successfully", id);
+
+        AccountInfoRes updatedRes = accountMapper.toAccountInfoResponse(updated);
+        updatedRes.setEmailVerified(updated.getEmailVerifiedAt() != null);
+        return updatedRes;
+    }
+
+    @Override
+    @Transactional
+    public void deleteAccount(Long id, String reason) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Long currentAccountId = SecurityUtils.getCurrentUsername()
+                .flatMap(accountRepository::findByUsername)
+                .map(Account::getId)
+                .orElse(null);
+        deleteGuards.assertAccountDeletable(id, currentAccountId);
+
+        softDeleteRecorder.mark(account, reason);
+        account.setStatus(AccountStatus.DELETED);
+        // Token đã cấp trước khi xóa phải chết hẳn: bộ lọc JWT từ chối tài khoản không ACTIVE,
+        // và token_version tăng để token cũ cũng không sống lại nếu tài khoản được khôi phục rồi bật.
+        account.setTokenVersion(account.getTokenVersion() == null ? 1L : account.getTokenVersion() + 1);
+        accountRepository.save(account);
+
+        log.info("Soft deleted account ID [{}]", id);
+    }
+}

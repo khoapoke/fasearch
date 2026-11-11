@@ -1,0 +1,219 @@
+/* PDP engagement: rating, share, reviews, recently viewed. Customer palette tokens (--st-*), Direction A.
+ * Chuyển động chỉ transform/opacity; giảm chuyển động & html[data-motion="off"] đã được globals.css rút về ~0. */
+
+/* ---- sao ---- */
+.catPage .pdStars { position: relative; display: inline-flex; vertical-align: middle; line-height: 0; }
+.catPage .pdStarRow { display: inline-flex; gap: 1px; }
+.catPage .pdStarsBase { color: var(--st-line); }
+.catPage .pdStarsBase svg, .catPage .pdStarsFill svg { fill: currentColor; stroke: none; }
+.catPage .pdStarsFill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--pd-star, #d99a00); white-space: nowrap; }
+.catPage .pdStarsFill .pdStarRow { flex: none; }
+@media (prefers-color-scheme: dark) { .catPage { --pd-star: #f0b429; } }
+html[data-theme="dark"] .catPage { --pd-star: #f0b429; }
+html[data-theme="light"] .catPage { --pd-star: #d99a00; }
+
+/* ---- dòng đánh giá dưới tên sản phẩm ---- */
+.catPage .pdRatingLine { margin: 10px 0 0; min-height: 22px; }
+.catPage .pdRatingAnchor { display: inline-flex; align-items: center; gap: 8px; color: var(--st-ink); text-decoration: none; font-size: 14px; border-radius: 6px; }
+.catPage .pdRatingAnchor strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.catPage .pdRatingText { color: var(--st-ink-soft); text-decoration: underline; text-decoration-color: var(--st-line); text-underline-offset: 3px; }
+.catPage .pdRatingAnchor:hover .pdRatingText { color: var(--st-brand-text); text-decoration-color: currentColor; }
+.catPage .pdRatingAnchor:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; }
+
+/* ---- hàng hành động: yêu thích + chia sẻ ---- */
+.catPage .pdActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 0; position: relative; }
+/* ---- hàng hành động: yêu thích + chia sẻ (ngôn ngữ brackets Direction A) ----
+   Vuông nhẹ, hairline 1px, nhãn uppercase rải chữ như eyebrow; góc brackets
+   dùng đúng motif .cat-corner (ô 9px, viền 2px var(--st-brand)), trượt vào
+   khi hover/focus-visible trong 160ms. Motion trái tim giữ nguyên. */
+.catPage .pdShare,
+.catPage .pdActions .favHeartLabel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 3px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.catPage .pdShare::before,
+.catPage .pdShare::after,
+.catPage .pdActions .favHeartLabel::before,
+.catPage .pdActions .favHeartLabel::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 0 solid var(--st-brand);
+  opacity: 0;
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  pointer-events: none;
+}
+.catPage .pdShare::before,
+.catPage .pdActions .favHeartLabel::before {
+  top: -1px;
+  left: -1px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  transform: translate(4px, 4px);
+}
+.catPage .pdShare::after,
+.catPage .pdActions .favHeartLabel::after {
+  right: -1px;
+  bottom: -1px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+  transform: translate(-4px, -4px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .catPage .pdShare:hover::before,
+  .catPage .pdActions .favHeartLabel:hover::before { opacity: 1; transform: translate(0, 0); }
+  .catPage .pdShare:hover::after,
+  .catPage .pdActions .favHeartLabel:hover::after { opacity: 1; transform: translate(0, 0); }
+  .catPage .pdShare:hover, .catPage .pdActions .favHeartLabel:hover { background: var(--st-select); }
+}
+.catPage .pdShare:focus-visible::before,
+.catPage .pdShare:focus-visible::after,
+.catPage .pdActions .favHeartLabel:focus-visible::before,
+.catPage .pdActions .favHeartLabel:focus-visible::after { opacity: 1; transform: translate(0, 0); }
+.catPage .pdActions .favHeartLabel[aria-pressed="true"]::before,
+.catPage .pdActions .favHeartLabel[aria-pressed="true"]::after { opacity: 1; transform: translate(0, 0); }
+.catPage .pdShare:active, .catPage .pdActions .favHeartLabel:active { transform: scale(0.97); }
+.catPage .pdShare:focus-visible, .catPage .pdActions .favHeartLabel:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; }
+.catPage .pdToast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 60; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+  max-width: min(92vw, 420px); padding: 11px 16px; border-radius: 10px; font-size: 14px; font-weight: 500;
+  background: var(--st-ink); color: var(--st-canvas); box-shadow: 0 10px 30px rgb(0 0 0 / 0.22);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.catPage .pdToast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.catPage .pdToast.is-err { background: var(--st-err-bg); color: var(--st-err-text); border: 1px solid var(--st-err-border); }
+
+/* ---- section ---- */
+.catPage .pdSectionHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.catPage .pdSectionHead h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); font-weight: 500; letter-spacing: -0.03em; }
+.catPage .pdReviews { margin-top: 56px; padding-top: 36px; border-top: 1px solid var(--st-line); scroll-margin-top: 90px; }
+.catPage .pdReviews:focus { outline: none; }
+.catPage .pdReviewGrid { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: start; }
+
+.catPage .pdSummaryCard { position: sticky; top: 92px; display: grid; gap: 22px; padding: 22px; border: 1px solid var(--st-line); border-radius: 12px; background: var(--st-surface); }
+.catPage .pdBig { display: flex; align-items: center; gap: 16px; }
+.catPage .pdBigNum { font-size: 52px; line-height: 1; font-weight: 500; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+.catPage .pdBigCount { margin: 6px 0 0; font-size: 13px; color: var(--st-ink-soft); }
+.catPage .pdBars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.catPage .pdBarRow { display: grid; grid-template-columns: 34px minmax(0, 1fr) 30px; align-items: center; gap: 10px; width: 100%; min-height: 28px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--st-ink); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.catPage .pdBarRow:disabled { cursor: default; color: var(--st-ink-soft); }
+.catPage .pdBarRow[aria-pressed="true"] { background: var(--st-select); }
+@media (hover: hover) and (pointer: fine) { .catPage .pdBarRow:not(:disabled):hover { background: var(--st-select); } }
+.catPage .pdBarRow:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 1px; }
+.catPage .pdBarStar { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+.catPage .pdBarStar svg { fill: var(--pd-star, #d99a00); }
+.catPage .pdBarTrack { height: 8px; border-radius: 999px; background: var(--st-select); overflow: hidden; }
+.catPage .pdBarFill { display: block; height: 100%; border-radius: 999px; background: var(--st-brand); transform-origin: left; animation: pd-grow 600ms var(--ease-out) both; }
+@keyframes pd-grow { from { transform: scaleX(0); } }
+.catPage .pdBarNum { text-align: right; font-variant-numeric: tabular-nums; color: var(--st-ink-soft); }
+
+.catPage .pdFitTitle { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.catPage .pdFitMeter { display: flex; gap: 3px; height: 10px; }
+.catPage .pdFitSeg { min-width: 4px; border-radius: 999px; background: var(--st-line); }
+.catPage .pdFit-NHO { background: color-mix(in srgb, var(--st-brand) 45%, var(--st-surface)); }
+.catPage .pdFit-VUA { background: var(--st-brand); }
+.catPage .pdFit-RONG { background: color-mix(in srgb, var(--st-brand) 45%, var(--st-surface)); }
+.catPage .pdFit-empty { flex: 1; }
+.catPage .pdFitLegend { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--st-ink-soft); font-variant-numeric: tabular-nums; }
+.catPage .pdFitVerdict { margin: 10px 0 0; font-size: 13px; }
+
+/* ---- form ---- */
+.catPage .pdForm { display: grid; gap: 18px; padding: 22px; margin-bottom: 28px; border: 1px solid var(--st-line); border-radius: 12px; background: var(--st-surface); }
+.catPage .pdForm h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.catPage .pdField { display: grid; gap: 8px; position: relative; }
+.catPage .pdLabel { font-size: 14px; font-weight: 500; }
+.catPage .pdLabel em { font-style: normal; font-weight: 400; color: var(--st-ink-soft); }
+.catPage .pdInput { width: 100%; min-height: 46px; padding: 11px 14px; border: 1px solid var(--st-control-border); border-radius: 8px; background: var(--st-raised); color: var(--st-ink); font: inherit; font-size: 15px; }
+.catPage .pdTextarea { resize: vertical; min-height: 110px; line-height: 1.5; }
+.catPage .pdInput:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 1px; }
+.catPage .pdCount { justify-self: end; font-size: 12px; color: var(--st-ink-soft); font-variant-numeric: tabular-nums; }
+.catPage .pdFormError { margin: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--st-err-border); background: var(--st-err-bg); color: var(--st-err-text); font-size: 14px; }
+.catPage .pdFormActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.catPage .pdStarInput { display: flex; align-items: center; gap: 4px; }
+.catPage .pdStarBtn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 8px; background: none; cursor: pointer; color: var(--st-line); transition: transform 160ms var(--ease-out), color 160ms; }
+.catPage .pdStarBtn svg { fill: currentColor; }
+.catPage .pdStarBtn.is-on { color: var(--pd-star, #d99a00); }
+.catPage .pdStarBtn:active { transform: scale(0.9); }
+.catPage .pdStarBtn:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 1px; }
+.catPage .pdStarWord { margin-left: 8px; font-size: 14px; color: var(--st-ink-soft); min-width: 90px; }
+
+/* ---- chips / sort ---- */
+.catPage .pdToolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.catPage .pdChips { display: flex; flex-wrap: wrap; gap: 8px; }
+.catPage .pdChip { min-height: 38px; padding: 0 14px; border: 1px solid var(--st-control-border); border-radius: 999px; background: var(--st-surface); color: var(--st-ink); font: inherit; font-size: 13.5px; cursor: pointer; transition: transform 160ms var(--ease-out), background-color 160ms, border-color 160ms; }
+.catPage .pdChip:active:not(:disabled) { transform: scale(0.97); }
+.catPage .pdChip[aria-pressed="true"] { border-color: var(--st-brand); background: color-mix(in srgb, var(--st-brand) 10%, var(--st-surface)); color: var(--st-brand-text); font-weight: 600; }
+.catPage .pdChip:disabled { opacity: 0.45; cursor: default; }
+.catPage .pdChip:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.catPage .pdSort { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--st-ink-soft); }
+.catPage .pdSort select { min-height: 38px; padding: 0 10px; border: 1px solid var(--st-control-border); border-radius: 8px; background: var(--st-raised); color: var(--st-ink); font: inherit; }
+
+/* ---- danh sách ---- */
+.catPage .pdListCount { margin: 0 0 4px; font-size: 13px; color: var(--st-ink-soft); }
+.catPage .pdReviewList { list-style: none; margin: 0; padding: 0; }
+.catPage .pdReview { padding: 20px 0; border-bottom: 1px solid var(--st-line); display: grid; gap: 8px; }
+.catPage .pdReviewTop { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.catPage .pdReviewTitle { font-size: 15px; font-weight: 600; }
+.catPage .pdReviewBody { margin: 0; font-size: 15px; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-line; }
+.catPage .pdReviewMeta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--st-ink-soft); }
+.catPage .pdVerified { color: var(--st-ok-text); background: var(--st-ok-bg); border: 1px solid var(--st-ok-border); border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 500; }
+.catPage .pdFitPill { background: var(--st-select); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+.catPage .pdHidden { color: var(--st-warn-text); background: var(--st-warn-bg); border: 1px solid var(--st-warn-border); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+.catPage .pdReviewActions { margin: 0; display: flex; gap: 14px; }
+.catPage .pdMine { margin-bottom: 28px; padding: 6px 20px 14px; border: 1px solid var(--st-line); border-radius: 12px; background: var(--st-surface); }
+.catPage .pdMineHead { margin: 14px 0 0; font-size: 13px; font-weight: 600; color: var(--st-brand-text); }
+.catPage .pdMine .pdReview { border-bottom: 0; padding-bottom: 6px; }
+.catPage .pdConfirm { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0 0; font-size: 14px; }
+.catPage .pdGate { margin: 0 0 24px; padding: 14px 16px; border: 1px dashed var(--st-control-border); border-radius: 10px; font-size: 14px; color: var(--st-ink-soft); }
+.catPage .pdMore { margin: 22px auto 0; display: flex; }
+.catPage .pdEmpty { display: grid; justify-items: center; gap: 4px; padding: 44px 16px; text-align: center; border: 1px dashed var(--st-line); border-radius: 12px; color: var(--st-ink-soft); }
+.catPage .pdEmptyTitle { margin: 8px 0 0; font-size: 16px; font-weight: 600; color: var(--st-ink); }
+.catPage .pdEmptyText { margin: 0 0 6px; font-size: 14px; max-width: 34ch; }
+.catPage .pdSkeleton span { display: block; height: 14px; border-radius: 6px; background: var(--st-select); animation: pd-pulse 1.2s ease-in-out infinite; }
+.catPage .pdSkeleton span:nth-child(1) { width: 30%; }
+.catPage .pdSkeleton span:nth-child(2) { width: 90%; }
+.catPage .pdSkeleton span:nth-child(3) { width: 60%; }
+@keyframes pd-pulse { 50% { opacity: 0.45; } }
+
+/* ---- đã xem gần đây ---- */
+.catPage .pdRecent, .catPage .pdRelated { margin-top: 56px; padding-top: 36px; border-top: 1px solid var(--st-line); }
+.catPage .pdRail { list-style: none; margin: 0; padding: 4px 2px 14px; display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
+.catPage .pdRail > li { flex: 0 0 clamp(168px, 18vw, 224px); scroll-snap-align: start; display: flex; }
+.catPage .pdRail > li > .pCard { width: 100%; }
+/* Ảnh nền trắng đặt giữa khung (như thẻ "Sản phẩm nổi bật" ở Home) để không còn dải trống giữa ảnh và tên. */
+.catPage .pdRail .pCardMedia { background: #fff; }
+.catPage .pdRail .pCardMedia img { object-fit: contain; object-position: center; background: #fff; }
+.catPage .pdRail:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; border-radius: 8px; }
+
+@media (max-width: 900px) {
+  .catPage .pdReviewGrid { grid-template-columns: minmax(0, 1fr); }
+  .catPage .pdSummaryCard { position: static; }
+}
+@media (max-width: 480px) {
+  .catPage .pdReviews, .catPage .pdRecent, .catPage .pdRelated { margin-top: 40px; padding-top: 28px; }
+  .catPage .pdForm { padding: 16px; }
+  .catPage .pdBigNum { font-size: 44px; }
+  .catPage .pdToolbar { align-items: flex-start; }
+  .catPage .pdRail > li { flex-basis: 62vw; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catPage .pdBarFill { animation: none; }
+  .catPage .pdSkeleton span { animation: none; }
+}
+html[data-motion="off"] .catPage .pdBarFill, html[data-motion="off"] .catPage .pdSkeleton span { animation: none; }

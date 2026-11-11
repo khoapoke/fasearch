@@ -1,0 +1,190 @@
+/* CTA study — chỉ trong /cta-study. Không ảnh hưởng Home/cart/Admin. */
+
+.ctaPage {
+  min-width: 0;
+  color: var(--st-ink);
+  background: var(--st-canvas);
+  padding: 28px clamp(16px, 4vw, 56px) 64px;
+}
+.ctaNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--st-line);
+  color: var(--st-ink-soft);
+  font-size: 12.5px;
+}
+.ctaTag {
+  padding: 3px 9px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 20px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.ctaHead { margin: 22px 0 18px; }
+.ctaHead h1 { margin: 0; font-size: clamp(26px, 3vw, 38px); font-weight: 500; letter-spacing: -0.02em; }
+.ctaHead p { margin: 8px 0 0; color: var(--st-ink-soft); font-size: 14px; max-width: 60ch; line-height: 1.6; }
+
+.ctaControls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.ctaStateBtn {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--st-control-border);
+  border-radius: 20px;
+  color: var(--st-ink);
+  background: var(--st-surface);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ctaStateBtn[aria-pressed="true"] { color: #fff; border-color: var(--st-brand); background: var(--st-brand); }
+
+.ctaGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.ctaCol {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--st-line);
+  border-radius: 12px;
+  background: var(--st-surface);
+}
+.ctaCol h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.ctaHint { margin: 6px 0 14px; color: var(--st-ink-soft); font-size: 12.5px; line-height: 1.55; min-height: 34px; }
+.ctaRow { display: grid; gap: 6px; margin-bottom: 14px; }
+.ctaCtx { color: var(--st-ink-soft); font-size: 11.5px; }
+
+/* shared button metrics so the comparison is about treatment, not size */
+.ctaBase, .ctaTactical, .ctaPixel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 11px 18px;
+  border: 1px solid var(--st-brand);
+  border-radius: 7px;
+  color: #fff;
+  background: var(--st-brand);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+              opacity 140ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+.ctaBase:focus-visible, .ctaTactical:focus-visible, .ctaPixel:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 3px;
+}
+.ctaBase[data-state="hover"] { opacity: 0.92; }
+.ctaBase[data-state="press"], .ctaTactical[data-state="press"], .ctaPixel[data-state="press"] { transform: scale(0.985); }
+.ctaBase[data-state="focus"], .ctaTactical[data-state="focus"], .ctaPixel[data-state="focus"] {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 3px;
+}
+.ctaBase[data-state="disabled"], .ctaTactical[data-state="disabled"], .ctaPixel[data-state="disabled"] {
+  cursor: not-allowed;
+  /* 0.75: trạng thái khóa vẫn khác biệt rõ (con trỏ + độ mờ) nhưng nhãn
+     đọc được ở cả hai theme (đo được 4.72:1 sáng / 6.12:1 tối cho nút thương hiệu). */
+  opacity: 0.75;
+}
+.ctaBase[aria-busy], .ctaTactical[aria-busy], .ctaPixel[aria-busy] { cursor: progress; }
+
+/* ---- Tactical: four viewfinder corners, small hover displacement ----
+   CF-03: nền dùng mực chủ đề nên chữ phải là màu canvas (đảo theo theme).
+   Trước đây chữ cố định #fff: trên nền mực SÁNG ở dark theme chỉ còn 1.16:1.
+   Cặp ink/canvas cho 16.39:1 (sáng) và 17.16:1 (tối). */
+.ctaTactical { color: var(--st-canvas); background: var(--st-ink); border-color: var(--st-ink); }
+.ctaTactical .ctaCorner { position: absolute; inset: 4px; pointer-events: none; }
+.ctaTactical .ctaCorner::before,
+.ctaTactical .ctaCorner::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 0 solid var(--accent, #c9f24b);
+  opacity: 0.85;
+  transition: opacity 140ms, transform 140ms;
+}
+.ctaTactical .ctaCorner::before { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
+.ctaTactical .ctaCorner::after { right: 0; bottom: 0; border-right-width: 2px; border-bottom-width: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .ctaTactical[data-state="hover"] { transform: translateY(-1px); }
+  .ctaTactical[data-state="hover"] .ctaCorner::before { transform: translate(-1px, -1px); opacity: 1; }
+  .ctaTactical[data-state="hover"] .ctaCorner::after { transform: translate(1px, 1px); opacity: 1; }
+}
+
+/* ---- Pixel: a single restrained sheen, no particles or gradient loop ---- */
+.ctaPixel { overflow: hidden; isolation: isolate; }
+.ctaPixel .ctaSheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.22) 50%, transparent 62%);
+  transform: translateX(-120%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 240ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), opacity 160ms;
+  z-index: -1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ctaPixel[data-state="hover"] .ctaSheen { transform: translateX(120%); opacity: 1; }
+}
+
+/* ---- Native pointer behaviour (CF-05) ----
+   Trước đây mọi hiệu ứng chỉ gắn với [data-state] do nút mô phỏng đặt, nên rê
+   chuột/nhấn thật không có phản hồi dù phần chữ hứa "chạy khi trỏ chuột".
+   Các rule dưới đây phản chiếu đúng hiệu ứng xem trước, chỉ ở thiết bị có trỏ
+   chính xác và khi chuyển động được phép; nút mô phỏng vẫn điều khiển được. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .ctaTactical:not(:disabled):hover { transform: translateY(-1px); }
+  .ctaTactical:not(:disabled):hover .ctaCorner::before { transform: translate(-1px, -1px); opacity: 1; }
+  .ctaTactical:not(:disabled):hover .ctaCorner::after { transform: translate(1px, 1px); opacity: 1; }
+  .ctaPixel:not(:disabled):hover .ctaSheen { transform: translateX(120%); opacity: 1; }
+  .ctaBase:not(:disabled):active,
+  .ctaTactical:not(:disabled):active,
+  .ctaPixel:not(:disabled):active { transform: scale(0.985); }
+}
+.ctaPage[data-motion="off"] .ctaTactical:not(:disabled):hover,
+.ctaPage[data-motion="off"] .ctaBase:not(:disabled):active,
+.ctaPage[data-motion="off"] .ctaTactical:not(:disabled):active,
+.ctaPage[data-motion="off"] .ctaPixel:not(:disabled):active { transform: none; }
+.ctaPage[data-motion="off"] .ctaPixel:not(:disabled):hover .ctaSheen { transform: translateX(0); opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .ctaPixel:not(:disabled):hover .ctaSheen { transform: translateX(0); opacity: 0.5; }
+}
+
+.ctaSpin {
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ctaSpin 640ms linear infinite;
+}
+@keyframes ctaSpin { to { transform: rotate(360deg); } }
+
+.ctaFoot { margin: 22px 0 0; color: var(--st-ink-soft); font-size: 12.5px; line-height: 1.6; }
+.ctaFoot a { color: inherit; }
+
+/* Motion policy: reduced-motion or the app's Off preference stops all decorative motion. */
+@media (prefers-reduced-motion: reduce) {
+  .ctaBase, .ctaTactical, .ctaPixel,
+  .ctaTactical .ctaCorner::before, .ctaTactical .ctaCorner::after,
+  .ctaPixel .ctaSheen { transition: none; }
+  .ctaPixel[data-state="hover"] .ctaSheen { transform: translateX(0); opacity: 0.5; }
+  .ctaSpin { animation: none; }
+}
+.ctaPage[data-motion="off"] .ctaBase,
+.ctaPage[data-motion="off"] .ctaTactical,
+.ctaPage[data-motion="off"] .ctaPixel,
+.ctaPage[data-motion="off"] .ctaTactical .ctaCorner::before,
+.ctaPage[data-motion="off"] .ctaTactical .ctaCorner::after,
+.ctaPage[data-motion="off"] .ctaPixel .ctaSheen { transition: none; }
+.ctaPage[data-motion="off"] .ctaSpin { animation: none; }
+
+@media (max-width: 1100px) {
+  .ctaGrid { grid-template-columns: minmax(0, 1fr); }
+  .ctaHint { min-height: 0; }
+}

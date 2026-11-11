@@ -1,0 +1,1326 @@
+/* Home A r2 (static slice) — chuyển composition đã được duyệt vào ứng dụng.
+ *
+ * Phạm vi: CHỈ trang chủ, gói trong `.hmHome`. Toàn bộ token Home lấy từ lớp
+ * theme đã được kiểm chứng (`--st-*`, có sẵn light/dark theo lựa chọn thiết bị),
+ * nên không ghi đè palette/font toàn cục và không đổi route khác.
+ * Tham chiếu: 6fdbcee (p23-a-refine-r2) — styles.css/editorial.css của bản tĩnh.
+ */
+
+/* Palette Customer Home/AI: xem components/storefront/customer-palette.css
+ * (import bởi StorefrontShell; selector vẫn chỉ áp dưới `.hmPalette`). */
+
+.hmHome {
+  --hm-canvas: var(--st-canvas, #fbfaf7);
+  --hm-surface: var(--st-surface, #ffffff);
+  --hm-subtle: var(--st-select, #f1f0ea);
+  --hm-text: var(--st-ink, #1b1c1a);
+  --hm-muted: var(--st-ink-soft, #5f655c);
+  --hm-line: var(--st-line, #dedfd7);
+  --hm-brand: var(--st-brand, #3730d8);
+  --hm-brand-text: var(--st-brand-text, #3730d8);
+  --hm-brand-hover: var(--st-brand-hover, #2d27bc);
+  --hm-citron: var(--st-citron, #d6ef72);
+  --hm-panel: #3730d8;
+  --hm-panel-text: #ffffff;
+  --hm-focus: var(--st-focus, #3730d8);
+  --hm-error: var(--st-err-text, #a6293a);
+  --hm-error-bg: var(--st-err-bg, #f9eaec);
+  --hm-error-line: var(--st-err-border, #e7b3ba);
+  --hm-media: var(--st-raised, #f1f0ea);
+
+  color: var(--hm-text);
+  background: var(--hm-canvas);
+  position: relative;
+  isolation: isolate;
+}
+
+/* Bản đã duyệt dùng panel Ultramarine đậm hơn trong theme tối. */
+html[data-theme="dark"] .hmHome {
+  --hm-panel: #241f72;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .hmHome {
+    --hm-panel: #241f72;
+  }
+}
+
+.hmHome > section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* CONTROL-CANVAS-03 — canvas B2 tĩnh nằm sau nội dung, không bắt sự kiện. */
+.hmCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--hm-muted);
+}
+.hmCanvas,
+.hmCanvas * {
+  pointer-events: none !important;
+}
+.hmThreadline {
+  position: absolute;
+  display: none;
+  overflow: visible;
+  left: var(--hm-thread-left, 0px);
+  top: var(--hm-thread-top, 0px);
+  width: var(--hm-thread-width, 0px);
+  height: var(--hm-thread-height, 0px);
+  opacity: 0.72;
+}
+.hmCanvas[data-fit="visible"] .hmThreadline {
+  display: block;
+}
+
+/* ---------- Hero: khối Ultramarine bên cạnh một ảnh biên tập ---------- */
+.hmHero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.05fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: stretch;
+  padding-top: clamp(20px, 3vh, 40px);
+  padding-bottom: clamp(36px, 6vh, 72px);
+}
+
+.hmHeroCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+  padding: clamp(24px, 3.2vw, 44px);
+  border-radius: 6px;
+  color: var(--hm-panel-text);
+  background: var(--hm-panel);
+  position: relative;
+}
+
+/* Signature motif (mặc định đã duyệt ở 6fdbcee): góc L ôm mép panel,
+ * không reserve layout, không bắt sự kiện. Ẩn sau nội dung (z-index 0). */
+.hmMotif {
+  position: absolute;
+  z-index: 0;
+  right: 4px;
+  bottom: 4px;
+  width: 148px;
+  height: 148px;
+  color: var(--hm-panel-text);
+  opacity: 0.72;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hmMotif svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.hmHeroCopy > :not(.hmMotif) {
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 760px) {
+  .hmMotif {
+    right: 4px;
+    bottom: 4px;
+    width: 84px;
+    height: 84px;
+  }
+}
+
+.hmHeroTitle {
+  max-width: 11ch;
+  color: var(--hm-panel-text);
+  font-size: clamp(32px, 4.6vw, 60px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.hmHeroLede {
+  max-width: 34ch;
+  color: var(--hm-panel-text);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.hmHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.hmHeroCopy :focus-visible {
+  outline-color: #fff;
+}
+
+.hmHeroFigure {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin: 0;
+  min-width: 0;
+}
+
+.hmHeroMedia {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: min(58vh, 560px);
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--hm-media);
+}
+
+.hmHeroMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Cắt ảnh có chủ đích để giữ trọn mặt (R3.3 của bản đã duyệt). */
+  object-position: 50% 14%;
+  display: block;
+}
+
+/* ---------- Nút dùng trong Home ----------
+   LƯU Ý: home.css cũng được `/nam` (listings.tsx) import, nên `.hmCta*` là lớp
+   DÙNG CHUNG. Giữ nguyên khai báo gốc cho `.hmCta`/`.hmCtaPrimary`/`.hmCtaGhost`;
+   mọi điều chỉnh của Home nằm trong `.hmHome` để route khác không đổi hình học. */
+.hmCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 13px 22px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hmCtaPrimary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.hmCtaPrimary:hover {
+  background: var(--accent-deep);
+}
+
+.hmCtaGhost {
+  border-color: var(--line);
+  color: var(--ink);
+  background: #fff;
+}
+
+.hmCtaGhost:hover {
+  border-color: var(--accent);
+  color: var(--brand);
+}
+
+/* Home dùng hai biến thể riêng + siết lại kích thước trong phạm vi Home. */
+.hmHome .hmCta {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 12px 20px;
+}
+
+.hmCtaBrand {
+  background: var(--hm-brand);
+  border-color: var(--hm-brand);
+  color: #fff;
+}
+
+.hmCtaBrand:hover {
+  background: var(--hm-brand-hover);
+  border-color: var(--hm-brand-hover);
+}
+
+/* Trên panel Ultramarine: nút trắng đặc, viền trắng cho nút phụ (bản đã duyệt). */
+.hmHeroCopy .hmCtaBrand {
+  background: #fff;
+  border-color: #fff;
+  color: var(--hm-panel);
+}
+
+.hmHeroCopy .hmCtaBrand:hover {
+  background: #ecebff;
+  border-color: #ecebff;
+}
+
+.hmCtaOutline {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.55);
+  color: var(--hm-panel-text);
+}
+
+.hmCtaOutline:hover {
+  border-color: #fff;
+}
+
+/* ---------- Ba cách tìm ---------- */
+/* CONTROL-CANVAS-03: khôi phục đúng margin-top của `.home-explain` trong
+ * 6fdbcee (thay bản migrate padding-top) — cần cho slot canvas B2. */
+.hmHome > .hmModes {
+  margin-top: clamp(26px, 4vh, 48px);
+}
+
+.hmSectionTitle {
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--hm-text);
+}
+
+.hmModeList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hmMode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+  padding: 9px 2px;
+  border-top: 1px solid var(--hm-line);
+  color: var(--hm-text);
+  text-decoration: none;
+}
+
+.hmModeIcon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  color: var(--hm-muted);
+}
+
+.hmModeCopy {
+  min-width: 0;
+}
+
+.hmModeCopy strong {
+  display: block;
+  color: var(--hm-text);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.hmModeGo {
+  margin-left: auto;
+  color: var(--hm-muted);
+}
+
+.hmMode:hover .hmModeCopy strong {
+  color: var(--hm-brand-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.hmMode:hover .hmModeGo {
+  color: var(--hm-text);
+}
+
+.hmNote {
+  margin-top: 14px;
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* ---------- Một demo tích hợp, ba bước tĩnh ---------- */
+.hmHome > .hmDemo {
+  margin-top: clamp(36px, 6vh, 68px);
+  padding-bottom: 8px;
+}
+
+.hmDemoHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hmKicker {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hm-brand-text);
+}
+
+.hmDemoNote {
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hmDemoSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 22px;
+  border-top: 1px solid var(--hm-line);
+  border-bottom: 1px solid var(--hm-line);
+}
+
+.hmDemoStep {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 0;
+  border-right: 1px solid var(--hm-line);
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--hm-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hmDemoStep:last-child {
+  border-right: 0;
+}
+
+.hmDemoStep span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.hmDemoStep[aria-pressed="true"] {
+  color: var(--hm-text);
+  border-bottom-color: var(--hm-brand);
+}
+
+.hmDemoStep:hover {
+  color: var(--hm-text);
+}
+
+/* Hai cột: lời mô tả bên trái, kết quả bên phải. min-height giữ hình học ổn định
+   khi chuyển bước (A3: "demo text/CTA geometry stable"). */
+.hmDemoLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 40px);
+  margin-top: 24px;
+}
+
+.hmDemoPrompt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Ô mô tả cao như một ô nhập nhiều dòng và dòng trạng thái đáy cột thẳng hàng với đáy kết quả:
+   không còn khoảng trống lớn dưới ô, hình học vẫn ổn định khi chuyển bước. */
+.hmDemoPrompt .hmQuery { flex: 1 1 auto; min-height: 128px; max-height: 168px; }
+.hmDemoPrompt .hmDemoStatus { margin-top: auto; }
+
+.hmDemoPromptTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--hm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hmDemoPromptMark {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--hm-muted);
+}
+
+.hmQuery {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+.hmQueryIcon {
+  color: var(--hm-brand-text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.hmQueryCopy {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--hm-text);
+}
+
+.hmTags {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.hmTags > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--hm-line);
+  border-radius: 999px;
+  background: var(--hm-surface);
+}
+
+.hmTags dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hm-muted);
+}
+
+.hmTags dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hm-text);
+}
+
+.hmDemoStatus {
+  margin: 0;
+  color: var(--hm-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.hmDemoOutcome {
+  display: grid;
+  align-content: start;
+  min-height: 300px;
+  min-width: 0;
+}
+
+.hmOutcomeIdle {
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed var(--hm-line);
+  border-radius: 10px;
+  color: var(--hm-muted);
+  font-size: 13.5px;
+}
+
+.hmSuggestion {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 24px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-muted);
+}
+
+.hmSuggestionIcon {
+  width: 30px;
+  height: 30px;
+  color: var(--hm-brand-text);
+}
+
+.hmSuggestion p {
+  margin: 4px 0 0;
+  color: var(--hm-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hmSuggestion span {
+  font-size: 13px;
+}
+
+.hmResult {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.hmMiniLabel {
+  margin: 0;
+  color: var(--hm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hmResultCard {
+  display: grid;
+  grid-template-columns: minmax(0, 152px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+/* Khung ảnh cố định tỉ lệ: chuyển bước không làm nhảy layout. */
+.hmResultMedia {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--hm-media);
+}
+
+.hmResultMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Crop bomber-only theo bản đã duyệt (editorial.css .editorial-result-photo[data-photo="jacketBomber"]):
+     dịch khung lên 5% + phóng tĩnh 1.6 neo mép trên, khung 4:5 đã clip nên phần áo thứ hai phía dưới bị cắt.
+     Chỉ tĩnh — không có transition/animation. */
+  object-position: 50% 5%;
+  transform: scale(1.6);
+  transform-origin: center top;
+  display: block;
+}
+
+.hmResultCopy {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+
+.hmResultOverline {
+  color: var(--hm-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hmResultCopy strong {
+  color: var(--hm-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.hmResultCopy span {
+  color: var(--hm-muted);
+  font-size: 13px;
+}
+
+.hmResultPrice {
+  margin-top: 6px;
+  color: var(--hm-text) !important;
+  font-size: 17px !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hmResultCredit {
+  margin: 0;
+  color: var(--hm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.hmCredit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hmCredit a:hover {
+  color: var(--hm-brand-text);
+}
+
+.hmTry {
+  justify-self: start;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 44px;
+  padding: 11px 0;
+  color: var(--hm-brand-text);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.hmDisclosure {
+  margin: 20px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--hm-line);
+  color: var(--hm-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 78ch;
+}
+
+/* Ảnh lỗi phải nói rõ, không để khung trống khó hiểu. */
+.hmImgFail {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  padding: 12px;
+  color: var(--hm-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---------- Danh mục + sản phẩm thật (giữ từ Home cũ) ---------- */
+.hmCats {
+  padding-top: clamp(24px, 4vh, 44px);
+}
+
+.hmSecHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.hmSecHead a {
+  margin-left: auto;
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hmSecHead a:hover {
+  color: var(--hm-brand-text);
+}
+
+.hmCatRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.hmCat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 12px 10px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.hmCat:hover {
+  border-color: var(--hm-brand);
+  color: var(--hm-brand-text);
+}
+
+.hmBest {
+  padding-top: clamp(24px, 4vh, 44px);
+}
+
+/* Sản phẩm thật chưa có ảnh: hiện nhãn giữ chỗ thay vì khung trắng trống.
+   Chỉ trong lưới của Home (`.hmBest`) nên không đổi card ở route khác. */
+.hmBest .pCardMedia {
+  background: #fff;
+}
+
+/* Ảnh sản phẩm nền trắng: khung 3:4 giữ nguyên (không nhảy layout), ảnh vuông đặt giữa khung
+   và nền ảnh trắng như nền ảnh gốc (studio.css đặt nền be cho img), nên không còn dải màu dưới ảnh. */
+.hmBest .pCardMedia img {
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
+}
+
+.hmBest .pCardMedia:not(:has(img)) {
+  background: var(--hm-media);
+}
+
+.hmBest .pCardMedia:not(:has(img))::after {
+  content: "Chưa có ảnh";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hmMore {
+  display: flex;
+  justify-content: center;
+  margin: 22px 0 6px;
+}
+
+.hmMore a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 12px 24px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.hmMore a:hover {
+  border-color: var(--hm-brand);
+  color: var(--hm-brand-text);
+}
+
+/* ---------- Trạng thái dữ liệu (A2) ---------- */
+.hmState {
+  display: grid;
+  gap: 6px;
+  padding: 24px;
+  border: 1px dashed var(--hm-line);
+  border-radius: 10px;
+  color: var(--hm-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.hmState strong {
+  color: var(--hm-text);
+  font-size: 15px;
+}
+
+.hmState a {
+  color: var(--hm-brand-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hmStateError {
+  border-style: solid;
+  border-color: var(--hm-error-line);
+  background: var(--hm-error-bg);
+  color: var(--hm-error);
+}
+
+.hmStateError strong {
+  color: var(--hm-error);
+}
+
+.hmRetry {
+  justify-self: start;
+  margin-top: 6px;
+}
+
+/* ---------- Dải cam kết (giữ từ Home cũ) ---------- */
+.hmTrust {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding-top: clamp(24px, 4vh, 44px);
+  padding-bottom: 40px;
+}
+
+.hmTrust > div {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--hm-line);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+.hmTrust > div > div {
+  min-width: 0;
+}
+
+.hmTrustIco {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--hm-subtle);
+  color: var(--hm-brand-text);
+}
+
+.hmTrust b {
+  display: block;
+  color: var(--hm-text);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.hmTrust small {
+  color: var(--hm-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* ---------- Lớp dùng chung với các trang khác (giữ nguyên API lớp) ---------- */
+.hmAiBand {
+  max-width: 1280px;
+  margin: 26px auto 0;
+  padding: 0 20px;
+}
+
+.hmAiCard {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 26px;
+  padding: 28px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.hmAiCard h2 {
+  font-size: clamp(19px, 2.4vw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hmAiCard h2 .hl {
+  color: var(--brand-text);
+}
+
+.hmAiCard > div > p {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.hmDropIco {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--surface-tint);
+  color: var(--brand-text);
+}
+
+.hmDropRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hmTabs {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0 18px;
+  flex-wrap: wrap;
+}
+
+.hmTabs a {
+  padding: 8px 15px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.hmTabs a[aria-current="true"] {
+  background: var(--ink-fill, var(--ink));
+  border-color: var(--ink-fill, var(--ink));
+  color: #fff;
+}
+
+.hmCollections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 26px 20px 0;
+}
+
+.hmCol {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 300px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #23272f;
+}
+
+.hmCol img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hmCol::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgb(10 12 18 / 0.72));
+}
+
+.hmCol div {
+  position: relative;
+  z-index: 1;
+  padding: 24px;
+  color: #fff;
+}
+
+.hmCol small {
+  display: inline-block;
+  margin-bottom: 9px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.hmCol h3 {
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.hmCol p {
+  max-width: 40ch;
+  margin: 6px 0 12px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.hmCol a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: #fff;
+  color: #1b1c1a;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1024px) {
+  .hmHero {
+    grid-template-columns: 1fr;
+  }
+
+  .hmDemoLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .hmDemoOutcome {
+    min-height: 0;
+  }
+
+  .hmDemoPrompt .hmQuery { flex: 0 0 auto; min-height: 96px; max-height: none; }
+
+  .hmTrust {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hmCollections,
+  .hmAiCard {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .hmHome > section {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hmHeroCopy {
+    padding: 24px 20px;
+  }
+
+  .hmModeList {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .hmDemoStep {
+    font-size: 12.5px;
+    padding: 9px 8px;
+  }
+
+  .hmResultCard {
+    grid-template-columns: minmax(0, 110px) minmax(0, 1fr);
+  }
+
+  .hmTrust {
+    grid-template-columns: 1fr;
+  }
+
+  .hmCatRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   Chapter: Home completion (customer-home-benefits-completion r1)
+   Scope: chỉ trong `.hmHome`. Dùng token --st-* đã duyệt, không tạo palette mới.
+   ========================================================================== */
+
+/* --- Brand strip (rev2): logo monochrome thật, phục vụ cục bộ --- */
+.hmBrands { width: min(1320px, 100%); margin: 30px auto 6px; padding: 26px clamp(16px, 4vw, 48px); border-top: 1px solid var(--st-line); border-bottom: 1px solid var(--st-line); }
+.hmBrandsHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.hmBrandsTitle { margin: 0; color: var(--st-ink-soft); font-size: 12.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+.hmBrandsToggle { min-height: 34px; padding: 5px 12px; border: 1px solid var(--st-line); border-radius: 999px; background: transparent; color: var(--st-ink-soft); font: inherit; font-size: 12.5px; cursor: pointer; }
+.hmBrandsToggle:hover { color: var(--st-ink); border-color: var(--st-control-border); }
+.hmBrandsToggle:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.hmBrandsViewport { display: flex; gap: 64px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.hmBrandTrack { display: flex; align-items: center; gap: 64px; margin: 0; padding: 0; list-style: none; flex: 0 0 auto; animation: hmBrandRun 40s linear infinite; }
+.hmBrandsViewport[data-paused="true"] .hmBrandTrack { animation-play-state: paused; }
+.hmBrandItem { display: flex; align-items: center; justify-content: center; height: 34px; flex: 0 0 auto; }
+.hmBrandItem img { flex: 0 0 auto; }
+.hmBrandItem img { display: block; object-fit: contain; filter: brightness(0) opacity(0.62); }
+/* R4-I: mark một màu bằng mask → mọi artwork (trắng/đen/màu) đọc được trên cả hai theme. */
+.hmBrandItem .hmBrandMark {
+  display: block;
+  width: var(--brand-w, 80px);
+  height: var(--brand-h, 24px);
+  background-color: var(--st-ink);
+  opacity: 0.72;
+  -webkit-mask-image: var(--brand-logo);
+  mask-image: var(--brand-logo);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+/* Mark có nền màu/khoét trắng (MLB, UNIQLO) sẽ thành khối đen nếu brightness(0);
+   giữ grayscale để hình khối bên trong vẫn đọc được. */
+.hmBrandItem img[data-mono="gray"] { filter: grayscale(1) opacity(0.72); }
+[data-theme="dark"] .hmBrandItem img { filter: brightness(0) invert(1) opacity(0.7); }
+[data-theme="dark"] .hmBrandItem img[data-mono="gray"] { filter: grayscale(1) invert(0.85) opacity(0.8); }
+@keyframes hmBrandRun { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+.hmBrandsStatic { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: clamp(28px, 6vw, 72px); }
+.hmBrandsStatic .hmBrandTrack { animation: none; flex-wrap: wrap; justify-content: center; gap: clamp(28px, 6vw, 72px); }
+.hmBrandsNote { margin: 16px 0 0; color: var(--st-ink-soft); font-size: 12px; opacity: 0.85; }
+
+/* --- Demo controls + FSM surfaces --- */
+.hmDemoTools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hmDemoReplay {
+  min-height: 34px; padding: 5px 12px; border: 1px solid var(--st-line);
+  border-radius: 999px; background: transparent; color: var(--st-ink-soft);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.hmDemoReplay:hover { color: var(--st-ink); border-color: var(--st-control-border); }
+.hmDemoReplay:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+/* Approved spec: con trỏ gõ là tĩnh, không nhấp nháy. */
+.hmQueryCaret {
+  display: inline-block; width: 2px; height: 1em; margin-left: 2px;
+  background: currentColor; vertical-align: -0.12em; opacity: 0;
+}
+.hmDemo[data-stage="typing"] .hmQueryCaret { opacity: 1; }
+
+/* Approved 170ms reveal for the story blocks (opacity/transform only). */
+.hmTags, .hmProcessing, .hmResult { animation: hmReveal 170ms var(--ease-out) both; }
+@keyframes hmReveal { from { opacity: 0; transform: translate3d(0, 6px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+
+.hmProcessing { display: grid; gap: 10px; align-content: start; }
+.hmSkeleton { display: block; width: 140px; height: 176px; border-radius: 12px; background: var(--st-select); }
+.hmSkeletonLine { display: block; width: 100%; height: 12px; border-radius: 6px; background: var(--st-select); }
+.hmSkeletonShort { width: 60%; }
+
+.hmResultMediaWrap { position: relative; display: block; }
+.hmResultMotion { display: block; }
+.hmResultHalo { display: none; }
+
+/* Pop/wiggle 280ms (scale 0.97→1, +1.5→−0.75→0px) + halo 520ms peak 0.34,
+   chỉ trên ảnh; chữ/giá/CTA nằm ngoài node chuyển động. */
+.hmResultCard { position: relative; }
+.hmResultCard .hmResultHalo {
+  display: block; position: absolute; inset: 0; z-index: 2; padding: 3px; border-radius: inherit;
+  pointer-events: none; opacity: 0; filter: blur(2px);
+  background: linear-gradient(130deg, var(--st-brand), var(--st-citron) 62%, var(--st-brand));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.hmHome[data-attention="on"] .hmResultMotion { animation: hmPop 280ms var(--ease-out) both; }
+.hmHome[data-attention="on"] .hmResultHalo { animation: hmHalo 520ms linear both; }
+.hmResultCard[data-manual="true"] .hmResultHalo { animation: none !important; opacity: 0 !important; }
+.hmResultCard[data-manual="true"] .hmResultMotion { animation: none !important; }
+@keyframes hmPop {
+  0% { transform: scale(0.97) translateX(1.5px); }
+  60% { transform: scale(1) translateX(-0.75px); }
+  100% { transform: scale(1) translateX(0); }
+}
+@keyframes hmHalo {
+  0% { opacity: 0; }
+  25% { opacity: 0.34; }
+  40% { opacity: 0.34; }
+  100% { opacity: 0; }
+}
+
+/* --- How-to + benefits --- */
+.hmHow { width: min(1320px, 100%); margin: 0 auto; padding: 40px clamp(16px, 4vw, 48px) 8px; }
+.hmHowSteps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; margin: 18px 0 30px; padding: 0; list-style: none; }
+.hmHowSteps li { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--st-line); }
+.hmHowSteps span { color: var(--st-ink-soft); font-size: 12.5px; letter-spacing: 0.08em; }
+.hmHowSteps b { font-size: 16px; font-weight: 600; }
+.hmHowSteps p { margin: 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.6; max-width: 40ch; }
+.hmBenefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.hmBenefits article { display: grid; gap: 8px; align-content: start; padding: 20px; border: 1px solid var(--st-line); border-radius: 14px; background: var(--st-surface); }
+.hmBenefits h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.hmBenefits p { margin: 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.6; }
+.hmBenefits a { color: var(--st-brand-text); font-size: 13.5px; text-decoration: none; }
+.hmBenefits a:hover { text-decoration: underline; }
+
+/* --- FAQ --- */
+.hmFaq { width: min(1320px, 100%); margin: 0 auto; padding: 34px clamp(16px, 4vw, 48px) 8px; }
+.hmFaqList { margin: 14px 0 0; border-top: 1px solid var(--st-line); }
+.hmFaqList > div { padding: 16px 0; border-bottom: 1px solid var(--st-line); }
+.hmFaqList dt { font-size: 15px; font-weight: 600; }
+.hmFaqList dd { margin: 6px 0 0; color: var(--st-ink-soft); font-size: 14px; line-height: 1.65; max-width: 70ch; }
+
+/* --- Closing band --- */
+.hmClose {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  width: min(1320px, 100%); margin: 30px auto 46px; padding: 30px clamp(20px, 4vw, 44px);
+  border-radius: 18px; background: var(--st-select);
+}
+.hmCloseCopy h2 { margin: 4px 0 6px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.03em; }
+.hmCloseCopy p { margin: 0; color: var(--st-ink-soft); font-size: 15px; }
+.hmCloseActions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* R3: CTA phụ trong dải kết Home. `.hmCtaGhost` trước đây dùng chữ trắng trên nền
+   sáng nên gần như vô hình ở dark mode. Dùng token ngữ nghĩa + viền rõ, không
+   override toàn cục. */
+.hmCloseActions .hmCta.hmCtaGhost {
+  color: var(--st-ink);
+  background: var(--st-surface);
+  border: 1px solid var(--st-control-border);
+}
+.hmCloseActions .hmCta.hmCtaGhost:hover {
+  border-color: var(--st-ink);
+  background: var(--st-select);
+}
+.hmCloseActions .hmCta.hmCtaGhost:focus-visible {
+  outline: 2px solid var(--st-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .hmHow { padding-top: 30px; }
+  .hmClose { padding: 24px 20px; margin-bottom: 34px; }
+  .hmCloseActions { width: 100%; }
+  .hmCloseActions .hmCta { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Reduced-motion / Off: dừng mọi hiệu ứng, giữ nguyên bố cục và nội dung. */
+@media (prefers-reduced-motion: reduce) {
+  .hmBrandTrack, .hmTags, .hmProcessing, .hmResult { animation: none; }
+  .hmHome[data-attention="on"] .hmResultMotion,
+  .hmHome[data-attention="on"] .hmResultHalo { animation: none; }
+  .hmQueryCaret { animation: none; opacity: 0; }
+}
+html[data-motion="off"] .hmBrandTrack,
+html[data-motion="off"] .hmQueryCaret,
+html[data-motion="off"] .hmTags,
+html[data-motion="off"] .hmProcessing,
+html[data-motion="off"] .hmResult { animation: none; }
+html[data-motion="off"] .hmResultMotion,
+html[data-motion="off"] .hmResultHalo { animation: none !important; opacity: 0 !important; }
+
+
+/* R4-A: đích "Thương hiệu" (#thuong-hieu) phải nằm dưới header sticky, cả khi
+   header đang expanded (88px) lẫn compact (~72px) và trên mobile (72px). */
+#thuong-hieu,
+.hmHome [id] { scroll-margin-top: 104px; }
+@media (max-width: 760px) {
+  #thuong-hieu, .hmHome [id] { scroll-margin-top: 88px; }
+}
+
+
+/* R4-I: hãng chưa có asset đã kiểm định → chữ wordmark, không bịa logo. */
+.hmBrandItem .hmBrandWord {
+  color: var(--st-ink);
+  opacity: 0.72;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+
+/* R4-I fix: logo raster nền đục giữ nguyên asset gốc trên một "plate" sáng,
+   không bị mask thành khối đặc; cao 26px, rộng tối đa 104px. */
+.hmBrandItem .hmBrandPlate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid var(--st-line);
+}
+.hmBrandItem .hmBrandRaster {
+  display: block;
+  height: 24px;
+  width: auto;
+  max-width: 104px;
+  object-fit: contain;
+  /* Ảnh raster giữ màu gốc: filter brightness(0)/invert của dải mask sẽ biến
+     artwork thành khối trắng trên plate trắng (lỗi Degrey/SWE). */
+  filter: none !important;
+}
